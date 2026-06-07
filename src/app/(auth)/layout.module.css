@@ -1,0 +1,9 @@
+/* src/app/auth/layout.module.css */
+
+.authContainer {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+}

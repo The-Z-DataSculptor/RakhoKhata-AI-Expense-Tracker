@@ -1,0 +1,26 @@
+/* src/app/page.module.css */
+
+.main {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background);
+}
+
+/* Kept intact for your custom testing elements if you need them later */
+.testButton {
+  margin-top: 1rem;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: var(--background);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.testButton:hover {
+  background-color: var(--color-primary-dark);
+}

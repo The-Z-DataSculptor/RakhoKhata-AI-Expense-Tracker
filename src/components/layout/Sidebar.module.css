@@ -1,0 +1,489 @@
+/* FILE LOCATION: src/components/layout/Sidebar.module.css */
+
+/* ==========================================================================
+   === SECTION 1: SIDEBAR CONTAINER FRAME FOUNDATION ===
+   ========================================================================== */
+.sidebarContainer {
+  width: 260px;
+  height: 100vh;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-color);
+  padding: 1.5rem 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* position: fixed; removed to seamlessly sit inside the modern dashboard layout CSS grid */
+  position: relative;
+  z-index: 900;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+}
+
+/* DESKTOP COLLAPSE ACTION PIN BUTTON */
+.desktopCollapsePinButton {
+  position: absolute;
+  top: 1.6rem;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  z-index: 1000;
+  box-shadow: var(--shadow-soft);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.desktopCollapsePinButton:hover {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+}
+
+.pinIcon {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pinIconRotated {
+  transform: rotate(180deg);
+}
+
+/* COLLAPSED STRUCTURAL STATE RULES */
+.collapsedSidebar {
+  width: 72px;
+  padding: 1.5rem 0.6rem;
+}
+
+.collapsedSidebar .linkTitleLabel,
+.collapsedSidebar .sectionDividerLabel,
+.collapsedSidebar .identityTextStack,
+.collapsedSidebar .logoLayout,
+.collapsedSidebar .activeWorkspaceLabel,
+.collapsedSidebar .chevronIndicator {
+  opacity: 0;
+  max-width: 0;
+  pointer-events: none;
+  display: none !important;
+}
+
+.collapsedSidebar .brandHeaderSection {
+  align-items: center;
+}
+
+.collapsedSidebar .workspaceSelectorTrigger {
+  justify-content: center;
+  padding: 0.55rem;
+}
+
+.collapsedSidebar .navLinkRow {
+  justify-content: center;
+  padding: 0.65rem;
+}
+
+.collapsedSidebar .accountProfileFooterSection {
+  justify-content: center;
+  padding: 1rem 0 0 0;
+}
+
+/* ==========================================================================
+   === SECTION 2: BRAND PLATE & WORKSPACE ARCHITECTURES ===
+   ========================================================================== */
+.brandHeaderSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.logoLayout {
+  font-family: var(--font-navbar);
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  user-select: none;
+  padding-left: 0.5rem;
+}
+
+.logoAccent {
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-left: 0.15rem;
+}
+
+.workspaceWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.workspaceSelectorTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.workspaceSelectorTrigger:hover {
+  background-color: var(--surface-outline);
+  border-color: var(--color-primary);
+}
+
+.activeWorkspaceIcon {
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.activeWorkspaceLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevronIndicator {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chevronRotated {
+  transform: rotate(180deg);
+}
+
+.workspaceDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  box-shadow: var(--shadow-soft);
+  z-index: 950;
+  animation: dropdownAppendFade 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.workspaceDropdownMenu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.workspaceDropdownMenu button:hover {
+  background-color: var(--primary-soft-hover);
+  color: var(--color-primary);
+}
+
+.selectedWorkspaceOption {
+  background-color: var(--primary-soft) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+.checkMarker {
+  margin-left: auto;
+  color: var(--color-primary);
+}
+
+/* ==========================================================================
+   === SECTION 3: CORE LINK INTERACTION ARCHITECTURE ===
+   ========================================================================== */
+.navNavigationStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.navNavigationStack::-webkit-scrollbar {
+  width: 4px;
+}
+
+.navNavigationStack::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.navGroupSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sectionDividerLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.8px;
+  padding-left: 0.65rem;
+  margin-bottom: 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.navLinkRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.navLinkRow:hover {
+  color: var(--color-primary);
+  background-color: var(--primary-soft-faint);
+}
+
+.activeNavLinkRow {
+  background-color: var(--primary-soft) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+.vectorIconFrame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.linkTitleLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.growthRowVariant:hover {
+  color: var(--color-success);
+  background-color: rgba(81, 207, 102, 0.08);
+}
+
+.intelligenceRowVariant:hover {
+  color: var(--color-info);
+  background-color: rgba(51, 154, 240, 0.08);
+}
+
+/* ==========================================================================
+   === SECTION 4: LOWER PROFILE CARD ANCHOR DECK ===
+   ========================================================================== */
+.accountProfileFooterSection {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.userProfileIdentificationCard {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.userAvatarIndicatorBubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.identityTextStack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.operatorProfileName {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operatorSecRole {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.systemSettingsActionGearButton {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.systemSettingsActionGearButton:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-outline);
+  transform: rotate(25deg);
+}
+
+/* ==========================================================================
+   === SECTION 5: MOBILE SPECIFIC LAYER INTERFACES ===
+   ========================================================================== */
+.mobileTopBar {
+  display: none;
+}
+
+.mobileMenuBackdropOverlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Desktop Collapse Pin is unneeded on mobile viewports */
+  .desktopCollapsePinButton {
+    display: none !important;
+  }
+
+  /* Reveal Mobile Control Header */
+  .mobileTopBar {
+    width: 100%;
+    height: 60px;
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1100;
+    box-sizing: border-box;
+  }
+
+  .mobileLogo {
+    font-family: var(--font-navbar);
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+  }
+
+  .mobileMenuToggleTrigger {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+  }
+
+  /* Structural transformation: Transform Sidebar aside container into a Slide-out Drawer Panel */
+  .sidebarContainer {
+    position: fixed; /* Reactivated exclusively on mobile for layout canvas overlays */
+    width: 280px;
+    height: 100vh;
+    top: 0;
+    left: -280px; /* Hide completely off-canvas by default */
+    z-index: 1200;
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: 5rem; /* Space to safely clear the absolute close metrics area */
+  }
+
+  /* Slide-In Trigger execution class */
+  .mobileSidebarActive {
+    transform: translateX(280px);
+  }
+
+  .mobileMenuBackdropOverlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1150;
+  }
+
+  /* Ensure all items remain beautifully open inside the drawer tray format */
+  .collapsedSidebar {
+    width: 280px !important;
+    padding: 5rem 1rem 1.5rem 1rem !important;
+  }
+
+  .collapsedSidebar .linkTitleLabel,
+  .collapsedSidebar .sectionDividerLabel,
+  .collapsedSidebar .identityTextStack,
+  .collapsedSidebar .logoLayout,
+  .collapsedSidebar .activeWorkspaceLabel,
+  .collapsedSidebar .chevronIndicator {
+    display: block !important;
+    opacity: 1 !important;
+    max-width: none !important;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 6: MICRO INTERACTION ANIMATIONS ===
+   ========================================================================== */
+@keyframes dropdownAppendFade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

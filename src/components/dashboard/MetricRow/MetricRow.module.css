@@ -1,0 +1,16 @@
+/* ==========================================================================
+   === FILEPATH: src/components/dashboard/MetricRow/MetricRow.module.css ===
+   ========================================================================== */
+
+/* ==========================================================================
+   === SECTION 1: RESPONSIVE GRID MATRIX PASS-THROUGH ===
+   ========================================================================== */
+.rowGridContainer {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  
+  /* Adds subtle breathing room below the typographic blocks section */
+  margin-bottom: 2.5rem;
+}
+/* === SECTION 1 END === */

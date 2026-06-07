@@ -1,0 +1,96 @@
+/* ==========================================================================
+   === FILEPATH: src/components/dashboard/TimeSwitcher/TimeSwitcher.module.css ===
+   ========================================================================== */
+
+/* ==========================================
+   === SECTION 1: OUTER WRAPPER LAYOUTS ===
+   ========================================== */
+.switcherWrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  width: auto; /* Changed from 100% to auto to prevent structural overflow layout issues */
+  justify-content: flex-end; /* Pushes the switcher cleanly to the right side of the deck */
+}
+
+.contextLabel {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+/* === SECTION 1 END === */
+
+
+/* ==========================================
+   === SECTION 2: THE PILL CONTAINER TRAY ===
+   ========================================== */
+.pillTray {
+  display: inline-flex;
+  background-color: var(--surface-outline, #f3f4f6); /* Uses your global light/dark tray backdrop token */
+  padding: 0.25rem;
+  border-radius: 30px; /* Generates a perfectly round pill capsule shape */
+  border: 1px solid var(--border-color);
+}
+/* === SECTION 2 END === */
+
+
+/* ==========================================
+   === SECTION 3: INDIVIDUAL INTERACTION INTERFACES ===
+   ========================================== */
+.pillButton {
+  /* FIXED: Added a concrete transparent backdrop default baseline for perfect color switching transitions */
+  background-color: transparent;
+  border: none;
+  padding: 0.4rem 1rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 20px;
+  transition: background-color 0.2s ease, color 0.2s ease; /* Robust explicit fallback token layout speed */
+  outline: none;
+  cursor: pointer;
+}
+
+/* Subtle feedback text pop when hovering unselected keys */
+.pillButton:hover:not(.pillActive) {
+  color: var(--text-primary);
+  background-color: var(--primary-soft-hover, rgba(0, 0, 0, 0.04));
+}
+
+/* ACTIVE BADGE STATE: 
+   Uses your core brand token to clearly float above the surface */
+.pillActive {
+  background-color: var(--color-primary, #3b82f6);
+  color: var(--text-on-primary, #ffffff); /* Pure white token for crisp light/dark reading */
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+/* === SECTION 3 END === */
+
+
+/* ==========================================
+   === SECTION 4: MOBILE RESPONSIVE TUNING ===
+   ========================================= */
+@media (max-width: 576px) {
+  .switcherWrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%; /* Spans full width layout on smaller viewports */
+  }
+  
+  .pillTray {
+    display: flex;
+    width: 100%; /* Spans full width on small phone environments */
+    box-sizing: border-box;
+  }
+  
+  .pillButton {
+    flex: 1; /* Stretches tabs equally across mobile screen sizes */
+    text-align: center;
+    padding: 0.5rem 0.5rem; /* Balanced horizontal breathing box matching custom sizes */
+  }
+}
+/* === SECTION 4 END === */

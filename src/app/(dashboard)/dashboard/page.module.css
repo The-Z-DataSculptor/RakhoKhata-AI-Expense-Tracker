@@ -1,0 +1,150 @@
+/* ==========================================================================
+   === FILEPATH: src/app/(dashboard)/dashboard/page.module.css ===
+   ========================================================================== */
+
+/* ==========================================================================
+   === SECTION 1: MASTER CANVAS WRAPPING ===
+   ========================================================================== */
+.workspaceWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+/* === SECTION 1 END === */
+
+
+/* ==========================================================================
+   === SECTION 2: TOP HEADER LAYOUT BLOCK ===
+   ========================================================================== */
+.dashboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  padding-bottom: 1.25rem;
+}
+
+.headingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem; 
+}
+
+/* Dual-tone popping color scheme for the main headline layout */
+.welcomeHeadline {
+  font-family: var(--font-navbar, sans-serif);
+  font-size: 1.85rem; 
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+  
+  /* FIXED / WHY: Removed the invalid ::first-word pseudo-selector entirely. 
+     Instead, we configure a highly supportable gradient fill straight onto the heading text layer. */
+  background: linear-gradient(90deg, var(--color-primary, #3b82f6) 0%, var(--text-primary, #111827) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--color-primary, #3b82f6); /* Secure pixel color fallback for legacy systems */
+}
+/* === SECTION 2 END === */
+
+
+/* ==========================================================================
+   === SECTION 3: UPGRADED TEXT STYLING BLOCK ===
+   ========================================================================== */
+.welcomeSubtext {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600; 
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  
+  /* High contrast theme pairing instead of faded muted secondary text values */
+  color: var(--color-primary, #3b82f6);
+  filter: brightness(0.85); /* Smooths out color tint vibrancy for elite text definition */
+  
+  position: relative;
+  opacity: 0;
+  
+  /* Triggers a micro-glide entry slide animation when layout loads on viewports */
+  animation: gentleTextSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Adds a sharp vertical brand ribbon accents layout line to frame descriptive text sentences */
+@media (min-width: 769px) {
+  .welcomeSubtext {
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--color-primary, #3b82f6);
+  }
+}
+
+@keyframes gentleTextSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* === SECTION 3 END === */
+
+
+/* ==========================================================================
+   === SECTION 4: METRIC ROW CARDS CONTEXT ===
+   ========================================================================== */
+.metricsRowStage {
+  width: 100%;
+}
+/* === SECTION 4 END === */
+
+
+/* ==========================================================================
+   === SECTION 5: LOWER ANALYTICS CONTROLLER ===
+   ========================================================================== */
+.isolatedStage {
+  width: 100%;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.wireframeGridPlaceholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--surface-muted, #f3f4f6); /* Fixed fallback token value placeholder */
+  border: 1px dashed var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 14px); 
+  padding: 3rem 1.5rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.stageText {
+  font-size: 0.875rem;
+  color: var(--text-muted, #9ca3af);
+  margin: 0;
+}
+/* === SECTION 5 END === */
+
+
+/* ==========================================================================
+   === SECTION 6: SMARTPHONE RESPONSIVE MATRIX ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .dashboardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+}
+/* === SECTION 6 END === */

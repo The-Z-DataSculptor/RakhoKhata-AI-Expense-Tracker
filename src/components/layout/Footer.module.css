@@ -1,0 +1,100 @@
+/* ==========================================================================
+   === SECTION 1: RADIAL LAYOUT ENGINE ===
+   ========================================================================== */
+.footerContainer {
+  background: var(--background);
+  padding: 40px 24px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.footerInner {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+/* === SECTION 2: BRAND ELEMENTS === */
+.logo {
+  font-family: var(--font-navbar);
+  font-size: 1.35rem;
+  font-weight: 300;
+  color: var(--text-primary); /* FIXED: Swapped from --foreground to protect visibility in dark mode */
+  letter-spacing: -0.03em;
+  user-select: none;
+}
+
+.logoAccent {
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-left: 0.15rem;
+}
+
+/* THE "WHY" COMMENT LAYER: Use --text-muted instead of pure opacity so the text 
+   retains semantic color in both light and dark modes, improving accessibility. */
+.tagline { 
+  color: var(--text-muted);
+  font-size: 1rem; 
+  margin-top: 8px; 
+}
+
+/* === SECTION 3: NAVIGATION STYLING === */
+.navLinks {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.navLinks a {
+  text-decoration: none;
+  color: var(--text-secondary); /* FIXED: Swapped from --foreground for proper contrast steps */
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  transition: var(--transition-fast);
+}
+
+/* THE "WHY" COMMENT LAYER: Use --text-on-primary instead of hardcoded white. 
+   This ensures consistent theming if primary button background ever changes in the future. */
+.navLinks a:hover {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  border-color: var(--color-primary);
+}
+
+/* === SECTION 4: SOCIAL MEDIA ICONS === */
+.socialIcons {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+}
+
+/* THE "WHY" COMMENT LAYER: Use --text-secondary for better contrast in dark mode. */
+.socialIcons a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  transition: var(--transition-fast);
+}
+
+/* Removed underline, added color change and lift for icons */
+.socialIcons a:hover { 
+  color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+/* === SECTION 5: COPYRIGHT === */
+.copy {
+  /* THE "WHY" COMMENT LAYER: Use --text-muted for semantic consistency with supporting text 
+     across both light and dark themes, improving readability of the copyright notice. */
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

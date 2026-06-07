@@ -1,0 +1,271 @@
+/* ==========================================================================
+   === SECTION 1: MAINCONTAINER & WRAPPER LAYOUTS ===
+   ========================================================================== */
+.pricingWrapper {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  background-color: var(--background);
+  color: var(--text-primary); /* FIXED: Links baseline text wrapper directly to primary token hierarchy */
+}
+
+/* Header typography styles */
+.headerBlock {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.mainTitle {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin-bottom: 12px;
+  color: var(--text-primary); /* FIXED: Prevents heading blackout on dark canvas loads */
+}
+
+.subTitle {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+/* === SECTION 1 END === */
+
+
+/* ==========================================================================
+   === SECTION 2: THE 40/60 ASYMMETRIC GRID SYSTEM ===
+   ========================================================================== */
+/* Why grid-template-columns is 0.4fr and 0.6fr: This explicitly establishes
+   the 40% vs 60% widescreen desktop proportions requested in the blueprint. */
+.splitGridLayout {
+  display: grid;
+  grid-template-columns: 0.4fr 0.6fr;
+  gap: 32px;
+  align-items: stretch;
+}
+
+/* Responsive breakpoint for tablets and mobile devices */
+@media (max-width: 968px) {
+  .splitGridLayout {
+    grid-template-columns: 1fr; /* Stack vertically on smaller screens */
+    gap: 40px;
+  }
+}
+/* === SECTION 2 END === */
+
+
+/* ==========================================================================
+   === SECTION 3: FREE TIER STYLING (THE 40% ELEMENT) ===
+   ========================================================================== */
+.freeCard {
+  background-color: var(--bg-surface); /* FIXED: Elevates card panels from background layer */
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Subtle standard lift interaction on hover */
+.freeCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-soft); /* FIXED: Restores variable ambient shadow structures */
+}
+
+.tierBadgeFree {
+  display: inline-block;
+  background-color: var(--success-soft);
+  color: var(--color-success);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 99px;
+  margin-bottom: 20px;
+}
+/* === SECTION 3 END === */
+
+
+/* ==========================================================================
+   === SECTION 4: PRO TIER STYLING (THE 60% PREMIUM ELEMENT) ===
+   ========================================================================== */
+.proCard {
+  background-color: var(--bg-surface); /* FIXED: Keeps surfaces aligned cleanly across both cards */
+  /* Uses your primary variable to construct an advanced gradient border glow */
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  /* Elevated drop shadow to pull the 60% card visually forward into focus */
+  box-shadow: var(--shadow-soft); /* FIXED */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Powerful interactive float acceleration */
+.proCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 24px 50px var(--primary-soft);
+}
+
+.tierBadgePro {
+  display: inline-block;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 99px;
+  margin-bottom: 20px;
+}
+
+/* The floating premium action tag at the center peak of the Pro layout card */
+.floatingBadge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent-light));
+  color: var(--text-on-primary);
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 99px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px var(--primary-soft);
+}
+/* === SECTION 4 END === */
+
+
+/* ==========================================================================
+   === SECTION 5: INTERIOR ELEMENT GRAPHICS (PRICES, LISTS, CALL-TO-ACTIONS) ===
+   ========================================================================== */
+.cardTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-primary); /* FIXED: Explicitly maps card inner labels */
+}
+
+.priceContainer {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 16px;
+  color: var(--text-primary); /* FIXED: Forces entire currency block to transform modes cleanly */
+}
+
+.currencySymbol {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.priceValue {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.priceDuration {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.cardDescription {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  min-height: 48px;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 28px 0;
+}
+
+/* Feature Grid lists setup */
+.featureList, .featureListPro {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 40px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--text-secondary); /* FIXED: Restores compliance values on line listing structures */
+}
+
+/* The Pro tier features display cleanly across 2 column lists inside its 60% container */
+@media (min-width: 768px) {
+  .featureListPro {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 24px;
+  }
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.checkmarkIconCheck {
+  color: var(--color-success);
+  font-weight: bold;
+}
+
+.checkmarkIconPro {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* Button Layout Foundations */
+.freeButton, .proButton {
+  font-family: var(--font-navbar);
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.freeButton {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary); /* FIXED: Swapped from layout-centric variable */
+}
+
+.freeButton:hover {
+  background-color: var(--primary-soft-hover);
+  border-color: var(--color-primary);
+}
+
+.proButton {
+  background-color: var(--color-primary);
+  border: none;
+  color: var(--text-on-primary);
+  box-shadow: 0 4px 12px var(--primary-soft); /* FIXED: Prevents dark ink shadows in dark mode */
+}
+
+.proButton:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.freeButton:active, .proButton:active {
+  transform: scale(0.98);
+}
+/* === SECTION 5 END === */

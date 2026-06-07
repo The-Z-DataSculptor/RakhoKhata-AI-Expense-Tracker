@@ -1,0 +1,372 @@
+/* src/components/Hero.module.css */
+
+.heroContainer {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7rem 1.5rem 4rem 1.5rem;
+  background: var(--accent-radial);
+  overflow: hidden;
+}
+
+.heroContent {
+  width: 100%;
+  max-width: 1200px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+/* ==========================================================================
+   LEFT COLUMN STYLES START (Typography & Actions)
+   ========================================================================== */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.badge {
+  background-color: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong);
+  color: var(--color-primary-dark); /* FIXED: Swapped out layout foreground for legible label variable */
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.title {
+  font-family: var(--font-navbar);
+  font-size: 2.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary); /* FIXED: Ties main heading to deep ink / crisp white variables */
+  letter-spacing: -0.02em;
+  margin-bottom: 1.25rem;
+}
+
+.gradientText {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.subtitle {
+  font-family: var(--font-navbar);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-muted); /* FIXED: Now resolves to accessible gray-purple and light lavender */
+  max-width: 540px;
+  margin-bottom: 2rem;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+.primaryBtn, .secondaryBtn {
+  font-family: var(--font-navbar);
+  width: 100%;
+  padding: 0.9rem 2rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.22s ease;
+  border: none;
+}
+
+.primaryBtn {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.btnArrow {
+  transition: transform 0.2s ease;
+}
+
+.primaryBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.primaryBtn:hover .btnArrow {
+  transform: translateX(4px);
+}
+
+.secondaryBtn {
+  background-color: transparent;
+  color: var(--text-primary); /* FIXED: Buttons keep readable contrast against backdrop vectors */
+  border: 1px solid var(--border-color);
+}
+
+.secondaryBtn:hover {
+  background-color: var(--primary-soft-hover);
+  border-color: var(--color-primary);
+}
+
+/* ==========================================================================
+   RIGHT COLUMN STYLES START (Responsive Layers Engine)
+   ========================================================================== */
+.rightCol {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  padding: 1.5rem 0;
+}
+
+.scene3D {
+  perspective: 1200px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  justify-content: center;
+}
+
+.mockupStack {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.card {
+  position: absolute;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.mainDashboard {
+  width: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.cardTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary); /* FIXED: Card headers now cleanly pop inside containers */
+}
+
+.cardAction {
+  font-size: 0.78rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.ledgerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.ledgerIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.ledgerInfo {
+  flex: 1;
+}
+
+.ledgerName {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary); /* FIXED */
+  margin-bottom: 0.15rem;
+}
+
+.ledgerDate {
+  font-size: 0.72rem;
+  color: var(--text-muted); /* FIXED */
+}
+
+.ledgerAmount {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.negative { color: var(--color-danger); }
+.positive { color: var(--color-success); }
+
+.breakdownCard {
+  width: 175px;
+  bottom: -1rem;
+  left: -0.5rem;
+  z-index: 2;
+  border-color: var(--primary-soft-strong);
+}
+
+.miniTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted); /* FIXED */
+  margin-bottom: 0.5rem;
+}
+
+.chartPlaceholder {
+  height: 45px;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.bar {
+  flex: 1;
+  background-color: var(--border-color);
+  border-radius: 3px 3px 0 0;
+}
+
+.bar2, .bar4 {
+  background-color: var(--color-primary);
+  opacity: 0.7;
+}
+
+.chartLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted); /* FIXED */
+}
+
+.positiveText { color: var(--color-success); }
+
+.floatingAlert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  top: -1rem;
+  right: -0.5rem;
+  z-index: 3;
+  background-color: var(--color-primary);
+  border: 1px solid var(--primary-soft-strong);
+}
+
+.alertPulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-success);
+  animation: pulseLoop 2s infinite;
+}
+
+.alertText {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-on-primary);
+  white-space: nowrap;
+}
+
+@keyframes pulseLoop {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.5); }
+  70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(21, 128, 61, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(21, 128, 61, 0); }
+}
+
+/* ==========================================================================
+   MEDIA QUERY UPGRADES (Desktop Responsive Adaptations)
+   ========================================================================== */
+@media (min-width: 768px) {
+  .heroContainer {
+    padding: 8rem 2.5rem 4rem 2.5rem;
+  }
+
+  .heroContent {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 4rem;
+  }
+
+  .leftCol {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .title {
+    font-size: 3.5rem;
+  }
+
+  .buttonGroup {
+    flex-direction: row;
+    max-width: none;
+  }
+
+  .primaryBtn, .secondaryBtn {
+    width: auto;
+  }
+
+  .mockupStack {
+    transform: rotateY(-18deg) rotateX(12deg) rotateZ(4deg);
+  }
+
+  .mockupStack:hover {
+    transform: rotateY(-8deg) rotateX(6deg) rotateZ(2deg);
+  }
+
+  .mainDashboard {
+    transform: translateZ(0px);
+  }
+
+  .breakdownCard {
+    bottom: -2rem;
+    left: -3rem;
+    transform: translateZ(40px);
+  }
+
+  .mockupStack:hover .breakdownCard {
+    transform: translateZ(65px) translateX(-10px) translateY(5px);
+  }
+
+  .floatingAlert {
+    top: -1.5rem;
+    right: -1rem;
+    transform: translateZ(70px);
+    box-shadow: var(--shadow-soft);
+  }
+}

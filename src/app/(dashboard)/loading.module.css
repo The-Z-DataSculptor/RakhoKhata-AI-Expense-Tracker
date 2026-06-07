@@ -1,0 +1,127 @@
+
+/* ==========================================================================
+   === FILEPATH: src/app/(dashboard)/loading.module.css ===
+   ========================================================================== */
+
+   /* ==========================================================================
+   === SECTION 1: ANIMATION KEYFRAME ENGINE & BASE BASELINE ===
+   ========================================================================== */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* FIXED / WHY: Placed directly at the top so compilation layers can securely 
+   compose structural extensions down below without throwing order exceptions */
+.skeletonBase {
+  background: linear-gradient(
+    90deg,
+    var(--surface-muted, #e5e7eb) 25%,
+    var(--surface-outline, #f3f4f6) 50%,
+    var(--surface-muted, #e5e7eb) 75
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: var(--radius-sm, 6px);
+}
+/* === SECTION 1 END === */
+
+
+/* ==========================================================================
+   === SECTION 2: STRUCTURAL COMPONENT BLOCKS ===
+   ========================================================================== */
+.loadingContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  box-sizing: border-box;
+}
+
+/* TOP HEADER INFO BLOCK */
+.headerSkeletonTracker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.titleSkeleton {
+  composes: skeletonBase;
+  width: 200px;
+  height: 24px;
+}
+
+.subtitleSkeleton {
+  composes: skeletonBase;
+  width: 120px;
+  height: 14px;
+}
+
+/* METRICS COMPONENT CARDS GRID */
+.metricsGridSkeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Matched directly to dashboard specifications */
+  gap: 1.5rem;
+}
+
+.skeletonCard {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg, 12px); /* Corrected from radius-md to project token standard */
+  padding: 1rem; /* Synchronized padding to prevent sizing flicker jumps */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.cardHeaderLine {
+  composes: skeletonBase;
+  width: 40%;
+  height: 14px;
+}
+
+.cardMainValue {
+  composes: skeletonBase;
+  width: 70%;
+  height: 32px;
+  margin-top: 0.25rem;
+}
+
+.cardSubtextLine {
+  composes: skeletonBase;
+  width: 55%;
+  height: 12px;
+}
+
+/* RECTANGULAR GRAPH FRAME CONTAINER */
+.largeGraphBlockSkeleton {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+  min-height: 300px;
+  box-sizing: border-box;
+}
+
+.graphHeaderLine {
+  composes: skeletonBase;
+  width: 180px;
+  height: 16px;
+}
+
+.graphCanvasBody {
+  composes: skeletonBase;
+  width: 100%;
+  flex: 1;
+  min-height: 220px;
+}
+/* === SECTION 2 END === */

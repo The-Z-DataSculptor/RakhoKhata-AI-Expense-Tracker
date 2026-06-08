@@ -1,4 +1,6 @@
-/* FILE LOCATION: src/components/layout/DashboardNavbar.module.css */
+/* ==========================================================================
+   === FILEPATH: src/components/layout/DashboardNavbar.module.css ===
+   ========================================================================== */
 
 /* ==========================================================================
    === SECTION 1: TOP NAVIGATION ROW CONTAINER START ===
@@ -16,6 +18,13 @@
   position: sticky;
   top: 0;
   z-index: 800;
+}
+
+.topNavbarBlankPlaceholder {
+  height: 70px;
+  width: 100%;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
 }
 /* === SECTION 1 END === */
 
@@ -201,7 +210,7 @@
 }
 
 .activeMenuOption {
-  background-color: var(--primary-soft) !important;
+  background-color: var(--primary-soft-hover) !important;
   color: var(--color-primary) !important;
   font-weight: 600;
 }
@@ -214,7 +223,6 @@
 /* ==========================================================================
    === SECTION 6: RESPONSIVE SCREEN BREAKPOINT RULES START ===
    ========================================================================== */
-/* MOBILE COMPONENT DISPLAY TRIGGERS */
 .hamburgerMenuIconToggle,
 .mobileSearchTriggerButton,
 .mobileSearchOverlay,
@@ -224,22 +232,21 @@
 
 @media (max-width: 900px) {
   .dateSubtext {
-    display: none; /* Strip structural micro-details to make space */
+    display: none;
   }
 }
 
 @media (max-width: 768px) {
   .topNavbar {
-    padding: 0 1rem; /* Condense workspace layouts down */
+    padding: 0 1rem;
   }
 
   .searchWrapper,
   .currencyToggleTrigger,
   .dropdownMenuContainer {
-    display: none; /* Hide wide desktop-specific items */
+    display: none;
   }
 
-  /* Reveal optimized functional mobile triggers */
   .hamburgerMenuIconToggle,
   .mobileSearchTriggerButton {
     display: flex;
@@ -258,7 +265,6 @@
     margin-left: 0.25rem;
   }
 
-  /* FULL MOBILITY INTERACTIVE OVERLAY CANVAS COVERS */
   .mobileSearchOverlay {
     display: flex;
     position: absolute;
@@ -293,7 +299,6 @@
     padding: 0.5rem;
   }
 
-  /* SLIDE-DOWN SYSTEM UTILITY DRAWER TRAYS */
   .mobileNavigationDrawerTray {
     display: block;
     position: absolute;
@@ -356,6 +361,3 @@
     font-size: 0.8rem;
   }
 }
-/* ==========================================================================
-   === SECTION 6: RESPONSIVE SCREEN BREAKPOINT RULES END ===
-   ========================================================================== */

@@ -29,7 +29,7 @@
    ========================================== */
 .pillTray {
   display: inline-flex;
-  background-color: var(--surface-outline, #f3f4f6); /* Uses your global light/dark tray backdrop token */
+  background-color: var(--surface-outline);
   padding: 0.25rem;
   border-radius: 30px; /* Generates a perfectly round pill capsule shape */
   border: 1px solid var(--border-color);
@@ -57,15 +57,15 @@
 /* Subtle feedback text pop when hovering unselected keys */
 .pillButton:hover:not(.pillActive) {
   color: var(--text-primary);
-  background-color: var(--primary-soft-hover, rgba(0, 0, 0, 0.04));
+  background-color: var(--primary-soft-hover);
 }
 
 /* ACTIVE BADGE STATE: 
    Uses your core brand token to clearly float above the surface */
 .pillActive {
-  background-color: var(--color-primary, #3b82f6);
-  color: var(--text-on-primary, #ffffff); /* Pure white token for crisp light/dark reading */
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  box-shadow: 0 2px 8px var(--primary-soft);
 }
 /* === SECTION 3 END === */
 

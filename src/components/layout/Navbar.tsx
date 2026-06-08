@@ -6,7 +6,7 @@
    ========================================================================== */
 import Link from "next/link";
 import { useState } from "react";
-import { useTheme } from "../../hooks/useTheme";// Imported your custom theme controller hook
+import { useTheme } from "@/hooks/useTheme";
 import styles from "./Navbar.module.css";
 /* === SECTION 1 END === */
 
@@ -87,6 +87,7 @@ export default function Navbar() {
               className={styles.themeTrigger}
               onClick={() => setIsThemeOpen(!isThemeOpen)}
               aria-label="Switch interface color theme scheme"
+              aria-expanded={isThemeOpen}
             >
               <span className={styles.themeCurrentIcon}>{getThemeIcon()}</span>
             </button>

@@ -6,8 +6,8 @@
    === SECTION 1: IMPORTS & DEPENDENCIES ===
    ========================================================================== */
 import React from "react";
-import { TimePeriod } from "../TimeSwitcher/TimeSwitcher";
-import MetricCard, { MetricItem } from "../MetricCard/MetricCard"; 
+import { TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
+import MetricCard, { MetricItem } from "@/components/dashboard/MetricCard/MetricCard"; 
 import styles from "./MetricRow.module.css";
 /* === SECTION 1 END === */
 

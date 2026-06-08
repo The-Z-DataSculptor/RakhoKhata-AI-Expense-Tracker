@@ -295,12 +295,12 @@
 
 .growthRowVariant:hover {
   color: var(--color-success);
-  background-color: rgba(81, 207, 102, 0.08);
+  background-color: var(--success-soft);
 }
 
 .intelligenceRowVariant:hover {
   color: var(--color-info);
-  background-color: rgba(51, 154, 240, 0.08);
+  background-color: var(--info-soft);
 }
 
 /* ==========================================================================
@@ -433,7 +433,7 @@
     top: 0;
     left: -280px; /* Hide completely off-canvas by default */
     z-index: 1200;
-    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 4px 0 25px var(--shadow-soft);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     padding-top: 5rem; /* Space to safely clear the absolute close metrics area */
   }
@@ -450,7 +450,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: var(--primary-soft-strong);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     z-index: 1150;

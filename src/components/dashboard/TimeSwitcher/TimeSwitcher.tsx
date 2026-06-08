@@ -29,7 +29,7 @@ interface TimeSwitcherProps {
 /* ==========================================================================
    === SECTION 3: MAIN COMPONENT RENDER ===
    ========================================================================== */
-export default function TimeSwitcher({ activePeriod, onPeriodChange }: TimeSwitcherProps) {
+export default React.memo(function TimeSwitcher({ activePeriod, onPeriodChange }: TimeSwitcherProps) {
   
   // WHY: Keeping our buttons in an array makes it easy to add or remove options.
   // We use clean, reader-friendly text labels for the interface.
@@ -67,5 +67,5 @@ export default function TimeSwitcher({ activePeriod, onPeriodChange }: TimeSwitc
 
     </div>
   );
-}
+});
 /* === SECTION 3 END === */

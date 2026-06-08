@@ -32,7 +32,7 @@ export interface MetricCardProps {
 /* ==========================================================================
    === SECTION 3: MAIN COMPONENT ===
    ========================================================================== */
-export default function MetricCard({ metrics }: MetricCardProps) {
+export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
   
   // Safety check: If there are no items in the list, show a friendly message
   if (!metrics || metrics.length === 0) {
@@ -108,5 +108,5 @@ export default function MetricCard({ metrics }: MetricCardProps) {
       })}
     </div>
   );
-}
+});
 /* === SECTION 3 END === */

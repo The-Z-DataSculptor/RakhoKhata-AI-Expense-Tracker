@@ -1,6 +1,4 @@
-/* ==========================================================================
-   === FILEPATH: src/app/(dashboard)/dashboard/page.module.css ===
-   ========================================================================== */
+/* src/app/(dashboard)/dashboard/page.module.css */
 
 /* ==========================================================================
    === SECTION 1: MASTER CANVAS WRAPPING ===
@@ -111,28 +109,29 @@
    ========================================================================== */
 .isolatedStage {
   width: 100%;
-  min-height: 260px;
   display: flex;
   flex-direction: column;
+  gap: 1.5rem; /* Standard structural grid clearance separating the stacked cards */
 }
 
-.wireframeGridPlaceholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--surface-muted, #f3f4f6); /* Fixed fallback token value placeholder */
-  border: 1px dashed var(--border-color, #e5e7eb);
-  border-radius: var(--radius-lg, 14px); 
-  padding: 3rem 1.5rem;
-  text-align: center;
-  box-sizing: border-box;
+.chartWrapperNode {
+  width: 100%;
 }
 
-.stageText {
-  font-size: 0.875rem;
-  color: var(--text-muted, #9ca3af);
-  margin: 0;
+/* Upgrades layout to a stunning side-by-side presentation layer on full monitor widths */
+@media (min-width: 1025px) {
+  .isolatedStage {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  
+  /* Trend Area Chart claims slightly wider breathing room, Donut pins the breakdown data */
+  .isolatedStage > .chartWrapperNode:nth-child(1) {
+    flex: 1.4;
+  }
+  .isolatedStage > .chartWrapperNode:nth-child(2) {
+    flex: 1;
+  }
 }
 /* === SECTION 5 END === */
 

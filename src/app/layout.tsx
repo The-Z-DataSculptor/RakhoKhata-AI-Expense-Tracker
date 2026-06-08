@@ -1,9 +1,15 @@
-// src/app/layout.tsx
+/* ==========================================================================
+   === FILEPATH: src/app/layout.tsx ===
+   ========================================================================== */
 
 import type { Metadata } from "next";
 import { Mulish } from "next/font/google";
+import Script from "next/script"; // WHY: Next.js native optimization engine to handle script components smoothly without React hydration warnings.
 import "./globals.css";
 
+/* ==========================================================================
+   === SECTION 1: FONTS & METADATA CONFIGURATION ===
+   ========================================================================== */
 const mulish = Mulish({
   subsets: ["latin"],
   weight: ["200", "300", "400", "500", "600", "700"],
@@ -11,10 +17,15 @@ const mulish = Mulish({
 });
 
 export const metadata: Metadata = {
-  title: "Rakho Khata - Your Premium Expense Ledger",
+  title: "RahoKhata - Your Premium Expense Ledger",
   description: "Track your personal and business expenses with precision.",
 };
+/* === SECTION 1 END === */
 
+
+/* ==========================================================================
+   === SECTION 2: THEME INLINE INITIALIZER SCRIPT ===
+   ========================================================================== */
 const themeInitializerScript = `
 (function () {
   try {
@@ -31,7 +42,12 @@ const themeInitializerScript = `
   }
 })();
 `;
+/* === SECTION 2 END === */
 
+
+/* ==========================================================================
+   === SECTION 3: ROOT STRUCTURAL LAYOUT ===
+   ========================================================================== */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,13 +56,20 @@ export default function RootLayout({
   return (
     <html lang="en" className={mulish.variable} suppressHydrationWarning>
       <body>
-        <script
+        
+        {/* WHY: Capitalized Script engine executes immediately before page paint cycles 
+            to prevent background-flashing layouts while maintaining clean browser DOM records. */}
+        <Script
+          id="theme-initializer"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: themeInitializerScript,
           }}
         />
+        
         {children}
       </body>
     </html>
   );
 }
+/* === SECTION 3 END === */

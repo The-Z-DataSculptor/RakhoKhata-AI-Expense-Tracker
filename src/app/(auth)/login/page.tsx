@@ -1,10 +1,10 @@
-// FILE LOCATION: src/app/login/page.tsx
+// FILE LOCATION: src/app/(auth)/login/page.tsx
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES START ===
    ========================================================================== */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -18,12 +18,22 @@ import styles from "./page.module.css";
 
 type MarketTrendType = "STABLE_GROWTH" | "CORRECTIVE_RECOVERY" | "HIGH_VOLATILITY_BURST";
 
+// FIXED / WHY: Empty subscription setup needed for useSyncExternalStore to verify window availability safely
+const emptySubscribe = () => () => {};
+
 export default function InteractivePulseLoginPage() {
   /* ==========================================================================
      === SECTION 2: STATE INITIALIZATION AND HOOKS START ===
      ========================================================================== */
   const router = useRouter();
-  const [isClient, setIsClient] = useState(false);
+
+  // FIXED / WHY: Directly hooks into the rendering timeline to figure out if it is server or browser environment.
+  // This removes the need for useEffect + setIsClient(true), totally solving the linter error.
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   // WHY: We wire up the externally imported login schema parameters directly to the engine.
   const {
@@ -35,6 +45,7 @@ export default function InteractivePulseLoginPage() {
     mode: "onBlur",
   });
 
+  // State elements kept for the reactive parts of the telemetry UI
   const [marketVolatility, setMarketVolatility] = useState<number>(12);
   const [marketTrend, setMarketTrend] = useState<MarketTrendType>("STABLE_GROWTH");
 
@@ -44,10 +55,6 @@ export default function InteractivePulseLoginPage() {
 
   const currentAmplitude = useRef<number>(20);
   const targetAmplitude = useRef<number>(20);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   /* === SECTION 2: STATE INITIALIZATION AND HOOKS END === */
 
   /* ==========================================================================
@@ -82,6 +89,7 @@ export default function InteractivePulseLoginPage() {
 
     let animationFrameId: number;
     let waveOffset = 0;
+    let lastStateUpdateTime = 0;
 
     const renderWaveframeLoop = () => {
       if (document.hidden) {
@@ -105,14 +113,21 @@ export default function InteractivePulseLoginPage() {
       }
 
       const calculatedSpikeIntensity = Math.round(currentAmplitude.current);
-      setMarketVolatility(calculatedSpikeIntensity);
+      
+      // FIXED / WHY: Throttling state calls to occur at most once every 100ms. 
+      // Running react state changes 60 to 120 times per second inside an animation frame causes massive lag.
+      const now = Date.now();
+      if (now - lastStateUpdateTime > 100) {
+        setMarketVolatility(calculatedSpikeIntensity);
 
-      if (calculatedSpikeIntensity > 60) {
-        setMarketTrend("HIGH_VOLATILITY_BURST");
-      } else if (calculatedSpikeIntensity > 35) {
-        setMarketTrend("CORRECTIVE_RECOVERY");
-      } else {
-        setMarketTrend("STABLE_GROWTH");
+        if (calculatedSpikeIntensity > 60) {
+          setMarketTrend("HIGH_VOLATILITY_BURST");
+        } else if (calculatedSpikeIntensity > 35) {
+          setMarketTrend("CORRECTIVE_RECOVERY");
+        } else {
+          setMarketTrend("STABLE_GROWTH");
+        }
+        lastStateUpdateTime = now;
       }
 
       ctx.beginPath();

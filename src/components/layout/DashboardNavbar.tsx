@@ -1,10 +1,11 @@
-// FILE LOCATION: src/components/layout/DashboardNavbar.tsx
+// src/components/layout/DashboardNavbar.tsx
+
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES START ===
    ========================================================================== */
-import React, { useState, useEffect } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 // WHY: We utilize unified icons from react-icons to ensure clear interactive cues
 import { 
   FiSun, 
@@ -18,7 +19,7 @@ import {
   FiX
 } from "react-icons/fi";
 // WHY: Hook dependency to tie dark/light/system mechanics to our DOM data attribute
-import { useTheme } from "../../hooks/useTheme";
+import { useTheme } from "@/hooks/useTheme";
 import styles from "./DashboardNavbar.module.css";
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES END ===
@@ -41,12 +42,14 @@ interface CurrencyOption {
 /* ==========================================================================
    === SECTION 3: CONSTANTS START ===
    ========================================================================== */
-// WHY: Isolated mapping options written outside component to avoid reconstruction on re-renders
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "PKR", symbol: "₨", label: "Pakistani Rupee" },
   { code: "USD", symbol: "$", label: "US Dollar" },
   { code: "EUR", symbol: "€", label: "Euro" },
 ];
+
+// FIXED / WHY: Empty subscription function required by useSyncExternalStore
+const emptySubscribe = () => () => {};
 /* ==========================================================================
    === SECTION 3: CONSTANTS END ===
    ========================================================================== */
@@ -57,35 +60,29 @@ export default function DashboardNavbar() {
      ========================================================================== */
   const { activeTheme, changeTheme } = useTheme();
   
+  // FIXED / WHY: useSyncExternalStore safely determines if we are rendering on client vs server 
+  // without triggering a useEffect hook or throwing cascading setState linter errors.
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,  // Client value
+    () => false  // Server/Hydration value
+  );
+
   // WHY: Controls display states for custom menus and mobile toggle drawers
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
-  const [greeting, setGreeting] = useState("Welcome");
-  const [formattedDate, setFormattedDate] = useState("");
+  
+  // WHY: Reactive state tracking for user currency switches
+  const [activeCurrency, setActiveCurrency] = useState<CurrencyType>("PKR");
   /* ==========================================================================
      === SECTION 4: STATE INITIALIZATION END ===
      ========================================================================== */
 
   /* ==========================================================================
-     === SECTION 5: EFFECT & HELPER SIDE EFFECTS START ===
+     === SECTION 5: HELPER SIDE EFFECTS START ===
      ========================================================================== */
-  // WHY: Calculates local real-time context and sets client-side safe strings
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
-
-    const dateString = new Date().toLocaleDateString("en-US", { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-    setFormattedDate(dateString);
-  }, []);
-
   // WHY: Explicitly maps the active theme to its matching icon variant
   const getThemeIcon = () => {
     if (activeTheme === "light") return <FiSun size={16} />;
@@ -93,19 +90,42 @@ export default function DashboardNavbar() {
     return <FiMonitor size={16} />;
   };
 
-  const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === "PKR");
+  // WHY: Dynamically matches selection to active state instead of defaulting to PKR
+  const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === activeCurrency);
+
+  // WHY: Compute values dynamically during render rather than setting state inside an effect.
+  let greeting = "Welcome";
+  let formattedDate = "";
+
+  if (isMounted) {
+    const hour = new Date().getHours();
+    greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+    formattedDate = new Date().toLocaleDateString("en-US", { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
   /* ==========================================================================
-     === SECTION 5: EFFECT & HELPER SIDE EFFECTS END ===
+     === SECTION 5: HELPER SIDE EFFECTS END ===
      ========================================================================== */
+
+  /* ==========================================================================
+     === HYDRATION FALLBACK INTERCEPTOR ===
+     ========================================================================== */
+  // WHY: If rendering on the server, return a structurally balanced empty bar layout node. 
+  if (!isMounted) {
+    return <header className={styles.topNavbarBlankPlaceholder} />;
+  }
 
   /* ==========================================================================
      === SECTION 6: MAIN JSX RENDER LAYOUT START ===
      ========================================================================== */
   return (
-    <header className={styles.topNavbar}>
+    <header className={styles.topNavbar} suppressHydrationWarning>
       
       {/* --- SUB-COMPONENT: MOBILE OVERLAY SEARCH EXPANSION --- */}
-      {/* WHY: On small mobile viewports, clicking the search icon overlays a full input canvas */}
       {isMobileSearchActive && (
         <div className={styles.mobileSearchOverlay}>
           <FiSearch className={styles.searchIcon} size={16} />
@@ -160,6 +180,8 @@ export default function DashboardNavbar() {
           <button 
             className={styles.currencyToggleTrigger}
             onClick={() => { setIsCurrencyOpen(!isCurrencyOpen); setIsThemeOpen(false); }}
+            aria-label="Change currency"
+            aria-expanded={isCurrencyOpen}
           >
             <FiGlobe size={14} className={styles.utilityIconInline} />
             <span className={styles.currencyCodeLabel}>
@@ -172,12 +194,12 @@ export default function DashboardNavbar() {
               {CURRENCY_OPTIONS.map((crypto) => (
                 <li key={crypto.code}>
                   <button 
-                    onClick={() => setIsCurrencyOpen(false)}
-                    className={crypto.code === "PKR" ? styles.activeMenuOption : ""}
+                    onClick={() => { setActiveCurrency(crypto.code); setIsCurrencyOpen(false); }}
+                    className={crypto.code === activeCurrency ? styles.activeMenuOption : ""}
                   >
                     <span className={styles.currencyMenuSymbol}>{crypto.symbol}</span>
                     <span className={styles.currencyMenuLabel}>{crypto.label}</span>
-                    {crypto.code === "PKR" && <FiCheck className={styles.checkMarkerIcon} size={14} />}
+                    {crypto.code === activeCurrency && <FiCheck className={styles.checkMarkerIcon} size={14} />}
                   </button>
                 </li>
               ))}
@@ -196,6 +218,8 @@ export default function DashboardNavbar() {
           <button 
             className={styles.utilityIconButton}
             onClick={() => { setIsThemeOpen(!isThemeOpen); setIsCurrencyOpen(false); }}
+            aria-label="Change color theme"
+            aria-expanded={isThemeOpen}
           >
             {getThemeIcon()}
           </button>
@@ -232,8 +256,7 @@ export default function DashboardNavbar() {
 
       </div>
 
-      {/* --- SUB-COMPONENT: RESPONSIVE RESPONSIVE DROP ACCORDION DRAWER --- */}
-      {/* WHY: When standard layout breaks on mobile systems, sub-items tuck into this drawer */}
+      {/* --- SUB-COMPONENT: RESPONSIVE DROP ACCORDION DRAWER --- */}
       {isMobileMenuOpen && (
         <div className={styles.mobileNavigationDrawerTray}>
           <div className={styles.mobileDrawerWrapper}>
@@ -244,8 +267,8 @@ export default function DashboardNavbar() {
                 {CURRENCY_OPTIONS.map((cur) => (
                   <button 
                     key={cur.code}
-                    className={cur.code === "PKR" ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cur.code === activeCurrency ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
+                    onClick={() => { setActiveCurrency(cur.code); setIsMobileMenuOpen(false); }}
                   >
                     {cur.symbol} {cur.code}
                   </button>

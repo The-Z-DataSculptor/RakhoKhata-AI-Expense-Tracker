@@ -21,7 +21,7 @@
 /* DESKTOP COLLAPSE ACTION PIN BUTTON */
 .desktopCollapsePinButton {
   position: absolute;
-  top: 1.6rem;
+  top: 0.7rem;
   right: -12px;
   width: 24px;
   height: 24px;
@@ -54,7 +54,7 @@
 
 /* COLLAPSED STRUCTURAL STATE RULES */
 .collapsedSidebar {
-  width: 72px;
+  width: 80px;
   padding: 1.5rem 0.6rem;
 }
 
@@ -170,7 +170,7 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 100%;
+  width: 220px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);

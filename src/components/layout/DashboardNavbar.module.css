@@ -1,38 +1,42 @@
 /* src/components/layout/DashboardNavbar.module.css */
 
 /* ==========================================================================
-   === SECTION 1: TOP NAVIGATION ROW CONTAINER START ===
+   === SECTION 1: TOP NAVIGATION ROW CONTAINER ===
    ========================================================================== */
+
+/* The main bar stretching across the top of your screen */
 .topNavbar {
   height: 70px;
   width: 100%;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
   padding: 0 2rem;
-  box-sizing: border-box;
+  box-sizing: border-box; /* Includes padding in the total 100% width calculation */
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
+  align-items: center; /* Centers items vertically */
+  justify-content: space-between; /* Pushes greetings to the left and tools to the right */
+  position: sticky; /* Locks the navbar to the top when scrolling down */
   top: 0;
-  z-index: 800;
+  z-index: 800; /* Ensures it floats above normal page elements */
 }
 
+/* Stays on the screen while the real navbar hydrates on slower networks */
 .topNavbarBlankPlaceholder {
   height: 70px;
   width: 100%;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
 }
-/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: LEFT PROFILE AND SUBTEXT ELEMENT STYLES START ===
+   === SECTION 2: LEFT PROFILE AND SUBTEXT ELEMENTS ===
    ========================================================================== */
+
+/* Keeps the greeting title and date stacked vertically */
 .welcomeSection {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevents the user's name from shrinking on smaller screens */
 }
 
 .greetingTitle {
@@ -44,7 +48,7 @@
 }
 
 .userName {
-  color: var(--color-primary);
+  color: var(--color-primary); /* Highlights the user's name in your primary branding color */
 }
 
 .dateSubtext {
@@ -52,30 +56,32 @@
   color: var(--text-muted);
   margin: 0;
 }
-/* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CENTER DESKTOP SEARCH COMPONENT INPUTS START ===
+   === SECTION 3: CENTER DESKTOP SEARCH BAR ===
    ========================================================================== */
+
+/* The container that centers your search bar between the left and right tools */
 .searchWrapper {
-  position: relative;
+  position: relative; /* Allows the search icon to be placed absolutely inside this box */
   width: 100%;
   max-width: 360px;
   margin: 0 1.5rem;
 }
 
+/* Places the magnifying glass icon inside the input field box */
 .searchIcon {
   position: absolute;
   left: 0.85rem;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%); /* Centers the icon perfectly inside the input track height */
   color: var(--text-muted);
-  pointer-events: none;
+  pointer-events: none; /* Clicking the icon clicks the input behind it */
 }
 
 .searchInput {
   width: 100%;
-  padding: 0.55rem 1rem 0.55rem 2.35rem;
+  padding: 0.55rem 1rem 0.55rem 2.35rem; /* Extra padding on the left to make room for the icon */
   background-color: var(--surface-muted);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -84,26 +90,29 @@
   transition: var(--transition-fast);
 }
 
+/* Subtle border glow effect when a user clicks into the input field */
 .searchInput:focus {
   outline: none;
   border-color: var(--color-primary);
   background-color: var(--bg-surface);
 }
-/* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: RIGHT DESKTOP CONTROL LAYOUT BLOCKS START ===
+   === SECTION 4: RIGHT DESKTOP CONTROL DECK ===
    ========================================================================== */
+
+/* Keeps the search button, notifications, and menus aligned horizontally */
 .actionControlDeck {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.85rem; /* Puts a clean space between every tool button */
 }
 
+/* Circular background track wrappers for utility icon actions */
 .utilityIconButton {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 50%; /* Forms a perfect circle shape */
   border: 1px solid var(--border-color);
   background-color: transparent;
   color: var(--text-secondary);
@@ -111,7 +120,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  position: relative;
+  position: relative; /* Allows notification badges to float in the corner */
   transition: var(--transition-fast);
 }
 
@@ -120,6 +129,7 @@
   color: var(--text-primary);
 }
 
+/* Small red notification indicator badge */
 .notificationPulseBadge {
   position: absolute;
   top: 8px;
@@ -129,11 +139,12 @@
   background-color: var(--color-danger);
   border-radius: 50%;
 }
-/* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 5: CURRENCY TRIGGERS AND DROPDOWNS START ===
+   === SECTION 5: CURRENCY TRIGGERS AND DROPDOWNS ===
    ========================================================================== */
+
+/* The interactive button trigger that shows your active currency flag and symbol */
 .currencyToggleTrigger {
   display: flex;
   align-items: center;
@@ -163,15 +174,14 @@
 }
 
 .dropdownMenuContainer {
-  position: relative;
+  position: relative; /* Keeps the absolute frame anchored below this position wrapper */
 }
-/* ==========================================================================
-   === UPDATED DROPDOWN CONTAINER WITH INTERNAL ITEM SPACING ===
-   ========================================================================== */
+
+/* The floating box panel holding dropdown elements (Theme menu and Currency list) */
 .dropdownMenuFrame {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  top: calc(100% + 8px); /* Places the box exactly 8px below the trigger button */
+  right: 0; /* Aligns the box edge flush against the right side of the navbar */
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -183,44 +193,19 @@
   z-index: 850;
 }
 
-/* NEW RULE: Targets the inner buttons (like Light, Dark, System) inside the frame */
-.dropdownMenuFrame li button,
-.dropdownMenuFrame button {
-  display: inline-flex;     /* Aligns text items horizontally on a single row line */
-  align-items: center;      /* Centers the icon vertically with the center of the word text */
-  
-  /* THE FIX: Inserts clear breathing space between the vector icon and the text label */
-  gap: 0.65rem;             
-  
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  background: transparent;
-  border: none;
-  border-radius: calc(var(--radius-md) - 2px);
-  color: var(--text-body);
-  font-size: 0.875rem;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-/* Hover accent feedback to make selection look professional */
-.dropdownMenuFrame li button:hover,
-.dropdownMenuFrame button:hover {
-  background-color: var(--bg-hover-subtle, rgba(0, 0, 0, 0.04));
-}
-
+/* The descriptive informational title line at the top of a dropdown box */
 .dropdownMenuHeader {
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 0.4rem 0.65rem 0.4rem;
+  padding: 0.4rem 0.65rem;
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 0.25rem;
 }
 
+/* The scrolling box that keeps long country lists compact and responsive */
 .dropdownScrollableContainer {
   list-style: none;
   padding: 0;
@@ -229,15 +214,18 @@
   flex-direction: column;
   gap: 0.15rem;
   max-height: 250px;
-  overflow-y: auto;
+  overflow-y: auto; /* Activates vertical scrollbars when items overflow max-height */
   scrollbar-width: thin;
 }
 
-.dropdownScrollableContainer button,
-.dropdownMenuFrame button {
+/* CLEANUP: Combined internal list option buttons into a single clean rule declaration */
+.dropdownMenuFrame button,
+.dropdownMenuFrame li button,
+.dropdownScrollableContainer button {
   width: 100%;
   display: flex;
   align-items: center;
+  gap: 0.65rem; /* FIXED: Enforces clear horizontal separation inside menu entries */
   padding: 0.5rem 0.65rem;
   background: transparent;
   border: none;
@@ -249,15 +237,16 @@
   transition: var(--transition-fast);
 }
 
-.dropdownScrollableContainer button:hover,
-.dropdownMenuFrame button:hover {
+/* Hover feedback action properties */
+.dropdownMenuFrame button:hover,
+.dropdownMenuFrame li button:hover,
+.dropdownScrollableContainer button:hover {
   background-color: var(--primary-soft-hover);
   color: var(--color-primary);
 }
 
 .currencyMenuFlag {
   font-size: 1.1rem;
-  margin-right: 0.65rem;
   display: inline-flex;
   align-items: center;
 }
@@ -265,17 +254,16 @@
 .currencyMenuCode {
   font-weight: 700;
   color: var(--text-primary);
-  width: 36px;
-  margin-right: 0.5rem;
+  width: 36px; /* Forces codes to occupy equal horizontal widths */
 }
 
 .currencyMenuLabel {
-  flex: 1;
+  flex: 1; /* Pushes the remaining elements to the far right edge of the button line */
   color: var(--text-secondary);
   font-size: 0.78rem;
-  white-space: nowrap;
+  white-space: nowrap; /* Forces text to stay on a single line */
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: ellipsis; /* Appends "..." if labels grow too long */
   padding-right: 0.5rem;
 }
 
@@ -287,9 +275,9 @@
   padding: 0.1rem 0.35rem;
   border-radius: var(--radius-sm);
   color: var(--color-primary);
-  margin-right: 0.4rem;
 }
 
+/* Active background states for options matching active state choices */
 .activeMenuOption {
   background-color: var(--primary-soft-hover) !important;
   color: var(--color-primary) !important;
@@ -304,11 +292,12 @@
   color: var(--color-primary);
   flex-shrink: 0;
 }
-/* === SECTION 5 END === */
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE SCREEN BREAKPOINT RULES START ===
+   === SECTION 6: RESPONSIVE SCREEN BREAKPOINT RULES ===
    ========================================================================== */
+
+/* Hides mobile layouts from the workspace by default on large desktop screens */
 .hamburgerMenuIconToggle,
 .mobileSearchTriggerButton,
 .mobileSearchOverlay,
@@ -316,23 +305,27 @@
   display: none;
 }
 
+/* Tablet viewports: Hide long informational metadata to prevent overcrowding */
 @media (max-width: 900px) {
   .dateSubtext {
     display: none;
   }
 }
 
+/* Mobile Viewports (768px wide or lower) */
 @media (max-width: 768px) {
   .topNavbar {
     padding: 0 1rem;
   }
 
+  /* Drop heavy desktop components from view to save screen real estate */
   .searchWrapper,
   .currencyToggleTrigger,
   .dropdownMenuContainer {
     display: none;
   }
 
+  /* Activate mobile trigger elements */
   .hamburgerMenuIconToggle,
   .mobileSearchTriggerButton {
     display: flex;
@@ -351,6 +344,7 @@
     margin-left: 0.25rem;
   }
 
+  /* Full-bleed responsive absolute search interface overlay block */
   .mobileSearchOverlay {
     display: flex;
     position: absolute;
@@ -385,6 +379,7 @@
     padding: 0.5rem;
   }
 
+  /* The mobile responsive slide-down menu drawer panel */
   .mobileNavigationDrawerTray {
     display: block;
     position: absolute;
@@ -418,20 +413,19 @@
     color: var(--text-muted);
   }
 
+  /* Arranges mobile setup options in a structured adaptive responsive columns grid */
   .mobileButtonLayoutGridRow {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 0.5rem;
   }
 
-  .mobileActiveActionButton {
+  /* Base shared parameters for responsive mobile control switches */
+  .mobileActiveActionButton,
+  .mobileSecondaryActionButton {
     padding: 0.6rem;
-    background-color: var(--primary-soft);
-    border: 1px solid var(--color-primary);
-    color: var(--color-primary);
     border-radius: var(--radius-md);
     font-size: 0.8rem;
-    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -439,18 +433,16 @@
     cursor: pointer;
   }
 
+  .mobileActiveActionButton {
+    background-color: var(--primary-soft);
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
   .mobileSecondaryActionButton {
-    padding: 0.6rem;
     background-color: var(--surface-muted);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    border-radius: var(--radius-md);
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    cursor: pointer;
   }
 }
-/* === SECTION 6 END === */

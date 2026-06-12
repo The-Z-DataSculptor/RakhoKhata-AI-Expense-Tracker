@@ -1,0 +1,115 @@
+/* ==========================================================================
+   === SECTION 1: OUTER CONTAINER CANVAS LAYOUT ===
+   ========================================================================== */
+.footerContainer {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1rem;
+}
+
+/* ==========================================================================
+   === SECTION 2: METADATA & STATUS LAYOUT ===
+   ========================================================================== */
+.statusSide {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.statusNode {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.successIcon {
+  color: #10b981; /* Premium Emerald Green */
+  flex-shrink: 0;
+}
+
+.syncMetaData {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0;
+}
+
+.spinIcon {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   === SECTION 3: RIGHT PANEL NAVIGATION LINK DECK ===
+   ========================================================================== */
+.linksSide {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.footerLink {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary, #3b82f6);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: opacity 0.15s ease;
+}
+
+.footerLink:hover {
+  opacity: 0.8;
+}
+
+.dividerDot {
+  font-size: 0.8rem;
+  color: var(--border-color, #e5e7eb);
+  user-select: none;
+}
+
+.copyrightText {
+  font-size: 0.8rem;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   === SECTION 4: MOBILE ADAPTIVE RENDERING ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .footerContainer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding: 1.5rem;
+  }
+
+  .linksSide {
+    width: 100%;
+    gap: 0.65rem;
+  }
+  
+  .dividerDot {
+    display: none; /* Stack elements naturally without dot crowding on small screen lines */
+  }
+
+  .copyrightText {
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+}

@@ -10,6 +10,7 @@ import MetricRow from "@/components/dashboard/MetricRow/MetricRow";
 import ControlLever from "@/components/dashboard/ControlLever/ControlLever";
 import CashFlowChart from "@/components/dashboard/CashFlowChart/CashFlowChart";
 import ExpenseDonutChart from "@/components/dashboard/ExpenseDonutChart/ExpenseDonutChart";
+import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter"; // Import your updated generic anchor footer
 import styles from "./page.module.css";
 
 /* === SECTION 1 END === */
@@ -115,6 +116,9 @@ export default function DashboardPage() {
         </div>
 
       </main>
+
+      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
+      <DashboardFooter />
 
     </div>
     /* === SECTION 4 END === */

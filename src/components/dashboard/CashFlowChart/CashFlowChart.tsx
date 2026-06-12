@@ -1,9 +1,9 @@
 // src/components/dashboard/CashFlowChart/CashFlowChart.tsx
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS START ===
+   === SECTION 1: IMPORTS ===
    ========================================================================== */
-"use client"; // WHY: Tells Next.js App Router that this component executes entirely in the browser environment since Recharts utilizes client-side SVG rendering nodes.
+"use client"; // WHY: Recharts requires client-side rendering for SVG canvas support
 
 import React from 'react';
 import { 
@@ -17,12 +17,12 @@ import {
   Legend 
 } from 'recharts';
 import { TimePeriod } from '@/components/dashboard/TimeSwitcher/TimeSwitcher';
+import { useCurrency } from '@/app/(dashboard)/context/CurrencyContext';
 import styles from './CashFlowChart.module.css';
 /* === SECTION 1 END === */
 
-
 /* ==========================================================================
-   === SECTION 2: DATA STRUCTURES & INTERFACES START ===
+   === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
 interface ChartDataPoint {
   label: string;
@@ -30,12 +30,10 @@ interface ChartDataPoint {
   Expenses: number;
 }
 
-// WHY: Custom interface mapping the exact props cascade incoming from the parent layout stage.
 interface CashFlowChartProps {
   activePeriod: TimePeriod;
 }
 
-// WHY: Explicit type definitions for the custom Recharts tooltip parameters to satisfy strict TypeScript rules.
 interface CustomTooltipProps {
   active?: boolean;
   payload?: Array<{
@@ -44,188 +42,214 @@ interface CustomTooltipProps {
     dataKey: string;
   }>;
   label?: string;
+  formatAmount: (amount: number, source?: "USD") => string;
 }
 
-// WHY: Segmented map structure containing distinct historical metrics tailored to match every selectable dashboard timeline state toggle.
+// WHY: Scaled down base USD numbers to prevent large regional currencies (like PKR) 
+// from overflowing and breaking out of visual dashboard containers.
 const cashFlowPeriodDataMap: Record<TimePeriod, ChartDataPoint[]> = {
   "7d": [
-    { label: 'Mon', Income: 800, Expenses: 400 },
-    { label: 'Tue', Income: 950, Expenses: 600 },
-    { label: 'Wed', Income: 700, Expenses: 850 },
-    { label: 'Thu', Income: 1200, Expenses: 500 },
-    { label: 'Fri', Income: 1100, Expenses: 700 },
-    { label: 'Sat', Income: 600, Expenses: 300 },
-    { label: 'Sun', Income: 900, Expenses: 450 },
+    { label: 'Mon', Income: 80, Expenses: 40 },
+    { label: 'Tue', Income: 95, Expenses: 60 },
+    { label: 'Wed', Income: 70, Expenses: 85 },
+    { label: 'Thu', Income: 120, Expenses: 50 },
+    { label: 'Fri', Income: 110, Expenses: 70 },
+    { label: 'Sat', Income: 60, Expenses: 30 },
+    { label: 'Sun', Income: 90, Expenses: 45 },
   ],
   "14d": [
-    { label: 'Wk 1 Mon', Income: 2100, Expenses: 1400 },
-    { label: 'Wk 1 Thu', Income: 2400, Expenses: 1800 },
-    { label: 'Wk 2 Mon', Income: 2800, Expenses: 1900 },
-    { label: 'Wk 2 Thu', Income: 3100, Expenses: 2200 },
+    { label: 'Wk 1 Mon', Income: 210, Expenses: 140 },
+    { label: 'Wk 1 Thu', Income: 240, Expenses: 180 },
+    { label: 'Wk 2 Mon', Income: 280, Expenses: 190 },
+    { label: 'Wk 2 Thu', Income: 310, Expenses: 220 },
   ],
   "30d": [
-    { label: 'Days 1-5', Income: 3200, Expenses: 2100 },
-    { label: 'Days 6-10', Income: 4100, Expenses: 2900 },
-    { label: 'Days 11-15', Income: 3800, Expenses: 4300 },
-    { label: 'Days 16-20', Income: 4900, Expenses: 3100 },
-    { label: 'Days 21-25', Income: 5200, Expenses: 3400 },
-    { label: 'Days 26-30', Income: 6100, Expenses: 3800 },
+    { label: 'Days 1-5',  Income: 320, Expenses: 210 },
+    { label: 'Days 6-10', Income: 410, Expenses: 290 },
+    { label: 'Days 11-15', Income: 380, Expenses: 430 },
+    { label: 'Days 16-20', Income: 490, Expenses: 310 },
+    { label: 'Days 21-25', Income: 520, Expenses: 340 },
+    { label: 'Days 26-30', Income: 610, Expenses: 380 },
   ],
   "all": [
-    { label: 'Jan', Income: 4200, Expenses: 2800 },
-    { label: 'Feb', Income: 4900, Expenses: 3100 },
-    { label: 'Mar', Income: 4600, Expenses: 4100 },
-    { label: 'Apr', Income: 5800, Expenses: 3400 },
-    { label: 'May', Income: 6100, Expenses: 3200 },
-    { label: 'Jun', Income: 6800, Expenses: 3900 },
+    { label: 'Jan', Income: 420, Expenses: 280 },
+    { label: 'Feb', Income: 490, Expenses: 310 },
+    { label: 'Mar', Income: 460, Expenses: 410 },
+    { label: 'Apr', Income: 580, Expenses: 340 },
+    { label: 'May', Income: 610, Expenses: 320 },
+    { label: 'Jun', Income: 680, Expenses: 390 },
   ]
 };
 /* === SECTION 2 END === */
 
-
 /* ==========================================================================
-   === SECTION 3: SUB-COMPONENTS START ===
+   === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 /**
- * WHY: Recharts custom component that displays a formatted floating info box over 
- * the interactive layer, styled to respect the global light/dark theme variables.
+ * CustomChartTooltip
+ * WHY: Custom Recharts tooltip that displays formatted converted currency rows
  */
-const CustomChartTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-  // WHY: Verify that the tooltip is active and contains a payload array before pulling values.
-  if (active && payload && payload.length >= 2) {
-    
-    // WHY: Using optional chaining (?.) and structural fallbacks (|| 0) stops runtime null-pointer exceptions instantly.
-    const incomeValue = payload[0]?.value || 0;
-    const expenseValue = payload[1]?.value || 0;
-    
-    const netSavings = incomeValue - expenseValue;
-    const isProfitable = netSavings >= 0;
-
-    return (
-      <div className={styles.customTooltip}>
-        <p className={styles.tooltipLabel}>{label}</p>
-        
-        <div className={styles.tooltipItem} style={{ color: 'var(--color-success)' }}>
-          <span>Inflow:</span>
-          <strong>${incomeValue.toLocaleString()}</strong>
-        </div>
-        
-        <div className={styles.tooltipItem} style={{ color: 'var(--color-danger)' }}>
-          <span>Outflow:</span>
-          <strong>${expenseValue.toLocaleString()}</strong>
-        </div>
-        
-        <div 
-          className={`${styles.tooltipItem} ${styles.netSavings}`}
-          style={{ color: isProfitable ? 'var(--color-info)' : 'var(--color-warning)' }}
-        >
-          <span>Net Cushion:</span>
-          <strong>${netSavings.toLocaleString()}</strong>
-        </div>
-      </div>
-    );
+const CustomChartTooltip = ({ active, payload, label, formatAmount }: CustomTooltipProps) => {
+  // WHY: Only show tooltip when active and payload contains items
+  if (!active || !payload || payload.length < 2) {
+    return null;
   }
-  
-  return null;
+
+  // WHY: Read values from the rendering chart dataset array node
+  // These numbers are already converted by our parent mapping processing step
+  const incomeValue = payload[0]?.value || 0;
+  const expenseValue = payload[1]?.value || 0;
+ 
+
+  const netSavings = incomeValue - expenseValue;
+  const isProfitable = netSavings >= 0;
+
+  return (
+    <div className={styles.customTooltip}>
+      <p className={styles.tooltipLabel}>{label}</p>
+      
+      <div className={styles.tooltipItem} style={{ color: 'var(--color-success)' }}>
+        <span>Inflow:</span>
+        {/* WHY: Pass source as USD because our mathematical pipeline converts calculations natively */}
+        <strong>{formatAmount(incomeValue, "USD")}</strong>
+      </div>
+      
+      <div className={styles.tooltipItem} style={{ color: 'var(--color-danger)' }}>
+        <span>Outflow:</span>
+        <strong>{formatAmount(expenseValue, "USD")}</strong>
+      </div>
+      
+      <div 
+        className={`${styles.tooltipItem} ${styles.netSavings}`}
+        style={{ color: isProfitable ? 'var(--color-info)' : 'var(--color-warning)' }}
+      >
+        <span>Net Cushion:</span>
+        <strong>{formatAmount(netSavings, "USD")}</strong>
+      </div>
+    </div>
+  );
 };
 /* === SECTION 3 END === */
 
-
 /* ==========================================================================
-   === SECTION 4: MAIN RENDER LAYOUT START ===
+   === SECTION 4: RENDER (JSX) ===
    ========================================================================== */
 export default function CashFlowChart({ activePeriod }: CashFlowChartProps) {
-  // WHY: Read matching period datasets safely using fallback default metrics array assignments to maximize code stability.
-  const visualChartData = cashFlowPeriodDataMap[activePeriod] || cashFlowPeriodDataMap["30d"];
+  // WHY: Extract math conversion utilities directly from our global navigation context hook channel
+  const { currency, formatAmount, convertAmount } = useCurrency();
+
+  // WHY: Get raw chart mock data arrays for selected time selector key fallback
+  const rawChartData = cashFlowPeriodDataMap[activePeriod] || cashFlowPeriodDataMap["30d"];
+
+  // FIXED / WHY: Map over raw values to mathematically project data rows to match active system currencies
+  const convertedChartData = rawChartData.map((dataPoint) => {
+    return {
+      label: dataPoint.label,
+      // Convert raw mock data values from baseline USD into active dashboard selections
+      Income: convertAmount(dataPoint.Income, "USD", currency),
+      Expenses: convertAmount(dataPoint.Expenses, "USD", currency),
+    };
+  });
 
   return (
     <div className={styles.chartContainer}>
       
-      {/* Header Info Block */}
+      {/* Header Section */}
       <div className={styles.chartHeader}>
         <div className={styles.titleGroup}>
           <h3>Cash Flow Dynamics</h3>
-          <p>Real-time visual monitoring of absolute revenue versus operational expenditure margins.</p>
+          <p>Real-time visual monitoring of revenue versus operational expenditure.</p>
         </div>
       </div>
 
-      {/* Interactive Graphic Workspace */}
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart 
-          data={visualChartData} 
-          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-        >
-          <defs>
-            {/* WHY: SVG Gradients mapping dynamically to local design tokens. 
-              Using global CSS opacity filters preserves theme compatibility across light and dark variables.
-            */}
-            <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.25}/>
-              <stop offset="95%" stopColor="var(--color-success)" stopOpacity={0.00}/>
-            </linearGradient>
-            <linearGradient id="dangerGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-danger)" stopOpacity={0.25}/>
-              <stop offset="95%" stopColor="var(--color-danger)" stopOpacity={0.00}/>
-            </linearGradient>
-          </defs>
+      {/* Chart Container */}
+      <div className={styles.responsiveWrapperContainer}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart 
+            data={convertedChartData} 
+            margin={{ top: 10, right: 15, left: 10, bottom: 0 }}
+          >
+            {/* SVG Gradients */}
+            <defs>
+              {/* WHY: Income gradient - uses global --color-success with opacity fade */}
+              <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="var(--color-success)" stopOpacity={0} />
+              </linearGradient>
+              
+              {/* WHY: Expense gradient - uses global --color-danger with opacity fade */}
+              <linearGradient id="dangerGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-danger)" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="var(--color-danger)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
 
-          {/* Background Structural Grid */}
-          <CartesianGrid 
-            strokeDasharray="4 4" 
-            stroke="var(--border-color)" 
-            vertical={false} 
-          />
+            {/* Grid Background */}
+            <CartesianGrid 
+              strokeDasharray="4 4" 
+              stroke="var(--border-color)" 
+              vertical={false} 
+            />
 
-          {/* Axis Trackers */}
-          <XAxis 
-            dataKey="label" 
-            stroke="var(--text-muted)" 
-            tickLine={false}
-            dy={10}
-            style={{ fontSize: '12px', fontFamily: 'var(--font-navbar)' }}
-          />
-          <YAxis 
-            stroke="var(--text-muted)" 
-            tickLine={false}
-            dx={-5}
-            style={{ fontSize: '12px', fontFamily: 'var(--font-navbar)' }}
-            tickFormatter={(value) => `$${value}`}
-          />
+            {/* X-Axis (Labels) */}
+            <XAxis 
+              dataKey="label" 
+              stroke="var(--text-muted)" 
+              tickLine={false}
+              dy={10}
+              style={{ fontSize: '12px', fontFamily: 'var(--font-navbar)' }}
+            />
 
-          {/* Interactive Tooltip Configuration */}
-          <Tooltip content={<CustomChartTooltip />} cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }} />
-          
-          <Legend 
-            verticalAlign="top" 
-            align="right" 
-            iconType="circle"
-            wrapperStyle={{ paddingBottom: '20px', fontSize: '13px', fontFamily: 'var(--font-navbar)' }}
-          />
+            {/* Y-Axis (Values) */}
+            <YAxis 
+              stroke="var(--text-muted)" 
+              tickLine={false}
+              dx={-5}
+              width={85} // FIXED: Expanded width spacing gives long regional strings ample margin to display without cutting off
+              style={{ fontSize: '12px', fontFamily: 'var(--font-navbar)' }}
+              // WHY: Tells formatting pipeline numbers are converted to align layout strings cleanly
+              tickFormatter={(value) => formatAmount(value, "USD")}
+            />
 
-          {/* Area Layer 1: Income Stream */}
-          <Area 
-            type="monotone" 
-            name="Total Income"
-            dataKey="Income" 
-            stroke="var(--color-success)" 
-            strokeWidth={2.5}
-            fillOpacity={1} 
-            fill="url(#successGradient)" 
-          />
+            {/* Interactive Tooltip */}
+            <Tooltip 
+              content={<CustomChartTooltip formatAmount={formatAmount} />} 
+              cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }} 
+            />
+            
+            {/* Legend */}
+            <Legend 
+              verticalAlign="top" 
+              align="right" 
+              iconType="circle"
+              wrapperStyle={{ paddingBottom: '20px', fontSize: '13px', fontFamily: 'var(--font-navbar)' }}
+            />
 
-          {/* Area Layer 2: Expense Stream */}
-          <Area 
-            type="monotone" 
-            name="Total Expenses"
-            dataKey="Expenses" 
-            stroke="var(--color-danger)" 
-            strokeWidth={2.5}
-            fillOpacity={1} 
-            fill="url(#dangerGradient)" 
-          />
+            {/* Income Area */}
+            <Area 
+              type="monotone" 
+              name="Total Income"
+              dataKey="Income" 
+              stroke="var(--color-success)" 
+              strokeWidth={2.5}
+              fillOpacity={1} 
+              fill="url(#successGradient)" 
+            />
 
-        </AreaChart>
-      </ResponsiveContainer>
+            {/* Expense Area */}
+            <Area 
+              type="monotone" 
+              name="Total Expenses"
+              dataKey="Expenses" 
+              stroke="var(--color-danger)" 
+              strokeWidth={2.5}
+              fillOpacity={1} 
+              fill="url(#dangerGradient)" 
+            />
+
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
 
     </div>
   );

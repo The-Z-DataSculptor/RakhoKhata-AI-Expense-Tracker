@@ -1,6 +1,4 @@
-/* ==========================================================================
-   === FILEPATH: src/components/layout/DashboardNavbar.module.css ===
-   ========================================================================== */
+/* src/components/layout/DashboardNavbar.module.css */
 
 /* ==========================================================================
    === SECTION 1: TOP NAVIGATION ROW CONTAINER START ===
@@ -139,8 +137,8 @@
 .currencyToggleTrigger {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.55rem;
+  padding: 0.5rem 0.85rem;
   background-color: var(--surface-muted);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -154,6 +152,11 @@
   color: var(--text-primary);
 }
 
+.utilityFlagInline {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
 .currencyCodeLabel {
   font-size: 0.8rem;
   font-weight: 600;
@@ -162,7 +165,9 @@
 .dropdownMenuContainer {
   position: relative;
 }
-
+/* ==========================================================================
+   === UPDATED DROPDOWN CONTAINER WITH INTERNAL ITEM SPACING ===
+   ========================================================================== */
 .dropdownMenuFrame {
   position: absolute;
   top: calc(100% + 8px);
@@ -171,20 +176,68 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 0.35rem;
-  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  min-width: 160px;
+  min-width: 240px;
   box-shadow: var(--shadow-soft);
   z-index: 850;
 }
 
+/* NEW RULE: Targets the inner buttons (like Light, Dark, System) inside the frame */
+.dropdownMenuFrame li button,
+.dropdownMenuFrame button {
+  display: inline-flex;     /* Aligns text items horizontally on a single row line */
+  align-items: center;      /* Centers the icon vertically with the center of the word text */
+  
+  /* THE FIX: Inserts clear breathing space between the vector icon and the text label */
+  gap: 0.65rem;             
+  
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--text-body);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+/* Hover accent feedback to make selection look professional */
+.dropdownMenuFrame li button:hover,
+.dropdownMenuFrame button:hover {
+  background-color: var(--bg-hover-subtle, rgba(0, 0, 0, 0.04));
+}
+
+.dropdownMenuHeader {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.4rem 0.65rem 0.4rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.25rem;
+}
+
+.dropdownScrollableContainer {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 250px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.dropdownScrollableContainer button,
 .dropdownMenuFrame button {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
   padding: 0.5rem 0.65rem;
   background: transparent;
   border: none;
@@ -192,21 +245,49 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
   text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
 }
 
+.dropdownScrollableContainer button:hover,
 .dropdownMenuFrame button:hover {
   background-color: var(--primary-soft-hover);
   color: var(--color-primary);
 }
 
-.currencyMenuSymbol {
+.currencyMenuFlag {
+  font-size: 1.1rem;
+  margin-right: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.currencyMenuCode {
   font-weight: 700;
-  color: var(--color-primary);
-  width: 16px;
+  color: var(--text-primary);
+  width: 36px;
+  margin-right: 0.5rem;
 }
 
 .currencyMenuLabel {
   flex: 1;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 0.5rem;
+}
+
+.currencyMenuSymbolBadge {
+  font-size: 0.72rem;
+  font-family: monospace;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  margin-right: 0.4rem;
 }
 
 .activeMenuOption {
@@ -215,8 +296,13 @@
   font-weight: 600;
 }
 
+.activeMenuOption .currencyMenuCode {
+  color: var(--color-primary);
+}
+
 .checkMarkerIcon {
   color: var(--color-primary);
+  flex-shrink: 0;
 }
 /* === SECTION 5 END === */
 
@@ -333,14 +419,12 @@
   }
 
   .mobileButtonLayoutGridRow {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 0.5rem;
   }
 
   .mobileActiveActionButton {
-    flex: 1;
-    min-width: 80px;
     padding: 0.6rem;
     background-color: var(--primary-soft);
     border: 1px solid var(--color-primary);
@@ -348,16 +432,25 @@
     border-radius: var(--radius-md);
     font-size: 0.8rem;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    cursor: pointer;
   }
 
   .mobileSecondaryActionButton {
-    flex: 1;
-    min-width: 80px;
     padding: 0.6rem;
     background-color: var(--surface-muted);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     border-radius: var(--radius-md);
     font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    cursor: pointer;
   }
 }
+/* === SECTION 6 END === */

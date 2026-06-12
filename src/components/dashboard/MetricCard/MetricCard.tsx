@@ -1,7 +1,4 @@
-/* ==========================================================================
-   === FILEPATH: src/components/dashboard/MetricCard/MetricCard.tsx ===
-   ========================================================================== */
-
+// src/components/dashboard/MetricCard/MetricCard.tsx
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & DEPENDENCIES ===
@@ -9,16 +6,16 @@
 import React from "react";
 // Importing standard, clean icons from Feather Icons group
 import { FiActivity, FiTrendingUp, FiTrendingDown, FiShield } from "react-icons/fi";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./MetricCard.module.css";
 /* === SECTION 1 END === */
-
 
 /* ==========================================================================
    === SECTION 2: TYPESCRIPT INTERFACES ===
    ========================================================================== */
 export interface MetricItem {
   title: string;
-  value: string;
+  value: number; // WHY: Changed from string to number so we can apply math conversions dynamically
   subtext: string;
   iconType: "bill" | "inflow" | "outflow" | "safe";
 }
@@ -28,11 +25,13 @@ export interface MetricCardProps {
 }
 /* === SECTION 2 END === */
 
-
 /* ==========================================================================
    === SECTION 3: MAIN COMPONENT ===
    ========================================================================== */
 export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
+  // WHY: Removed 'currency' variable because formatAmount handles lookups internally,
+  // fixing the "'currency' is declared but its value is never read" lint warning.
+  const { formatAmount } = useCurrency();
   
   // Safety check: If there are no items in the list, show a friendly message
   if (!metrics || metrics.length === 0) {
@@ -63,14 +62,17 @@ export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
           cardStyleClass = styles.safeCard;
         }
 
-        // Create a human-friendly count structure (e.g., [01], [02], [03])
+        // Create a human-friendly count structure (e.g.,,,)
         const displayIndex = "[" + String(index + 1).padStart(2, "0") + "]";
 
         // THE "WHY" EXTRACTOR: We split the string by spaces to isolate the first word
-        // This lets us style the first word differently without invalid pseudo-elements
-        const titleWords = item.title.split(" ");
-        const firstWord = titleWords[0];
-        const remainingWords = titleWords.slice(1).join(" ");
+        // WHY: Using Array Destructuring here `[extractedFirstWord, ...rest]` completely 
+        // stops TypeScript from ever confusing a string primitive with an array object block.
+        const titleWords = item.title ? item.title.split(" ") : [""];
+        const [extractedFirstWord, ...restWordsArray] = titleWords;
+        
+        const firstWord = extractedFirstWord || "";
+        const remainingWords = restWordsArray.join(" ");
 
         return (
           <article key={item.title} className={`${styles.metricCardBase} ${cardStyleClass}`}>
@@ -92,7 +94,8 @@ export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
             {/* MIDDLE LINE: THE BIG MONEY NUMBER */}
             <div className={styles.cardBodyContent}>
               <h2 className={styles.metricValueDisplay}>
-                {item.value}
+                {/* WHY: Convert and format raw numeric values automatically into layout locale strings */}
+                {formatAmount(item.value, "USD")}
               </h2>
             </div>
 

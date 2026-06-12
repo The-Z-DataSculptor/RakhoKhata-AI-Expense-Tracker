@@ -36,7 +36,6 @@
 }
 /* === SECTION 1 END === */
 
-
 /* ==========================================================================
    === SECTION 2: WORKSPACE FLEX GRID COLUMNS START ===
    ========================================================================== */
@@ -69,7 +68,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 120px;
+  width: 130px; /* WHY: Slight extension ensures complex currency combinations stay contained */
   text-align: center;
   pointer-events: none; /* Allows chart hovers behind container nodes cleanly */
 }
@@ -88,11 +87,12 @@
 }
 
 .centerMainValue {
-  font-size: 1.4rem;
+  font-size: 1.15rem; /* WHY: Slightly optimized scale to comfortably host multi-character indicators cleanly */
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.02em;
   margin: 2px 0;
+  white-space: nowrap;
 }
 
 .centerPercentageIndicator {
@@ -104,7 +104,6 @@
   border-radius: 10px;
 }
 /* === SECTION 2 END === */
-
 
 /* ==========================================================================
    === SECTION 3: VERTICAL LIST ITEM ROWS START ===
@@ -177,6 +176,7 @@
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .percentageSplitText {
@@ -187,7 +187,6 @@
   text-align: right;
 }
 /* === SECTION 3 END === */
-
 
 /* ==========================================================================
    === SECTION 4: SMARTPHONE STRUCTURAL BREAKPOINTS START ===

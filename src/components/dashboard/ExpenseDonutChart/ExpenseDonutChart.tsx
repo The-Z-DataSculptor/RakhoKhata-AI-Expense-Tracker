@@ -13,9 +13,9 @@ import {
   Cell
 } from 'recharts';
 import { TimePeriod } from '@/components/dashboard/TimeSwitcher/TimeSwitcher';
+import { useCurrency } from '@/app/(dashboard)/context/CurrencyContext';
 import styles from './ExpenseDonutChart.module.css';
 /* === SECTION 1 END === */
-
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
@@ -30,7 +30,6 @@ interface ExpenseDonutChartProps {
   activePeriod: TimePeriod;
 }
 /* === SECTION 2 END === */
-
 
 /* ==========================================================================
    === SECTION 3: DATA STRUCTURES & LOGIC ===
@@ -65,24 +64,32 @@ const categoryPeriodDataMap: Record<TimePeriod, ExpenseCategoryPoint[]> = {
     { name: 'Entertainment', value: 1200, color: 'var(--color-warning)' },
   ]
 };
-
-/* === SECTION 3: DATA STRUCTURES & LOGIC ===
-   ========================================================================== */
 /* === SECTION 3 END === */
-
 
 /* ==========================================================================
    === SECTION 4: MAIN COMPONENT RENDER ===
    ========================================================================== */
 export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDonutChartProps) {
+  // WHY: Extract math tools to process underlying mock datasets dynamically
+  const { currency, formatAmount, convertAmount } = useCurrency();
+
   // State to track which slice is currently hovered
   const [activeHoverIndex, setActiveHoverIndex] = useState<number | null>(null);
 
-  // Get the data for the currently selected time period
-  const currentExpenseData = categoryPeriodDataMap[activePeriod] || categoryPeriodDataMap["30d"];
+  // Get raw baseline currency configurations based on historical period markers
+  const rawExpenseData = categoryPeriodDataMap[activePeriod] || categoryPeriodDataMap["30d"];
 
-  // Calculate total spending for the current period
-  const activeTotalOutflow = currentExpenseData.reduce(
+  // WHY: Project raw baseline USD metrics into the current mathematical currency state
+  const convertedExpenseData = rawExpenseData.map((item) => {
+    return {
+      name: item.name,
+      value: convertAmount(item.value, "USD", currency),
+      color: item.color,
+    };
+  });
+
+  // Calculate total spending across the newly mapped converted currency dataset array
+  const activeTotalOutflow = convertedExpenseData.reduce(
     (sum, item) => sum + item.value,
     0
   );
@@ -102,11 +109,11 @@ export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDo
   let dynamicDisplayValue = activeTotalOutflow;
   let dynamicDisplayPercentage = "100";
 
-  if (activeHoverIndex !== null && currentExpenseData[activeHoverIndex]) {
-    const hoveredItem = currentExpenseData[activeHoverIndex];
+  if (activeHoverIndex !== null && convertedExpenseData[activeHoverIndex]) {
+    const hoveredItem = convertedExpenseData[activeHoverIndex];
     dynamicDisplayLabel = hoveredItem.name;
     dynamicDisplayValue = hoveredItem.value;
-    const percent = (hoveredItem.value / activeTotalOutflow) * 100;
+    const percent = activeTotalOutflow > 0 ? (hoveredItem.value / activeTotalOutflow) * 100 : 0;
     dynamicDisplayPercentage = percent.toFixed(0);
   }
 
@@ -126,7 +133,7 @@ export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDo
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={currentExpenseData}
+                data={convertedExpenseData}
                 cx="50%"
                 cy="50%"
                 innerRadius={68}
@@ -137,7 +144,7 @@ export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDo
                 stroke="var(--bg-surface)"
                 strokeWidth={3}
               >
-                {currentExpenseData.map((entry, index) => (
+                {convertedExpenseData.map((entry, index) => (
                   <Cell
                     key={`slice-${index}`}
                     fill={entry.color}
@@ -159,7 +166,8 @@ export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDo
           <div className={styles.centerHoleMetricsDisplay}>
             <span className={styles.centerMetaLabel}>{dynamicDisplayLabel}</span>
             <span className={styles.centerMainValue}>
-              ${dynamicDisplayValue.toLocaleString()}
+              {/* WHY: Pass the value directly with USD fallback flag since data is already mapped to state currency */}
+              {formatAmount(dynamicDisplayValue, currency)}
             </span>
             <span className={styles.centerPercentageIndicator}>
               {dynamicDisplayPercentage}%
@@ -170,7 +178,7 @@ export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDo
         {/* Right Side: Legend List */}
         <div className={styles.customLegendPanel}>
           <ul className={styles.legendListContainer}>
-            {currentExpenseData.map((category, index) => {
+            {convertedExpenseData.map((category, index) => {
               const percentage = activeTotalOutflow > 0
                 ? ((category.value / activeTotalOutflow) * 100).toFixed(0)
                 : "0";
@@ -192,7 +200,7 @@ export default React.memo(function ExpenseDonutChart({ activePeriod }: ExpenseDo
                   </div>
                   <div className={styles.legendRightContent}>
                     <span className={styles.absoluteCurrencyText}>
-                      ${category.value.toLocaleString()}
+                      {formatAmount(category.value, currency)}
                     </span>
                     <span className={styles.percentageSplitText}>{percentage}%</span>
                   </div>

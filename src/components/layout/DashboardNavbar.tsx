@@ -1,10 +1,10 @@
 // src/components/layout/DashboardNavbar.tsx
 
-"use client";
-
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES START ===
    ========================================================================== */
+"use client";
+
 import React, { useState, useSyncExternalStore } from "react";
 // WHY: We utilize unified icons from react-icons to ensure clear interactive cues
 import { 
@@ -13,52 +13,58 @@ import {
   FiMonitor, 
   FiSearch, 
   FiBell,
-  FiGlobe,
   FiCheck,
   FiMenu,
   FiX
 } from "react-icons/fi";
 // WHY: Hook dependency to tie dark/light/system mechanics to our DOM data attribute
 import { useTheme } from "@/hooks/useTheme";
+// FIXED / WHY: Imported from your selected domain-specific local layout directory
+import { useCurrency, CurrencyType } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./DashboardNavbar.module.css";
-/* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES END ===
-   ========================================================================== */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES AND INTERFACES START ===
    ========================================================================== */
-type CurrencyType = "PKR" | "USD" | "EUR";
-
 interface CurrencyOption {
   code: CurrencyType;
   symbol: string;
   label: string;
+  flag: string; // WHY: Displaying regional indicators elevates the visual aesthetic of the layout deck
 }
-/* ==========================================================================
-   === SECTION 2: TYPES AND INTERFACES END ===
-   ========================================================================== */
+/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: CONSTANTS START ===
    ========================================================================== */
+// WHY: Static registry housing global currencies, India, and all 6 core GCC Gulf nations
 const CURRENCY_OPTIONS: CurrencyOption[] = [
-  { code: "PKR", symbol: "₨", label: "Pakistani Rupee" },
-  { code: "USD", symbol: "$", label: "US Dollar" },
-  { code: "EUR", symbol: "€", label: "Euro" },
+  { code: "PKR", symbol: "₨", label: "Pakistani Rupee", flag: "🇵🇰" },
+  { code: "USD", symbol: "$", label: "US Dollar", flag: "🇺🇸" },
+  { code: "EUR", symbol: "€", label: "Euro", flag: "🇪🇺" },
+  { code: "GBP", symbol: "£", label: "British Pound", flag: "🇬🇧" },
+  { code: "INR", symbol: "₹", label: "Indian Rupee", flag: "🇮🇳" },
+  { code: "AED", symbol: "د.إ", label: "UAE Dirham", flag: "🇦🇪" },
+  { code: "SAR", symbol: "ر.س", label: "Saudi Riyal", flag: "🇸🇦" },
+  { code: "KWD", symbol: "د.ك", label: "Kuwaiti Dinar", flag: "🇰🇼" },
+  { code: "OMR", symbol: "ر.ع.", label: "Omani Rial", flag: "🇴🇲" },
+  { code: "QAR", symbol: "ر.ق", label: "Qatari Riyal", flag: "🇶🇦" },
+  { code: "BHD", symbol: "د.ب", label: "Bahraini Dinar", flag: "🇧🇭" },
 ];
 
 // FIXED / WHY: Empty subscription function required by useSyncExternalStore
 const emptySubscribe = () => () => {};
-/* ==========================================================================
-   === SECTION 3: CONSTANTS END ===
-   ========================================================================== */
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: COMPONENT LOGIC START ===
+   ========================================================================== */
 export default function DashboardNavbar() {
-  /* ==========================================================================
-     === SECTION 4: STATE INITIALIZATION START ===
-     ========================================================================== */
   const { activeTheme, changeTheme } = useTheme();
+  
+  // FIXED / WHY: Extracted setCurrency directly from global context state channel to broadcast changes instantly
+  const { currency, setCurrency } = useCurrency();
   
   // FIXED / WHY: useSyncExternalStore safely determines if we are rendering on client vs server 
   // without triggering a useEffect hook or throwing cascading setState linter errors.
@@ -73,16 +79,7 @@ export default function DashboardNavbar() {
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
-  
-  // WHY: Reactive state tracking for user currency switches
-  const [activeCurrency, setActiveCurrency] = useState<CurrencyType>("PKR");
-  /* ==========================================================================
-     === SECTION 4: STATE INITIALIZATION END ===
-     ========================================================================== */
 
-  /* ==========================================================================
-     === SECTION 5: HELPER SIDE EFFECTS START ===
-     ========================================================================== */
   // WHY: Explicitly maps the active theme to its matching icon variant
   const getThemeIcon = () => {
     if (activeTheme === "light") return <FiSun size={16} />;
@@ -90,8 +87,8 @@ export default function DashboardNavbar() {
     return <FiMonitor size={16} />;
   };
 
-  // WHY: Dynamically matches selection to active state instead of defaulting to PKR
-  const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === activeCurrency);
+  // FIXED / WHY: Dynamically matches selection directly to context 'currency' variable
+  const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === currency);
 
   // WHY: Compute values dynamically during render rather than setting state inside an effect.
   let greeting = "Welcome";
@@ -107,20 +104,15 @@ export default function DashboardNavbar() {
       day: 'numeric' 
     });
   }
-  /* ==========================================================================
-     === SECTION 5: HELPER SIDE EFFECTS END ===
-     ========================================================================== */
 
-  /* ==========================================================================
-     === HYDRATION FALLBACK INTERCEPTOR ===
-     ========================================================================== */
   // WHY: If rendering on the server, return a structurally balanced empty bar layout node. 
   if (!isMounted) {
     return <header className={styles.topNavbarBlankPlaceholder} />;
   }
+  /* === SECTION 4 END === */
 
   /* ==========================================================================
-     === SECTION 6: MAIN JSX RENDER LAYOUT START ===
+     === SECTION 5: RENDER (JSX) START ===
      ========================================================================== */
   return (
     <header className={styles.topNavbar} suppressHydrationWarning>
@@ -183,27 +175,34 @@ export default function DashboardNavbar() {
             aria-label="Change currency"
             aria-expanded={isCurrencyOpen}
           >
-            <FiGlobe size={14} className={styles.utilityIconInline} />
+            <span className={styles.utilityFlagInline}>{activeCurrencyDetails?.flag}</span>
             <span className={styles.currencyCodeLabel}>
               {activeCurrencyDetails?.code} ({activeCurrencyDetails?.symbol})
             </span>
           </button>
 
           {isCurrencyOpen && (
-            <ul className={styles.dropdownMenuFrame}>
-              {CURRENCY_OPTIONS.map((crypto) => (
-                <li key={crypto.code}>
-                  <button 
-                    onClick={() => { setActiveCurrency(crypto.code); setIsCurrencyOpen(false); }}
-                    className={crypto.code === activeCurrency ? styles.activeMenuOption : ""}
-                  >
-                    <span className={styles.currencyMenuSymbol}>{crypto.symbol}</span>
-                    <span className={styles.currencyMenuLabel}>{crypto.label}</span>
-                    {crypto.code === activeCurrency && <FiCheck className={styles.checkMarkerIcon} size={14} />}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className={styles.dropdownMenuFrame}>
+              <div className={styles.dropdownMenuHeader}>Select Dashboard Currency</div>
+              <ul className={styles.dropdownScrollableContainer}>
+                {CURRENCY_OPTIONS.map((option) => (
+                  <li key={option.code}>
+                    <button 
+                      onClick={() => { setCurrency(option.code); setIsCurrencyOpen(false); }}
+                      className={option.code === currency ? styles.activeMenuOption : ""}
+                    >
+                      <span className={styles.currencyMenuFlag}>{option.flag}</span>
+                      <span className={styles.currencyMenuCode}>{option.code}</span>
+                      <span className={styles.currencyMenuLabel}>{option.label}</span>
+                      <span className={styles.currencyMenuSymbolBadge}>{option.symbol}</span>
+                      {option.code === currency && (
+                        <FiCheck className={styles.checkMarkerIcon} size={12} />
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 
@@ -226,6 +225,7 @@ export default function DashboardNavbar() {
 
           {isThemeOpen && (
             <ul className={styles.dropdownMenuFrame}>
+              <div className={styles.dropdownMenuHeader}>Interface Theme</div>
               <li>
                 <button onClick={() => { changeTheme("light"); setIsThemeOpen(false); }} className={activeTheme === "light" ? styles.activeMenuOption : ""}>
                   <FiSun size={14} /> Light
@@ -267,10 +267,10 @@ export default function DashboardNavbar() {
                 {CURRENCY_OPTIONS.map((cur) => (
                   <button 
                     key={cur.code}
-                    className={cur.code === activeCurrency ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
-                    onClick={() => { setActiveCurrency(cur.code); setIsMobileMenuOpen(false); }}
+                    className={cur.code === currency ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
+                    onClick={() => { setCurrency(cur.code); setIsMobileMenuOpen(false); }}
                   >
-                    {cur.symbol} {cur.code}
+                    <span>{cur.flag}</span> {cur.code} ({cur.symbol})
                   </button>
                 ))}
               </div>
@@ -292,6 +292,4 @@ export default function DashboardNavbar() {
     </header>
   );
 }
-/* ==========================================================================
-   === SECTION 6: MAIN JSX RENDER LAYOUT END ===
-   ========================================================================== */
+/* === SECTION 5 END === */

@@ -1,7 +1,7 @@
 /* src/app/(dashboard)/dashboard/page.module.css */
 
 /* ==========================================================================
-   === SECTION 1: MASTER CANVAS WRAPPING ===
+   === SECTION 1: MAIN CANVAS LAYOUT ===
    ========================================================================== */
 .workspaceWrapper {
   display: flex;
@@ -12,11 +12,9 @@
   margin: 0 auto;
   box-sizing: border-box;
 }
-/* === SECTION 1 END === */
-
 
 /* ==========================================================================
-   === SECTION 2: TOP HEADER LAYOUT BLOCK ===
+   === SECTION 2: TOP HEADER LAYOUT ===
    ========================================================================== */
 .dashboardHeader {
   display: flex;
@@ -34,27 +32,21 @@
   gap: 0.35rem; 
 }
 
-/* Dual-tone popping color scheme for the main headline layout */
 .welcomeHeadline {
   font-family: var(--font-navbar, sans-serif);
   font-size: 1.85rem; 
   font-weight: 800;
   letter-spacing: -0.03em;
   margin: 0;
-  
-  /* FIXED / WHY: Removed the invalid ::first-word pseudo-selector entirely. 
-     Instead, we configure a highly supportable gradient fill straight onto the heading text layer. */
   background: linear-gradient(90deg, var(--color-primary, #3b82f6) 0%, var(--text-primary, #111827) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: var(--color-primary, #3b82f6); /* Secure pixel color fallback for legacy systems */
+  color: var(--color-primary, #3b82f6);
 }
-/* === SECTION 2 END === */
-
 
 /* ==========================================================================
-   === SECTION 3: UPGRADED TEXT STYLING BLOCK ===
+   === SECTION 3: TEXT DESCRIPTIVE LABELS ===
    ========================================================================== */
 .welcomeSubtext {
   margin: 0;
@@ -62,19 +54,13 @@
   font-weight: 600; 
   line-height: 1.5;
   letter-spacing: 0.02em;
-  
-  /* High contrast theme pairing instead of faded muted secondary text values */
   color: var(--color-primary, #3b82f6);
-  filter: brightness(0.85); /* Smooths out color tint vibrancy for elite text definition */
-  
+  filter: brightness(0.85);
   position: relative;
   opacity: 0;
-  
-  /* Triggers a micro-glide entry slide animation when layout loads on viewports */
   animation: gentleTextSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Adds a sharp vertical brand ribbon accents layout line to frame descriptive text sentences */
 @media (min-width: 769px) {
   .welcomeSubtext {
     padding-left: 0.75rem;
@@ -92,52 +78,49 @@
     transform: translateX(0);
   }
 }
-/* === SECTION 3 END === */
-
 
 /* ==========================================================================
-   === SECTION 4: METRIC ROW CARDS CONTEXT ===
+   === SECTION 4: CENTER STAGE CONTAINER SLOTS ===
    ========================================================================== */
 .metricsRowStage {
   width: 100%;
 }
-/* === SECTION 4 END === */
 
+.gaugeRowStage {
+  width: 100%;
+  animation: gentleTextSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 
 /* ==========================================================================
-   === SECTION 5: LOWER ANALYTICS CONTROLLER ===
+   === SECTION 5: LOWER CHARTS FLEX STAGE ===
    ========================================================================== */
 .isolatedStage {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Standard structural grid clearance separating the stacked cards */
+  gap: 1.5rem;
 }
 
 .chartWrapperNode {
   width: 100%;
 }
 
-/* Upgrades layout to a stunning side-by-side presentation layer on full monitor widths */
+/* Side-by-side presentation layer layout for full computer screens */
 @media (min-width: 1025px) {
   .isolatedStage {
     flex-direction: row;
     align-items: stretch;
   }
-  
-  /* Trend Area Chart claims slightly wider breathing room, Donut pins the breakdown data */
   .isolatedStage > .chartWrapperNode:nth-child(1) {
-    flex: 1.4;
+    flex: 1.4; /* Line graph takes up slightly more landscape width */
   }
   .isolatedStage > .chartWrapperNode:nth-child(2) {
-    flex: 1;
+    flex: 1;   /* Breakdown donut box sits neatly on the right side */
   }
 }
-/* === SECTION 5 END === */
-
 
 /* ==========================================================================
-   === SECTION 6: SMARTPHONE RESPONSIVE MATRIX ===
+   === SECTION 6: PHONE SCREEN RESPONSIVENESS ===
    ========================================================================== */
 @media (max-width: 768px) {
   .dashboardHeader {
@@ -146,4 +129,3 @@
     gap: 1.25rem;
   }
 }
-/* === SECTION 6 END === */

@@ -5,6 +5,8 @@
 import type { Metadata } from "next";
 import { Mulish } from "next/font/google";
 import Script from "next/script"; // WHY: Next.js native optimization engine to handle script components smoothly without React hydration warnings.
+// NEW: Import the global currency engine wrapper to broadcast settings to downstream components
+import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
 import "./globals.css";
 
 /* ==========================================================================
@@ -67,7 +69,10 @@ export default function RootLayout({
           }}
         />
         
-        {children}
+        {/* NEW: Wrapping children inside the state context provider to link currency settings globally */}
+        <CurrencyProvider>
+          {children}
+        </CurrencyProvider>
       </body>
     </html>
   );

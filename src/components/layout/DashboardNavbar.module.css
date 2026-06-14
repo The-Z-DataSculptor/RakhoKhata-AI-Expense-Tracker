@@ -1,5 +1,3 @@
-/* src/components/layout/DashboardNavbar.module.css */
-
 /* ==========================================================================
    === SECTION 1: TOP NAVIGATION ROW CONTAINER ===
    ========================================================================== */
@@ -58,50 +56,10 @@
 }
 
 /* ==========================================================================
-   === SECTION 3: CENTER DESKTOP SEARCH BAR ===
+   === SECTION 3: RIGHT DESKTOP CONTROL DECK ===
    ========================================================================== */
 
-/* The container that centers your search bar between the left and right tools */
-.searchWrapper {
-  position: relative; /* Allows the search icon to be placed absolutely inside this box */
-  width: 100%;
-  max-width: 360px;
-  margin: 0 1.5rem;
-}
-
-/* Places the magnifying glass icon inside the input field box */
-.searchIcon {
-  position: absolute;
-  left: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%); /* Centers the icon perfectly inside the input track height */
-  color: var(--text-muted);
-  pointer-events: none; /* Clicking the icon clicks the input behind it */
-}
-
-.searchInput {
-  width: 100%;
-  padding: 0.55rem 1rem 0.55rem 2.35rem; /* Extra padding on the left to make room for the icon */
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: 0.82rem;
-  color: var(--text-primary);
-  transition: var(--transition-fast);
-}
-
-/* Subtle border glow effect when a user clicks into the input field */
-.searchInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  background-color: var(--bg-surface);
-}
-
-/* ==========================================================================
-   === SECTION 4: RIGHT DESKTOP CONTROL DECK ===
-   ========================================================================== */
-
-/* Keeps the search button, notifications, and menus aligned horizontally */
+/* Keeps components aligned horizontally */
 .actionControlDeck {
   display: flex;
   align-items: center;
@@ -141,7 +99,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 5: CURRENCY TRIGGERS AND DROPDOWNS ===
+   === SECTION 4: CURRENCY TRIGGERS AND DROPDOWNS ===
    ========================================================================== */
 
 /* The interactive button trigger that shows your active currency flag and symbol */
@@ -218,14 +176,13 @@
   scrollbar-width: thin;
 }
 
-/* CLEANUP: Combined internal list option buttons into a single clean rule declaration */
 .dropdownMenuFrame button,
 .dropdownMenuFrame li button,
 .dropdownScrollableContainer button {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.65rem; /* FIXED: Enforces clear horizontal separation inside menu entries */
+  gap: 0.65rem;
   padding: 0.5rem 0.65rem;
   background: transparent;
   border: none;
@@ -237,7 +194,6 @@
   transition: var(--transition-fast);
 }
 
-/* Hover feedback action properties */
 .dropdownMenuFrame button:hover,
 .dropdownMenuFrame li button:hover,
 .dropdownScrollableContainer button:hover {
@@ -254,16 +210,16 @@
 .currencyMenuCode {
   font-weight: 700;
   color: var(--text-primary);
-  width: 36px; /* Forces codes to occupy equal horizontal widths */
+  width: 36px;
 }
 
 .currencyMenuLabel {
-  flex: 1; /* Pushes the remaining elements to the far right edge of the button line */
+  flex: 1;
   color: var(--text-secondary);
   font-size: 0.78rem;
-  white-space: nowrap; /* Forces text to stay on a single line */
+  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis; /* Appends "..." if labels grow too long */
+  text-overflow: ellipsis;
   padding-right: 0.5rem;
 }
 
@@ -277,7 +233,6 @@
   color: var(--color-primary);
 }
 
-/* Active background states for options matching active state choices */
 .activeMenuOption {
   background-color: var(--primary-soft-hover) !important;
   color: var(--color-primary) !important;
@@ -294,13 +249,11 @@
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE SCREEN BREAKPOINT RULES ===
+   === SECTION 5: RESPONSIVE SCREEN BREAKPOINT RULES ===
    ========================================================================== */
 
 /* Hides mobile layouts from the workspace by default on large desktop screens */
 .hamburgerMenuIconToggle,
-.mobileSearchTriggerButton,
-.mobileSearchOverlay,
 .mobileNavigationDrawerTray {
   display: none;
 }
@@ -319,64 +272,23 @@
   }
 
   /* Drop heavy desktop components from view to save screen real estate */
-  .searchWrapper,
   .currencyToggleTrigger,
   .dropdownMenuContainer {
     display: none;
   }
 
   /* Activate mobile trigger elements */
-  .hamburgerMenuIconToggle,
-  .mobileSearchTriggerButton {
+  .hamburgerMenuIconToggle {
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     width: 36px;
     height: 36px;
     cursor: pointer;
-  }
-
-  .hamburgerMenuIconToggle {
-    color: var(--text-primary);
     margin-left: 0.25rem;
-  }
-
-  /* Full-bleed responsive absolute search interface overlay block */
-  .mobileSearchOverlay {
-    display: flex;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: var(--bg-surface);
-    padding: 0 1rem;
-    align-items: center;
-    z-index: 900;
-  }
-
-  .mobileSearchInput {
-    flex: 1;
-    height: 40px;
-    border: none;
-    background: transparent;
-    padding-left: 2.25rem;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-  }
-
-  .mobileSearchInput:focus {
-    outline: none;
-  }
-
-  .closeSearchButton {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    padding: 0.5rem;
   }
 
   /* The mobile responsive slide-down menu drawer panel */
@@ -413,14 +325,12 @@
     color: var(--text-muted);
   }
 
-  /* Arranges mobile setup options in a structured adaptive responsive columns grid */
   .mobileButtonLayoutGridRow {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 0.5rem;
   }
 
-  /* Base shared parameters for responsive mobile control switches */
   .mobileActiveActionButton,
   .mobileSecondaryActionButton {
     padding: 0.6rem;

@@ -1,0 +1,153 @@
+/* src/components/transactions/BulkActionToolBelt/BulkActionToolBelt.module.css */
+
+/* ==========================================================================
+   === SECTION 1: FLOATING FIXED POSITION WRAPPERS ===
+   ========================================================================== */
+.floatingToolBeltFixedAnchor {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2rem);
+  max-width: 650px;
+  z-index: 999;
+  box-sizing: border-box;
+  animation: slideUpFromBottom Edge 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpFromBottomEdge {
+  from {
+    bottom: -1rem;
+    opacity: 0;
+  }
+  to {
+    bottom: 2rem;
+    opacity: 1;
+  }
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: GLASS DECK CONTAINER THEMES ===
+   ========================================================================== */
+.toolBeltGlassBannerLayout {
+  background-color: var(--bg-surface, #ffffff);
+  border: 2px solid var(--color-primary, #613bbf);
+  border-radius: var(--radius-lg, 14px);
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  box-shadow: 0 20px 40px -15px rgba(16, 4, 63, 0.25);
+}
+
+/* Automatic global variables compatibility hooks matching amethysts color ranges */
+:root[data-theme="dark"] .toolBeltGlassBannerLayout {
+  border-color: var(--color-primary, #9266fa);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: LEFT SIDE COUNTER DESIGN ===
+   ========================================================================== */
+.selectionCounterCluster {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.selectionIndicatorVector {
+  color: var(--color-primary, #613bbf);
+  flex-shrink: 0;
+}
+
+:root[data-theme="dark"] .selectionIndicatorVector {
+  color: var(--color-primary, #9266fa);
+}
+
+.counterStatusNotificationText {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+}
+
+.boldCounterDigit {
+  background-color: var(--primary-soft, rgba(97, 59, 191, 0.08));
+  color: var(--color-primary, #613bbf);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+:root[data-theme="dark"] .boldCounterDigit {
+  background-color: var(--primary-soft, rgba(146, 102, 250, 0.15));
+  color: var(--color-primary, #9266fa);
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: RIGHT ACTION TRIGGERS ===
+   ========================================================================== */
+.actionExecutionDockDeck {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.bulkActionButtonNode {
+  background-color: var(--color-danger, #dc2626);
+  border: 1px solid transparent;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md, 8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  outline: none;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.bulkActionButtonNode:hover {
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.verticalDividerLineSplit {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color, #e5e1f4);
+}
+
+.closeToolBeltCancelIconButton {
+  background: none;
+  border: none;
+  color: var(--text-muted, #7e7a9c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.closeToolBeltCancelIconButton:hover {
+  color: var(--text-primary, #10043f);
+}
+
+@media (max-width: 480px) {
+  .toolBeltGlassBannerLayout {
+    padding: 0.75rem 1rem;
+  }
+  
+  .counterStatusNotificationText {
+    font-size: 0.8rem;
+  }
+  
+  .bulkActionButtonNode span {
+    display: none; /* Hide button text labels on ultra small screens to optimize visual space */
+  }
+}
+/* === SECTION 4 END === */

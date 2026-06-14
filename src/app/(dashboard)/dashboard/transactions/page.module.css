@@ -1,0 +1,45 @@
+/* src/app/(dashboard)/dashboard/transactions/page.module.css */
+
+/* ==========================================================================
+   === SECTION 1: CORE WORKSPACE GRID ===
+   ========================================================================== */
+.ledgerCanvasWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Balanced grid spacing mapping all modular sub-components cleanly */
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding-bottom: 3.5rem; /* FIXED/WHY: Creates a clean breathing space to give the footer a floating look */
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: DOWNSTREAM LIST CONTAINERS ===
+   ========================================================================== */
+.mainContentStage {
+  width: 100%;
+  margin-top: 0.25rem; /* Small micro-alignment offset separating control bars from headers */
+}
+
+/* Retaining placeholderCard definition in module mapping to safely accommodate multi-view variants */
+.placeholderCard {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px dashed var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 14px);
+  padding: 4.5rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+}
+
+.placeholderCard p {
+  font-size: 0.88rem;
+  color: var(--text-muted, #7e7a9c);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+/* === SECTION 2 END === */

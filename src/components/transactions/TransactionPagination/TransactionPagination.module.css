@@ -1,0 +1,143 @@
+/* src/components/transactions/TransactionPagination/TransactionPagination.module.css */
+
+/* ==========================================================================
+   === SECTION 1: GLOBAL COMPONENT WRAPPER CORE ===
+   ========================================================================== */
+.paginationFooterControlBelt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1.25rem;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 14px);
+  padding: 0.88rem 1.5rem;
+  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+  box-sizing: border-box;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: LEFT SIDE TEXT RANGE STYLINGS ===
+   ========================================================================== */
+.rangeCounterTextLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4e4a6b);
+  user-select: none;
+}
+
+.boldNumericFocusText {
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  font-variant-numeric: tabular-nums;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: INTERACTIVE STEPPER BUTTON SHARDS ===
+   ========================================================================== */
+.interactivePageSwitcherDeck {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.directionStepperPillNode {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  color: var(--text-secondary, #4e4a6b);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.45rem 0.88rem;
+  border-radius: var(--radius-md, 8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  outline: none;
+  user-select: none;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.directionStepperPillNode:hover:not(:disabled) {
+  border-color: var(--color-primary, #613bbf);
+  color: var(--color-primary, #613bbf);
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+}
+
+.directionStepperPillNode:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: var(--surface-muted, #f8fafc);
+  border-color: var(--border-color, #e5e1f4);
+}
+
+/* --- CORE PAGE CHIP STACK MECHANICS --- */
+.numericIndexChipCluster {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.numericIndexSelectionNode {
+  background: none;
+  border: 1px solid transparent;
+  outline: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary, #4e4a6b);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.numericIndexSelectionNode:hover {
+  color: var(--color-primary, #613bbf);
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+}
+
+.activePageChipNode {
+  color: var(--text-on-primary, #ffffff) !important;
+  background-color: var(--color-primary, #613bbf) !important;
+  box-shadow: 0 4px 10px rgba(97, 59, 191, 0.2);
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: DEVICE LAYOUT ADAPTATION VIEWPORTS ===
+   ========================================================================== */
+@media (max-width: 640px) {
+  .paginationFooterControlBelt {
+    flex-direction: column;
+    padding: 1.25rem 1rem;
+    gap: 1rem;
+  }
+
+  .rangeCounterTextLabel {
+    text-align: center;
+    order: 2; /* Pushes descriptive content range to the bottom edge on phones */
+  }
+
+  .interactivePageSwitcherDeck {
+    width: 100%;
+    justify-content: space-between;
+    order: 1;
+  }
+
+  .numericIndexChipCluster {
+    display: none; /* Hide multi-chip blocks on tight mobile frame screens */
+  }
+
+  .directionStepperPillNode {
+    flex: 1;
+    justify-content: center;
+    padding: 0.6rem 1rem;
+  }
+}
+/* === SECTION 4 END === */

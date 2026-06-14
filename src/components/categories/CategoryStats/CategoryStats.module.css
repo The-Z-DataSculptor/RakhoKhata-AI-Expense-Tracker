@@ -1,0 +1,166 @@
+/* src/components/categories/CategoryStats/CategoryStats.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MASTER CONTAINER FLEX GRID ===
+   ========================================================================== */
+.statsGridContainer {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   === SECTION 2: CARD BASE GLASSMORPHIC CORE LAYOUT ===
+   ========================================================================== */
+.insightCard {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 14px);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-sizing: border-box;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.insightCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px -8px rgba(16, 4, 63, 0.12);
+}
+
+/* ==========================================================================
+   === SECTION 3: TOP ROW HEADER ELEMENTS ===
+   ========================================================================== */
+.cardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.iconContainer {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.badgeIndicator {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ==========================================================================
+   === SECTION 4: INTERACTIVE PALETTES (THEME-AWARE ON THE CORE TOKENS) ===
+   ========================================================================== */
+/* Red/Danger Accent Colors for Expenses */
+.dangerIconTheme {
+  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
+  color: var(--color-danger, #dc2626);
+}
+.dangerBadgeTheme {
+  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
+  color: var(--color-danger, #dc2626);
+}
+
+/* Green/Success Accent Colors for Income */
+.successIconTheme {
+  background-color: var(--success-soft, rgba(22, 163, 74, 0.08));
+  color: var(--color-success, #16a34a);
+}
+.successBadgeTheme {
+  background-color: var(--success-soft, rgba(22, 163, 74, 0.08));
+  color: var(--color-success, #16a34a);
+}
+
+/* Amber/Warning Accent Colors for Rising Trends */
+.warningIconTheme {
+  background-color: var(--warning-soft, rgba(217, 119, 6, 0.1));
+  color: var(--color-warning, #d97706);
+}
+.warningBadgeTheme {
+  background-color: var(--warning-soft, rgba(217, 119, 6, 0.1));
+  color: var(--color-warning, #d97706);
+}
+
+/* Blue/Info Accent Colors for General Counters */
+.infoIconTheme {
+  background-color: var(--info-soft, rgba(37, 99, 235, 0.08));
+  color: var(--color-info, #2563eb);
+}
+.infoBadgeTheme {
+  background-color: var(--info-soft, rgba(37, 99, 235, 0.08));
+  color: var(--color-info, #2563eb);
+}
+
+/* ==========================================================================
+   === SECTION 5: TEXT SCALING AND LABELS ===
+   ========================================================================== */
+.cardMetricContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.metricLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted, #7e7a9c);
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
+}
+
+.metricHeading {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.4rem 0;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metricSubtext {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #4e4a6b);
+  margin: 0;
+}
+
+.boldHighlight {
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+}
+
+/* ==========================================================================
+   === SECTION 6: RESPONSIVE BREAKPOINTS FOR MOBILE SCREENS ===
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .statsGridContainer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGridContainer {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  
+  .metricHeading {
+    font-size: 1.2rem;
+  }
+}

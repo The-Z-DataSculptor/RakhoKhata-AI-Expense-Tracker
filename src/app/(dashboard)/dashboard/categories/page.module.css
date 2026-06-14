@@ -1,0 +1,113 @@
+/* src/app/(dashboard)/dashboard/categories/page.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MAIN WRAPPER LAYOUT ===
+   ========================================================================== */
+.categoriesCanvasWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Keeps a steady vertical space between each dashboard element */
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding-bottom: 3.5rem; /* Leaves clean empty space at the bottom of the page */
+}
+
+/* ==========================================================================
+   === SECTION 2: TOP HEADER DESIGN ===
+   ========================================================================== */
+.pageHeaderDeck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 14px);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+}
+
+.mainTitleHeading {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.subTitleDescription {
+  font-size: 0.85rem;
+  color: var(--text-muted, #7e7a9c);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Add Button Styles */
+.createCategoryButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.15);
+}
+
+.createCategoryButton:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.createCategoryButton:active {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   === SECTION 3: DOWNSTREAM STAGE FOR THE LIST ===
+   ========================================================================== */
+.mainContentStage {
+  width: 100%;
+}
+
+/* Temporary middle card design */
+.placeholderCard {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px dashed var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 14px);
+  padding: 5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+}
+
+.placeholderCard p {
+  font-size: 0.88rem;
+  color: var(--text-muted, #7e7a9c);
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   === SECTION 4: MOBILE RESPONSIVE LAYOUT ADJUSTMENTS ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .pageHeaderDeck {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .createCategoryButton {
+    width: 100%;
+    justify-content: center;
+  }
+}

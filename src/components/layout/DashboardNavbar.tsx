@@ -1,17 +1,14 @@
-// src/components/layout/DashboardNavbar.tsx
+"use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES START ===
    ========================================================================== */
-"use client";
-
 import React, { useState, useSyncExternalStore } from "react";
 // WHY: We utilize unified icons from react-icons to ensure clear interactive cues
 import { 
   FiSun, 
   FiMoon, 
   FiMonitor, 
-  FiSearch, 
   FiBell,
   FiCheck,
   FiMenu,
@@ -78,7 +75,6 @@ export default function DashboardNavbar() {
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
 
   // WHY: Explicitly maps the active theme to its matching icon variant
   const getThemeIcon = () => {
@@ -117,26 +113,6 @@ export default function DashboardNavbar() {
   return (
     <header className={styles.topNavbar} suppressHydrationWarning>
       
-      {/* --- SUB-COMPONENT: MOBILE OVERLAY SEARCH EXPANSION --- */}
-      {isMobileSearchActive && (
-        <div className={styles.mobileSearchOverlay}>
-          <FiSearch className={styles.searchIcon} size={16} />
-          <input 
-            type="text" 
-            placeholder="Search transactions..." 
-            className={styles.mobileSearchInput}
-            autoFocus
-          />
-          <button 
-            className={styles.closeSearchButton}
-            onClick={() => setIsMobileSearchActive(false)}
-            aria-label="Exit search view"
-          >
-            <FiX size={18} />
-          </button>
-        </div>
-      )}
-
       {/* --- LEFT HAND ELEMENT BLOCK: GREETINGS --- */}
       <div className={styles.welcomeSection}>
         <h2 className={styles.greetingTitle}>
@@ -145,28 +121,9 @@ export default function DashboardNavbar() {
         <p className={styles.dateSubtext}>{formattedDate}</p>
       </div>
 
-      {/* --- CENTER ELEMENT BLOCK: GLOBAL DESKTOP SEARCH --- */}
-      <div className={styles.searchWrapper}>
-        <FiSearch className={styles.searchIcon} size={16} />
-        <input 
-          type="text" 
-          placeholder="Search transactions, ledgers... (⌘K)" 
-          className={styles.searchInput}
-        />
-      </div>
-
       {/* --- RIGHT HAND ELEMENT BLOCK: UTILITY CONTROLS --- */}
       <div className={styles.actionControlDeck}>
         
-        {/* MOBILE INTERACTIVE ACTION ICON TRIGGER ELEMENTS */}
-        <button 
-          className={styles.mobileSearchTriggerButton}
-          onClick={() => setIsMobileSearchActive(true)}
-          aria-label="Open mobile input query field"
-        >
-          <FiSearch size={18} />
-        </button>
-
         {/* UTILITY: MULTI-CURRENCY CONSOLE DECK */}
         <div className={styles.dropdownMenuContainer}>
           <button 

@@ -1,0 +1,245 @@
+/* ==========================================================================
+   === SECTION 1: OUTER VIEWPORT GRID FRAME WRAPPERS ===
+   ========================================================================== */
+.ledgerTableViewportWrapper {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.emptyStateContainerBlock {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.emptyStateNoticeText {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: DESKTOP HIGH-DENSITY STRIPE LEDGER STYLES ===
+   ========================================================================== */
+.desktopTableFrameContainer {
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.nativeHighDensityTableElement {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.nativeHighDensityTableElement thead tr {
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nativeHighDensityTableElement th {
+  padding: 0.85rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.nativeHighDensityTableElement tbody tr {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nativeHighDensityTableElement tbody tr:last-child {
+  border-bottom: none;
+}
+
+.zebraStripeRowNode:nth-child(even) {
+  background-color: var(--surface-muted);
+}
+
+.zebraStripeRowNode:hover {
+  background-color: var(--primary-soft-faint);
+}
+
+.nativeHighDensityTableElement td {
+  padding: 0.85rem 1.25rem;
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.calendarDateCellText {
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.descriptiveDetailsCellText {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.categoryLabelBadgeToken {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-md);
+}
+
+.numericAmountCellTextPositioner {
+  text-align: right;
+}
+
+.inlineAmountFlexCluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.directionMarkerVector {
+  flex-shrink: 0;
+}
+
+.incomeColorAccentNode {
+  color: var(--color-success);
+}
+
+.expenseColorAccentNode {
+  color: var(--color-danger);
+}
+
+.rowSelectionCheckboxInput {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.selectedRowHighlightNode {
+  background-color: var(--primary-soft) !important;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: UTILITY ACTION TRIGGER BUTTON NODES ===
+   ========================================================================== */
+.actionUtilitesButtonDock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.rowUtilityIconButtonNode {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.4rem;
+  border-radius: 6px;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.rowUtilityIconButtonNode:hover {
+  color: var(--color-primary);
+  background-color: var(--primary-soft);
+  border-color: var(--color-accent-light);
+}
+
+.rowUtilityIconButtonNode.dangerHoverPillNode:hover {
+  color: var(--color-danger) !important;
+  background-color: var(--danger-soft) !important;
+  border-color: var(--color-danger) !important;
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: MOBILE ADAPTIVE SYSTEM RESPONSIVE SHIFTS ===
+   ========================================================================== */
+.mobileCardsStackViewportFrame {
+  display: none;
+  flex-direction: column;
+  gap: 0.88rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .desktopTableFrameContainer {
+    display: none;
+  }
+
+  .mobileCardsStackViewportFrame {
+    display: flex;
+  }
+
+  .mobileDataCardDeckNode {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .mobileIncomeBorderAccent {
+    border-left: 4px solid var(--color-success);
+  }
+
+  .mobileExpenseBorderAccent {
+    border-left: 4px solid var(--color-danger);
+  }
+
+  .mobileCardTopRowHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobileCardCalendarDateText {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  .mobileCardDescriptiveTitleText {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .mobileCardBottomActionBarLayout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .mobileCardBoldAmountText {
+    font-size: 1rem;
+  }
+}
+/* === SECTION 4 END === */

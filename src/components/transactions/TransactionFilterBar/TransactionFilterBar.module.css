@@ -1,0 +1,179 @@
+/* src/components/transactions/TransactionFilterBar/TransactionFilterBar.module.css */
+
+/* ==========================================================================
+   === SECTION 1: CORE ROW WORKSPACE DECK ===
+   ========================================================================== */
+.unifiedControlRowContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1.25rem;
+  box-sizing: border-box;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: INPUT ELEMENT FRAMES ===
+   ========================================================================== */
+.searchBarDeckFrame {
+  display: flex;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+
+.inputSearchVectorIcon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted, #7e7a9c);
+  pointer-events: none;
+}
+
+.realtimeDataQueryInput {
+  width: 100%;
+  padding: 0.65rem 1rem 0.65rem 2.75rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary, #10043f);
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  outline: none;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.realtimeDataQueryInput:focus {
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 3px var(--primary-soft, rgba(97, 59, 191, 0.08));
+}
+
+.realtimeDataQueryInput::placeholder {
+  color: var(--text-muted, #7e7a9c);
+  opacity: 0.85;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: INTERACTIVE CONTROLS PACKS ===
+   ========================================================================== */
+.rightAlignedFilterControlsPack {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* --- SEGMENTED PILL MECHANICS --- */
+.segmentedToggleContainer {
+  display: flex;
+  align-items: center;
+  background-color: var(--primary-soft-faint, rgba(97, 59, 191, 0.02));
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.25rem;
+}
+
+.togglePillNode {
+  background: none;
+  border: 1px solid transparent;
+  outline: none;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary, #4e4a6b);
+  border-radius: 6px;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.togglePillNode:hover {
+  color: var(--color-primary, #613bbf);
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+}
+
+.activePillNode {
+  color: var(--text-on-primary, #ffffff) !important;
+  background-color: var(--color-primary, #613bbf) !important;
+  box-shadow: var(--shadow-soft, 0 4px 12px rgba(16, 4, 63, 0.04));
+}
+
+/* --- DROPDOWN ELEMENT ACTIONS --- */
+.dropdownPickerWrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.dropdownContextIconPin {
+  position: absolute;
+  left: 0.88rem;
+  color: var(--text-muted, #7e7a9c);
+  pointer-events: none;
+}
+
+.nativeSelectTagOverrider {
+  padding: 0.65rem 2rem 0.65rem 2.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary, #4e4a6b);
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.nativeSelectTagOverrider:focus {
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 3px var(--primary-soft, rgba(97, 59, 191, 0.08));
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: DEVICE LAYOUT ADAPTATION VIEWPORTS ===
+   ========================================================================== */
+@media (max-width: 840px) {
+  .unifiedControlRowContainer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .searchBarDeckFrame {
+    max-width: 100%;
+  }
+
+  .rightAlignedFilterControlsPack {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .segmentedToggleContainer,
+  .dropdownPickerWrapper {
+    flex: 1;
+  }
+
+  .nativeSelectTagOverrider {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .rightAlignedFilterControlsPack {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .segmentedToggleContainer {
+    width: 100%;
+  }
+
+  .togglePillNode {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.5rem;
+  }
+}
+/* === SECTION 4 END === */

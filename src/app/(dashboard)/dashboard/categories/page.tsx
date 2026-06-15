@@ -1,12 +1,27 @@
 // src/app/(dashboard)/dashboard/categories/page.tsx
+
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState } from "react";
-// WHY: Imports the 4 simple stat cards component we updated earlier
-import CategoryStats, { CategoryStatData } from "@/components/categories/CategoryStats/CategoryStats";
+import { FiAlertCircle, FiPlus } from "react-icons/fi";
+
+// WHY: Imports the structural stats ribbon overview
+import CategoryStats, {
+  CategoryStatData,
+} from "@/components/categories/CategoryStats/CategoryStats";
+
+// WHY: Imports interactive list grids representing available target tokens
+import CategoryGrid from "@/components/categories/CategoryGrid/CategoryGrid";
+
+// WHY: Multi-selection utility workspace sheet interface component 
+import BulkDrawer, {
+  TransactionRecord,
+  CategoryOption,
+} from "@/components/categories/BulkDrawer/BulkDrawer";
+
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -27,8 +42,7 @@ export interface CategoryRecord {
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function CategoriesPage() {
-  /* --- STATE MANAGEMENT ENGINES --- */
-  // Sample list of categories so you can see how they appear on the screen
+  /* --- CATEGORIES MATRIX STATE --- */
   const [categories, setCategories] = useState<CategoryRecord[]>([
     { id: "cat-201", name: "Salary", type: "income", iconSlug: "FiBriefcase", accentColor: "#16a34a", transactionCount: 12 },
     { id: "cat-202", name: "Marketing", type: "expense", iconSlug: "FiTarget", accentColor: "#613bbf", transactionCount: 34 },
@@ -37,18 +51,66 @@ export default function CategoriesPage() {
     { id: "cat-205", name: "Electricity & Bills", type: "expense", iconSlug: "FiZap", accentColor: "#d97706", transactionCount: 15 },
   ]);
 
-  /* --- INTERACTIVE ACTION CALLBACK TRIPPERS --- */
-  // Runs when the user clicks the add button to open the form box
-  const handleOpenCategoryCreationDrawer = () => {
-    console.log("Add category button clicked.");
-    
-    // WHY: This temporary check updates state with its current self.
-    // This tells TypeScript that 'setCategories' is being used and clears your warning error!
-    setCategories((currentList) => currentList);
+  /* --- BULK DRAWER RENDER STATUS STATE --- */
+  const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState(false);
+
+  /* --- MUTABLE UNASSIGNED DATA ARRAYS STREAMS --- */
+  const [unassignedTransactions, setUnassignedTransactions] = useState<TransactionRecord[]>([
+    { id: "tx-1", date: "2026-06-10", merchant: "Amazon Warehouse", amount: 4500 },
+    { id: "tx-2", date: "2026-06-11", merchant: "Shell Fuel Station", amount: 3200 },
+    { id: "tx-3", date: "2026-06-12", merchant: "Uber Ride Logistics", amount: 900 },
+    { id: "tx-4", date: "2026-06-13", merchant: "McDonald's Store", amount: 1200 },
+  ]);
+
+  /* --- DATA FORMAT MAPPERS FOR SELECTOR DROPDOWNS --- */
+  const categoryOptions: CategoryOption[] = categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+  }));
+
+  /* --- ACTION HANDLERS --- */
+  const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
+  const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
+
+  /** * Processes batch updates. Filters modified records from view and
+   * updates the category's transaction count dynamically.
+   */
+  const handleApplyCategory = (categoryId: string, transactionIds: string[]) => {
+    // 1. Remove targeted records from the unassigned transactions pool
+    setUnassignedTransactions((prevTx) => 
+      prevTx.filter((tx) => !transactionIds.includes(tx.id))
+    );
+
+    // 2. Increment transaction counts for the chosen target category token
+    setCategories((prevCats) =>
+      prevCats.map((cat) => {
+        if (cat.id === categoryId) {
+          return {
+            ...cat,
+            transactionCount: cat.transactionCount + transactionIds.length,
+          };
+        }
+        return cat;
+      })
+    );
+
+    // 3. Close the workspace drawer smoothly
+    setIsBulkDrawerOpen(false);
   };
 
-  /* --- LIVE CALCULATION DATA FOR THE CARDS --- */
-  // Simple numbers and labels that match our updated text design parameters
+  const handleOpenCategoryCreationDrawer = () => {
+    console.log("Add category clicked");
+  };
+
+  const handleEditCategory = (category: CategoryRecord) => {
+    console.log("Edit:", category.name);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  /* --- COMPUTED ANALYTICAL VALUE DICTIONARIES --- */
   const liveComputedStats: CategoryStatData = {
     topExpenseName: "Marketing",
     topExpenseAmount: 32000,
@@ -59,7 +121,7 @@ export default function CategoriesPage() {
     fastClimberName: "Electricity & Bills",
     fastClimberGrowthPercentage: 45,
     habitTrackerName: "Food & Groceries",
-    habitTrackerCount: 48
+    habitTrackerCount: 48,
   };
 /* === SECTION 3 END === */
 
@@ -68,8 +130,8 @@ export default function CategoriesPage() {
    ========================================================================== */
   return (
     <div className={styles.categoriesCanvasWrapper}>
-      
-      {/* TOP HEADER BLOCK */}
+
+      {/* HEADER SECTION PANEL */}
       <header className={styles.pageHeaderDeck}>
         <div>
           <h1 className={styles.mainTitleHeading}>Categories</h1>
@@ -77,27 +139,56 @@ export default function CategoriesPage() {
             Create labels to group your transactions, choose custom colors, and see where your money goes.
           </p>
         </div>
-        <button 
-          className={styles.createCategoryButton}
-          onClick={handleOpenCategoryCreationDrawer}
-          aria-label="Create a new category label"
-        >
-          <span>+ Add New Category</span>
-        </button>
+
+        {/* PRIMARY CONTROLLER INTERACTION ACTIONS DECK */}
+        <div className={styles.headerActions}>
+          
+          <button
+            className={styles.bulkActionButton}
+            onClick={handleOpenBulkDrawer}
+            type="button"
+          >
+            <FiAlertCircle size={14} />
+            <span>Unassigned Inbox</span>
+            {unassignedTransactions.length > 0 && (
+              <span className={styles.dynamicWarningBadgeCount}>
+                {unassignedTransactions.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            className={styles.createCategoryButton}
+            onClick={handleOpenCategoryCreationDrawer}
+            type="button"
+          >
+            <FiPlus size={15} />
+            <span>Add New Category</span>
+          </button>
+
+        </div>
       </header>
 
-      {/* COMPONENT 1: THE 4 SIMPLE STAT CARDS */}
+      {/* HORIZONTAL ANALYTICAL TRACK METRICS */}
       <CategoryStats statsData={liveComputedStats} />
 
-      {/* COMPONENT 2: THE MAIN LIST CONTENT SECTION */}
+      {/* CATEGORIES COLLECTION LIST DISPLAY GRID */}
       <main className={styles.mainContentStage}>
-        <div className={styles.placeholderCard}>
-          <p>
-            Your main categories list will show up here next. <br />
-            It will display all your {categories.length} custom categories with buttons to edit or delete them.
-          </p>
-        </div>
+        <CategoryGrid
+          categoriesList={categories}
+          onEditClick={handleEditCategory}
+          onDeleteClick={handleDeleteCategory}
+        />
       </main>
+
+      {/* BACKGROUND INTERACTION BULK RECATEGORIZATION WORKSPACE OVERLAY */}
+      <BulkDrawer
+        isOpen={isBulkDrawerOpen}
+        onClose={handleCloseBulkDrawer}
+        transactions={unassignedTransactions}
+        categories={categoryOptions}
+        onApplyCategory={handleApplyCategory}
+      />
 
     </div>
   );

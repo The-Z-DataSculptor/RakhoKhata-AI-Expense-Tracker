@@ -19,27 +19,19 @@ import styles from "./CategoryStats.module.css";
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
 export interface CategoryStatData {
-  /** 1. Top Expense Category data fields */
   topExpenseName: string;
   topExpenseAmount: number;
   topExpensePercentage: number;
-
-  /** 2. Main Income Source data fields */
   topIncomeName: string;
   topIncomeAmount: number;
   topIncomePercentage: number;
-
-  /** 3. Fastest Growing Category data fields */
   fastClimberName: string;
   fastClimberGrowthPercentage: number;
-
-  /** 4. Most Frequent Category data fields */
   habitTrackerName: string;
   habitTrackerCount: number;
 }
 
 interface CategoryStatsProps {
-  /** Live calculation data passed down from the parent page */
   statsData: CategoryStatData;
 }
 /* === SECTION 2 END === */
@@ -48,10 +40,8 @@ interface CategoryStatsProps {
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function CategoryStats({ statsData }: CategoryStatsProps) {
-  // WHY: Connects to the global state to format currency symbols dynamically ($ or Rs.)
   const { formatAmount } = useCurrency();
 
-  // Basic backup data to prevent errors if the server hasn't loaded the real data yet
   const data = statsData || {
     topExpenseName: "None",
     topExpenseAmount: 0,
@@ -64,87 +54,175 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
     habitTrackerName: "None",
     habitTrackerCount: 0
   };
+
+  // SVG Geometric Ring Constants (Optimized smaller radius for low height)
+  const ringRadius = 20;
+  const ringCircumference = 2 * Math.PI * ringRadius; // ~125.66
+
+  const calculateOffset = (percentageValue: number) => {
+    const safePercent = Math.min(Math.max(percentageValue, 0), 100);
+    return ringCircumference - (safePercent / 100) * ringCircumference;
+  };
+
+  const climberOffset = calculateOffset(Math.min(data.fastClimberGrowthPercentage || 40, 100));
+  const habitOffset = calculateOffset(Math.min((data.habitTrackerCount || 6) * 4, 100));
 /* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: RENDER (JSX) ===
    ========================================================================== */
   return (
-    <div className={styles.statsGridContainer}>
+    <div className={styles.kineticRailContainer}>
       
-      {/* CARD 1: TOP EXPENSE */}
-      <div className={styles.insightCard}>
-        <div className={styles.cardHeaderRow}>
-          <div className={`${styles.iconContainer} ${styles.dangerIconTheme}`}>
-            <FiTrendingDown size={20} />
-          </div>
-          <span className={`${styles.badgeIndicator} ${styles.dangerBadgeTheme}`}>
-            {data.topExpensePercentage}% of total spend
-          </span>
+      {/* NODE 1: TOP EXPENSE */}
+      <div className={styles.railNodeItem}>
+        <div className={styles.backgroundWaveCanvas}>
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className={styles.waveSvg}>
+            <path d="M0,20 Q25,5 50,20 T100,20" fill="none" className={styles.dangerWavePath} strokeWidth="1.5" />
+          </svg>
         </div>
-        <div className={styles.cardMetricContent}>
-          <p className={styles.metricLabel}>Top Expense Category</p>
-          <h3 className={styles.metricHeading}>{data.topExpenseName}</h3>
-          <p className={styles.metricSubtext}>
-            Total Spent: <span className={styles.boldHighlight}>{formatAmount(data.topExpenseAmount, "PKR")}</span>
-          </p>
+
+        <div className={styles.railNodeCore}>
+          <div className={styles.geometricRingAnchor}>
+            <svg width="50" height="50" className={styles.ringSvgCanvas}>
+              <circle className={styles.trackRingCircle} cx="25" cy="25" r={ringRadius} />
+              <circle 
+                className={`${styles.fillRingCircle} ${styles.dangerRingStroke}`} 
+                cx="25" 
+                cy="25" 
+                r={ringRadius} 
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={calculateOffset(data.topExpensePercentage)}
+              />
+            </svg>
+            <div className={`${styles.centerIconPill} ${styles.dangerContext}`}>
+              <FiTrendingDown size={15} />
+            </div>
+          </div>
+
+          <div className={styles.railDataDeck}>
+            <span className={styles.railContextLabel}>Top Expense</span>
+            <h4 className={`${styles.floatingGlassPill} ${styles.dangerTextTint}`}>
+              {data.topExpenseName}
+            </h4>
+            <p className={styles.railValueSubtext}>
+              Spent: <span className={styles.brightAccentHighlight}>{formatAmount(data.topExpenseAmount, "PKR")}</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* CARD 2: MAIN INCOME */}
-      <div className={styles.insightCard}>
-        <div className={styles.cardHeaderRow}>
-          <div className={`${styles.iconContainer} ${styles.successIconTheme}`}>
-            <FiTrendingUp size={20} />
-          </div>
-          <span className={`${styles.badgeIndicator} ${styles.successBadgeTheme}`}>
-            {data.topIncomePercentage}% of total income
-          </span>
+      {/* NODE 2: MAIN INCOME */}
+      <div className={styles.railNodeItem}>
+        <div className={styles.backgroundWaveCanvas}>
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className={styles.waveSvg}>
+            <path d="M0,30 Q25,10 50,25 T100,5" fill="none" className={styles.successWavePath} strokeWidth="1.5" />
+          </svg>
         </div>
-        <div className={styles.cardMetricContent}>
-          <p className={styles.metricLabel}>Main Income Source</p>
-          <h3 className={styles.metricHeading}>{data.topIncomeName}</h3>
-          <p className={styles.metricSubtext}>
-            Total Earned: <span className={styles.boldHighlight}>{formatAmount(data.topIncomeAmount, "PKR")}</span>
-          </p>
+
+        <div className={styles.railNodeCore}>
+          <div className={styles.geometricRingAnchor}>
+            <svg width="50" height="50" className={styles.ringSvgCanvas}>
+              <circle className={styles.trackRingCircle} cx="25" cy="25" r={ringRadius} />
+              <circle 
+                className={`${styles.fillRingCircle} ${styles.successRingStroke}`} 
+                cx="25" 
+                cy="25" 
+                r={ringRadius} 
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={calculateOffset(data.topIncomePercentage)}
+              />
+            </svg>
+            <div className={`${styles.centerIconPill} ${styles.successContext}`}>
+              <FiTrendingUp size={15} />
+            </div>
+          </div>
+
+          <div className={styles.railDataDeck}>
+            <span className={styles.railContextLabel}>Main Income</span>
+            <h4 className={`${styles.floatingGlassPill} ${styles.successTextTint}`}>
+              {data.topIncomeName}
+            </h4>
+            <p className={styles.railValueSubtext}>
+              Inflow: <span className={styles.brightAccentHighlight}>{formatAmount(data.topIncomeAmount, "PKR")}</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* CARD 3: FASTEST GROWING EXPENSE */}
-      <div className={styles.insightCard}>
-        <div className={styles.cardHeaderRow}>
-          <div className={`${styles.iconContainer} ${styles.warningIconTheme}`}>
-            <FiZap size={20} />
-          </div>
-          <span className={`${styles.badgeIndicator} ${styles.warningBadgeTheme}`}>
-            +{data.fastClimberGrowthPercentage}% increase
-          </span>
+      {/* NODE 3: FASTEST GROWING */}
+      <div className={styles.railNodeItem}>
+        <div className={styles.backgroundWaveCanvas}>
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className={styles.waveSvg}>
+            <path d="M0,35 Q30,5 60,25 T100,10" fill="none" className={styles.warningWavePath} strokeWidth="1.5" />
+          </svg>
         </div>
-        <div className={styles.cardMetricContent}>
-          <p className={styles.metricLabel}>Fastest Growing Expense</p>
-          <h3 className={styles.metricHeading}>{data.fastClimberName}</h3>
-          <p className={styles.metricSubtext}>
-            Spending rose the most compared to last month
-          </p>
+
+        <div className={styles.railNodeCore}>
+          <div className={styles.geometricRingAnchor}>
+            <svg width="50" height="50" className={styles.ringSvgCanvas}>
+              <circle className={styles.trackRingCircle} cx="25" cy="25" r={ringRadius} />
+              <circle 
+                className={`${styles.fillRingCircle} ${styles.warningRingStroke}`} 
+                cx="25" 
+                cy="25" 
+                r={ringRadius} 
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={climberOffset}
+              />
+            </svg>
+            <div className={`${styles.centerIconPill} ${styles.warningContext}`}>
+              <FiZap size={15} />
+            </div>
+          </div>
+
+          <div className={styles.railDataDeck}>
+            <span className={styles.railContextLabel}>Fastest Climber</span>
+            <h4 className={`${styles.floatingGlassPill} ${styles.warningTextTint}`}>
+              {data.fastClimberName}
+            </h4>
+            <p className={styles.railValueSubtext}>
+              Surged: <span className={styles.brightAccentHighlight}>+{data.fastClimberGrowthPercentage}%</span>
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* CARD 4: MOST FREQUENTLY USED */}
-      <div className={styles.insightCard}>
-        <div className={styles.cardHeaderRow}>
-          <div className={`${styles.iconContainer} ${styles.infoIconTheme}`}>
-            <FiActivity size={20} />
-          </div>
-          <span className={`${styles.badgeIndicator} ${styles.infoBadgeTheme}`}>
-            {data.habitTrackerCount} times
-          </span>
+      {/* NODE 4: MOST FREQUENT */}
+      <div className={styles.railNodeItem}>
+        <div className={styles.backgroundWaveCanvas}>
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className={styles.waveSvg}>
+            <path d="M0,20 Q20,30 40,10 T100,20" fill="none" className={styles.infoWavePath} strokeWidth="1.5" />
+          </svg>
         </div>
-        <div className={styles.cardMetricContent}>
-          <p className={styles.metricLabel}>Most Frequent Category</p>
-          <h3 className={styles.metricHeading}>{data.habitTrackerName}</h3>
-          <p className={styles.metricSubtext}>
-            The category you added items to most often
-          </p>
+
+        <div className={styles.railNodeCore}>
+          <div className={styles.geometricRingAnchor}>
+            <svg width="50" height="50" className={styles.ringSvgCanvas}>
+              <circle className={styles.trackRingCircle} cx="25" cy="25" r={ringRadius} />
+              <circle 
+                className={`${styles.fillRingCircle} ${styles.infoRingStroke}`} 
+                cx="25" 
+                cy="25" 
+                r={ringRadius} 
+                strokeDasharray={ringCircumference}
+                strokeDashoffset={habitOffset}
+              />
+            </svg>
+            <div className={`${styles.centerIconPill} ${styles.infoContext}`}>
+              <FiActivity size={15} />
+            </div>
+          </div>
+
+          <div className={styles.railDataDeck}>
+            <span className={styles.railContextLabel}>Most Frequent</span>
+            <h4 className={`${styles.floatingGlassPill} ${styles.infoTextTint}`}>
+              {data.habitTrackerName}
+            </h4>
+            <p className={styles.railValueSubtext}>
+              Logged: <span className={styles.brightAccentHighlight}>{data.habitTrackerCount}x</span>
+            </p>
+          </div>
         </div>
       </div>
 

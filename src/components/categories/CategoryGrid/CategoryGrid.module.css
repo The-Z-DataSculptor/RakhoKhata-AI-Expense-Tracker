@@ -1,0 +1,183 @@
+/* src/components/categories/CategoryGrid/CategoryGrid.module.css */
+
+/* ==========================================================================
+   === SECTION 1: RESPONSIVE GRID BOX WRAPPER ===
+   ========================================================================== */
+.gridCanvasWrapper {
+  display: grid;
+  /* Updated from repeat(3, ...) to repeat(4, ...) to place 4 items in a row */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem; /* Slightly reduced gap to look balanced with smaller cards */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   === SECTION 2: CARD BASE BLOCK PLATFORM ===
+   ========================================================================== */
+.categoryCardPlatform {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 14px);
+  padding: 1.25rem; /* Reduced padding from 1.5rem to fix size proportion */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* Balanced spacing adjustments */
+  box-sizing: border-box;
+  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.categoryCardPlatform:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px -8px rgba(16, 4, 63, 0.12);
+}
+
+/* ==========================================================================
+   === SECTION 3: TOP ROW HEADER CIRCLES & BADGES ===
+   ========================================================================== */
+.cardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.iconCircleStage {
+  width: 40px; /* Slightly scaled down from 44px */
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* General Base Type Badges */
+.typeBadge {
+  font-size: 0.68rem; /* Scaled down slightly to fit smaller card widths */
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Color palettes for the badges based on income or expense types */
+.incomeBadge {
+  background-color: var(--success-soft, rgba(22, 163, 74, 0.08));
+  color: var(--color-success, #16a34a);
+}
+
+.expenseBadge {
+  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
+  color: var(--color-danger, #dc2626);
+}
+
+.bothBadge {
+  background-color: var(--primary-soft, rgba(97, 59, 191, 0.08));
+  color: var(--color-primary, #613bbf);
+}
+
+/* ==========================================================================
+   === SECTION 4: CARD INFO CONTENT TEXT ===
+   ========================================================================== */
+.cardInfoBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.categoryLabelTitle {
+  font-size: 1.05rem; /* Adjusted down from 1.15rem to safely prevent text truncation */
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.counterLogText {
+  font-size: 0.8rem;
+  color: var(--text-muted, #7e7a9c);
+  margin: 0;
+}
+
+.darkTextCount {
+  font-weight: 700;
+  color: var(--text-secondary, #4e4a6b);
+}
+
+/* ==========================================================================
+   === SECTION 5: LOWER ROW BUTTON CONTROLS ===
+   ========================================================================== */
+.cardActionsDeck {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: auto; /* Pushes action block to the bottom boundary evenly */
+  border-top: 1px dashed var(--border-color, #e5e1f4);
+  padding-top: 0.85rem;
+}
+
+.actionButton {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: transparent;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+/* Interactive hover colorings for item edit vs item deletion */
+.editButton {
+  color: var(--text-secondary, #4e4a6b);
+}
+.editButton:hover {
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+  border-color: var(--color-primary, #613bbf);
+  color: var(--color-primary, #613bbf);
+}
+
+.deleteButton {
+  color: var(--text-muted, #7e7a9c);
+}
+.deleteButton:hover {
+  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
+  border-color: var(--color-danger, #dc2626);
+  color: var(--color-danger, #dc2626);
+}
+
+/* ==========================================================================
+   === SECTION 6: RESPONSIVE DISPLAY LAYOUT SCALING ===
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .gridCanvasWrapper {
+    /* Scale down to 3 columns on smaller desktops or open sidebars */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .gridCanvasWrapper {
+    /* Scale down to 2 columns on tablets */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 580px) {
+  .gridCanvasWrapper {
+    /* Scale down to 1 column on mobile layout structures */
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+}

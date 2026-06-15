@@ -1,3 +1,5 @@
+/* src/components/layout/DashboardNavbar.module.css */
+
 /* ==========================================================================
    === SECTION 1: TOP NAVIGATION ROW CONTAINER ===
    ========================================================================== */
@@ -356,3 +358,4 @@
     color: var(--text-secondary);
   }
 }
+/* === SECTION 5 END === */

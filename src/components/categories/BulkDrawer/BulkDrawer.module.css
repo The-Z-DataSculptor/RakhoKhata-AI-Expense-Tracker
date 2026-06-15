@@ -1,0 +1,348 @@
+/* src/components/categories/BulkDrawer/BulkDrawer.module.css */
+
+/* ==========================================================================
+   === SECTION 1: OVERLAY BACKDROP ===
+   ========================================================================== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 4, 63, 0.4); /* Custom deep slate premium translucent overlay blend */
+  backdrop-filter: blur(4px); /* Premium background glass diffusion tracking */
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: DRAWER PANEL ===
+   ========================================================================== */
+.drawerPanel {
+  width: 440px;
+  height: 100%;
+  background-color: var(--bg-surface, #ffffff);
+  border-left: 1px solid var(--border-color, #e5e1f4);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -10px 0 30px rgba(16, 4, 63, 0.06);
+  animation: slideInDrawer 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInDrawer {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: HEADER ARCHITECTURE ===
+   ========================================================================== */
+.drawerHeader {
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-surface, #ffffff);
+}
+
+.title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, #7e7a9c);
+  margin: 0.25rem 0 0 0;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #7e7a9c);
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+  border: 1px solid transparent;
+}
+
+.closeButton:hover {
+  color: var(--color-danger, #dc2626);
+  background-color: rgba(220, 38, 38, 0.05);
+  border-color: rgba(220, 38, 38, 0.1);
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: UTILITY BARS ===
+   ========================================================================== */
+.utilityControlBar {
+  padding: 0.65rem 1.25rem;
+  background-color: var(--background, #f9f8ff);
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.bulkSelectToggleBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-primary, #613bbf);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: var(--transition-fast);
+}
+
+.bulkSelectToggleBtn:hover {
+  background-color: rgba(97, 59, 191, 0.06);
+}
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: CONTAINER LEDGER PLATFORMS ===
+   ========================================================================== */
+.listContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background-color: var(--background, #f9f8ff);
+}
+
+.rowCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg, 10px);
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+  gap: 0.85rem;
+}
+
+.rowCard:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 4px 12px rgba(16, 4, 63, 0.03);
+}
+
+.activeRowCard {
+  border-color: var(--color-primary, #613bbf);
+  background-color: rgba(97, 59, 191, 0.02);
+  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.04);
+}
+
+/* Custom Checklist Elements */
+.customCheckIndicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--border-color, #e5e1f4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  background-color: var(--bg-surface, #ffffff);
+  flex-shrink: 0;
+}
+
+.rowCard:hover .customCheckIndicator {
+  border-color: var(--color-primary, #613bbf);
+}
+
+.checkedIndicatorState {
+  border-color: var(--color-primary, #613bbf) !important;
+  background-color: var(--color-primary, #613bbf);
+}
+
+.checkInnerCoreMark {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background-color: #ffffff;
+}
+
+.metaDeck {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.merchantLabel {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dateStampText {
+  font-size: 0.72rem;
+  color: var(--text-muted, #7e7a9c);
+  margin-top: 0.15rem;
+}
+
+.amountDisplayBadge {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  flex-shrink: 0;
+}
+
+/* Empty State Styles */
+.emptyStateDeck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  margin: auto 0;
+}
+
+.emptyIconPill {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: rgba(97, 59, 191, 0.05);
+  color: var(--color-primary, #613bbf);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.emptyStateDeck h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.35rem 0;
+}
+
+.emptyStateDeck p {
+  font-size: 0.8rem;
+  color: var(--text-muted, #7e7a9c);
+  margin: 0;
+  max-width: 240px;
+  line-height: 1.4;
+}
+/* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: WORKSPACE ACTION REGIONS ===
+   ========================================================================== */
+.actionBarStage {
+  border-top: 1px solid var(--border-color, #e5e1f4);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: var(--bg-surface, #ffffff);
+  box-shadow: 0 -8px 24px rgba(16, 4, 63, 0.04);
+}
+
+.actionBarTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selectionCountBadge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-primary, #613bbf);
+  background-color: rgba(97, 59, 191, 0.06);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+.actionExecutionRow {
+  display: flex;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.workspaceDropdownSelect {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--background, #f9f8ff);
+  color: var(--text-primary, #10043f);
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.workspaceDropdownSelect:focus {
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.08);
+}
+
+.workspaceApplyExecuteBtn {
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  border: none;
+  padding: 0 1.25rem;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+  white-space: nowrap;
+}
+
+.workspaceApplyExecuteBtn:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.workspaceApplyExecuteBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.workspaceApplyExecuteBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background-color: var(--text-muted, #7e7a9c);
+}
+/* === SECTION 6 END === */
+
+/* ==========================================================================
+   === SECTION 7: MOBILE RESPONSIVE ADAPTATIONS ===
+   ========================================================================== */
+@media (max-width: 500px) {
+  .drawerPanel {
+    width: 100%;
+    border-left: none;
+  }
+}
+/* === SECTION 7 END === */

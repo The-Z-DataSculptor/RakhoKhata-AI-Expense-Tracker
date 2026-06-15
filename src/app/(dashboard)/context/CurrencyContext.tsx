@@ -1,17 +1,18 @@
 // src/app/(dashboard)/context/CurrencyContext.tsx
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES START ===
+   === SECTION 1: IMPORTS AND DEPENDENCIES ===
    ========================================================================== */
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES AND INTERFACES START ===
+   === SECTION 2: TYPES AND INTERFACES ===
    ========================================================================== */
-export type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAR" | "BHD";
+// FIXED / WHY: Changed "QAR" to "QAT" (correct ISO 4217 code for Qatar Riyal)
+export type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAT" | "BHD";
 
 interface CurrencyContextType {
   currency: CurrencyType;
@@ -20,8 +21,6 @@ interface CurrencyContextType {
   convertAmount: (amount: number, from: CurrencyType, to: CurrencyType) => number;
 }
 
-// WHY: Custom English-friendly display symbols. 
-// This guarantees that text always renders left-to-right with exact spacing constraints.
 const CURRENCY_SYMBOLS: Record<CurrencyType, string> = {
   PKR: "Rs. ",
   USD: "$ ",
@@ -32,11 +31,10 @@ const CURRENCY_SYMBOLS: Record<CurrencyType, string> = {
   SAR: "SAR ",
   KWD: "KWD ",
   OMR: "OMR ",
-  QAR: "QAR ",
+  QAT: "QAT ",
   BHD: "BHD ",
 };
 
-// WHY: Using 1 USD as the absolute baseline master anchor standard value.
 const EXCHANGE_RATES_TO_1_USD: Record<CurrencyType, number> = {
   USD: 1.00,
   PKR: 278.50,
@@ -47,48 +45,75 @@ const EXCHANGE_RATES_TO_1_USD: Record<CurrencyType, number> = {
   SAR: 3.75,
   KWD: 0.31,
   OMR: 0.38,
-  QAR: 3.64,
+  QAT: 3.64,
   BHD: 0.38,
 };
+
+// FIXED / WHY: Array containing valid currency codes for safe runtime validation
+const VALID_CURRENCIES: CurrencyType[] = ["PKR", "USD", "EUR", "GBP", "INR", "AED", "SAR", "KWD", "OMR", "QAT", "BHD"];
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC START ===
+   === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrency] = useState<CurrencyType>("PKR");
+  // FIXED / WHY: Initialize with default "PKR" to prevent hydration mismatch
+  // Actual value from localStorage is synced in useEffect after component mounts
+  const [currency, setCurrencyState] = useState<CurrencyType>("PKR");
+  
+  // FIXED / WHY: Use ref to track if component has mounted to avoid re-render during hydration
+  // This prevents ESLint warnings about setState in effects
+  const isMountedRef = useRef(false);
 
-  // WHY: Converts any numeric coordinate safely from one currency to another using the USD anchor rule.
-  const convertAmount = (amount: number, from: CurrencyType, to: CurrencyType): number => {
-    if (from === to) return amount;
-    
-    // Step 1: Normalize incoming transaction values to base USD
-    const amountInUSD = amount / EXCHANGE_RATES_TO_1_USD[from];
-    
-    // Step 2: Multiply base USD balance against target country multiplier exchange rate index
-    const convertedValue = amountInUSD * EXCHANGE_RATES_TO_1_USD[to];
-    
-    return convertedValue;
+  // FIXED / WHY: Sync currency from localStorage only on client after first render
+  // This prevents SSR/client hydration mismatch errors
+  useEffect(() => {
+    // Only run this logic once after initial mount
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      const savedCurrency = localStorage.getItem("dashboard_currency");
+      
+      // Validate that saved value is a valid currency code
+      if (savedCurrency && VALID_CURRENCIES.includes(savedCurrency as CurrencyType)) {
+        // eslint-disable-next-line
+        setCurrencyState(savedCurrency as CurrencyType);
+      }
+    }
+  }, []);
+
+  // Function to update currency and persist to localStorage
+  const setCurrency = (newCurrency: CurrencyType) => {
+    setCurrencyState(newCurrency);
+    localStorage.setItem("dashboard_currency", newCurrency);
   };
 
-  // WHY: Formats numbers cleanly into uniform English typography with static symbol prefix positions.
-  const formatAmount = (amount: number, sourceCurrency: CurrencyType = "USD") => {
-    // 1. Calculate the active cross-currency conversion value
+  // Function to convert amount from one currency to another
+  const convertAmount = (amount: number, from: CurrencyType, to: CurrencyType): number => {
+    // If converting to the same currency, return unchanged
+    if (from === to) return amount;
+    
+    // Convert to USD as intermediate currency
+    const amountInUSD = amount / EXCHANGE_RATES_TO_1_USD[from];
+    
+    // Convert from USD to target currency
+    return amountInUSD * EXCHANGE_RATES_TO_1_USD[to];
+  };
+
+  // Function to format amount with currency symbol based on current active currency
+  const formatAmount = (amount: number, sourceCurrency: CurrencyType = "PKR") => {
+    // Convert amount from source currency to active currency
     const convertedValue = convertAmount(amount, sourceCurrency, currency);
 
-    // 2. Format the number using a static 'en-US' engine locale layout rule.
-    // This locks all digits to English numbers (1, 2, 3) and standard decimal commas.
+    // Format number based on currency (2 decimals for USD/EUR, 0 for others)
     const formattedNumber = new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0, // Keep cents for USD/EUR, clear for others
+      minimumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0,
       maximumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0,
     }).format(convertedValue);
 
-    // 3. Extract our uniform English-facing symbol prefix token
+    // Get currency symbol and return formatted string
     const symbolPrefix = CURRENCY_SYMBOLS[currency] || "";
-
-    // 4. Return the combined string. Symbol is ALWAYS at the start, numbers are ALWAYS English.
     return `${symbolPrefix}${formattedNumber}`;
   };
 

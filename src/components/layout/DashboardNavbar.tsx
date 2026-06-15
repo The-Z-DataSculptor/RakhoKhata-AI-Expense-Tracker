@@ -1,3 +1,5 @@
+// src/components/layout/DashboardNavbar.tsx
+
 "use client";
 
 /* ==========================================================================

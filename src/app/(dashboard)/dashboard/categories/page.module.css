@@ -1,33 +1,72 @@
 /* src/app/(dashboard)/dashboard/categories/page.module.css */
 
 /* ==========================================================================
-   === SECTION 1: MAIN WRAPPER LAYOUT ===
+   === SECTION 1: HEADER CONTROLLER ACTIONS LAYER ===
+   ========================================================================== */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Premium alert panel selector matching existing workspace styles */
+.bulkActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background-color: rgba(217, 119, 6, 0.05); /* Soft transparent amber tint */
+  color: var(--color-warning, #d97706);
+  border: 1px solid rgba(217, 119, 6, 0.15);
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.bulkActionButton:hover {
+  transform: translateY(-1px);
+  background-color: rgba(217, 119, 6, 0.09);
+  border-color: var(--color-warning, #d97706);
+}
+
+.dynamicWarningBadgeCount {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ffffff;
+  background-color: var(--color-warning, #d97706);
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  margin-left: 0.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   === SECTION 2: ARCHITECTURE VIEW CANVAS BOUNDS ===
    ========================================================================== */
 .categoriesCanvasWrapper {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Keeps a steady vertical space between each dashboard element */
+  gap: 1.5rem;
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
+  padding-bottom: 3.5rem;
   box-sizing: border-box;
-  padding-bottom: 3.5rem; /* Leaves clean empty space at the bottom of the page */
 }
 
-/* ==========================================================================
-   === SECTION 2: TOP HEADER DESIGN ===
-   ========================================================================== */
 .pageHeaderDeck {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  box-sizing: border-box;
   background-color: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 14px);
+  border-radius: var(--radius-lg, 12px);
   padding: 1.5rem;
-  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+  box-shadow: var(--shadow-soft, 0 4px 20px -4px rgba(16, 4, 63, 0.04));
 }
 
 .mainTitleHeading {
@@ -43,71 +82,58 @@
   color: var(--text-muted, #7e7a9c);
   margin: 0;
   font-weight: 500;
+  line-height: 1.4;
 }
 
-/* Add Button Styles */
 .createCategoryButton {
   display: inline-flex;
   align-items: center;
-  padding: 0.75rem 1.5rem;
+  gap: 0.4rem;
+  padding: 0.65rem 1.25rem;
   background-color: var(--color-primary, #613bbf);
   color: #ffffff;
   border: 1px solid transparent;
   border-radius: var(--radius-md, 8px);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
   transition: var(--transition-fast, all 0.2s ease-in-out);
   box-shadow: 0 4px 12px rgba(97, 59, 191, 0.15);
+  cursor: pointer;
 }
 
 .createCategoryButton:hover {
-  opacity: 0.92;
   transform: translateY(-1px);
+  opacity: 0.92;
+  box-shadow: 0 6px 16px rgba(97, 59, 191, 0.2);
 }
 
-.createCategoryButton:active {
-  transform: translateY(0);
-}
-
-/* ==========================================================================
-   === SECTION 3: DOWNSTREAM STAGE FOR THE LIST ===
-   ========================================================================== */
 .mainContentStage {
   width: 100%;
 }
 
-/* Temporary middle card design */
-.placeholderCard {
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px dashed var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 14px);
-  padding: 5rem 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
-}
-
-.placeholderCard p {
-  font-size: 0.88rem;
-  color: var(--text-muted, #7e7a9c);
-  font-weight: 600;
-  line-height: 1.6;
-}
-
 /* ==========================================================================
-   === SECTION 4: MOBILE RESPONSIVE LAYOUT ADJUSTMENTS ===
+   === SECTION 3: MOBILE ADAPTIVE BREAKPOINTS ===
    ========================================================================== */
 @media (max-width: 768px) {
   .pageHeaderDeck {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.25rem;
+    padding: 1.25rem;
   }
 
-  .createCategoryButton {
+  .headerActions {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .createCategoryButton,
+  .bulkActionButton {
     width: 100%;
     justify-content: center;
+    padding: 0.75rem 1rem;
+    box-sizing: border-box;
   }
 }
+/* === SECTION 3 END === */

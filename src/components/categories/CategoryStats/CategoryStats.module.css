@@ -1,166 +1,208 @@
 /* src/components/categories/CategoryStats/CategoryStats.module.css */
 
 /* ==========================================================================
-   === SECTION 1: MASTER CONTAINER FLEX GRID ===
+   === SECTION 1: COMPACT HORIZONTAL RAIL CANVAS ===
    ========================================================================== */
-.statsGridContainer {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.25rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* ==========================================================================
-   === SECTION 2: CARD BASE GLASSMORPHIC CORE LAYOUT ===
-   ========================================================================== */
-.insightCard {
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 14px);
-  padding: 1.25rem;
-  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+.kineticRailContainer {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  box-sizing: border-box;
-  transition: var(--transition-fast, all 0.2s ease-in-out);
-}
-
-.insightCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 35px -8px rgba(16, 4, 63, 0.12);
-}
-
-/* ==========================================================================
-   === SECTION 3: TOP ROW HEADER ELEMENTS ===
-   ========================================================================== */
-.cardHeaderRow {
-  display: flex;
+  flex-direction: row; /* Arranges everything horizontally to minimize vertical space */
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.5rem;
+  background-color: var(--bg-surface, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--border-color, #e5e1f4);
+  box-shadow: var(--shadow-soft, 0 4px 20px -4px rgba(16, 4, 63, 0.04));
+  overflow: hidden;
+}
+
+.railNodeItem {
+  position: relative;
+  flex: 1 1 25%;
+  min-width: 180px;
+  box-sizing: border-box;
+  z-index: 2;
+  padding: 0.25rem 0.5rem;
+}
+
+.railNodeCore {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
   width: 100%;
 }
 
-.iconContainer {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+/* ==========================================================================
+   === SECTION 2: SCALED PROGRESS RINGS ===
+   ========================================================================== */
+.geometricRingAnchor {
+  position: relative;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.badgeIndicator {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.3rem 0.6rem;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+.ringSvgCanvas {
+  transform: rotate(-90deg);
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
-/* ==========================================================================
-   === SECTION 4: INTERACTIVE PALETTES (THEME-AWARE ON THE CORE TOKENS) ===
-   ========================================================================== */
-/* Red/Danger Accent Colors for Expenses */
-.dangerIconTheme {
-  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
-  color: var(--color-danger, #dc2626);
-}
-.dangerBadgeTheme {
-  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
-  color: var(--color-danger, #dc2626);
+.trackRingCircle {
+  fill: none;
+  stroke: var(--surface-outline, rgba(229, 225, 244, 0.5));
+  stroke-width: 2px;
 }
 
-/* Green/Success Accent Colors for Income */
-.successIconTheme {
-  background-color: var(--success-soft, rgba(22, 163, 74, 0.08));
-  color: var(--color-success, #16a34a);
-}
-.successBadgeTheme {
-  background-color: var(--success-soft, rgba(22, 163, 74, 0.08));
-  color: var(--color-success, #16a34a);
+.fillRingCircle {
+  fill: none;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s ease-in-out;
 }
 
-/* Amber/Warning Accent Colors for Rising Trends */
-.warningIconTheme {
-  background-color: var(--warning-soft, rgba(217, 119, 6, 0.1));
-  color: var(--color-warning, #d97706);
-}
-.warningBadgeTheme {
-  background-color: var(--warning-soft, rgba(217, 119, 6, 0.1));
-  color: var(--color-warning, #d97706);
+.dangerRingStroke  { stroke: var(--color-danger, #dc2626); }
+.successRingStroke { stroke: var(--color-success, #16a34a); }
+.warningRingStroke { stroke: var(--color-warning, #d97706); }
+.infoRingStroke    { stroke: var(--color-info, #2563eb); }
+
+.centerIconPill {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(16, 4, 63, 0.04);
 }
 
-/* Blue/Info Accent Colors for General Counters */
-.infoIconTheme {
-  background-color: var(--info-soft, rgba(37, 99, 235, 0.08));
-  color: var(--color-info, #2563eb);
-}
-.infoBadgeTheme {
-  background-color: var(--info-soft, rgba(37, 99, 235, 0.08));
-  color: var(--color-info, #2563eb);
-}
+.dangerContext  { background-color: var(--bg-surface, #ffffff); color: var(--color-danger, #dc2626); border: 1px solid rgba(220, 38, 38, 0.12); }
+.successContext { background-color: var(--bg-surface, #ffffff); color: var(--color-success, #16a34a); border: 1px solid rgba(22, 163, 74, 0.12); }
+.warningContext { background-color: var(--bg-surface, #ffffff); color: var(--color-warning, #d97706); border: 1px solid rgba(217, 119, 6, 0.12); }
+.infoContext    { background-color: var(--bg-surface, #ffffff); color: var(--color-info, #2563eb); border: 1px solid rgba(37, 99, 235, 0.12); }
 
 /* ==========================================================================
-   === SECTION 5: TEXT SCALING AND LABELS ===
+   === SECTION 3: COMPACT DATA DECKS & GLASS PILLS ===
    ========================================================================== */
-.cardMetricContent {
+.railDataDeck {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
   width: 100%;
 }
 
-.metricLabel {
-  font-size: 0.72rem;
-  font-weight: 600;
+.railContextLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
   text-transform: uppercase;
   color: var(--text-muted, #7e7a9c);
   letter-spacing: 0.5px;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.1rem;
 }
 
-.metricHeading {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--text-primary, #10043f);
-  margin: 0 0 0.4rem 0;
-  letter-spacing: -0.02em;
+.floatingGlassPill {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin: 0 0 0.15rem 0;
+  padding: 0.1rem 0.5rem;
+  border-radius: 20px;
+  background-color: transparent;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: -0.01em;
+  transition: transform 0.2s ease;
 }
 
-.metricSubtext {
-  font-size: 0.82rem;
-  color: var(--text-secondary, #4e4a6b);
+.dangerTextTint   { color: var(--color-danger, #dc2626); }
+.successTextTint  { color: var(--color-success, #16a34a); }
+.warningTextTint  { color: var(--color-warning, #d97706); }
+.infoTextTint     { color: var(--color-info, #2563eb); }
+
+.railValueSubtext {
+  font-size: 0.75rem;
+  color: var(--text-muted, #7e7a9c);
   margin: 0;
 }
 
-.boldHighlight {
+.brightAccentHighlight {
   font-weight: 700;
   color: var(--text-primary, #10043f);
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE BREAKPOINTS FOR MOBILE SCREENS ===
+   === SECTION 4: BACKGROUND KINETIC WAVES ===
    ========================================================================== */
-@media (max-width: 1200px) {
-  .statsGridContainer {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+.backgroundWaveCanvas {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.waveSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.dangerWavePath, .successWavePath, .warningWavePath, .infoWavePath {
+  transition: all 0.25s ease-in-out;
+  opacity: 0.06;
+}
+.dangerWavePath  { stroke: var(--color-danger, #dc2626); }
+.successWavePath { stroke: var(--color-success, #16a34a); }
+.warningWavePath { stroke: var(--color-warning, #d97706); }
+.infoWavePath    { stroke: var(--color-info, #2563eb); }
+
+/* Hover Triggers: Accentuate individual horizontal stops cleanly */
+.railNodeItem:hover .giantRingAnchor {
+  transform: scale(1.06);
+}
+
+.railNodeItem:hover .floatingGlassPill {
+  transform: translateX(2px);
+}
+
+.railNodeItem:hover .dangerWavePath,
+.railNodeItem:hover .successWavePath,
+.railNodeItem:hover .warningWavePath,
+.railNodeItem:hover .infoWavePath {
+  stroke-width: 2px;
+  opacity: 0.4;
+}
+
+/* ==========================================================================
+   === SECTION 5: RESPONSIVE BREAKPOINTS ===
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .kineticRailContainer {
+    flex-wrap: wrap; /* Wraps into a tight 2x2 on tablet viewports safely */
+    padding: 1rem;
+  }
+  .railNodeItem {
+    flex: 1 1 45%;
   }
 }
 
-@media (max-width: 640px) {
-  .statsGridContainer {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-    gap: 1rem;
-  }
-  
-  .metricHeading {
-    font-size: 1.2rem;
+@media (max-width: 540px) {
+  /* Shifts into clean individual line heights on small phone dimensions */
+  .railNodeItem {
+    flex: 1 1 100%;
   }
 }

@@ -38,10 +38,13 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
     const futureDate = new Date();
     futureDate.setDate(today.getDate() + 30);
 
-    const formatDate = (date: Date) => date.toISOString().split("T");
+    const formatDate = (date: Date) => date.toISOString().split("T")[0];
+    const id = window.setTimeout(() => {
+      setStartDate(formatDate(today));
+      setEndDate(formatDate(futureDate));
+    }, 0);
 
-    setStartDate(formatDate(today));
-    setEndDate(formatDate(futureDate));
+    return () => clearTimeout(id);
   }, [isOpen]);
 
   // Reset all input fields when closing the modal

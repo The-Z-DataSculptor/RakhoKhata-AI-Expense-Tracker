@@ -6,7 +6,7 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { categoryFormSchema, CategoryFormValues } from "@/schemas/categories";
-import { CategoryRecord } from "../page";
+import { CategoryRecord } from "../../../app/(dashboard)/dashboard/categories/page";
 import styles from "./CategoryForm.module.css";
 
 interface CategoryFormProps {

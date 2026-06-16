@@ -1,18 +1,18 @@
-/* src/app/(dashboard)/dashboard/transactions/_components/TransactionForm.module.css */
-
+/* src/app/(dashboard)/dashboard/transactions/_components/TransactionForm.module.css*/
 /* ==========================================================================
    === SECTION 1: CONTAINER CARD & HEADERS ===
    ========================================================================== */
 .formCard {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg, 14px);
+  border-radius: var(--radius-lg);
   padding: 2.25rem;
   box-shadow: var(--shadow-soft);
   position: relative;
   overflow: hidden;
 }
 
+/* Decorative top accent bar using theme gradient tokens */
 .formCard::before {
   content: "";
   position: absolute;
@@ -39,6 +39,7 @@
   color: var(--text-muted);
   margin-top: 0.25rem;
 }
+/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: GRID LAYOUT MECHANICS ===
@@ -55,6 +56,7 @@
   gap: 1.25rem;
 }
 
+/* Stack columns on small screens */
 @media (max-width: 640px) {
   .formRowSideBySide {
     grid-template-columns: 1fr;
@@ -74,40 +76,45 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: PREMIUM INPUT FIELD ENHANCEMENTS ===
    ========================================================================== */
+/* Base text input */
 .inputField {
   width: 100%;
   padding: 0.75rem 1rem;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background-color: var(--background);
   color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 500;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   box-sizing: border-box;
 }
 
+/* Focus state uses primary soft tint from theme */
 .inputField:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
 
+/* Segmented control wrapper */
 .segmentedControl {
   display: flex;
   background-color: var(--background);
   border: 1px solid var(--border-color);
   padding: 0.25rem;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   height: 100%;
   min-height: 43px;
   align-items: stretch;
 }
 
+/* Individual segment button */
 .segmentOption {
   flex: 1;
   background: transparent;
@@ -115,11 +122,12 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-muted);
-  border-radius: calc(var(--radius-md, 8px) - 2px);
+  border-radius: calc(var(--radius-md) - 2px);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
+/* Active states use semantic soft tints and color tokens */
 .segmentActiveExpense {
   background-color: var(--danger-soft);
   color: var(--color-danger);
@@ -132,6 +140,7 @@
   font-weight: 700;
 }
 
+/* Select wrapper and field */
 .selectWrapper {
   position: relative;
   width: 100%;
@@ -140,7 +149,7 @@
 .selectField {
   width: 100%;
   padding: 0.75rem 1rem;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background-color: var(--background);
   color: var(--text-primary);
@@ -154,7 +163,7 @@
   background-repeat: no-repeat;
   background-position: right 1rem center;
   background-size: 14px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .selectField:focus {
@@ -162,6 +171,7 @@
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
 
+/* Currency input container positions the badge absolutely */
 .currencyInputContainer {
   position: relative;
   display: flex;
@@ -169,10 +179,11 @@
   width: 100%;
 }
 
+/* Numeric currency input with extra right padding for badge */
 .inputFieldCurrency {
   width: 100%;
   padding: 0.75rem 3.5rem 0.75rem 1rem;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background-color: var(--background);
   color: var(--text-primary);
@@ -180,7 +191,7 @@
   font-weight: 600;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .inputFieldCurrency:focus {
@@ -188,6 +199,7 @@
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
 
+/* Currency badge sits on the right inside the input container */
 .currencyBadge {
   position: absolute;
   right: 0.75rem;
@@ -201,17 +213,18 @@
   pointer-events: none;
 }
 
+/* Error text uses semantic danger color */
 .errorMessage {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-danger);
   margin-top: 0.1rem;
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: ACTIONS & BUTTONS (SIMPLIFIED) ===
    ========================================================================== */
-
 .buttonGroup {
   display: flex;
   flex-wrap: wrap;
@@ -221,18 +234,18 @@
   width: 100%;
 }
 
-/* Both buttons share the same dimensions */
+/* Both buttons share the same dimensions for visual balance */
 .submitBtn,
 .cancelBtn {
   flex: 0 0 auto;
-  width: 160px;           /* Same width for both – adjust as needed */
+  width: 160px;
   padding: 0.75rem 0;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
   font-weight: 600;
   text-align: center;
   cursor: pointer;
-  transition: all var(--transition-fast, 0.2s ease);
+  transition: all var(--transition-fast);
   border: 1px solid transparent;
   box-sizing: border-box;
 }
@@ -240,8 +253,8 @@
 /* Primary button (solid) */
 .submitBtn {
   background-color: var(--color-primary);
-  color: var(--text-on-primary, #ffffff);
-  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-on-primary);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 .submitBtn:hover:not(:disabled) {
@@ -270,17 +283,18 @@
   transform: none;
 }
 
-/* Mobile: stack buttons vertically */
+/* Mobile: stack buttons vertically for narrow screens */
 @media (max-width: 480px) {
   .buttonGroup {
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
   }
-  
+
   .submitBtn,
   .cancelBtn {
     width: 100%;
     max-width: 280px;
   }
 }
+/* === SECTION 4 END === */

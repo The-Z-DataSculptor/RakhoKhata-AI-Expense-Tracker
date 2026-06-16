@@ -10,8 +10,8 @@
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
-  width: auto; /* Changed from 100% to auto to prevent structural overflow layout issues */
-  justify-content: flex-end; /* Pushes the switcher cleanly to the right side of the deck */
+  width: auto;
+  justify-content: flex-end;
 }
 
 .contextLabel {
@@ -25,13 +25,14 @@
 
 
 /* ==========================================
-   === SECTION 2: THE PILL CONTAINER TRAY ===
+   === SECTION 2: THE BOXY CONTAINER TRAY ===
    ========================================== */
 .pillTray {
   display: inline-flex;
-  background-color: var(--surface-outline);
+  background-color: var(--surface-muted, #f4f4f9);
   padding: 0.25rem;
-  border-radius: 30px; /* Generates a perfectly round pill capsule shape */
+  /* CHANGED: Replaced capsule rounding with crisp dashboard card radius values */
+  border-radius: var(--radius-md, 8px);
   border: 1px solid var(--border-color);
 }
 /* === SECTION 2 END === */
@@ -41,15 +42,15 @@
    === SECTION 3: INDIVIDUAL INTERACTION INTERFACES ===
    ========================================== */
 .pillButton {
-  /* FIXED: Added a concrete transparent backdrop default baseline for perfect color switching transitions */
   background-color: transparent;
   border: none;
-  padding: 0.4rem 1rem;
+  padding: 0.5rem 1rem;
   font-size: 0.825rem;
-  font-weight: 600;
+  font-weight: 700; /* Bumped to 700 for better legibility on flat layouts */
   color: var(--text-secondary);
-  border-radius: 20px;
-  transition: background-color 0.2s ease, color 0.2s ease; /* Robust explicit fallback token layout speed */
+  /* CHANGED: Fits perfectly into the outer box tray wrapper layout */
+  border-radius: calc(var(--radius-md, 8px) - 2px);
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
   cursor: pointer;
 }
@@ -60,12 +61,12 @@
   background-color: var(--primary-soft-hover);
 }
 
-/* ACTIVE BADGE STATE: 
-   Uses your core brand token to clearly float above the surface */
+/* ACTIVE STATE: Clean box cutout presentation layer floating look */
 .pillActive {
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
-  box-shadow: 0 2px 8px var(--primary-soft);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--color-primary);
+  /* CHANGED: Replaced fuzzy radial glow with clean shadow token parameters */
+  box-shadow: var(--shadow-soft, 0 2px 4px rgba(0, 0, 0, 0.04));
 }
 /* === SECTION 3 END === */
 
@@ -78,19 +79,19 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
-    width: 100%; /* Spans full width layout on smaller viewports */
+    width: 100%;
   }
   
   .pillTray {
     display: flex;
-    width: 100%; /* Spans full width on small phone environments */
+    width: 100%;
     box-sizing: border-box;
   }
   
   .pillButton {
-    flex: 1; /* Stretches tabs equally across mobile screen sizes */
+    flex: 1;
     text-align: center;
-    padding: 0.5rem 0.5rem; /* Balanced horizontal breathing box matching custom sizes */
+    padding: 0.5rem 0.5rem;
   }
 }
 /* === SECTION 4 END === */

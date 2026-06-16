@@ -1,0 +1,69 @@
+/* src/components/budgets/BudgetHeader/BudgetHeader.module.css */
+
+.headerContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  margin-bottom: 1.75rem;
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.controlsGroup {
+  display: flex;
+  align-items: center; /* Forces the time switcher and button to stay perfectly centered on the same line */
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* Fixes the layout mistake by clearing out the bottom margin of the time switcher inside this container */
+.controlsGroup > div {
+  margin-bottom: 0 !important;
+}
+
+/* ==========================================================================
+   === ACTION BUTTONS ===
+   ========================================================================== */
+.createBudgetBtn {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary, #ffffff);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.15s ease);
+}
+
+.createBudgetBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.createBudgetBtn:active {
+  transform: translateY(0);
+}

@@ -11,8 +11,10 @@ import TransactionLedgerGrid, { TransactionRecord } from "@/components/transacti
 import TransactionPagination from "@/components/transactions/TransactionPagination/TransactionPagination";
 import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/BulkActionToolBelt";
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
-import { TransactionForm } from "./_components/TransactionForm";
 import styles from "./page.module.css";
+
+// Updated path targeting your centralized forms layout folder
+import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -249,7 +251,7 @@ export default function TransactionsPage() {
               onAddTransaction={handleUpsertTransaction}
               availableCategories={categories}
               initialData={editingTransaction}
-              onCancel={handleClosePopupModal} /* Bound clean wrapper handler */
+              onCancel={handleClosePopupModal}
             />
           </div>
         </div>

@@ -1,0 +1,49 @@
+/* K:\Developer\expense-tracker\src\app\(dashboard)\dashboard\budgets\page.module.css */
+
+.pageViewport {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 1.5rem 2rem;
+  background-color: transparent;
+  box-sizing: border-box;
+}
+
+.contentContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  width: 100%;
+}
+
+/* ==========================================================================
+   === temporary DEVELOPMENT SECTIONS LAYOUT ===
+   ========================================================================== */
+.sectionFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 240px;
+  background-color: var(--surface-muted, #f8f9fc);
+  border: 2px dashed var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 2rem;
+}
+
+.fallbackText {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+}
+
+.subFallbackText {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+  max-width: 440px;
+  line-height: 1.5;
+}

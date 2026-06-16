@@ -7,7 +7,9 @@ import { FiAlertCircle, FiPlus } from "react-icons/fi";
 import CategoryStats, { CategoryStatData } from "@/components/categories/CategoryStats/CategoryStats";
 import CategoryGrid from "@/components/categories/CategoryGrid/CategoryGrid";
 import BulkDrawer, { TransactionRecord, CategoryOption } from "@/components/categories/BulkDrawer/BulkDrawer";
-import { CategoryForm } from "./_components/CategoryForm";
+
+// Updated path targeting your new centralized forms layout
+import { CategoryForm } from "@/components/forms/CategoryForm/CategoryForm";
 
 import styles from "./page.module.css";
 
@@ -33,7 +35,7 @@ export default function CategoriesPage() {
   const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // FIXED: New state pointer tracking which data model is actively undergoing modifications
+  // State pointer tracking which data model is actively undergoing modifications
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
 
   const [unassignedTransactions, setUnassignedTransactions] = useState<TransactionRecord[]>([
@@ -55,19 +57,19 @@ export default function CategoriesPage() {
     setIsBulkDrawerOpen(false);
   };
 
-  // FIXED: Open modal cleanly for a fresh brand new category
+  // Open modal cleanly for a fresh brand new category
   const handleOpenCreateModal = () => {
     setEditingCategory(null); // Clear out old values context
     setIsModalOpen(true);
   };
 
-  // FIXED: Closes modal overlay deck and flushes reference pointers
+  // Closes modal overlay deck and flushes reference pointers
   const handleClosePopupModal = () => {
     setIsModalOpen(false);
     setEditingCategory(null);
   };
 
-  // FIXED: Handles both updates and creation saves within a unified processor function
+  // Handles both updates and creation saves within a unified processor function
   const handleUpsertCategory = (savedCategory: CategoryRecord) => {
     setCategories((prevList) => {
       const exists = prevList.some((c) => c.id === savedCategory.id);
@@ -82,7 +84,7 @@ export default function CategoriesPage() {
     handleClosePopupModal();
   };
 
-  // FIXED: Captures target category payload data element directly from the grid card trigger click
+  // Captures target category payload data element directly from the grid card trigger click
   const handleEditCategory = (category: CategoryRecord) => {
     setEditingCategory(category);
     setIsModalOpen(true);
@@ -112,7 +114,6 @@ export default function CategoriesPage() {
             {unassignedTransactions.length > 0 && <span className={styles.dynamicWarningBadgeCount}>{unassignedTransactions.length}</span>}
           </button>
 
-          {/* FIXED: Swapped to explicit handler layout call */}
           <button className={styles.createCategoryButton} onClick={handleOpenCreateModal} type="button">
             <FiPlus size={15} />
             <span>Add New Category</span>
@@ -123,7 +124,6 @@ export default function CategoriesPage() {
       <CategoryStats statsData={liveComputedStats} />
 
       <main className={styles.mainContentStage}>
-        {/* FIXED: Wire up our new trigger tracking function directly into the custom grid */}
         <CategoryGrid
           categoriesList={categories}
           onEditClick={handleEditCategory}
@@ -131,14 +131,14 @@ export default function CategoriesPage() {
         />
       </main>
 
-      {/* FIXED: Render popup overlay layer structure, passing data dependencies smoothly */}
+      {/* Render popup overlay layer structure */}
       {isModalOpen && (
         <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
             <CategoryForm 
               onAddCategory={handleUpsertCategory} 
               initialData={editingCategory}
-              onCancel={handleClosePopupModal} /* Ready to hook up to your form internal triggers */
+              onCancel={handleClosePopupModal}
             />
           </div>
         </div>

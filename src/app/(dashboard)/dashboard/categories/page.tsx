@@ -1,33 +1,16 @@
 // src/app/(dashboard)/dashboard/categories/page.tsx
-
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
 import React, { useState } from "react";
 import { FiAlertCircle, FiPlus } from "react-icons/fi";
 
-// WHY: Imports the structural stats ribbon overview
-import CategoryStats, {
-  CategoryStatData,
-} from "@/components/categories/CategoryStats/CategoryStats";
-
-// WHY: Imports interactive list grids representing available target tokens
+import CategoryStats, { CategoryStatData } from "@/components/categories/CategoryStats/CategoryStats";
 import CategoryGrid from "@/components/categories/CategoryGrid/CategoryGrid";
-
-// WHY: Multi-selection utility workspace sheet interface component 
-import BulkDrawer, {
-  TransactionRecord,
-  CategoryOption,
-} from "@/components/categories/BulkDrawer/BulkDrawer";
+import BulkDrawer, { TransactionRecord, CategoryOption } from "@/components/categories/BulkDrawer/BulkDrawer";
+import { CategoryForm } from "./_components/CategoryForm";
 
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -36,13 +19,9 @@ export interface CategoryRecord {
   accentColor: string;
   transactionCount: number;
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
 export default function CategoriesPage() {
-  /* --- CATEGORIES MATRIX STATE --- */
+  /* --- STATES MATRIX --- */
   const [categories, setCategories] = useState<CategoryRecord[]>([
     { id: "cat-201", name: "Salary", type: "income", iconSlug: "FiBriefcase", accentColor: "#16a34a", transactionCount: 12 },
     { id: "cat-202", name: "Marketing", type: "expense", iconSlug: "FiTarget", accentColor: "#613bbf", transactionCount: 34 },
@@ -51,129 +30,100 @@ export default function CategoriesPage() {
     { id: "cat-205", name: "Electricity & Bills", type: "expense", iconSlug: "FiZap", accentColor: "#d97706", transactionCount: 15 },
   ]);
 
-  /* --- BULK DRAWER RENDER STATUS STATE --- */
   const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // FIXED: New state pointer tracking which data model is actively undergoing modifications
+  const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
 
-  /* --- MUTABLE UNASSIGNED DATA ARRAYS STREAMS --- */
   const [unassignedTransactions, setUnassignedTransactions] = useState<TransactionRecord[]>([
     { id: "tx-1", date: "2026-06-10", merchant: "Amazon Warehouse", amount: 4500 },
     { id: "tx-2", date: "2026-06-11", merchant: "Shell Fuel Station", amount: 3200 },
-    { id: "tx-3", date: "2026-06-12", merchant: "Uber Ride Logistics", amount: 900 },
-    { id: "tx-4", date: "2026-06-13", merchant: "McDonald's Store", amount: 1200 },
   ]);
 
-  /* --- DATA FORMAT MAPPERS FOR SELECTOR DROPDOWNS --- */
-  const categoryOptions: CategoryOption[] = categories.map((cat) => ({
-    id: cat.id,
-    name: cat.name,
-  }));
+  const categoryOptions: CategoryOption[] = categories.map((cat) => ({ id: cat.id, name: cat.name }));
 
-  /* --- ACTION HANDLERS --- */
+  /* --- HANDLERS --- */
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
-  /** * Processes batch updates. Filters modified records from view and
-   * updates the category's transaction count dynamically.
-   */
   const handleApplyCategory = (categoryId: string, transactionIds: string[]) => {
-    // 1. Remove targeted records from the unassigned transactions pool
-    setUnassignedTransactions((prevTx) => 
-      prevTx.filter((tx) => !transactionIds.includes(tx.id))
-    );
-
-    // 2. Increment transaction counts for the chosen target category token
+    setUnassignedTransactions((prevTx) => prevTx.filter((tx) => !transactionIds.includes(tx.id)));
     setCategories((prevCats) =>
-      prevCats.map((cat) => {
-        if (cat.id === categoryId) {
-          return {
-            ...cat,
-            transactionCount: cat.transactionCount + transactionIds.length,
-          };
-        }
-        return cat;
-      })
+      prevCats.map((cat) => cat.id === categoryId ? { ...cat, transactionCount: cat.transactionCount + transactionIds.length } : cat)
     );
-
-    // 3. Close the workspace drawer smoothly
     setIsBulkDrawerOpen(false);
   };
 
-  const handleOpenCategoryCreationDrawer = () => {
-    console.log("Add category clicked");
+  // FIXED: Open modal cleanly for a fresh brand new category
+  const handleOpenCreateModal = () => {
+    setEditingCategory(null); // Clear out old values context
+    setIsModalOpen(true);
   };
 
+  // FIXED: Closes modal overlay deck and flushes reference pointers
+  const handleClosePopupModal = () => {
+    setIsModalOpen(false);
+    setEditingCategory(null);
+  };
+
+  // FIXED: Handles both updates and creation saves within a unified processor function
+  const handleUpsertCategory = (savedCategory: CategoryRecord) => {
+    setCategories((prevList) => {
+      const exists = prevList.some((c) => c.id === savedCategory.id);
+      if (exists) {
+        // Edit Mode path: map over array and swap out item
+        return prevList.map((c) => (c.id === savedCategory.id ? savedCategory : c));
+      }
+      // Create Mode path: prepend new item to list array
+      return [savedCategory, ...prevList];
+    });
+    
+    handleClosePopupModal();
+  };
+
+  // FIXED: Captures target category payload data element directly from the grid card trigger click
   const handleEditCategory = (category: CategoryRecord) => {
-    console.log("Edit:", category.name);
+    setEditingCategory(category);
+    setIsModalOpen(true);
   };
 
-  const handleDeleteCategory = (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-  };
+  const handleDeleteCategory = (id: string) => setCategories((prev) => prev.filter((c) => c.id !== id));
 
-  /* --- COMPUTED ANALYTICAL VALUE DICTIONARIES --- */
   const liveComputedStats: CategoryStatData = {
-    topExpenseName: "Marketing",
-    topExpenseAmount: 32000,
-    topExpensePercentage: 42,
-    topIncomeName: "Salary",
-    topIncomeAmount: 185000,
-    topIncomePercentage: 75,
-    fastClimberName: "Electricity & Bills",
-    fastClimberGrowthPercentage: 45,
-    habitTrackerName: "Food & Groceries",
-    habitTrackerCount: 48,
+    topExpenseName: "Marketing", topExpenseAmount: 32000, topExpensePercentage: 42,
+    topIncomeName: "Salary", topIncomeAmount: 185000, topIncomePercentage: 75,
+    fastClimberName: "Electricity & Bills", fastClimberGrowthPercentage: 45,
+    habitTrackerName: "Food & Groceries", habitTrackerCount: 48,
   };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
   return (
     <div className={styles.categoriesCanvasWrapper}>
-
-      {/* HEADER SECTION PANEL */}
       <header className={styles.pageHeaderDeck}>
         <div>
           <h1 className={styles.mainTitleHeading}>Categories</h1>
-          <p className={styles.subTitleDescription}>
-            Create labels to group your transactions, choose custom colors, and see where your money goes.
-          </p>
+          <p className={styles.subTitleDescription}>Create labels to group your transactions, choose custom colors, and see where your money goes.</p>
         </div>
 
-        {/* PRIMARY CONTROLLER INTERACTION ACTIONS DECK */}
         <div className={styles.headerActions}>
-          
-          <button
-            className={styles.bulkActionButton}
-            onClick={handleOpenBulkDrawer}
-            type="button"
-          >
+          <button className={styles.bulkActionButton} onClick={handleOpenBulkDrawer} type="button">
             <FiAlertCircle size={14} />
             <span>Unassigned Inbox</span>
-            {unassignedTransactions.length > 0 && (
-              <span className={styles.dynamicWarningBadgeCount}>
-                {unassignedTransactions.length}
-              </span>
-            )}
+            {unassignedTransactions.length > 0 && <span className={styles.dynamicWarningBadgeCount}>{unassignedTransactions.length}</span>}
           </button>
 
-          <button
-            className={styles.createCategoryButton}
-            onClick={handleOpenCategoryCreationDrawer}
-            type="button"
-          >
+          {/* FIXED: Swapped to explicit handler layout call */}
+          <button className={styles.createCategoryButton} onClick={handleOpenCreateModal} type="button">
             <FiPlus size={15} />
             <span>Add New Category</span>
           </button>
-
         </div>
       </header>
 
-      {/* HORIZONTAL ANALYTICAL TRACK METRICS */}
       <CategoryStats statsData={liveComputedStats} />
 
-      {/* CATEGORIES COLLECTION LIST DISPLAY GRID */}
       <main className={styles.mainContentStage}>
+        {/* FIXED: Wire up our new trigger tracking function directly into the custom grid */}
         <CategoryGrid
           categoriesList={categories}
           onEditClick={handleEditCategory}
@@ -181,7 +131,19 @@ export default function CategoriesPage() {
         />
       </main>
 
-      {/* BACKGROUND INTERACTION BULK RECATEGORIZATION WORKSPACE OVERLAY */}
+      {/* FIXED: Render popup overlay layer structure, passing data dependencies smoothly */}
+      {isModalOpen && (
+        <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
+          <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
+            <CategoryForm 
+              onAddCategory={handleUpsertCategory} 
+              initialData={editingCategory}
+              onCancel={handleClosePopupModal} /* Ready to hook up to your form internal triggers */
+            />
+          </div>
+        </div>
+      )}
+
       <BulkDrawer
         isOpen={isBulkDrawerOpen}
         onClose={handleCloseBulkDrawer}
@@ -189,8 +151,6 @@ export default function CategoriesPage() {
         categories={categoryOptions}
         onApplyCategory={handleApplyCategory}
       />
-
     </div>
   );
 }
-/* === SECTION 4 END === */

@@ -6,12 +6,12 @@
 .ledgerCanvasWrapper {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Balanced grid spacing mapping all modular sub-components cleanly */
+  gap: 1.25rem;
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
   box-sizing: border-box;
-  padding-bottom: 3.5rem; /* FIXED/WHY: Creates a clean breathing space to give the footer a floating look */
+  padding-bottom: 2rem; 
 }
 /* === SECTION 1 END === */
 
@@ -20,26 +20,101 @@
    ========================================================================== */
 .mainContentStage {
   width: 100%;
-  margin-top: 0.25rem; /* Small micro-alignment offset separating control bars from headers */
 }
 
-/* Retaining placeholderCard definition in module mapping to safely accommodate multi-view variants */
-.placeholderCard {
+.paginationControlRowDeck {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.capacitySelectorFlexCluster {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  justify-content: flex-end;
+}
+
+.capacityLabelText {
+  color: var(--text-secondary, #4e4a6b);
+  font-weight: 600;
+}
+
+.nativeCapacitySelectDropdown {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color, #e5e1f4);
   background-color: var(--bg-surface, #ffffff);
-  border: 1px dashed var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 14px);
-  padding: 4.5rem 1.5rem;
+  color: var(--text-primary, #10043f);
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+}
+
+.nativeCapacitySelectDropdown:focus {
+  border-color: var(--color-primary);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: OVERLAY POPUP MODAL STYLES ===
+   ========================================================================== */
+.modalOverlayBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(16, 4, 63, 0.45);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
+  z-index: 9999;
+  animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.placeholderCard p {
-  font-size: 0.88rem;
-  color: var(--text-muted, #7e7a9c);
-  font-weight: 600;
-  letter-spacing: 0.01em;
+.modalContentCard {
+  width: 100%;
+  max-width: 460px;
+  background-color: var(--bg-surface, #ffffff);
+  border-radius: var(--radius-lg, 14px);
+  position: relative;
+  box-shadow: 0 20px 50px -12px rgba(16, 4, 63, 0.25);
+  animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  box-sizing: border-box;
 }
-/* === SECTION 2 END === */
+
+/* Strips out the duplicate inner shadows inside the modal canvas component container */
+.modalContentCard :global(.TransactionForm_formCard__2mN8x),
+.modalContentCard > div {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleFormIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .modalContentCard {
+    width: calc(100% - 2rem);
+    margin: 1rem;
+  }
+}
+/* === SECTION 3 END === */

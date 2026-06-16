@@ -1,0 +1,286 @@
+/* src/app/(dashboard)/dashboard/transactions/_components/TransactionForm.module.css */
+
+/* ==========================================================================
+   === SECTION 1: CONTAINER CARD & HEADERS ===
+   ========================================================================== */
+.formCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg, 14px);
+  padding: 2.25rem;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.formCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent-light) 100%);
+}
+
+.headerArea {
+  margin-bottom: 2rem;
+}
+
+.formTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.formSubtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ==========================================================================
+   === SECTION 2: GRID LAYOUT MECHANICS ===
+   ========================================================================== */
+.formLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formRowSideBySide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .formRowSideBySide {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ==========================================================================
+   === SECTION 3: PREMIUM INPUT FIELD ENHANCEMENTS ===
+   ========================================================================== */
+.inputField {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color);
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.inputField:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.segmentedControl {
+  display: flex;
+  background-color: var(--background);
+  border: 1px solid var(--border-color);
+  padding: 0.25rem;
+  border-radius: var(--radius-md, 8px);
+  height: 100%;
+  min-height: 43px;
+  align-items: stretch;
+}
+
+.segmentOption {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: calc(var(--radius-md, 8px) - 2px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segmentActiveExpense {
+  background-color: var(--danger-soft);
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.segmentActiveIncome {
+  background-color: var(--success-soft);
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.selectField {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color);
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e7a9c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.selectField:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.currencyInputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputFieldCurrency {
+  width: 100%;
+  padding: 0.75rem 3.5rem 0.75rem 1rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color);
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inputFieldCurrency:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.currencyBadge {
+  position: absolute;
+  right: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.errorMessage {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-danger);
+  margin-top: 0.1rem;
+}
+
+/* ==========================================================================
+   === SECTION 4: ACTIONS & BUTTONS (SIMPLIFIED) ===
+   ========================================================================== */
+
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+/* Both buttons share the same dimensions */
+.submitBtn,
+.cancelBtn {
+  flex: 0 0 auto;
+  width: 160px;           /* Same width for both – adjust as needed */
+  padding: 0.75rem 0;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.2s ease);
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+/* Primary button (solid) */
+.submitBtn {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary, #ffffff);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Secondary button (outline) */
+.cancelBtn {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Disabled state for both */
+.submitBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Mobile: stack buttons vertically */
+@media (max-width: 480px) {
+  .buttonGroup {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .submitBtn,
+  .cancelBtn {
+    width: 100%;
+    max-width: 280px;
+  }
+}

@@ -1,52 +1,5 @@
 /* src/app/(dashboard)/dashboard/categories/page.module.css */
 
-/* ==========================================================================
-   === SECTION 1: HEADER CONTROLLER ACTIONS LAYER ===
-   ========================================================================== */
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* Premium alert panel selector matching existing workspace styles */
-.bulkActionButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
-  background-color: rgba(217, 119, 6, 0.05); /* Soft transparent amber tint */
-  color: var(--color-warning, #d97706);
-  border: 1px solid rgba(217, 119, 6, 0.15);
-  border-radius: var(--radius-md, 8px);
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: var(--transition-fast, all 0.2s ease);
-}
-
-.bulkActionButton:hover {
-  transform: translateY(-1px);
-  background-color: rgba(217, 119, 6, 0.09);
-  border-color: var(--color-warning, #d97706);
-}
-
-.dynamicWarningBadgeCount {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #ffffff;
-  background-color: var(--color-warning, #d97706);
-  padding: 0.1rem 0.45rem;
-  border-radius: 10px;
-  margin-left: 0.15rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ==========================================================================
-   === SECTION 2: ARCHITECTURE VIEW CANVAS BOUNDS ===
-   ========================================================================== */
 .categoriesCanvasWrapper {
   display: flex;
   flex-direction: column;
@@ -85,6 +38,46 @@
   line-height: 1.4;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bulkActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background-color: rgba(217, 119, 6, 0.05);
+  color: var(--color-warning, #d97706);
+  border: 1px solid rgba(217, 119, 6, 0.15);
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.bulkActionButton:hover {
+  transform: translateY(-1px);
+  background-color: rgba(217, 119, 6, 0.09);
+  border-color: var(--color-warning, #d97706);
+}
+
+.dynamicWarningBadgeCount {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ffffff;
+  background-color: var(--color-warning, #d97706);
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  margin-left: 0.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .createCategoryButton {
   display: inline-flex;
   align-items: center;
@@ -112,7 +105,58 @@
 }
 
 /* ==========================================================================
-   === SECTION 3: MOBILE ADAPTIVE BREAKPOINTS ===
+   === NEW MODAL POPUP BACKDROP CSS RULES ===
+   ========================================================================== */
+.modalOverlayBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(16, 4, 63, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalContentCard {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--bg-surface, #ffffff);
+  border-radius: var(--radius-lg, 14px);
+  position: relative;
+  box-shadow: 0 20px 50px -12px rgba(16, 4, 63, 0.25);
+  animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  box-sizing: border-box;
+}
+
+/* Strips form card down so it integrates seamlessly inside popup card margins */
+.modalContentCard :global(.CategoryForm_formCard__3pXmK) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleFormIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ==========================================================================
+   === MOBILE RESPONSIVE STRUCTURES BREAKPOINTS ===
    ========================================================================== */
 @media (max-width: 768px) {
   .pageHeaderDeck {
@@ -132,8 +176,11 @@
   .bulkActionButton {
     width: 100%;
     justify-content: center;
-    padding: 0.75rem 1rem;
     box-sizing: border-box;
   }
+  
+  .modalContentCard {
+    width: calc(100% - 2rem);
+    margin: 1rem;
+  }
 }
-/* === SECTION 3 END === */

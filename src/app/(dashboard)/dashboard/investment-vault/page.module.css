@@ -1,0 +1,43 @@
+/* src/app/(dashboard)/dashboard/investment-vault/page.module.css */
+
+/* ==========================================================================
+   === SECTION 1: SYSTEM STAGE CANVAS SCROLLER ===
+   ========================================================================== */
+.vaultMainPageWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 1.75rem;
+  padding-bottom: 3rem;
+  position: relative;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: MODAL OVERLAY STYLES ===
+   ========================================================================== */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(16, 4, 63, 0.5); /* Semi-transparent backdrop */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modalContent {
+  width: 100%;
+  max-width: 550px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+/* === SECTION 2 END === */

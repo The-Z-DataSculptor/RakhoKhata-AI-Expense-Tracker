@@ -1,0 +1,384 @@
+/* src/components/investments/VaultAssetTable/VaultAssetTable.module.css */
+
+.container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  letter-spacing: -0.02em;
+}
+
+/* 4-COLUMN STRUCTURAL GRID */
+.tableHeader {
+  display: grid;
+  grid-template-columns: 1.3fr 1.2fr 1.5fr 1.2fr 0.8fr;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.alignRight {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.assetList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.assetCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* CARDS LEADING EDGE VISUAL ACCENTS */
+.profitCardTheme { border-left: 4px solid var(--color-success); }
+.lossCardTheme { border-left: 4px solid var(--color-danger); }
+
+.activeCard {
+  border-color: var(--color-primary);
+}
+
+.rowGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 1.2fr 1.5fr 1.2fr 0.8fr;
+  padding: 1.25rem 1.25rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.rowGrid:hover {
+  background-color: var(--primary-soft-faint);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+}
+
+/* 1. ASSET NAME STYLING */
+.assetIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.identityTextStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.assetName {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ticker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* 2 & 3. DATA TEXT STACKS */
+.dataStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.primaryNumber {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.inlineTickerSymbol {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.secondaryLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.primaryValueNumber {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.inlineValueContext {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.secondarySpentLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* 4. PROGRESS STACKS */
+.cleanProgressStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.progressAmount {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.progressPercentage {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.profitText { color: var(--color-success); }
+.lossText { color: var(--color-danger); }
+
+/* CONTROLS BUTTON CLUSTERS */
+.actionsGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.iconBtn {
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+}
+
+.iconBtn:hover {
+  background-color: var(--text-primary);
+  color: var(--bg-surface);
+  border-color: var(--text-primary);
+}
+
+.accordionIndicatorArrow {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 0.25rem;
+}
+
+.arrowRotated {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+/* EXPANDABLE LOG RECORDS BOXES */
+.drawerContent {
+  background-color: var(--surface-muted);
+  border-top: 1px solid var(--border-color);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.journalMemoBox {
+  background-color: var(--surface-highlight);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  overflow: hidden;
+}
+
+.journalLeftBorder {
+  width: 4px;
+  background-color: var(--color-accent-light);
+}
+
+.journalBody {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.journalTitleBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.journalQuote {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.historySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.historySectionTitleLine {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.historySectionTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.timelineStepCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stepTitle {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.stepDate {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.stepMetricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+}
+
+.miniDataCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stepMetaLabel {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.stepMetaValue {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.profitTextLabel { color: var(--color-success); }
+.lossTextLabel { color: var(--color-danger); }
+
+.stepNoteParagraph {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.stepMemoInlineTag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-right: 0.25rem;
+  background-color: var(--surface-outline);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+/* RESPONSIVE MEDIA BREAKPOINTS */
+@media (max-width: 960px) {
+  .tableHeader, .rowGrid {
+    grid-template-columns: 1.5fr 1fr 1.2fr 100px;
+  }
+  .tableHeader div:nth-child(3), .rowGrid div:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .tableHeader { display: none; }
+  .rowGrid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .rowGrid div:nth-child(3), .rowGrid div:nth-child(4) { display: none; }
+}

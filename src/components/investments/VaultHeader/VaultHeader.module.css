@@ -1,0 +1,104 @@
+/* src/components/investments/VaultHeader/VaultHeader.module.css */
+
+.headerLayoutRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1.5rem 2rem;
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-soft);
+  gap: 1.5rem;
+  transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+.titleMetaBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mainTitleHeading {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+}
+
+.subtextMetaDescription {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.actionControlWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.addAssetRecordBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  transition: var(--transition-fast);
+}
+
+.addAssetRecordBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.addAssetRecordBtn:active {
+  transform: translateY(0);
+}
+
+/* VECTOR ALIGNMENT DESIGN MECHANIC */
+.buttonIconGraphic {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.buttonTextLabel {
+  line-height: 1;
+}
+
+/* RESPONSIVE LAYOUT BRACKETS */
+@media (max-width: 640px) {
+  .headerLayoutRow {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.25rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .actionControlWrapper {
+    width: 100%;
+  }
+
+  .addAssetRecordBtn {
+    width: 100%;
+    padding: 0.85rem 1.5rem;
+  }
+}

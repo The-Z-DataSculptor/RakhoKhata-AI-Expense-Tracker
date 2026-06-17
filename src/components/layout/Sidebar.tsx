@@ -46,7 +46,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Transactions", href: "/dashboard/transactions", icon: <FiActivity size={18} />, group: "core" },
   { label: "Categories", href: "/dashboard/categories", icon: <FiFolder size={18} />, group: "core" },
   { label: "Budgets", href: "/dashboard/budgets", icon: <FiPieChart size={18} />, group: "core" },
-  { label: "Investment Vault", href: "/dashboard/vault", icon: <FiShield size={18} />, group: "growth" },
+  { label: "Investment Vault", href: "/dashboard/investment-vault", icon: <FiShield size={18} />, group: "growth" },
   { label: "AI Insights", href: "/dashboard/insights", icon: <FiCpu size={18} />, group: "intelligence" },
 ];
 /* === SECTION 2 END === */

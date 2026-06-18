@@ -1,4 +1,5 @@
-/* src/app/(dashboard)/dashboard/transactions/_components/TransactionForm.module.css*/
+/* K:\Developer\expense-tracker\src\components\forms\TransactionForm\TransactionForm.module.css */
+
 /* ==========================================================================
    === SECTION 1: CONTAINER CARD & HEADERS ===
    ========================================================================== */
@@ -223,7 +224,7 @@
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: ACTIONS & BUTTONS (SIMPLIFIED) ===
+   === SECTION 4: ACTIONS & BUTTONS ===
    ========================================================================== */
 .buttonGroup {
   display: flex;

@@ -1,10 +1,17 @@
 // src/components/forms/CreateBudgetModal/CreateBudgetModal.tsx
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./CreateBudgetModal.module.css";
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 interface CreateBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,7 +25,11 @@ export interface NewBudgetFormData {
   endDate: string;
   isCustomPeriod: boolean;
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
 export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetModalProps) {
   // Pull currency type string and safe data converters from global context state
   const { currency, convertAmount } = useCurrency();
@@ -61,7 +72,7 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
 
     const rawEnteredValue = parseFloat(limitAmount);
 
-    // FIXED: Convert the input value from the ACTIVE view currency back to baseline PKR units 
+    // Convert the input value from the ACTIVE view currency back to baseline PKR units 
     // to ensure database arrays store uniform telemetry values.
     const normalizedBaseAmount = convertAmount(rawEnteredValue, currency, "PKR");
 
@@ -77,7 +88,11 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
   };
 
   if (!isOpen) return null;
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <div className={styles.modalOverlay} onClick={handleClose}>
       <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
@@ -85,7 +100,7 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
         {/* Header Section */}
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>Create Budget</h2>
-          <button className={styles.closeButton} onClick={handleClose}>
+          <button type="button" className={styles.closeButton} onClick={handleClose}>
             &times;
           </button>
         </div>
@@ -110,7 +125,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Budget Limit</label>
             <div className={styles.currencyInputWrapper}>
-              {/* FIXED: Swapped hardcoded 'PKR' string token for live active navigation context variable label */}
               <span className={styles.currencySymbol}>{currency}</span>
               <input
                 type="number"
@@ -182,3 +196,4 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
     </div>
   );
 }
+/* === SECTION 4 END === */

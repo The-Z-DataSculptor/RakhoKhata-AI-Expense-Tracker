@@ -1,5 +1,8 @@
 /* src/components/investments/VaultHeader/VaultHeader.module.css */
 
+/* ==========================================================================
+   === SECTION 1: MASTER FLEXIBLE CONTAINER LAYOUT ===
+   ========================================================================== */
 .headerLayoutRow {
   display: flex;
   justify-content: space-between;
@@ -13,7 +16,11 @@
   gap: 1.5rem;
   transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TEXT BLOCK GRAPHICS TYPOGRAPHY ===
+   ========================================================================== */
 .titleMetaBlock {
   display: flex;
   flex-direction: column;
@@ -36,12 +43,18 @@
   line-height: 1.4;
   letter-spacing: -0.01em;
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: BUTTON INTERACTIVE MECHANICS ===
+   ========================================================================== */
 .actionControlWrapper {
   display: flex;
   align-items: center;
+  gap: 1rem; /* Added gap to space out the multiple buttons cleanly */
 }
 
+/* Primary "Add Asset" Button Styling */
 .addAssetRecordBtn {
   display: inline-flex;
   align-items: center;
@@ -57,6 +70,7 @@
   letter-spacing: -0.01em;
   white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
   transition: var(--transition-fast);
 }
 
@@ -70,7 +84,37 @@
   transform: translateY(0);
 }
 
-/* VECTOR ALIGNMENT DESIGN MECHANIC */
+/* Secondary "Enable Lock" Outline Button Styling */
+.lockSetupBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.lockSetupBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  background-color: var(--surface-muted);
+  transform: translateY(-1px);
+}
+
+.lockSetupBtn:active {
+  transform: translateY(0);
+}
+
+/* Common Vector Alignment Design Mechanic */
 .buttonIconGraphic {
   width: 14px;
   height: 14px;
@@ -83,8 +127,11 @@
 .buttonTextLabel {
   line-height: 1;
 }
+/* === SECTION 3 END === */
 
-/* RESPONSIVE LAYOUT BRACKETS */
+/* ==========================================================================
+   === SECTION 4: RESPONSIVE SCREEN ADAPTATIONS ===
+   ========================================================================== */
 @media (max-width: 640px) {
   .headerLayoutRow {
     flex-direction: column;
@@ -95,10 +142,15 @@
 
   .actionControlWrapper {
     width: 100%;
+    flex-direction: column-reverse; /* Stacks the secondary button below the primary on mobile */
+    gap: 0.75rem;
   }
 
-  .addAssetRecordBtn {
+  .addAssetRecordBtn,
+  .lockSetupBtn {
     width: 100%;
     padding: 0.85rem 1.5rem;
+    justify-content: center;
   }
 }
+/* === SECTION 4 END === */

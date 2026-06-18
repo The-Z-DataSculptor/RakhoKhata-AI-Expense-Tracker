@@ -1,17 +1,11 @@
-// src/app/(dashboard)/dashboard/transactions/_components/TransactionForm.tsx
+// K:\Developer\expense-tracker\src\components\forms\TransactionForm\TransactionForm.tsx
+"use client";
+
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-"use client";
-
-import React, { useCallback, useEffect, useMemo } from "react";
-import {
-  useForm,
-  useWatch,
-  type SubmitHandler,
-  type FieldError,
-  type Resolver,
-} from "react-hook-form";
+import React, { useCallback, useEffect } from "react";
+import { useForm, useWatch, type SubmitHandler, type FieldError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionFormSchema, type TransactionFormValues } from "@/schemas/transactions";
 import type { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
@@ -29,6 +23,7 @@ interface TransactionFormProps {
   onCancel?: () => void;
 }
 /* === SECTION 2 END === */
+
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
@@ -38,18 +33,14 @@ export function TransactionForm({
   initialData,
   onCancel,
 }: TransactionFormProps) {
-  // Flag to indicate edit vs create mode
   const isEditMode = Boolean(initialData);
-
-  // Get active currency from context
   const { currency } = useCurrency();
 
-  // FIXED: Simplified down to a guaranteed clean primitive string instead of an implicit array reference
-  const defaultDateString = useMemo(() => {
-    return new Date().toISOString().split("T")[0]; // Returns raw "YYYY-MM-DD" string
-  }, []);
+  // Create a clean "YYYY-MM-DD" string for today's default date
+  const defaultDateString = new Date().toISOString().substring(0, 10);
 
-  // Initialize form with explicitly typed parameters
+  // FIX: We use TransactionFormValues directly from the Zod schema. 
+  // No local interfaces and no 'as any' casts are needed anymore.
   const {
     register,
     handleSubmit,
@@ -58,7 +49,7 @@ export function TransactionForm({
     control,
     formState: { errors, isSubmitting },
   } = useForm<TransactionFormValues>({
-    resolver: zodResolver(transactionFormSchema), // FIXED: Removed "as unknown" type mask to let TS infer validation shapes naturally
+    resolver: zodResolver(transactionFormSchema),
     mode: "onBlur",
     defaultValues: {
       date: defaultDateString,
@@ -69,14 +60,14 @@ export function TransactionForm({
     },
   });
 
-  // Watch the "type" field to update segmented control UI
+  // Watch the type field to update our UI buttons dynamically
   const currentType = useWatch({
     control,
     name: "type",
     defaultValue: "EXPENSE",
-  }) as "EXPENSE" | "INCOME";
+  });
 
-  // Populate form when initialData changes (edit mode) or reset to defaults (create mode)
+  // Handle setting up data if we are editing an old transaction
   useEffect(() => {
     if (initialData) {
       reset({
@@ -88,7 +79,7 @@ export function TransactionForm({
       });
     } else {
       reset({
-        date: defaultDateString, /* FIXED: Explicitly maps a clean string item fallback pointer */
+        date: defaultDateString,
         description: "",
         category: "",
         type: "EXPENSE",
@@ -97,7 +88,7 @@ export function TransactionForm({
     }
   }, [initialData, reset, defaultDateString]);
 
-  // FIXED: Explicitly bounded custom handler interface values to ensure full compatibility with handleSubmit engine
+  // Handle valid form submission
   const onSubmit: SubmitHandler<TransactionFormValues> = useCallback(
     async (data) => {
       try {
@@ -108,13 +99,13 @@ export function TransactionForm({
           date: data.date,
           description: data.description.trim(),
           category: data.category ? data.category.toLowerCase() : "",
-          amount: Number(data.amount),
-          type: (data.type || "EXPENSE").toLowerCase() as "income" | "expense",
+          amount: data.amount, // Guaranteed to be a number by Zod
+          type: data.type.toLowerCase() as "income" | "expense",
         };
 
         onAddTransaction(compiledRecord);
 
-        // Clear form only when creating a new transaction
+        // Reset the form if we were creating a brand new transaction
         if (!initialData) {
           reset({
             date: defaultDateString,
@@ -131,16 +122,16 @@ export function TransactionForm({
     [initialData, onAddTransaction, reset, defaultDateString]
   );
 
-  // Helper to extract error message from FieldError
+  // Helper safely grabs error message text
   const getErrorMessage = (error: FieldError | undefined): string | undefined => {
     if (!error) return undefined;
     return error.message;
   };
-  /* === SECTION 3 END === */
+/* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <div className={styles.formCard}>
       <div className={styles.headerArea}>
@@ -238,6 +229,7 @@ export function TransactionForm({
                 step="0.01"
                 className={styles.inputFieldCurrency}
                 placeholder="0.00"
+                /* FIX: valueAsNumber ensures the HTML input sends a number to React Hook Form */
                 {...register("amount", { valueAsNumber: true })}
               />
               <span className={styles.currencyBadge}>{currency}</span>

@@ -1,0 +1,173 @@
+/* src/components/investments/PinSetupModal/PinSetupModal.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MODAL OVERLAY AND CONTAINER ===
+   ========================================================================== */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(9, 5, 29, 0.45);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  padding: 1rem;
+}
+
+.modalContainer {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 24px 60px -12px rgba(16, 4, 63, 0.25);
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: HEADER TEXT AND CLOSE BUTTON ===
+   ========================================================================== */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.headerTextStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.modalSubtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 0.8;
+  padding: 0;
+  transition: var(--transition-fast);
+}
+
+.closeButton:hover {
+  color: var(--text-primary);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: PIN BOXES AND INPUTS ===
+   ========================================================================== */
+.modalBody {
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.pinBoxesContainer {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.pinBox {
+  width: 55px;
+  height: 65px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  background-color: var(--surface-muted);
+  font-size: 1.75rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.pinBox:focus {
+  border-color: var(--color-primary);
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+/* Error state styling for the boxes */
+.pinBoxError {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--danger-soft);
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: MESSAGES AND ANIMATIONS ===
+   ========================================================================== */
+.messageArea {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.helperMessage {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.errorMessage {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+/* Keyframes Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes shakeMotion {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-6px); }
+  100% { transform: translateX(0); }
+}
+
+.shakeError {
+  animation: shakeMotion 0.3s ease-in-out;
+}
+/* === SECTION 4 END === */

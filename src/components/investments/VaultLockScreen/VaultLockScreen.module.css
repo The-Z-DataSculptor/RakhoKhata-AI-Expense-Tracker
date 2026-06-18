@@ -1,0 +1,164 @@
+/* src/components/investments/VaultLockScreen/VaultLockScreen.module.css */
+
+/* ==========================================================================
+   === SECTION 1: FULL SCREEN OVERLAY ===
+   ========================================================================== */
+.lockScreenContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60vh; /* Takes up the dashboard space securely */
+  padding: 2rem;
+  background-color: transparent;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.lockBoxPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: HEADER & LOCK GRAPHICS ===
+   ========================================================================== */
+.headerStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+.iconCircle {
+  width: 64px;
+  height: 64px;
+  background-color: var(--primary-soft);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.lockIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.titleText {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtitleText {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: INTERACTIVE PIN KEYPAD ===
+   ========================================================================== */
+.pinBoxesWrapper {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.pinBox {
+  width: 60px;
+  height: 70px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-surface);
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform 0.1s ease;
+}
+
+/* Active focus state creates a nice colored ring */
+.pinBox:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+  transform: translateY(-2px);
+}
+
+/* Red error state */
+.pinBoxError {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--danger-soft);
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: FOOTER TEXT & ANIMATIONS ===
+   ========================================================================== */
+.footerArea {
+  height: 24px; /* Fixed height keeps the layout from jumping when text changes */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.forgotPinButton {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  padding: 0.25rem 0.5rem;
+}
+
+.forgotPinButton:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+/* Keyframes Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shakeMotion {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  50% { transform: translateX(8px); }
+  75% { transform: translateX(-8px); }
+  100% { transform: translateX(0); }
+}
+
+.shakeError {
+  animation: shakeMotion 0.3s ease-in-out;
+}
+/* === SECTION 4 END === */

@@ -4,12 +4,14 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { VaultHeader } from "@/components/investments/VaultHeader/VaultHeader";
 import { VaultSummaryCards } from "@/components/investments/VaultSummaryCards/VaultSummaryCards";
 import { VaultAssetTable } from "@/components/investments/VaultAssetTable/VaultAssetTable";
 import { AddInvestmentForm } from "@/components/forms/AddInvestmentForm/AddInvestmentForm";
-import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext"; // FIXED: Added Currency Context Import
+import { VaultLockScreen } from "@/components/investments/VaultLockScreen/VaultLockScreen";
+import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -28,7 +30,7 @@ interface HistoryItem {
   isProfitAtTime: boolean;
 }
 
-interface Asset {
+export interface Asset {
   id: string;
   name: string;
   symbol: string;
@@ -37,8 +39,19 @@ interface Asset {
   currentPrice: number;
   quantityOwned: number;
   totalInvested: number;
-  currency?: string; // FIXED: Added currency tag support for individual assets
+  currency?: string; 
   history: HistoryItem[];
+}
+
+// Data coming directly from the form inputs
+export interface InvestmentFormData {
+  name: string;
+  symbol: string;
+  quantity: number;
+  price: number;
+  invested: number;
+  note: string;
+  currency?: string;
 }
 /* === SECTION 2 END === */
 
@@ -46,25 +59,31 @@ interface Asset {
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function InvestmentVaultPage() {
-  const { currency: globalActiveCurrency } = useCurrency(); // Hook into the active global currency display code
+  const { currency: globalActiveCurrency } = useCurrency(); 
   
+  // --- SECURITY & LOCK STATE ---
+  const [isAppReady, setIsAppReady] = useState<boolean>(false);
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [isPinSetupOpen, setIsPinSetupOpen] = useState<boolean>(false);
+
+  // --- ASSET DATA STATE ---
   const [assets, setAssets] = useState<Asset[]>([
     {
       id: "asset-1",
       name: "Bitcoin",
       symbol: "BTC",
       icon: "₿",
-      userNote: "Stored safely in my hardware wallet. Keeping this for long-term savings and tracking price updates regularly.",
+      userNote: "Stored safely in my hardware wallet. Keeping this for long-term savings.",
       currentPrice: 65000,
       quantityOwned: 0.060,
       totalInvested: 35000,
-      currency: "USD", // Seed placeholder asset defaults to USD
+      currency: "USD",
       history: [
         {
           id: "node-1",
           date: "2026-04-12",
           title: "First Purchase",
-          note: "Bought my first setup amount of Bitcoin to start building my crypto portfolio.",
+          note: "Bought my first setup amount of Bitcoin.",
           amountAtTime: "0.060 BTC",
           investedAtTime: 35000,
           valueAtTime: 35000,
@@ -75,9 +94,24 @@ export default function InvestmentVaultPage() {
     }
   ]);
 
+  // --- MODAL STATES ---
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
+  // Wait for the first render to finish before checking localStorage to prevent cascading warnings
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      const savedPin = localStorage.getItem("vault_pin");
+      if (savedPin) {
+        setIsLocked(true);
+      }
+      setIsAppReady(true);
+    }, 0);
+
+    return () => clearTimeout(timerId);
+  }, []);
+
+  // Modal control functions
   const handleOpenAddModal = () => {
     setEditingAsset(null);
     setIsModalOpen(true);
@@ -97,38 +131,60 @@ export default function InvestmentVaultPage() {
     setEditingAsset(null);
   };
 
-  const handleSaveAsset = (savedData: any) => {
+  // Safe data ingestion mapping InvestmentFormData properties to Asset properties
+  const handleSaveAsset = (savedData: InvestmentFormData) => {
     if (editingAsset) {
-      // --- LIVE PERSISTENCE SYSTEM EDITS ---
+      // Update existing asset by explicitly mapping the form fields to the Asset shape
       setAssets(prevAssets =>
         prevAssets.map(item => 
           item.id === editingAsset.id 
-            ? { ...item, ...savedData, id: editingAsset.id } 
+            ? { 
+                ...item, 
+                name: savedData.name,
+                symbol: savedData.symbol,
+                currentPrice: savedData.price, // Map price to currentPrice
+                quantityOwned: savedData.quantity, // Map quantity to quantityOwned
+                totalInvested: savedData.invested, // Map invested to totalInvested
+                userNote: savedData.note, // Map note to userNote
+              } 
             : item
         )
       );
     } else {
-      // Inject standard initialization variables for completely new items
+      // Create a brand new asset mapping the form fields securely
       const completelyNewAsset: Asset = {
-        ...savedData,
-        currency: savedData.currency || globalActiveCurrency.toUpperCase(), // Ensure currency is locked in payload
-        id: `asset-${Date.now()}`
+        id: `asset-${Date.now()}`,
+        name: savedData.name,
+        symbol: savedData.symbol,
+        icon: "📈", // Default fallback icon
+        userNote: savedData.note,
+        currentPrice: savedData.price,
+        quantityOwned: savedData.quantity,
+        totalInvested: savedData.invested,
+        currency: savedData.currency || globalActiveCurrency.toUpperCase(),
+        history: [], // Initialize with empty history
       };
       setAssets(prevAssets => [completelyNewAsset, ...prevAssets]);
     }
     handleCloseModal();
   };
 
-  /* FIXED NOTE ON CURRENCY EVALUATION:
-     If your sub-components (VaultSummaryCards / VaultAssetTable) apply currency conversion logic 
-     internally assuming the value passed into them is USD, your inputs must be treated relative 
-     to their logged native currency tag. 
-     
-     If you just want the math values to stop crashing across calculations, we make sure values 
-     preserve their context structure here.
-  */
+  // Math variables
   const totalCurrentValue = assets.reduce((sum, item) => sum + (item.quantityOwned * item.currentPrice), 0);
   const totalInvestedCapital = assets.reduce((sum, item) => sum + item.totalInvested, 0);
+
+  // FIX: Safely extract the top runner symbol to prevent TS array access errors in JSX
+  const topRunner = assets.length > 0 ? assets : null;
+
+  // Prevent UI flashing by waiting until we've checked the lock status
+  if (!isAppReady) {
+    return null; 
+  }
+
+  // If the vault is locked, STOP rendering the dashboard and ONLY show the lock screen
+  if (isLocked) {
+    return <VaultLockScreen onUnlock={() => setIsLocked(false)} />;
+  }
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -137,33 +193,46 @@ export default function InvestmentVaultPage() {
   return (
     <main className={styles.vaultMainPageWrapper}>
       
-      <VaultHeader onAddInvestmentClick={handleOpenAddModal} />
+      {/* HEADER SECTION */}
+      <VaultHeader 
+        onAddInvestmentClick={handleOpenAddModal} 
+        onSetupPinClick={() => setIsPinSetupOpen(true)}
+      />
 
+      {/* SUMMARY CARDS */}
       <VaultSummaryCards 
         totalCurrentValueUSD={totalCurrentValue}
         totalInvestedCapitalUSD={totalInvestedCapital}
-        topRunnerLabel={assets.length > 0 ? `${assets[0].symbol}` : "None"}
+        topRunnerLabel={topRunner ? topRunner.symbol : "None"}
         portfolioMixLabel={`${assets.length} Active Tracks`}
         activeAssetsCount={assets.length}
       />
 
+      {/* TABLE SECTION */}
       <VaultAssetTable 
         assets={assets} 
         onEditClick={handleOpenEditModal} 
         onDeleteClick={handleDeleteAsset}
       />
 
+      {/* ADD / EDIT ASSET MODAL */}
       {isModalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <AddInvestmentForm 
               onClose={handleCloseModal} 
               onSave={handleSaveAsset} 
-              initialData={editingAsset}
             />
           </div>
         </div>
       )}
+
+      {/* PIN SETUP MODAL */}
+      <PinSetupModal 
+        isOpen={isPinSetupOpen}
+        onClose={() => setIsPinSetupOpen(false)}
+        onSuccess={() => setIsPinSetupOpen(false)} 
+      />
 
     </main>
   );

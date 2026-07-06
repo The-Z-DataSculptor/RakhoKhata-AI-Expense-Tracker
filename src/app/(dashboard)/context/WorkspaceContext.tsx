@@ -24,6 +24,7 @@ interface WorkspaceContextType {
   activeWorkspace: Workspace | undefined; // Automatically calculated for convenience
   switchWorkspace: (id: string) => void;
   createWorkspace: (name: string, iconName?: string) => void;
+  deleteWorkspace: (id: string) => void; // FIX: Added delete function definition
   renderIcon: (iconName: string, size?: number) => React.ReactNode; // Helper to draw icons
 }
 /* === SECTION 2 END === */
@@ -66,7 +67,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // --- EFFECT 1: LOAD FROM BROWSER MEMORY ---
   // When the app opens, check if the user has saved custom workspaces before
   useEffect(() => {
-    // FIX: Wrapped in setTimeout to prevent React's synchronous cascading render error
+    // Wrapped in setTimeout to prevent React's synchronous cascading render error
     const timerId = setTimeout(() => {
       const savedWorkspaces = localStorage.getItem("app_workspaces");
       const savedActiveId = localStorage.getItem("app_active_workspace_id");
@@ -111,6 +112,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceId(newWorkspace.id);
   };
 
+  // --- ACTION: DELETE WORKSPACE ---
+  // FIX: This filters out the target ID, removing it from the list completely
+  const deleteWorkspace = (id: string) => {
+    setWorkspaces((prev) => prev.filter((ws) => ws.id !== id));
+  };
+
   // Automatically find the active workspace object so pages don't have to search for it manually
   const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
 
@@ -121,6 +128,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     activeWorkspace,
     switchWorkspace,
     createWorkspace,
+    deleteWorkspace, // FIX: Injected into the payload so other files can use it
     renderIcon: getIconComponent
   };
 

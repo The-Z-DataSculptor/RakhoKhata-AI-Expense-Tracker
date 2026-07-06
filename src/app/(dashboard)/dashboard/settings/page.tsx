@@ -22,8 +22,8 @@ import styles from "./page.module.css";
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function SettingsPage() {
-  // Get workspace info from our global store
-  const { workspaces, activeWorkspace, activeWorkspaceId } = useWorkspace();
+  // FIX: Added deleteWorkspace from our global store to handle actual deletion
+  const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace } = useWorkspace();
 
   // --- WORKSPACE STATES ---
   const [renameInput, setRenameInput] = useState<string>(activeWorkspace ? activeWorkspace.name : "");
@@ -79,7 +79,15 @@ export default function SettingsPage() {
       alert("You cannot delete the workspace you are currently using. Please switch to a different workspace first.");
       return;
     }
-    confirm("Are you completely sure you want to delete this workspace? This will permanently erase all transactions and investments inside it.");
+    
+    // FIX: Save the user's choice from the confirmation box
+    const userConfirmed = confirm("Are you completely sure you want to delete this workspace? This will permanently erase all transactions and investments inside it.");
+    
+    // FIX: If they clicked "OK", tell the context to actually delete the workspace
+    if (userConfirmed) {
+      // Note: If your context uses the name 'removeWorkspace', change this to 'removeWorkspace(targetWorkspaceId)'
+      deleteWorkspace(targetWorkspaceId);
+    }
   };
 /* === SECTION 3 END === */
 

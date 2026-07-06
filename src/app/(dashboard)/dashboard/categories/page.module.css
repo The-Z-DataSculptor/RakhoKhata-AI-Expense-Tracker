@@ -1,5 +1,8 @@
 /* src/app/(dashboard)/dashboard/categories/page.module.css */
 
+/* ==========================================================================
+   === SECTION 1: CORE CANVAS ===
+   ========================================================================== */
 .categoriesCanvasWrapper {
   display: flex;
   flex-direction: column;
@@ -7,7 +10,9 @@
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
-  padding-bottom: 3.5rem;
+  /* FIX: Explicit layout constraint added here to force short content pages to stretch out */
+  min-height: calc(100vh - 80px); 
+  padding-bottom: 0; 
   box-sizing: border-box;
 }
 
@@ -16,28 +21,40 @@
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: var(--shadow-soft, 0 4px 20px -4px rgba(16, 4, 63, 0.04));
+  box-shadow: var(--shadow-soft);
+}
+
+/* ==========================================================================
+   === SECTION 2: HEADLINES AND LABELS ===
+   ========================================================================== */
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .mainTitleHeading {
-  font-size: 1.5rem;
+  font-size: 1.65rem;
   font-weight: 800;
-  color: var(--text-primary, #10043f);
-  margin: 0 0 0.25rem 0;
+  color: var(--text-primary);
+  margin: 0;
   letter-spacing: -0.02em;
 }
 
 .subTitleDescription {
   font-size: 0.85rem;
-  color: var(--text-muted, #7e7a9c);
+  color: var(--text-muted);
   margin: 0;
   font-weight: 500;
   line-height: 1.4;
 }
 
+/* ==========================================================================
+   === SECTION 3: TOP BUTTONS ===
+   ========================================================================== */
 .headerActions {
   display: flex;
   align-items: center;
@@ -49,30 +66,30 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
-  background-color: rgba(217, 119, 6, 0.05);
-  color: var(--color-warning, #d97706);
-  border: 1px solid rgba(217, 119, 6, 0.15);
-  border-radius: var(--radius-md, 8px);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: var(--transition-fast, all 0.2s ease);
+  transition: var(--transition-fast);
 }
 
 .bulkActionButton:hover {
-  transform: translateY(-1px);
-  background-color: rgba(217, 119, 6, 0.09);
-  border-color: var(--color-warning, #d97706);
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 .dynamicWarningBadgeCount {
   font-size: 0.7rem;
   font-weight: 800;
   color: #ffffff;
-  background-color: var(--color-warning, #d97706);
-  padding: 0.1rem 0.45rem;
+  background-color: var(--color-danger, #dc2626);
+  padding: 0.15rem 0.45rem;
   border-radius: 10px;
-  margin-left: 0.15rem;
+  margin-left: 0.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -83,29 +100,38 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.65rem 1.25rem;
-  background-color: var(--color-primary, #613bbf);
+  background-color: var(--color-primary);
   color: #ffffff;
   border: 1px solid transparent;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   font-size: 0.82rem;
   font-weight: 700;
-  transition: var(--transition-fast, all 0.2s ease-in-out);
-  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.15);
+  transition: var(--transition-fast);
   cursor: pointer;
 }
 
 .createCategoryButton:hover {
-  transform: translateY(-1px);
   opacity: 0.92;
-  box-shadow: 0 6px 16px rgba(97, 59, 191, 0.2);
+  transform: translateY(-0.5px);
 }
 
+/* ==========================================================================
+   === SECTION 4: FOOTER BLOCK (TIGHTENED) ===
+   ========================================================================== */
 .mainContentStage {
   width: 100%;
 }
 
+.footerContainerBlock {
+  width: 100%;
+  margin-top: auto; 
+  /* FIX: Controls the gap safely from inside the footer itself */
+  padding-bottom: 1.5rem; 
+  transition: var(--transition-fast);
+}
+
 /* ==========================================================================
-   === NEW MODAL POPUP BACKDROP CSS RULES ===
+   === SECTION 5: MODAL OVERLAYS ===
    ========================================================================== */
 .modalOverlayBackdrop {
   position: fixed;
@@ -113,50 +139,31 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(16, 4, 63, 0.45);
+  background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modalContentCard {
   width: 100%;
   max-width: 420px;
   background-color: var(--bg-surface, #ffffff);
-  border-radius: var(--radius-lg, 14px);
+  border-radius: var(--radius-lg);
   position: relative;
-  box-shadow: 0 20px 50px -12px rgba(16, 4, 63, 0.25);
-  animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  box-shadow: var(--shadow-soft);
   box-sizing: border-box;
 }
 
-/* Strips form card down so it integrates seamlessly inside popup card margins */
 .modalContentCard :global(.CategoryForm_formCard__3pXmK) {
   border: none !important;
   box-shadow: none !important;
 }
 
-@keyframes fadeInOverlay {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleFormIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
 /* ==========================================================================
-   === MOBILE RESPONSIVE STRUCTURES BREAKPOINTS ===
+   === SECTION 6: RESPONSIVE ===
    ========================================================================== */
 @media (max-width: 768px) {
   .pageHeaderDeck {
@@ -177,10 +184,5 @@
     width: 100%;
     justify-content: center;
     box-sizing: border-box;
-  }
-  
-  .modalContentCard {
-    width: calc(100% - 2rem);
-    margin: 1rem;
   }
 }

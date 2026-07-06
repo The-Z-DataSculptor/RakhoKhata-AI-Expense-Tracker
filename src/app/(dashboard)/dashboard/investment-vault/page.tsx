@@ -12,7 +12,8 @@ import { AddInvestmentForm } from "@/components/forms/AddInvestmentForm/AddInves
 import { VaultLockScreen } from "@/components/investments/VaultLockScreen/VaultLockScreen";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting to brain
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
+import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -33,7 +34,7 @@ interface HistoryItem {
 
 export interface Asset {
   id: string;
-  workspaceId: string; // Every asset now belongs to a specific workspace
+  workspaceId: string; 
   name: string;
   symbol: string;
   icon: string;
@@ -45,7 +46,6 @@ export interface Asset {
   history: HistoryItem[];
 }
 
-// Data coming directly from the form inputs
 export interface InvestmentFormData {
   name: string;
   symbol: string;
@@ -62,7 +62,7 @@ export interface InvestmentFormData {
    ========================================================================== */
 export default function InvestmentVaultPage() {
   const { currency: globalActiveCurrency } = useCurrency(); 
-  const { activeWorkspaceId } = useWorkspace(); // Grab the currently active mode
+  const { activeWorkspaceId } = useWorkspace(); 
   
   // --- SECURITY & LOCK STATE ---
   const [isAppReady, setIsAppReady] = useState<boolean>(false);
@@ -73,7 +73,7 @@ export default function InvestmentVaultPage() {
   const [assets, setAssets] = useState<Asset[]>([
     {
       id: "asset-1",
-      workspaceId: "ws-personal-default", // Personal Mode
+      workspaceId: "ws-personal-default", 
       name: "Bitcoin",
       symbol: "BTC",
       icon: "₿",
@@ -98,7 +98,7 @@ export default function InvestmentVaultPage() {
     },
     {
       id: "asset-2",
-      workspaceId: "ws-business-default", // Business Mode (To prove the filter works!)
+      workspaceId: "ws-business-default", 
       name: "Ethereum",
       symbol: "ETH",
       icon: "Ξ",
@@ -115,7 +115,7 @@ export default function InvestmentVaultPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
-  // Wait for the first render to finish before checking localStorage to prevent cascading warnings
+  // Check vault validation parameters cleanly upon initial component compilation structures
   useEffect(() => {
     const timerId = setTimeout(() => {
       const savedPin = localStorage.getItem("vault_pin");
@@ -128,7 +128,6 @@ export default function InvestmentVaultPage() {
     return () => clearTimeout(timerId);
   }, []);
 
-  // Modal control functions
   const handleOpenAddModal = () => {
     setEditingAsset(null);
     setIsModalOpen(true);
@@ -148,10 +147,8 @@ export default function InvestmentVaultPage() {
     setEditingAsset(null);
   };
 
-  // Safe data ingestion mapping InvestmentFormData properties to Asset properties
   const handleSaveAsset = (savedData: InvestmentFormData) => {
     if (editingAsset) {
-      // Update existing asset by explicitly mapping the form fields to the Asset shape
       setAssets(prevAssets =>
         prevAssets.map(item => 
           item.id === editingAsset.id 
@@ -168,10 +165,9 @@ export default function InvestmentVaultPage() {
         )
       );
     } else {
-      // Create a brand new asset mapping the form fields securely and assigning to active workspace
       const completelyNewAsset: Asset = {
         id: `asset-${Date.now()}`,
-        workspaceId: activeWorkspaceId, // Assigns the new asset to the current mode
+        workspaceId: activeWorkspaceId, 
         name: savedData.name,
         symbol: savedData.symbol,
         icon: "📈", 
@@ -188,22 +184,17 @@ export default function InvestmentVaultPage() {
   };
 
   // --- DATA FILTERING ENGINE ---
-  // THE MAGIC FILTER: Only show assets that belong to the active workspace
   const filteredAssets = assets.filter(item => item.workspaceId === activeWorkspaceId);
 
-  // Math variables based strictly on the filtered data
   const totalCurrentValue = filteredAssets.reduce((sum, item) => sum + (item.quantityOwned * item.currentPrice), 0);
   const totalInvestedCapital = filteredAssets.reduce((sum, item) => sum + item.totalInvested, 0);
 
-  // FIX: Safely grab the first item array element so `.symbol` actually works
   const topRunner = filteredAssets.length > 0 ? filteredAssets[0] : null;
 
-  // Prevent UI flashing by waiting until we've checked the lock status
   if (!isAppReady) {
     return null; 
   }
 
-  // If the vault is locked, STOP rendering the dashboard and ONLY show the lock screen
   if (isLocked) {
     return <VaultLockScreen onUnlock={() => setIsLocked(false)} />;
   }
@@ -215,13 +206,13 @@ export default function InvestmentVaultPage() {
   return (
     <main className={styles.vaultMainPageWrapper}>
       
-      {/* HEADER SECTION */}
+      {/* HEADER SECTION PANEL CONTROLS */}
       <VaultHeader 
         onAddInvestmentClick={handleOpenAddModal} 
         onSetupPinClick={() => setIsPinSetupOpen(true)}
       />
 
-      {/* SUMMARY CARDS */}
+      {/* SUMMARY CAPITAL METRIC TRACKERS */}
       <VaultSummaryCards 
         totalCurrentValueUSD={totalCurrentValue}
         totalInvestedCapitalUSD={totalInvestedCapital}
@@ -230,18 +221,17 @@ export default function InvestmentVaultPage() {
         activeAssetsCount={filteredAssets.length}
       />
 
-      {/* TABLE SECTION */}
-      {/* We pass the FILTERED assets down to the table, not the raw ones */}
+      {/* MAIN DATA STORAGE SHEET COMPONENT */}
       <VaultAssetTable 
         assets={filteredAssets} 
         onEditClick={handleOpenEditModal} 
         onDeleteClick={handleDeleteAsset}
       />
 
-      {/* ADD / EDIT ASSET MODAL */}
+      {/* ADD / EDIT ASSET OVERLAY DIALOGS */}
       {isModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
+        <div className={styles.modalOverlay} onClick={handleCloseModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <AddInvestmentForm 
               onClose={handleCloseModal} 
               onSave={handleSaveAsset} 
@@ -250,12 +240,20 @@ export default function InvestmentVaultPage() {
         </div>
       )}
 
-      {/* PIN SETUP MODAL */}
-      <PinSetupModal 
-        isOpen={isPinSetupOpen}
-        onClose={() => setIsPinSetupOpen(false)}
-        onSuccess={() => setIsPinSetupOpen(false)} 
-      />
+      {/* PIN SETUP INTERACTIVE POPUP SHEET */}
+      {/* IMPROVEMENT: Now conditionally checked to prevent blank container footprints */}
+      {isPinSetupOpen && (
+        <PinSetupModal 
+          isOpen={isPinSetupOpen}
+          onClose={() => setIsPinSetupOpen(false)}
+          onSuccess={() => setIsPinSetupOpen(false)} 
+        />
+      )}
+
+      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
+      <footer className={styles.footerContainerBlock}>
+        <DashboardFooter />
+      </footer>
 
     </main>
   );

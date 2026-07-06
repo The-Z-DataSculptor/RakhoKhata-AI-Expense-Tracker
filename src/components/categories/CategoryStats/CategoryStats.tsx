@@ -10,7 +10,6 @@ import {
   FiActivity, 
   FiZap 
 } from "react-icons/fi";
-// WHY: Used to format numbers into clean currency strings based on the user's settings
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./CategoryStats.module.css";
 /* === SECTION 1 END === */
@@ -55,9 +54,8 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
     habitTrackerCount: 0
   };
 
-  // SVG Geometric Ring Constants (Optimized smaller radius for low height)
   const ringRadius = 20;
-  const ringCircumference = 2 * Math.PI * ringRadius; // ~125.66
+  const ringCircumference = 2 * Math.PI * ringRadius; 
 
   const calculateOffset = (percentageValue: number) => {
     const safePercent = Math.min(Math.max(percentageValue, 0), 100);

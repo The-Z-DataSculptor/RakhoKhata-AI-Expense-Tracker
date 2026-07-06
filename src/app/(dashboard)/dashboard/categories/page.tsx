@@ -6,17 +6,12 @@
    ========================================================================== */
 import React, { useState } from "react";
 import { FiAlertCircle, FiPlus } from "react-icons/fi";
-
-// Connect to the global Workspace Brain
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
-
 import CategoryStats, { CategoryStatData } from "@/components/categories/CategoryStats/CategoryStats";
 import CategoryGrid from "@/components/categories/CategoryGrid/CategoryGrid";
 import BulkDrawer, { TransactionRecord, CategoryOption } from "@/components/categories/BulkDrawer/BulkDrawer";
-
-// Updated path targeting your new centralized forms layout
 import { CategoryForm } from "@/components/forms/CategoryForm/CategoryForm";
-
+import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter"; 
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -25,7 +20,7 @@ import styles from "./page.module.css";
    ========================================================================== */
 export interface CategoryRecord {
   id: string;
-  workspaceId: string; // Every category now belongs to a specific workspace
+  workspaceId: string; 
   name: string;
   type: "income" | "expense" | "both";
   iconSlug: string;
@@ -33,18 +28,18 @@ export interface CategoryRecord {
   transactionCount: number;
 }
 
-// We extend the BulkDrawer transaction type locally so we can attach a workspace ID to dummy data
-type UnassignedTransactionRecord = TransactionRecord & { workspaceId: string };
+type UnassignedTransactionRecord = TransactionRecord & { 
+  workspaceId: string; 
+};
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function CategoriesPage() {
-  // --- WORKSPACE CONTEXT ---
-  const { activeWorkspaceId } = useWorkspace(); // Grab the currently active mode
+  const { activeWorkspaceId } = useWorkspace(); 
 
-  /* --- STATES MATRIX --- */
+  // --- STATE MATRIX ---
   const [categories, setCategories] = useState<CategoryRecord[]>([
     { id: "cat-201", workspaceId: "ws-personal-default", name: "Salary", type: "income", iconSlug: "FiBriefcase", accentColor: "#16a34a", transactionCount: 12 },
     { id: "cat-202", workspaceId: "ws-business-default", name: "Marketing", type: "expense", iconSlug: "FiTarget", accentColor: "#613bbf", transactionCount: 34 },
@@ -53,10 +48,8 @@ export default function CategoriesPage() {
     { id: "cat-205", workspaceId: "ws-personal-default", name: "Electricity & Bills", type: "expense", iconSlug: "FiZap", accentColor: "#d97706", transactionCount: 15 },
   ]);
 
-  const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // State pointer tracking which data model is actively undergoing modifications
+  const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
 
   const [unassignedTransactions, setUnassignedTransactions] = useState<UnassignedTransactionRecord[]>([
@@ -64,32 +57,32 @@ export default function CategoriesPage() {
     { id: "tx-2", workspaceId: "ws-personal-default", date: "2026-06-11", merchant: "Shell Fuel Station", amount: 3200 },
   ]);
 
-  /* --- HANDLERS --- */
+  // --- ACTION HANDLERS ---
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
   const handleApplyCategory = (categoryId: string, transactionIds: string[]) => {
     setUnassignedTransactions((prevTx) => prevTx.filter((tx) => !transactionIds.includes(tx.id)));
     setCategories((prevCats) =>
-      prevCats.map((cat) => cat.id === categoryId ? { ...cat, transactionCount: cat.transactionCount + transactionIds.length } : cat)
+      prevCats.map((cat) => 
+        cat.id === categoryId 
+          ? { ...cat, transactionCount: cat.transactionCount + transactionIds.length } 
+          : cat
+      )
     );
     setIsBulkDrawerOpen(false);
   };
 
-  // Open modal cleanly for a fresh brand new category
   const handleOpenCreateModal = () => {
-    setEditingCategory(null); // Clear out old values context
+    setEditingCategory(null); 
     setIsModalOpen(true);
   };
 
-  // Closes modal overlay deck and flushes reference pointers
   const handleClosePopupModal = () => {
     setIsModalOpen(false);
     setEditingCategory(null);
   };
 
-  // FIX: Removed 'any'. Using Omit to tell TypeScript we have everything except workspaceId, 
-  // plus making workspaceId optional just in case the form passes it back during an edit.
   const handleUpsertCategory = (savedCategory: Omit<CategoryRecord, "workspaceId"> & { workspaceId?: string }) => {
     const categoryWithWorkspace: CategoryRecord = {
       ...savedCategory,
@@ -99,33 +92,32 @@ export default function CategoriesPage() {
     setCategories((prevList) => {
       const exists = prevList.some((c) => c.id === savedCategory.id);
       if (exists) {
-        // Edit Mode path: map over array and swap out item
         return prevList.map((c) => (c.id === savedCategory.id ? categoryWithWorkspace : c));
       }
-      // Create Mode path: prepend new item to list array
       return [categoryWithWorkspace, ...prevList];
     });
     
     handleClosePopupModal();
   };
 
-  // Captures target category payload data element directly from the grid card trigger click
   const handleEditCategory = (category: CategoryRecord) => {
     setEditingCategory(category);
     setIsModalOpen(true);
   };
 
-  const handleDeleteCategory = (id: string) => setCategories((prev) => prev.filter((c) => c.id !== id));
+  const handleDeleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  };
 
-  /* --- DATA ENGINE CONVERSION: CLIENT SIDE LIVE COMPUTED FILTER MATRIX --- */
-  // THE MAGIC FILTER: Only show records that belong to the active workspace
-  const filteredCategories = categories.filter(cat => cat.workspaceId === activeWorkspaceId);
-  const filteredUnassigned = unassignedTransactions.filter(tx => tx.workspaceId === activeWorkspaceId);
+  // --- LIVE COMPUTED DATA MATRICES ---
+  const filteredCategories = categories.filter((cat) => cat.workspaceId === activeWorkspaceId);
+  const filteredUnassigned = unassignedTransactions.filter((tx) => tx.workspaceId === activeWorkspaceId);
 
-  // We only show category options in the bulk drawer for the active workspace
-  const categoryOptions: CategoryOption[] = filteredCategories.map((cat) => ({ id: cat.id, name: cat.name }));
+  const categoryOptions: CategoryOption[] = filteredCategories.map((cat) => ({ 
+    id: cat.id, 
+    name: cat.name 
+  }));
 
-  // Note: These are hardcoded mock stats. In a production backend, this would calculate from filteredCategories dynamically.
   const liveComputedStats: CategoryStatData = {
     topExpenseName: "Marketing", topExpenseAmount: 32000, topExpensePercentage: 42,
     topIncomeName: "Salary", topIncomeAmount: 185000, topIncomePercentage: 75,
@@ -139,30 +131,45 @@ export default function CategoriesPage() {
    ========================================================================== */
   return (
     <div className={styles.categoriesCanvasWrapper}>
+      
+      {/* SECTION HEADER BAR BLOCK */}
       <header className={styles.pageHeaderDeck}>
-        <div>
+        <div className={styles.titleGroup}>
           <h1 className={styles.mainTitleHeading}>Categories</h1>
-          <p className={styles.subTitleDescription}>Create labels to group your transactions, choose custom colors, and see where your money goes.</p>
+          <p className={styles.subTitleDescription}>
+            Create labels to group your transactions, choose custom colors, and see where your money goes.
+          </p>
         </div>
 
         <div className={styles.headerActions}>
-          <button className={styles.bulkActionButton} onClick={handleOpenBulkDrawer} type="button">
+          <button 
+            className={styles.bulkActionButton} 
+            onClick={handleOpenBulkDrawer} 
+            type="button"
+          >
             <FiAlertCircle size={14} />
             <span>Unassigned Inbox</span>
-            {filteredUnassigned.length > 0 && <span className={styles.dynamicWarningBadgeCount}>{filteredUnassigned.length}</span>}
+            {filteredUnassigned.length > 0 && (
+              <span className={styles.dynamicWarningBadgeCount}>{filteredUnassigned.length}</span>
+            )}
           </button>
 
-          <button className={styles.createCategoryButton} onClick={handleOpenCreateModal} type="button">
+          <button 
+            className={styles.createCategoryButton} 
+            onClick={handleOpenCreateModal} 
+            type="button"
+          >
             <FiPlus size={15} />
             <span>Add New Category</span>
           </button>
         </div>
       </header>
 
+      {/* METRIC SUMMARIES BREAKDOWN CARDS ROW */}
       <CategoryStats statsData={liveComputedStats} />
 
+      {/* MAIN DENSE STORAGE ROW GRID PLATFORM */}
       <main className={styles.mainContentStage}>
-        {/* WE PASS THE FILTERED CATEGORIES HERE INSTEAD OF THE RAW ONES */}
         <CategoryGrid
           categoriesList={filteredCategories}
           onEditClick={handleEditCategory}
@@ -170,7 +177,7 @@ export default function CategoriesPage() {
         />
       </main>
 
-      {/* Render popup overlay layer structure */}
+      {/* DYNAMIC BACKDROP ACCORDION POPUP LAYERS */}
       {isModalOpen && (
         <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
@@ -183,13 +190,22 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <BulkDrawer
-        isOpen={isBulkDrawerOpen}
-        onClose={handleCloseBulkDrawer}
-        transactions={filteredUnassigned} // Only pass unassigned from this workspace
-        categories={categoryOptions}      // Only pass options from this workspace
-        onApplyCategory={handleApplyCategory}
-      />
+      {/* RE-CLASSIFICATION SIDEBAR ORGANIZER OVERLAY DRAWER */}
+      {isBulkDrawerOpen && (
+        <BulkDrawer
+          isOpen={isBulkDrawerOpen}
+          onClose={handleCloseBulkDrawer}
+          transactions={filteredUnassigned} 
+          categories={categoryOptions}      
+          onApplyCategory={handleApplyCategory}
+        />
+      )}
+
+      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
+      <footer className={styles.footerContainerBlock}>
+        <DashboardFooter />
+      </footer>
+      
     </div>
   );
 }

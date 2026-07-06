@@ -1,5 +1,4 @@
 // src/components/categories/BulkDrawer/BulkDrawer.tsx
-
 "use client";
 
 /* ==========================================================================
@@ -7,7 +6,6 @@
    ========================================================================== */
 import React, { useState } from "react";
 import { FiX, FiCheckSquare, FiLayers } from "react-icons/fi";
-// FIXED / WHY: Hook dependency to wire currency format actions directly to the active state channel
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./BulkDrawer.module.css";
 /* === SECTION 1 END === */
@@ -51,7 +49,7 @@ export default function BulkDrawer({
   categories,
   onApplyCategory,
 }: BulkDrawerProps) {
-  // FIXED / WHY: Consume the global format context to handle structural currency prefix and standard formatting values
+  // Consume the global format context to handle structural currency symbols dynamically
   const { formatAmount } = useCurrency();
 
   // Track array collection of all user check selections across data matrices
@@ -179,7 +177,6 @@ export default function BulkDrawer({
                     <span className={styles.dateStampText}>{tx.date}</span>
                   </div>
 
-                  {/* FIXED / WHY: Replaced hardcoded Rs prefix token text layout with dynamic currency context formatting engine output */}
                   <div className={styles.amountDisplayBadge}>
                     {formatAmount(tx.amount, "PKR")}
                   </div>

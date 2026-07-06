@@ -7,10 +7,20 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
   gap: 1.75rem;
-  padding-bottom: 3rem;
+  padding: 1.5rem 2rem 0 2rem; /* Adjusted parameters to follow uniform dashboard layout tracks */
   position: relative;
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease-out;
+
+  /* 
+    👉 CHANGE THIS VALUE TO PERFECTLY BALANCE DISPLAYS:
+    If footer cuts off or shoots under the frame, increase 110px to 130px or 140px.
+    If a clear blank zone exposes background elements below the footer, reduce 110px to 95px.
+  */
+  min-height: calc(100vh - 80px);
 }
 /* === SECTION 1 END === */
 
@@ -50,3 +60,21 @@
   to { transform: translateY(0); opacity: 1; }
 }
 /* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: SYSTEM GLOBAL FOOTER ANCHORS ===
+   ========================================================================== */
+.footerContainerBlock {
+  width: 100%;
+  margin-top: auto; /* Forcefully pins footer directly down onto layout floor */
+  padding-top: 2.5rem; /* Separates footer cleanly from table layout content bounds above */
+  
+  /* 
+    👉 CHANGE THIS LINE TO TWEAK THE AIR GAP AT THE ABSOLUTE BOTTOM:
+    Set this to 1.5rem to match your Categories page perfectly! Reduce to 1rem or 12px for less gap.
+  */
+  padding-bottom: 1.5rem; 
+  
+  transition: var(--transition-fast);
+}
+/* === SECTION 3 END === */

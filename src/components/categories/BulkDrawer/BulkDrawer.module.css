@@ -6,8 +6,8 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(16, 4, 63, 0.4); /* Custom deep slate premium translucent overlay blend */
-  backdrop-filter: blur(4px); /* Premium background glass diffusion tracking */
+  background: rgba(16, 4, 63, 0.4); 
+  backdrop-filter: blur(4px); 
   display: flex;
   justify-content: flex-end;
   z-index: 1000;
@@ -155,7 +155,6 @@
   box-shadow: 0 4px 12px rgba(97, 59, 191, 0.04);
 }
 
-/* Custom Checklist Elements */
 .customCheckIndicator {
   width: 18px;
   height: 18px;
@@ -214,7 +213,6 @@
   flex-shrink: 0;
 }
 
-/* Empty State Styles */
 .emptyStateDeck {
   display: flex;
   flex-direction: column;
@@ -304,7 +302,6 @@
 
 .workspaceDropdownSelect:focus {
   border-color: var(--color-primary, #613bbf);
-  box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.08);
 }
 
 .workspaceApplyExecuteBtn {

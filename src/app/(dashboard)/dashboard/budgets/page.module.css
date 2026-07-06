@@ -1,12 +1,24 @@
 /* src/app/(dashboard)/dashboard/budgets/page.module.css */
 
+/* ==========================================================================
+   === SECTION 1: CORE APPLICATION STAGE FOUNDATIONS ===
+   ========================================================================== */
 .pageViewport {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
-  padding: 1.5rem 2rem;
-  background-color: transparent;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 0 2rem; 
   box-sizing: border-box;
+
+  /* 
+    👉 CHANGE THIS LINE TO CONTROL HOW FAR DOWN THE PAGE STRETCHES:
+    If your footer is cut off or shoots past the screen, increase 110px to 140px or 160px.
+    If there is a blank gap beneath the footer, decrease 110px to 90px or 100px.
+  */
+  min-height: calc(100vh - 80px); 
 }
 
 .contentContainer {
@@ -15,9 +27,10 @@
   gap: 1.75rem;
   width: 100%;
 }
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === temporary DEVELOPMENT SECTIONS LAYOUT ===
+   === SECTION 2: FALLBACK STATE ERROR DIAGNOSTICS ===
    ========================================================================== */
 .sectionFallback {
   display: flex;
@@ -47,3 +60,22 @@
   max-width: 440px;
   line-height: 1.5;
 }
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: SYSTEM GLOBAL FOOTER ANCHORS ===
+   ========================================================================== */
+.footerContainerBlock {
+  width: 100%;
+  
+  /* This line forces the footer to hunt down the absolute bottom of the layout floor */
+  margin-top: auto; 
+  
+  /* Gives breathing room from the content nodes above it */
+  padding-top: 2rem; 
+
+  padding-bottom: 1.5rem; 
+  
+  transition: var(--transition-fast);
+}
+/* === SECTION 3 END === */

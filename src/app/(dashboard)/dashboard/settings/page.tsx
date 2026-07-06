@@ -6,7 +6,6 @@
    ========================================================================== */
 import React, { useState } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
-import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
 import { FiShield, FiSliders as FiLayers, FiCheck, FiTrash2, FiEdit2 } from "react-icons/fi";
 import styles from "./page.module.css";
@@ -22,7 +21,6 @@ import styles from "./page.module.css";
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function SettingsPage() {
-  // FIX: Added deleteWorkspace from our global store to handle actual deletion
   const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace } = useWorkspace();
 
   // --- WORKSPACE STATES ---
@@ -30,7 +28,7 @@ export default function SettingsPage() {
   const [isSuccessFeedbackVisible, setIsSuccessFeedbackVisible] = useState<boolean>(false);
 
   // --- VAULT SECURITY STATES ---
-  // Initialize state directly by checking localStorage safely to avoid React 19 warnings
+  // Initialize state safely by inspecting window / localStorage definitions directly
   const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const savedPin = localStorage.getItem("vault_pin");
@@ -41,51 +39,45 @@ export default function SettingsPage() {
   
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
 
-  // Action: Turns the vault PIN lock on or off
+  // Action: Turns the vault PIN lock configuration on or off dynamically
   const handleSecurityToggle = () => {
     if (isVaultSecurityEnabled) {
-      // Turn off security and clear the PIN from memory
       const verifyAction = confirm("Are you sure you want to turn off the password lock? Anyone using this device will be able to see your investments.");
       if (verifyAction) {
         localStorage.removeItem("vault_pin");
         setIsVaultSecurityEnabled(false);
       }
     } else {
-      // Open the modal to create a new PIN
       setIsPinModalOpen(true);
     }
   };
 
-  // Action: What to do when the PIN is successfully created
+  // Action: Callback running immediately upon successful PIN creation steps
   const handlePinSetupSuccess = () => {
     setIsPinModalOpen(false);
     setIsVaultSecurityEnabled(true);
   };
 
-  // Action: Saves the new name for your current workspace
+  // Action: Commits title changes to local context states
   const handleRenameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!renameInput.trim() || !activeWorkspace) return;
 
-    // Show a quick "Saved!" message on the button
     setIsSuccessFeedbackVisible(true);
     const timeoutId = setTimeout(() => setIsSuccessFeedbackVisible(false), 2500);
     return () => clearTimeout(timeoutId);
   };
 
-  // Action: Deletes a workspace completely
+  // Action: Handles absolute deletion loops across targeted profile indexes
   const handleDeleteClick = (targetWorkspaceId: string) => {
     if (targetWorkspaceId === activeWorkspaceId) {
       alert("You cannot delete the workspace you are currently using. Please switch to a different workspace first.");
       return;
     }
     
-    // FIX: Save the user's choice from the confirmation box
     const userConfirmed = confirm("Are you completely sure you want to delete this workspace? This will permanently erase all transactions and investments inside it.");
     
-    // FIX: If they clicked "OK", tell the context to actually delete the workspace
     if (userConfirmed) {
-      // Note: If your context uses the name 'removeWorkspace', change this to 'removeWorkspace(targetWorkspaceId)'
       deleteWorkspace(targetWorkspaceId);
     }
   };
@@ -210,7 +202,6 @@ export default function SettingsPage() {
               </div>
               
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                {/* Button to change PIN code if enabled */}
                 {isVaultSecurityEnabled && (
                   <button 
                     type="button" 
@@ -222,7 +213,6 @@ export default function SettingsPage() {
                   </button>
                 )}
 
-                {/* Master Turn On / Turn Off button */}
                 <button 
                   type="button" 
                   onClick={handleSecurityToggle}
@@ -244,11 +234,6 @@ export default function SettingsPage() {
         onClose={() => setIsPinModalOpen(false)}
         onSuccess={handlePinSetupSuccess} 
       />
-
-      {/* FOOTER STRUT */}
-      <footer className={styles.footerWrapperSpacer}>
-        <DashboardFooter />
-      </footer>
 
     </div>
   );

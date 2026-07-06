@@ -11,7 +11,7 @@
   max-width: 1250px;
   margin: 0 auto;
   box-sizing: border-box;
-  padding-bottom: 2rem; 
+  padding-bottom: 1rem; 
 }
 /* === SECTION 1 END === */
 
@@ -57,6 +57,12 @@
 .nativeCapacitySelectDropdown:focus {
   border-color: var(--color-primary);
 }
+
+/* System spacing container block matching settings structure anchors */
+.systemGlobalFooterWrapper {
+  margin-top: 1.5rem;
+  width: 100%;
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -88,7 +94,6 @@
   box-sizing: border-box;
 }
 
-/* Strips out the duplicate inner shadows inside the modal canvas component container */
 .modalContentCard :global(.TransactionForm_formCard__2mN8x),
 .modalContentCard > div {
   border: none !important;

@@ -12,6 +12,9 @@
   margin: 0 auto;
   box-sizing: border-box;
   letter-spacing: -0.02em;
+
+  /* 💡 ADD THIS LINE TO CONTROL THE BOTTOM GAP: */
+  padding-bottom: 1.5rem; 
 }
 
 .pageHeader {
@@ -304,10 +307,6 @@
   color: var(--text-muted);
   cursor: not-allowed;
   white-space: nowrap;
-}
-
-.footerWrapperSpacer {
-  margin-top: 1rem;
 }
 
 /* ==========================================================================

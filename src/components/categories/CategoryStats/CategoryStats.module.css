@@ -6,7 +6,7 @@
 .kineticRailContainer {
   position: relative;
   display: flex;
-  flex-direction: row; /* Arranges everything horizontally to minimize vertical space */
+  flex-direction: row; 
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -92,7 +92,7 @@
 .infoContext    { background-color: var(--bg-surface, #ffffff); color: var(--color-info, #2563eb); border: 1px solid rgba(37, 99, 235, 0.12); }
 
 /* ==========================================================================
-   === SECTION 3: COMPACT DATA DECKS & GLASS PILLS ===
+   === SECTION 3: COMPACT DATA DECKS ===
    ========================================================================== */
 .railDataDeck {
   display: flex;
@@ -170,9 +170,9 @@
 .warningWavePath { stroke: var(--color-warning, #d97706); }
 .infoWavePath    { stroke: var(--color-info, #2563eb); }
 
-/* Hover Triggers: Accentuate individual horizontal stops cleanly */
-.railNodeItem:hover .giantRingAnchor {
-  transform: scale(1.06);
+/* FIX: Changed .giantRingAnchor to match your true layout class name (.geometricRingAnchor) */
+.railNodeItem:hover .geometricRingAnchor {
+  transform: scale(1.08);
 }
 
 .railNodeItem:hover .floatingGlassPill {
@@ -184,7 +184,7 @@
 .railNodeItem:hover .warningWavePath,
 .railNodeItem:hover .infoWavePath {
   stroke-width: 2px;
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 /* ==========================================================================
@@ -192,7 +192,7 @@
    ========================================================================== */
 @media (max-width: 1024px) {
   .kineticRailContainer {
-    flex-wrap: wrap; /* Wraps into a tight 2x2 on tablet viewports safely */
+    flex-wrap: wrap; 
     padding: 1rem;
   }
   .railNodeItem {
@@ -201,7 +201,6 @@
 }
 
 @media (max-width: 540px) {
-  /* Shifts into clean individual line heights on small phone dimensions */
   .railNodeItem {
     flex: 1 1 100%;
   }

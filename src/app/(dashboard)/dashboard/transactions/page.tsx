@@ -5,13 +5,14 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState } from "react";
-import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // NEW: Connect to the global brain
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import TransactionHeader from "@/components/transactions/TransactionHeader/TransactionHeader";
 import TransactionFilterBar, { TransactionTypeFilter } from "@/components/transactions/TransactionFilterBar/TransactionFilterBar";
 import TransactionLedgerGrid, { TransactionRecord as BaseTransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
 import TransactionPagination from "@/components/transactions/TransactionPagination/TransactionPagination";
 import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/BulkActionToolBelt";
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
+import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import styles from "./page.module.css";
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
 /* === SECTION 1 END === */
@@ -19,7 +20,6 @@ import { TransactionForm } from "@/components/forms/TransactionForm/TransactionF
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-// We extend the base record to ensure every transaction belongs to a workspace
 interface TransactionRecord extends BaseTransactionRecord {
   workspaceId: string; 
 }
@@ -30,7 +30,7 @@ interface TransactionRecord extends BaseTransactionRecord {
    ========================================================================== */
 export default function TransactionsPage() {
   // --- WORKSPACE CONTEXT ---
-  const { activeWorkspaceId } = useWorkspace(); // Grab the currently active mode
+  const { activeWorkspaceId } = useWorkspace();
 
   /* --- STATE MANAGEMENT ENGINES --- */
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -45,7 +45,7 @@ export default function TransactionsPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null);
 
-  // System categories to populate filter tool belt option panels
+  // System categories to populate filter options
   const [categories] = useState<string[]>([
     "Salary",
     "Freelance",
@@ -55,13 +55,13 @@ export default function TransactionsPage() {
     "Marketing"
   ]);
 
-  // NEW: Every single dummy record now belongs specifically to the default "Personal" workspace
+  // Base list of static records assigned across default workspaces
   const [rawRecords, setRawRecords] = useState<TransactionRecord[]>([
     { id: "tx-101", workspaceId: "ws-personal-default", date: "2026-06-12", description: "Monthly Corporate Base Salary Emolument", category: "salary", amount: 185000, type: "income" },
     { id: "tx-102", workspaceId: "ws-personal-default", date: "2026-06-11", description: "Alpha Centauri Green Groceries Bazaar Store", category: "groceries", amount: 14200, type: "expense" },
     { id: "tx-103", workspaceId: "ws-personal-default", date: "2026-06-10", description: "Full-Stack Web App Development Milestone UI Contract", category: "freelance", amount: 65000, type: "income" },
     { id: "tx-104", workspaceId: "ws-personal-default", date: "2026-06-08", description: "Sui Northern Gas Pipeline Bill Settlement", category: "utilities", amount: 8400, type: "expense" },
-    { id: "tx-105", workspaceId: "ws-business-default", date: "2026-06-05", description: "Meta Platform Ads Campaign Conversions Growth Run", category: "marketing", amount: 32000, type: "expense" }, // Assigned to Business to prove it works!
+    { id: "tx-105", workspaceId: "ws-business-default", date: "2026-06-05", description: "Meta Platform Ads Campaign Conversions Growth Run", category: "marketing", amount: 32000, type: "expense" },
     { id: "tx-106", workspaceId: "ws-personal-default", date: "2026-06-02", description: "PSX Index Dividend Payout Yield Release", category: "investments", amount: 12500, type: "income" },
   ]);
 
@@ -103,7 +103,6 @@ export default function TransactionsPage() {
     setEditingTransaction(null);
   };
 
-  // NEW: When a user creates a new transaction, force it to belong to the active workspace
   const handleUpsertTransaction = (savedTx: BaseTransactionRecord) => {
     const transactionWithWorkspace = {
       ...savedTx,
@@ -156,9 +155,8 @@ export default function TransactionsPage() {
     setCurrentPage(1);
   };
 
-  /* --- DATA ENGINE CONVERSION: CLIENT SIDE LIVE COMPUTED FILTER MATRIX --- */
+  /* --- CLIENT SIDE FILTERING ENGINE --- */
   const processedFilteredRecords = rawRecords.filter((singleLog) => {
-    // THE MAGIC FILTER: Only show records that belong to the active workspace
     if (singleLog.workspaceId !== activeWorkspaceId) return false;
 
     const normalQuery = searchQuery.toLowerCase().trim();
@@ -181,7 +179,7 @@ export default function TransactionsPage() {
     }
   });
 
-  /* --- PAGINATION COMPUTATION ACTION --- */
+  /* --- PAGINATION COMPUTATION --- */
   const indexPositionOfLastRowItem = currentPage * itemsPerPage;
   const indexPositionOfFirstRowItem = indexPositionOfLastRowItem - itemsPerPage;
   const currentPaginatedRowsSubset = processedFilteredRecords.slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);
@@ -277,6 +275,11 @@ export default function TransactionsPage() {
         onClearSelection={handleClearSelectionQueue}
         onBulkDelete={handleBulkDeleteExecution}
       />
+
+      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
+      <footer className={styles.systemGlobalFooterWrapper}>
+        <DashboardFooter />
+      </footer>
 
     </div>
   );

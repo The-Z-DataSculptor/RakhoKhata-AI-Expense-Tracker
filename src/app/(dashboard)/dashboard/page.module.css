@@ -11,7 +11,9 @@
   max-width: 1200px;
   margin: 0 auto;
   box-sizing: border-box;
+  padding-bottom: 1.5rem; /* FIX: Creates a clean gap space at the very bottom of the page below the footer */
 }
+/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TOP HEADER LAYOUT ===
@@ -22,7 +24,7 @@
   justify-content: space-between;
   width: 100%;
   gap: 1.5rem;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 1.25rem;
 }
 
@@ -38,12 +40,9 @@
   font-weight: 800;
   letter-spacing: -0.03em;
   margin: 0;
-  background: linear-gradient(90deg, var(--color-primary, #3b82f6) 0%, var(--text-primary, #111827) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: var(--color-primary, #3b82f6);
+  color: var(--text-primary); /* FIX: Uses solid text color variables so it never goes invisible */
 }
+/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: TEXT DESCRIPTIVE LABELS ===
@@ -54,8 +53,7 @@
   font-weight: 600; 
   line-height: 1.5;
   letter-spacing: 0.02em;
-  color: var(--color-primary, #3b82f6);
-  filter: brightness(0.85);
+  color: var(--text-muted);
   position: relative;
   opacity: 0;
   animation: gentleTextSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -64,7 +62,7 @@
 @media (min-width: 769px) {
   .welcomeSubtext {
     padding-left: 0.75rem;
-    border-left: 2px solid var(--color-primary, #3b82f6);
+    border-left: 2px solid var(--color-primary);
   }
 }
 
@@ -78,6 +76,7 @@
     transform: translateX(0);
   }
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: CENTER STAGE CONTAINER SLOTS ===
@@ -90,6 +89,7 @@
   width: 100%;
   animation: gentleTextSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+/* === SECTION 4 END === */
 
 /* ==========================================================================
    === SECTION 5: LOWER CHARTS FLEX STAGE ===
@@ -105,19 +105,25 @@
   width: 100%;
 }
 
-/* Side-by-side presentation layer layout for full computer screens */
 @media (min-width: 1025px) {
   .isolatedStage {
     flex-direction: row;
     align-items: stretch;
   }
   .isolatedStage > .chartWrapperNode:nth-child(1) {
-    flex: 1.4; /* Line graph takes up slightly more landscape width */
+    flex: 1.4; 
   }
   .isolatedStage > .chartWrapperNode:nth-child(2) {
-    flex: 1;   /* Breakdown donut box sits neatly on the right side */
+    flex: 1;   
   }
 }
+
+.footerContainerBlock {
+  width: 100%;
+  margin-top: 1rem;
+  transition: var(--transition-fast);
+}
+/* === SECTION 5 END === */
 
 /* ==========================================================================
    === SECTION 6: PHONE SCREEN RESPONSIVENESS ===
@@ -128,4 +134,5 @@
     align-items: flex-start;
     gap: 1.25rem;
   }
-}
+} 
+/* === SECTION 6 END === */

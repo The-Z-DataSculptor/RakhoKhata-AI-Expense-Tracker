@@ -8,13 +8,13 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Importing the new Workspace Brain
+// Importing the Workspace Context Hook
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 
-// IMPORT THE NEW STANDALONE MODAL COMPONENT
+// Import the standalone creation modal component
 import CreateWorkspaceModal from "@/components/forms/CreateWorkspaceModal/CreateWorkspaceModal";
 
-// Importing perfectly unified linear icons from the Feather set
+// Importing linear icons from the Feather set
 import { 
   FiGrid, 
   FiActivity, 
@@ -29,7 +29,8 @@ import {
   FiMenu,
   FiX,
   FiPlus,
-  FiUser
+  FiUser,
+  FiLogOut
 } from "react-icons/fi";
 
 import styles from "./Sidebar.module.css";
@@ -51,7 +52,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Categories", href: "/dashboard/categories", icon: <FiFolder size={18} />, group: "core" },
   { label: "Budgets", href: "/dashboard/budgets", icon: <FiPieChart size={18} />, group: "core" },
   { label: "Investment Vault", href: "/dashboard/investment-vault", icon: <FiShield size={18} />, group: "growth" },
-  { label: "AI Insights", href: "/dashboard/insights", icon: <FiCpu size={18} />, group: "intelligence" },
+  { label: "AI Insights", href: "/dashboard/ai-insights", icon: <FiCpu size={18} />, group: "intelligence" },
 ];
 /* === SECTION 2 END === */
 
@@ -61,8 +62,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   
-  // --- GLOBAL BRAIN CONNECTION ---
-  // Notice we don't need 'createWorkspace' here anymore, because the Modal handles it!
+  // --- GLOBAL WORKSPACE BRAIN CONNECTION ---
   const { workspaces, activeWorkspace, switchWorkspace, renderIcon } = useWorkspace();
   
   // --- STATE ENGINE OVERLAYS ---
@@ -70,18 +70,32 @@ export default function Sidebar() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
+  
+  // Added state parameters to control the profile session popover deck
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
 
-  // Group items out to match our precise structural informational layouts
+  // Group nav items to match visual hierarchy layouts
   const coreItems = NAVIGATION_ITEMS.filter(item => item.group === "core");
   const growthItems = NAVIGATION_ITEMS.filter(item => item.group === "growth");
   const intelligenceItems = NAVIGATION_ITEMS.filter(item => item.group === "intelligence");
 
-  // Dynamic style selectors based on structural toggle state rules
+  // Dynamic style string selectors based on sidebar orientation rules
   const containerClassName = `
     ${styles.sidebarContainer} 
     ${isCollapsed ? styles.collapsedSidebar : ""} 
     ${isMobileOpen ? styles.mobileSidebarActive : ""}
   `.trim();
+
+  // Simple handler toggle functions to clean up inline markup calls
+  const toggleWorkspaceDropdown = () => {
+    setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen);
+    if (isProfileMenuOpen) setIsProfileMenuOpen(false);
+  };
+
+  const toggleProfileDropdown = () => {
+    setIsProfileMenuOpen(!isProfileMenuOpen);
+    if (isWorkspaceMenuOpen) setIsWorkspaceMenuOpen(false);
+  };
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -111,7 +125,7 @@ export default function Sidebar() {
         />
       )}
 
-      {/* CLEANED UP: WE NOW RENDER THE SEPARATED MODAL COMPONENT HERE */}
+      {/* CREATE WORKSPACE MODAL POPUP ANCHOR */}
       {isCreateModalOpen && (
         <CreateWorkspaceModal onClose={() => setIsCreateModalOpen(false)} />
       )}
@@ -127,25 +141,22 @@ export default function Sidebar() {
           <FiChevronLeft size={14} className={`${styles.pinIcon} ${isCollapsed ? styles.pinIconRotated : ""}`} />
         </button>
 
-        {/* 1. TOP BRAND PLATE (Matching RakhoKhata Brand Alignment) */}
+        {/* 1. TOP BRAND PLATE & WORKSPACE ENGINE */}
         <div className={styles.brandHeaderSection}>
           <div className={styles.logoLayout}>
             Rakho<span className={styles.logoAccent}>Khata</span>
           </div>
 
-          {/* WORKSPACE SWITCHER DROPDOWN TOGGLE */}
           <div className={styles.workspaceWrapper}>
             <button 
               className={styles.workspaceSelectorTrigger}
-              onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
-              aria-label="Toggle structural balance workspace environment"
+              onClick={toggleWorkspaceDropdown}
+              aria-label="Toggle workspace environment selector"
             >
               <span className={styles.activeWorkspaceIcon}>
-                {/* Dynamically draw the icon using the Context helper */}
                 {activeWorkspace ? renderIcon(activeWorkspace.iconName, 14) : null}
               </span>
               <span className={styles.activeWorkspaceLabel}>
-                {/* Dynamically show the name */}
                 {activeWorkspace ? activeWorkspace.name : "Loading..."}
               </span>
               <FiChevronDown className={`${styles.chevronIndicator} ${isWorkspaceMenuOpen ? styles.chevronRotated : ""}`} size={14} />
@@ -153,8 +164,6 @@ export default function Sidebar() {
 
             {isWorkspaceMenuOpen && (
               <div className={styles.workspaceDropdownMenu}>
-                
-                {/* DYNAMIC LIST OF WORKSPACES */}
                 <div className={styles.workspaceScrollArea}>
                   {workspaces.map((ws) => {
                     const isSelected = activeWorkspace?.id === ws.id;
@@ -174,7 +183,6 @@ export default function Sidebar() {
 
                 <div className={styles.dropdownDivider} />
 
-                {/* CREATE NEW WORKSPACE BUTTON */}
                 <button 
                   className={styles.createWorkspaceBtn}
                   onClick={() => {
@@ -213,7 +221,7 @@ export default function Sidebar() {
             })}
           </div>
 
-          {/* GROWTH MODULE LAYER */}
+          {/* WEALTH MANAGEMENT SECTION */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Wealth Management</div>
             {growthItems.map((item) => {
@@ -234,7 +242,7 @@ export default function Sidebar() {
             })}
           </div>
 
-          {/* INTELLIGENCE MODULE LAYER */}
+          {/* AI INTELLIGENCE SECTION */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Core Intelligence</div>
             {intelligenceItems.map((item) => {
@@ -257,26 +265,73 @@ export default function Sidebar() {
 
         </nav>
 
-        {/* 3. LOWER ACCOUNT FOOTER ANCHOR */}
-        <div className={styles.accountProfileFooterSection}>
-          <div className={styles.userProfileIdentificationCard}>
-            <div className={styles.userAvatarIndicatorBubble}>
-              <FiUser size={16} />
-            </div>
-            <div className={styles.identityTextStack}>
-              <span className={styles.operatorProfileName}>Zain Hassan</span>
-              <span className={styles.operatorSecRole}>Signed In</span>
-            </div>
-          </div>
+        {/* 3. LOWER INTERACTIVE SESSION FOOTER ENGINE */}
+        <div className={styles.profileMasterSectionWrapper}>
           
-          <Link 
-            href="/dashboard/settings" 
-            onClick={() => setIsMobileOpen(false)}
-            className={styles.systemSettingsActionGearButton}
-            aria-label="Access environment network settings platform"
+          {/* POPOVER DECK DROPDOWN OVERLAY ELEMENT */}
+          {isProfileMenuOpen && (
+            <div className={styles.profilePopoverMenuDeck}>
+              
+              {/* USER PROFILE META ZONE */}
+              {!isCollapsed && (
+                <div className={styles.popoverMetaUserBlock}>
+                  <p className={styles.popoverUserLabelTitle}>Zain Hassan</p>
+                  <p className={styles.popoverUserConnectionTag}>Verified Profile Account</p>
+                </div>
+              )}
+
+              <div className={styles.dropdownDivider} />
+
+              {/* NAVIGATION INTERACTION LINKS */}
+              <Link 
+                href="/dashboard/settings" 
+                className={styles.popoverInteractButtonRow}
+                onClick={() => setIsProfileMenuOpen(false)}
+              >
+                <FiSettings size={14} />
+                <span>Account Settings</span>
+              </Link>
+
+              <button 
+                type="button" 
+                className={`${styles.popoverInteractButtonRow} ${styles.popoverSignOutActionLink}`}
+                onClick={() => {
+                  setIsProfileMenuOpen(false);
+                  alert("Frontend Session Mock: Executing safe dashboard account sign out routing loop.");
+                }}
+              >
+                <FiLogOut size={14} />
+                <span>Sign Out Account</span>
+              </button>
+
+            </div>
+          )}
+
+          {/* THE INTERACTIVE FLAT TRIGGER CONTROL PLATE CARD */}
+          <button 
+            type="button"
+            className={`${styles.accountProfileFooterSection} ${isProfileMenuOpen ? styles.footerSectionActiveTrigger : ""}`}
+            onClick={toggleProfileDropdown}
+            aria-label="Toggle user session profile management popover menu"
           >
-            <FiSettings size={18} />
-          </Link>
+            <div className={styles.userProfileIdentificationCard}>
+              <div className={styles.userAvatarIndicatorBubble}>
+                <FiUser size={16} />
+                <span className={styles.activePulseStatusDotIndicator} />
+              </div>
+              <div className={styles.identityTextStack}>
+                <span className={styles.operatorProfileName}>Zain Hassan</span>
+                <span className={styles.operatorSecRole}>Cloud Synced</span>
+              </div>
+            </div>
+            
+            {!isCollapsed && (
+              <div className={styles.profileCardIndicatorChevronFrame}>
+                <FiChevronDown className={`${styles.popoverIndicatorChevronIcon} ${isProfileMenuOpen ? styles.chevronRotated : ""}`} size={14} />
+              </div>
+            )}
+          </button>
+
         </div>
 
       </aside>

@@ -1,0 +1,115 @@
+/* src/components/ai-insights/AiLeakWarnings/AiLeakWarnings.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MASTER BOX SECTION BOUNDS ===
+   ========================================================================== */
+.leaksSectionWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.leaksGroupHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.25rem;
+}
+
+.titleAlertWarningIcon {
+  color: var(--color-danger, #dc2626);
+}
+
+.leaksMainLabelTitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: RESPONSIVE CARDS MULTI COLUMN GRID SYSTEM ===
+   ========================================================================== */
+.warningsCardLayoutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.singleLeakCardItem {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
+  transition: transform 0.2s ease;
+}
+
+.singleLeakCardItem:hover {
+  transform: translateY(-2px);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: HEADER ROW DETAILS AND COLOR TINTS ===
+   ========================================================================== */
+.cardTopDetailsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.leakCardCategoryTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0;
+}
+
+.leakSeverityBadgeLabel {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  letter-spacing: -0.01em;
+}
+
+/* High Overspending: Soft Red Alert Badge Backgrounds */
+.badgeHighDangerSoft {
+  background-color: rgba(220, 38, 38, 0.06);
+  color: var(--color-danger, #dc2626);
+}
+
+/* Medium Overspending: Soft Orange Warning Badge Backgrounds */
+.badgeMediumWarningSoft {
+  background-color: rgba(217, 119, 6, 0.06);
+  color: var(--color-warning, #d97706);
+}
+
+.leakCardExplanationDescriptionText {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-secondary, #4e4a6b);
+  margin: 0;
+  line-height: 1.45;
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: TABLET AND MOBILE SCALE HANDLERS ===
+   ========================================================================== */
+@media (max-width: 850px) {
+  .warningsCardLayoutGrid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+/* === SECTION 4 END === */

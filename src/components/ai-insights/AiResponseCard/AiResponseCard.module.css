@@ -1,0 +1,142 @@
+/* src/components/ai-insights/AiResponseCard/AiResponseCard.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MASTER CANVAS ANIMATED DISPLAY FRAMES ===
+   ========================================================================== */
+.responseCardOuterBounds {
+  width: 100%;
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  box-sizing: border-box;
+  box-shadow: 0 4px 20px rgba(16, 4, 63, 0.01);
+  
+  /* Smooth drop down animation when card appears */
+  animation: slideDownFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: PERSONA THEME SHIFT ACCENTS ===
+   ========================================================================== */
+/* Strict Auditor: Soft danger red accent colors */
+.cardAuditor {
+  background-color: rgba(220, 38, 38, 0.015);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-left: 4px solid var(--color-danger, #dc2626);
+}
+.iconAuditor {
+  color: var(--color-danger, #dc2626);
+}
+
+/* Money Coach: Elegant high energy purple accent colors */
+.cardCoach {
+  background-color: rgba(97, 59, 191, 0.015);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-left: 4px solid var(--color-primary, #613bbf);
+}
+.iconCoach {
+  color: var(--color-primary, #613bbf);
+}
+
+/* Minimalist: Solid clean structural slate configuration tints */
+.cardMinimalist {
+  background-color: var(--surface-muted, #f9f8ff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-left: 4px solid var(--text-primary, #10043f);
+}
+.iconMinimalist {
+  color: var(--text-primary, #10043f);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CARD INNER CONTENT LAYOUT BLOCKS ===
+   ========================================================================== */
+.innerResultLayoutDeck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.cardPersonaIdentityHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.personaTitleText {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted, #7e7a9c);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.textGroupingLayoutBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.boldSummaryAlertBullet {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.cleanDetailParagraphDescription {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-secondary, #4e4a6b);
+  line-height: 1.5;
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: LOADING TIMEFRAME PULSE STRUCTURAL ANCHORS ===
+   ========================================================================== */
+.loadingPulseFrameContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.animatedPulseDotElement {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary, #613bbf);
+  border-radius: 50%;
+  animation: radarPulse 1.4s infinite ease-in-out;
+}
+
+.loadingStatusText {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4e4a6b);
+}
+
+@keyframes radarPulse {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
+/* === SECTION 4 END === */

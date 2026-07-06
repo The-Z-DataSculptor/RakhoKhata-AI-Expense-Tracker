@@ -1,26 +1,23 @@
 /* src/components/layout/DashboardNavbar.module.css */
 
 /* ==========================================================================
-   === SECTION 1: TOP NAVIGATION ROW CONTAINER ===
+   === SECTION 1: MAIN NAVIGATION ROW CONTAINER ===
    ========================================================================== */
-
-/* The main bar stretching across the top of your screen */
 .topNavbar {
   height: 70px;
   width: 100%;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
   padding: 0 2rem;
-  box-sizing: border-box; /* Includes padding in the total 100% width calculation */
+  box-sizing: border-box;
   display: flex;
-  align-items: center; /* Centers items vertically */
-  justify-content: space-between; /* Pushes greetings to the left and tools to the right */
-  position: sticky; /* Locks the navbar to the top when scrolling down */
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
   top: 0;
-  z-index: 800; /* Ensures it floats above normal page elements */
+  z-index: 800;
 }
 
-/* Stays on the screen while the real navbar hydrates on slower networks */
 .topNavbarBlankPlaceholder {
   height: 70px;
   width: 100%;
@@ -29,14 +26,12 @@
 }
 
 /* ==========================================================================
-   === SECTION 2: LEFT PROFILE AND SUBTEXT ELEMENTS ===
+   === SECTION 2: LEFT PROFILE AND GREETING ELEMENTS ===
    ========================================================================== */
-
-/* Keeps the greeting title and date stacked vertically */
 .welcomeSection {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0; /* Prevents the user's name from shrinking on smaller screens */
+  flex-shrink: 0;
 }
 
 .greetingTitle {
@@ -48,7 +43,7 @@
 }
 
 .userName {
-  color: var(--color-primary); /* Highlights the user's name in your primary branding color */
+  color: var(--color-primary);
 }
 
 .dateSubtext {
@@ -60,19 +55,16 @@
 /* ==========================================================================
    === SECTION 3: RIGHT DESKTOP CONTROL DECK ===
    ========================================================================== */
-
-/* Keeps components aligned horizontally */
 .actionControlDeck {
   display: flex;
   align-items: center;
-  gap: 0.85rem; /* Puts a clean space between every tool button */
+  gap: 0.85rem;
 }
 
-/* Circular background track wrappers for utility icon actions */
 .utilityIconButton {
   width: 36px;
   height: 36px;
-  border-radius: 50%; /* Forms a perfect circle shape */
+  border-radius: 50%;
   border: 1px solid var(--border-color);
   background-color: transparent;
   color: var(--text-secondary);
@@ -80,7 +72,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  position: relative; /* Allows notification badges to float in the corner */
+  position: relative;
   transition: var(--transition-fast);
 }
 
@@ -89,7 +81,6 @@
   color: var(--text-primary);
 }
 
-/* Small red notification indicator badge */
 .notificationPulseBadge {
   position: absolute;
   top: 8px;
@@ -103,8 +94,6 @@
 /* ==========================================================================
    === SECTION 4: CURRENCY TRIGGERS AND DROPDOWNS ===
    ========================================================================== */
-
-/* The interactive button trigger that shows your active currency flag and symbol */
 .currencyToggleTrigger {
   display: flex;
   align-items: center;
@@ -134,14 +123,13 @@
 }
 
 .dropdownMenuContainer {
-  position: relative; /* Keeps the absolute frame anchored below this position wrapper */
+  position: relative;
 }
 
-/* The floating box panel holding dropdown elements (Theme menu and Currency list) */
 .dropdownMenuFrame {
   position: absolute;
-  top: calc(100% + 8px); /* Places the box exactly 8px below the trigger button */
-  right: 0; /* Aligns the box edge flush against the right side of the navbar */
+  top: calc(100% + 8px);
+  right: 0;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -149,11 +137,27 @@
   display: flex;
   flex-direction: column;
   min-width: 240px;
+  width: max-content; /* FIX: Forces the menu to expand instead of shrinking text */
   box-shadow: var(--shadow-soft);
   z-index: 850;
 }
 
-/* The descriptive informational title line at the top of a dropdown box */
+.themeDropdownMenuFrame {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  width: max-content; /* FIX: Forces the theme box to expand, destroying dots */
+  box-shadow: var(--shadow-soft);
+  z-index: 850;
+}
+
 .dropdownMenuHeader {
   font-size: 0.7rem;
   font-weight: 700;
@@ -165,7 +169,6 @@
   margin-bottom: 0.25rem;
 }
 
-/* The scrolling box that keeps long country lists compact and responsive */
 .dropdownScrollableContainer {
   list-style: none;
   padding: 0;
@@ -174,16 +177,28 @@
   flex-direction: column;
   gap: 0.15rem;
   max-height: 250px;
-  overflow-y: auto; /* Activates vertical scrollbars when items overflow max-height */
+  overflow-y: auto;
   scrollbar-width: thin;
+}
+
+.themeOptionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .dropdownMenuFrame button,
 .dropdownMenuFrame li button,
-.dropdownScrollableContainer button {
+.dropdownScrollableContainer button,
+.themeDropdownMenuFrame button,
+.themeOptionsList button {
   width: 100%;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.65rem;
   padding: 0.5rem 0.65rem;
   background: transparent;
@@ -194,11 +209,21 @@
   text-align: left;
   cursor: pointer;
   transition: var(--transition-fast);
+  white-space: nowrap; /* Forces words to stay on one line */
+}
+
+.themeLabelCluster {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
 }
 
 .dropdownMenuFrame button:hover,
 .dropdownMenuFrame li button:hover,
-.dropdownScrollableContainer button:hover {
+.dropdownScrollableContainer button:hover,
+.themeDropdownMenuFrame button:hover,
+.themeOptionsList button:hover {
   background-color: var(--primary-soft-hover);
   color: var(--color-primary);
 }
@@ -220,9 +245,8 @@
   color: var(--text-secondary);
   font-size: 0.78rem;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   padding-right: 0.5rem;
+  /* FIX: Removed text-overflow: ellipsis completely so dots NEVER appear here either */
 }
 
 .currencyMenuSymbolBadge {
@@ -253,33 +277,27 @@
 /* ==========================================================================
    === SECTION 5: RESPONSIVE SCREEN BREAKPOINT RULES ===
    ========================================================================== */
-
-/* Hides mobile layouts from the workspace by default on large desktop screens */
 .hamburgerMenuIconToggle,
 .mobileNavigationDrawerTray {
   display: none;
 }
 
-/* Tablet viewports: Hide long informational metadata to prevent overcrowding */
 @media (max-width: 900px) {
   .dateSubtext {
     display: none;
   }
 }
 
-/* Mobile Viewports (768px wide or lower) */
 @media (max-width: 768px) {
   .topNavbar {
     padding: 0 1rem;
   }
 
-  /* Drop heavy desktop components from view to save screen real estate */
   .currencyToggleTrigger,
   .dropdownMenuContainer {
     display: none;
   }
 
-  /* Activate mobile trigger elements */
   .hamburgerMenuIconToggle {
     display: flex;
     align-items: center;
@@ -293,7 +311,6 @@
     margin-left: 0.25rem;
   }
 
-  /* The mobile responsive slide-down menu drawer panel */
   .mobileNavigationDrawerTray {
     display: block;
     position: absolute;
@@ -358,4 +375,3 @@
     color: var(--text-secondary);
   }
 }
-/* === SECTION 5 END === */

@@ -12,6 +12,7 @@ import { AddInvestmentForm } from "@/components/forms/AddInvestmentForm/AddInves
 import { VaultLockScreen } from "@/components/investments/VaultLockScreen/VaultLockScreen";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting to brain
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -32,6 +33,7 @@ interface HistoryItem {
 
 export interface Asset {
   id: string;
+  workspaceId: string; // Every asset now belongs to a specific workspace
   name: string;
   symbol: string;
   icon: string;
@@ -60,6 +62,7 @@ export interface InvestmentFormData {
    ========================================================================== */
 export default function InvestmentVaultPage() {
   const { currency: globalActiveCurrency } = useCurrency(); 
+  const { activeWorkspaceId } = useWorkspace(); // Grab the currently active mode
   
   // --- SECURITY & LOCK STATE ---
   const [isAppReady, setIsAppReady] = useState<boolean>(false);
@@ -70,6 +73,7 @@ export default function InvestmentVaultPage() {
   const [assets, setAssets] = useState<Asset[]>([
     {
       id: "asset-1",
+      workspaceId: "ws-personal-default", // Personal Mode
       name: "Bitcoin",
       symbol: "BTC",
       icon: "₿",
@@ -91,6 +95,19 @@ export default function InvestmentVaultPage() {
           isProfitAtTime: true
         }
       ]
+    },
+    {
+      id: "asset-2",
+      workspaceId: "ws-business-default", // Business Mode (To prove the filter works!)
+      name: "Ethereum",
+      symbol: "ETH",
+      icon: "Ξ",
+      userNote: "Business treasury reserve. Holding for smart contract deployments.",
+      currentPrice: 3500,
+      quantityOwned: 5.5,
+      totalInvested: 15000,
+      currency: "USD",
+      history: []
     }
   ]);
 
@@ -142,39 +159,44 @@ export default function InvestmentVaultPage() {
                 ...item, 
                 name: savedData.name,
                 symbol: savedData.symbol,
-                currentPrice: savedData.price, // Map price to currentPrice
-                quantityOwned: savedData.quantity, // Map quantity to quantityOwned
-                totalInvested: savedData.invested, // Map invested to totalInvested
-                userNote: savedData.note, // Map note to userNote
+                currentPrice: savedData.price, 
+                quantityOwned: savedData.quantity, 
+                totalInvested: savedData.invested, 
+                userNote: savedData.note, 
               } 
             : item
         )
       );
     } else {
-      // Create a brand new asset mapping the form fields securely
+      // Create a brand new asset mapping the form fields securely and assigning to active workspace
       const completelyNewAsset: Asset = {
         id: `asset-${Date.now()}`,
+        workspaceId: activeWorkspaceId, // Assigns the new asset to the current mode
         name: savedData.name,
         symbol: savedData.symbol,
-        icon: "📈", // Default fallback icon
+        icon: "📈", 
         userNote: savedData.note,
         currentPrice: savedData.price,
         quantityOwned: savedData.quantity,
         totalInvested: savedData.invested,
         currency: savedData.currency || globalActiveCurrency.toUpperCase(),
-        history: [], // Initialize with empty history
+        history: [], 
       };
       setAssets(prevAssets => [completelyNewAsset, ...prevAssets]);
     }
     handleCloseModal();
   };
 
-  // Math variables
-  const totalCurrentValue = assets.reduce((sum, item) => sum + (item.quantityOwned * item.currentPrice), 0);
-  const totalInvestedCapital = assets.reduce((sum, item) => sum + item.totalInvested, 0);
+  // --- DATA FILTERING ENGINE ---
+  // THE MAGIC FILTER: Only show assets that belong to the active workspace
+  const filteredAssets = assets.filter(item => item.workspaceId === activeWorkspaceId);
 
-  // FIX: Safely extract the top runner symbol to prevent TS array access errors in JSX
-  const topRunner = assets.length > 0 ? assets : null;
+  // Math variables based strictly on the filtered data
+  const totalCurrentValue = filteredAssets.reduce((sum, item) => sum + (item.quantityOwned * item.currentPrice), 0);
+  const totalInvestedCapital = filteredAssets.reduce((sum, item) => sum + item.totalInvested, 0);
+
+  // FIX: Safely grab the first item array element so `.symbol` actually works
+  const topRunner = filteredAssets.length > 0 ? filteredAssets[0] : null;
 
   // Prevent UI flashing by waiting until we've checked the lock status
   if (!isAppReady) {
@@ -204,13 +226,14 @@ export default function InvestmentVaultPage() {
         totalCurrentValueUSD={totalCurrentValue}
         totalInvestedCapitalUSD={totalInvestedCapital}
         topRunnerLabel={topRunner ? topRunner.symbol : "None"}
-        portfolioMixLabel={`${assets.length} Active Tracks`}
-        activeAssetsCount={assets.length}
+        portfolioMixLabel={`${filteredAssets.length} Active Tracks`}
+        activeAssetsCount={filteredAssets.length}
       />
 
       {/* TABLE SECTION */}
+      {/* We pass the FILTERED assets down to the table, not the raw ones */}
       <VaultAssetTable 
-        assets={assets} 
+        assets={filteredAssets} 
         onEditClick={handleOpenEditModal} 
         onDeleteClick={handleDeleteAsset}
       />

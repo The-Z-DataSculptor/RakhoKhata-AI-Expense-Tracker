@@ -1,43 +1,30 @@
 // src/components/layout/DashboardNavbar.tsx
-
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES START ===
+   === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState, useSyncExternalStore } from "react";
-// WHY: We utilize unified icons from react-icons to ensure clear interactive cues
-import { 
-  FiSun, 
-  FiMoon, 
-  FiMonitor, 
-  FiBell,
-  FiCheck,
-  FiMenu,
-  FiX
-} from "react-icons/fi";
-// WHY: Hook dependency to tie dark/light/system mechanics to our DOM data attribute
+import { FiSun, FiMoon, FiMonitor, FiBell, FiCheck, FiMenu, FiX } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
-// FIXED / WHY: Imported from your selected domain-specific local layout directory
 import { useCurrency, CurrencyType } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./DashboardNavbar.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES AND INTERFACES START ===
+   === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
 interface CurrencyOption {
   code: CurrencyType;
   symbol: string;
   label: string;
-  flag: string; // WHY: Displaying regional indicators elevates the visual aesthetic of the layout deck
+  flag: string;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CONSTANTS START ===
+   === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-// WHY: Static registry housing global currencies, India, and all 6 core GCC Gulf nations
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "PKR", symbol: "₨", label: "Pakistani Rupee", flag: "🇵🇰" },
   { code: "USD", symbol: "$", label: "US Dollar", flag: "🇺🇸" },
@@ -52,43 +39,30 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "BHD", symbol: "د.ب", label: "Bahraini Dinar", flag: "🇧🇭" },
 ];
 
-// FIXED / WHY: Empty subscription function required by useSyncExternalStore
 const emptySubscribe = () => () => {};
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: COMPONENT LOGIC START ===
-   ========================================================================== */
 export default function DashboardNavbar() {
   const { activeTheme, changeTheme } = useTheme();
-  
-  // FIXED / WHY: Extracted setCurrency directly from global context state channel to broadcast changes instantly
   const { currency, setCurrency } = useCurrency();
   
-  // FIXED / WHY: useSyncExternalStore safely determines if we are rendering on client vs server 
-  // without triggering a useEffect hook or throwing cascading setState linter errors.
   const isMounted = useSyncExternalStore(
     emptySubscribe,
-    () => true,  // Client value
-    () => false  // Server/Hydration value
+    () => true,
+    () => false
   );
 
-  // WHY: Controls display states for custom menus and mobile toggle drawers
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // WHY: Explicitly maps the active theme to its matching icon variant
   const getThemeIcon = () => {
     if (activeTheme === "light") return <FiSun size={16} />;
     if (activeTheme === "dark") return <FiMoon size={16} />;
     return <FiMonitor size={16} />;
   };
 
-  // FIXED / WHY: Dynamically matches selection directly to context 'currency' variable
   const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === currency);
 
-  // WHY: Compute values dynamically during render rather than setting state inside an effect.
   let greeting = "Welcome";
   let formattedDate = "";
 
@@ -103,19 +77,18 @@ export default function DashboardNavbar() {
     });
   }
 
-  // WHY: If rendering on the server, return a structurally balanced empty bar layout node. 
   if (!isMounted) {
     return <header className={styles.topNavbarBlankPlaceholder} />;
   }
-  /* === SECTION 4 END === */
+/* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 5: RENDER (JSX) START ===
-     ========================================================================== */
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <header className={styles.topNavbar} suppressHydrationWarning>
       
-      {/* --- LEFT HAND ELEMENT BLOCK: GREETINGS --- */}
+      {/* LEFT SECTION: USER GREETING DECK */}
       <div className={styles.welcomeSection}>
         <h2 className={styles.greetingTitle}>
           {greeting}, <span className={styles.userName}>Zain</span>
@@ -123,10 +96,10 @@ export default function DashboardNavbar() {
         <p className={styles.dateSubtext}>{formattedDate}</p>
       </div>
 
-      {/* --- RIGHT HAND ELEMENT BLOCK: UTILITY CONTROLS --- */}
+      {/* RIGHT SECTION: SYSTEM PREFERENCE TRIGGERS */}
       <div className={styles.actionControlDeck}>
         
-        {/* UTILITY: MULTI-CURRENCY CONSOLE DECK */}
+        {/* ACTION NODE: REGIONAL CURRENCY MANAGEMENT */}
         <div className={styles.dropdownMenuContainer}>
           <button 
             className={styles.currencyToggleTrigger}
@@ -165,13 +138,13 @@ export default function DashboardNavbar() {
           )}
         </div>
 
-        {/* UTILITY: NOTIFICATION BELL INDICATOR */}
+        {/* ACTION NODE: NOTIFICATION SYSTEM BELL */}
         <button className={styles.utilityIconButton} aria-label="Notifications">
           <FiBell size={18} />
           <span className={styles.notificationPulseBadge}></span>
         </button>
 
-        {/* UTILITY: THEME TOGGLE FRAMEWORK */}
+        {/* ACTION NODE: SYSTEM DISPLAY THEME DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button 
             className={styles.utilityIconButton}
@@ -183,39 +156,62 @@ export default function DashboardNavbar() {
           </button>
 
           {isThemeOpen && (
-            <ul className={styles.dropdownMenuFrame}>
+            <div className={styles.themeDropdownMenuFrame}>
               <div className={styles.dropdownMenuHeader}>Interface Theme</div>
-              <li>
-                <button onClick={() => { changeTheme("light"); setIsThemeOpen(false); }} className={activeTheme === "light" ? styles.activeMenuOption : ""}>
-                  <FiSun size={14} /> Light
-                </button>
-              </li>
-              <li>
-                <button onClick={() => { changeTheme("dark"); setIsThemeOpen(false); }} className={activeTheme === "dark" ? styles.activeMenuOption : ""}>
-                  <FiMoon size={14} /> Dark
-                </button>
-              </li>
-              <li>
-                <button onClick={() => { changeTheme("system"); setIsThemeOpen(false); }} className={activeTheme === "system" ? styles.activeMenuOption : ""}>
-                  <FiMonitor size={14} /> System
-                </button>
-              </li>
-            </ul>
+              <ul className={styles.themeOptionsList}>
+                <li>
+                  <button 
+                    onClick={() => { changeTheme("light"); setIsThemeOpen(false); }} 
+                    className={activeTheme === "light" ? styles.activeMenuOption : ""}
+                  >
+                    <div className={styles.themeLabelCluster}>
+                      <FiSun size={14} /> 
+                      <span>Light</span>
+                    </div>
+                    {activeTheme === "light" && <FiCheck className={styles.checkMarkerIcon} size={12} />}
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => { changeTheme("dark"); setIsThemeOpen(false); }} 
+                    className={activeTheme === "dark" ? styles.activeMenuOption : ""}
+                  >
+                    <div className={styles.themeLabelCluster}>
+                      <FiMoon size={14} /> 
+                      <span>Dark</span>
+                    </div>
+                    {activeTheme === "dark" && <FiCheck className={styles.checkMarkerIcon} size={12} />}
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => { changeTheme("system"); setIsThemeOpen(false); }} 
+                    className={activeTheme === "system" ? styles.activeMenuOption : ""}
+                  >
+                    <div className={styles.themeLabelCluster}>
+                      <FiMonitor size={14} /> 
+                      <span>System</span>
+                    </div>
+                    {activeTheme === "system" && <FiCheck className={styles.checkMarkerIcon} size={12} />}
+                  </button>
+                </li>
+              </ul>
+            </div>
           )}
         </div>
 
-        {/* HAMBURGER TRIGGER UTILITY (VIEWPORTS BELOW 768px) */}
+        {/* RESPONSIVE MOBILE ACCORDION COMPONENT MENU TOGGLE */}
         <button 
           className={styles.hamburgerMenuIconToggle}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle system control options drawer"
+          aria-label="Toggle navigation options menu"
         >
           {isMobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
         </button>
 
       </div>
 
-      {/* --- SUB-COMPONENT: RESPONSIVE DROP ACCORDION DRAWER --- */}
+      {/* COMPONENT DRAWER OVERLAY TRAYS FOR MINIFIED VIEWPORTS */}
       {isMobileMenuOpen && (
         <div className={styles.mobileNavigationDrawerTray}>
           <div className={styles.mobileDrawerWrapper}>
@@ -251,4 +247,4 @@ export default function DashboardNavbar() {
     </header>
   );
 }
-/* === SECTION 5 END === */
+/* === SECTION 4 END === */

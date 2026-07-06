@@ -1,18 +1,17 @@
 // src/app/(dashboard)/context/CurrencyContext.tsx
-
-/* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES ===
-   ========================================================================== */
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES AND INTERFACES ===
+   === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-// FIXED / WHY: Changed "QAR" to "QAT" (correct ISO 4217 code for Qatar Riyal)
-export type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAT" | "BHD";
+// FIX: Changed "QAT" back to "QAR". QAR is the universally accepted standard code for Qatar.
+export type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAR" | "BHD";
 
 interface CurrencyContextType {
   currency: CurrencyType;
@@ -21,6 +20,7 @@ interface CurrencyContextType {
   convertAmount: (amount: number, from: CurrencyType, to: CurrencyType) => number;
 }
 
+// Define how the symbols look when printed on the screen
 const CURRENCY_SYMBOLS: Record<CurrencyType, string> = {
   PKR: "Rs. ",
   USD: "$ ",
@@ -31,10 +31,11 @@ const CURRENCY_SYMBOLS: Record<CurrencyType, string> = {
   SAR: "SAR ",
   KWD: "KWD ",
   OMR: "OMR ",
-  QAT: "QAT ",
+  QAR: "QAR ",
   BHD: "BHD ",
 };
 
+// Static conversion rates (Base: 1 USD)
 const EXCHANGE_RATES_TO_1_USD: Record<CurrencyType, number> = {
   USD: 1.00,
   PKR: 278.50,
@@ -45,12 +46,12 @@ const EXCHANGE_RATES_TO_1_USD: Record<CurrencyType, number> = {
   SAR: 3.75,
   KWD: 0.31,
   OMR: 0.38,
-  QAT: 3.64,
+  QAR: 3.64,
   BHD: 0.38,
 };
 
-// FIXED / WHY: Array containing valid currency codes for safe runtime validation
-const VALID_CURRENCIES: CurrencyType[] = ["PKR", "USD", "EUR", "GBP", "INR", "AED", "SAR", "KWD", "OMR", "QAT", "BHD"];
+// A simple array to check if a saved currency is safe to use
+const VALID_CURRENCIES: CurrencyType[] = ["PKR", "USD", "EUR", "GBP", "INR", "AED", "SAR", "KWD", "OMR", "QAR", "BHD"];
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -59,64 +60,63 @@ const VALID_CURRENCIES: CurrencyType[] = ["PKR", "USD", "EUR", "GBP", "INR", "AE
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  // FIXED / WHY: Initialize with default "PKR" to prevent hydration mismatch
-  // Actual value from localStorage is synced in useEffect after component mounts
+  // We start with PKR as the default before the browser has time to check saved settings
   const [currency, setCurrencyState] = useState<CurrencyType>("PKR");
-  
-  // FIXED / WHY: Use ref to track if component has mounted to avoid re-render during hydration
-  // This prevents ESLint warnings about setState in effects
+
+  // We use this reference to make sure we only read from the browser's memory once
   const isMountedRef = useRef(false);
 
-  // FIXED / WHY: Sync currency from localStorage only on client after first render
-  // This prevents SSR/client hydration mismatch errors
+  // When the app first loads, check if the user has a saved currency from a previous visit
   useEffect(() => {
-    // Only run this logic once after initial mount
     if (!isMountedRef.current) {
       isMountedRef.current = true;
       const savedCurrency = localStorage.getItem("dashboard_currency");
-      
-      // Validate that saved value is a valid currency code
+
+      // If they have a saved currency and it's in our approved list, use it!
       if (savedCurrency && VALID_CURRENCIES.includes(savedCurrency as CurrencyType)) {
-        // eslint-disable-next-line
         setCurrencyState(savedCurrency as CurrencyType);
       }
     }
   }, []);
 
-  // Function to update currency and persist to localStorage
+  // Action: Updates the currency on screen AND saves it to the browser for next time
   const setCurrency = (newCurrency: CurrencyType) => {
     setCurrencyState(newCurrency);
     localStorage.setItem("dashboard_currency", newCurrency);
   };
 
-  // Function to convert amount from one currency to another
+  // Action: Does the math to convert money from one country's value to another
   const convertAmount = (amount: number, from: CurrencyType, to: CurrencyType): number => {
-    // If converting to the same currency, return unchanged
-    if (from === to) return amount;
-    
-    // Convert to USD as intermediate currency
+    if (from === to) return amount; // No math needed if they are the same!
+
+    // Step 1: Convert original money into US Dollars first (as a middle ground)
     const amountInUSD = amount / EXCHANGE_RATES_TO_1_USD[from];
-    
-    // Convert from USD to target currency
+
+    // Step 2: Convert those US Dollars into the final target currency
     return amountInUSD * EXCHANGE_RATES_TO_1_USD[to];
   };
 
-  // Function to format amount with currency symbol based on current active currency
+  // Action: Takes a raw number, converts it to the active currency, and adds commas and symbols
   const formatAmount = (amount: number, sourceCurrency: CurrencyType = "PKR") => {
-    // Convert amount from source currency to active currency
+    // Math: get the updated value based on what currency the user has chosen to view
     const convertedValue = convertAmount(amount, sourceCurrency, currency);
 
-    // Format number based on currency (2 decimals for USD/EUR, 0 for others)
+    // Visuals: Make the numbers look pretty (show cents for USD/EUR, whole numbers for others)
     const formattedNumber = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0,
       maximumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0,
     }).format(convertedValue);
 
-    // Get currency symbol and return formatted string
+    // Attach the correct symbol (like $ or Rs.) to the front of the number
     const symbolPrefix = CURRENCY_SYMBOLS[currency] || "";
     return `${symbolPrefix}${formattedNumber}`;
   };
 
+  /* === SECTION 3 END === */
+
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <CurrencyContext.Provider value={{ currency, setCurrency, formatAmount, convertAmount }}>
       {children}
@@ -124,6 +124,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Hook to use these tools easily in any other file
 export function useCurrency() {
   const context = useContext(CurrencyContext);
   if (!context) {
@@ -131,4 +132,4 @@ export function useCurrency() {
   }
   return context;
 }
-/* === SECTION 3 END === */
+/* === SECTION 4 END === */

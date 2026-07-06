@@ -1,0 +1,337 @@
+/* src/app/(dashboard)/dashboard/settings/page.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MAIN STRUCTURAL CANVAS FOUNDATIONS ===
+   ========================================================================== */
+.settingsCanvasDeck {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  letter-spacing: -0.02em;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1.25rem;
+}
+
+.mainHeadline {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.subtextDescription {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   === SECTION 2: CARD PATTERN SYSTEM LAYOUTS ===
+   ========================================================================== */
+.cardsStackDeck {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.settingsCardNode {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cardHeaderArea {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.iconIndicatorFrame {
+  width: 36px;
+  height: 36px;
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.cardContextExplanation {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.cardBodyContent {
+  width: 100%;
+}
+
+/* ==========================================================================
+   === SECTION 3: FORM FIELDS & ACTION CONFIGS ===
+   ========================================================================== */
+.renameFormBlock {
+  width: 100%;
+}
+
+.inputFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fieldLabelText {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.inputActionCluster {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.primaryTextInputElement {
+  flex: 1;
+  padding: 0.65rem 1rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.primaryTextInputElement:focus {
+  border-color: var(--color-primary);
+  background-color: var(--bg-surface);
+}
+
+.saveActionSubmitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.saveActionSubmitBtn:hover {
+  opacity: 0.9;
+}
+
+.dividerSplitLine {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 1.75rem 0;
+  width: 100%;
+}
+
+/* ==========================================================================
+   === SECTION 4: DIRECTORY INDEX LAYOUT LISTS ===
+   ========================================================================== */
+.directoryEntriesListWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.subSectionLabel {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.entriesGridList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wsRowCardItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+
+.wsRowCardItem:hover {
+  background-color: var(--surface-outline);
+}
+
+.wsActiveCardHighlight {
+  border-color: var(--color-primary);
+  background-color: var(--primary-soft-faint);
+}
+
+.wsRowIdentityFrame {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.wsVisualMarkerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+}
+
+.wsActiveCardHighlight .wsVisualMarkerDot {
+  background-color: var(--color-primary);
+}
+
+.wsIdentityNameLabel {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.activeStatusPillBadge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  background-color: var(--primary-soft);
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+}
+
+.rowDeleteTriggerActionBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.rowDeleteTriggerActionBtn:hover:not(:disabled) {
+  color: var(--color-danger);
+  background-color: var(--danger-soft);
+}
+
+.rowDeleteTriggerActionBtn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   === SECTION 5: PLACEHOLDER FALLBACK BLOCK STRUCTURES ===
+   ========================================================================== */
+.placeholderControlRowFlexDeck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.metaInformationLeftTextBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.rowControlHeadline {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rowControlSecondaryExplanation {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.disabledActionStatusButtonBadge {
+  padding: 0.5rem 0.85rem;
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  white-space: nowrap;
+}
+
+.footerWrapperSpacer {
+  margin-top: 1rem;
+}
+
+/* ==========================================================================
+   === SECTION 6: RESPONSIVE SCREEN BREAKPOINTS ===
+   ========================================================================== */
+@media (max-width: 640px) {
+  .inputActionCluster {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .saveActionSubmitBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .placeholderControlRowFlexDeck {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .disabledActionStatusButtonBadge {
+    width: 100%;
+    text-align: center;
+  }
+}

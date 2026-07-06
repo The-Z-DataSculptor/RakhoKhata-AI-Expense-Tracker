@@ -1,16 +1,25 @@
-// K:\Developer\expense-tracker\src\app\(dashboard)\dashboard\budgets\page.tsx
+// src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React, { useState } from "react";
 import { BudgetHeader } from "@/components/budgets/BudgetHeader/BudgetHeader";
 import { BudgetDonutGrid, type MockDonutItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
 import { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import { CreateBudgetModal, type NewBudgetFormData } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // NEW: Connect to the global brain
 import styles from "./page.module.css";
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 // 1. Single Master List: The same budgets exist across all time views
 interface MasterBudget {
   id: string;
+  workspaceId: string; // NEW: Every budget belongs to a specific workspace
   categoryName: string;
   totalLimit: number;
   // Simulated database transactions grouped by timeframe
@@ -19,10 +28,15 @@ interface MasterBudget {
   absoluteStart: string; // YYYY-MM-DD
   absoluteEnd: string;   // YYYY-MM-DD
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
 const MASTER_BUDGETS_COLLECTION: MasterBudget[] = [
   {
     id: "b1",
+    workspaceId: "ws-personal-default", // Personal
     categoryName: "Marketing Ads",
     totalLimit: 30000,
     absoluteStart: "2026-06-01",
@@ -31,6 +45,7 @@ const MASTER_BUDGETS_COLLECTION: MasterBudget[] = [
   },
   {
     id: "b2",
+    workspaceId: "ws-business-default", // Business (To prove filter works)
     categoryName: "Cloud Servers",
     totalLimit: 15000,
     absoluteStart: "2026-06-01",
@@ -39,6 +54,7 @@ const MASTER_BUDGETS_COLLECTION: MasterBudget[] = [
   },
   {
     id: "b3",
+    workspaceId: "ws-personal-default", // Personal
     categoryName: "Office Supplies",
     totalLimit: 5000,
     absoluteStart: "2026-06-05",
@@ -48,6 +64,8 @@ const MASTER_BUDGETS_COLLECTION: MasterBudget[] = [
 ];
 
 export default function BudgetsPage() {
+  const { activeWorkspaceId } = useWorkspace(); // Grab the currently active mode
+
   const [activeRange, setActiveRange] = useState<TimePeriod>("30d");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [masterBudgets, setMasterBudgets] = useState<MasterBudget[]>(MASTER_BUDGETS_COLLECTION);
@@ -57,9 +75,13 @@ export default function BudgetsPage() {
     return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
   };
 
+  // --- DATA FILTERING ENGINE ---
+  // THE MAGIC FILTER: Only show budgets that belong to the active workspace
+  const filteredBudgets = masterBudgets.filter(budget => budget.workspaceId === activeWorkspaceId);
+
   // 2. Dynamic Calculation Engine
-  // This takes your master cards list and recalculates internal boundaries on the fly!
-  const computedBudgetItems: MockDonutItem[] = masterBudgets.map((budget) => {
+  // This takes the FILTERED cards list and recalculates internal boundaries on the fly
+  const computedBudgetItems: MockDonutItem[] = filteredBudgets.map((budget) => {
     const today = new Date("2026-06-16"); // Anchor target simulation date frame
     let displayStart = new Date(budget.absoluteStart);
     let displayEnd = new Date(budget.absoluteEnd);
@@ -95,6 +117,7 @@ export default function BudgetsPage() {
   const handleCreateBudgetSubmit = (formData: NewBudgetFormData) => {
     const newEntry: MasterBudget = {
       id: `budget_${Date.now()}`,
+      workspaceId: activeWorkspaceId, // Assigns new budget specifically to the active space
       categoryName: formData.categoryName,
       totalLimit: formData.limitAmount,
       absoluteStart: formData.startDate,
@@ -104,7 +127,11 @@ export default function BudgetsPage() {
 
     setMasterBudgets((prev) => [newEntry, ...prev]);
   };
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <main className={styles.pageViewport}>
       
@@ -116,7 +143,14 @@ export default function BudgetsPage() {
 
       {/* Render the calculated items list output */}
       <div className={styles.contentContainer}>
-        <BudgetDonutGrid items={computedBudgetItems} />
+        {computedBudgetItems.length > 0 ? (
+           <BudgetDonutGrid items={computedBudgetItems} />
+        ) : (
+          <div className={styles.sectionFallback}>
+            <p className={styles.fallbackText}>No active budgets found in this workspace.</p>
+            <p className={styles.subFallbackText}>Create a new budget to track your spending limits specifically for {activeWorkspaceId.includes('business') ? 'your business' : 'your personal'} expenses.</p>
+          </div>
+        )}
       </div>
 
       <CreateBudgetModal
@@ -128,3 +162,4 @@ export default function BudgetsPage() {
     </main>
   );
 }
+/* === SECTION 4 END === */

@@ -1,4 +1,4 @@
-/* FILE LOCATION: src/components/layout/Sidebar.module.css */
+/* src/components/layout/Sidebar.module.css */
 
 /* ==========================================================================
    === SECTION 1: SIDEBAR CONTAINER FRAME FOUNDATION ===
@@ -12,7 +12,6 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  /* position: fixed; removed to seamlessly sit inside the modern dashboard layout CSS grid */
   position: relative;
   z-index: 900;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
@@ -175,13 +174,27 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 0.35rem;
-  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
   box-shadow: var(--shadow-soft);
   z-index: 950;
   animation: dropdownAppendFade 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.workspaceScrollArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.workspaceScrollArea::-webkit-scrollbar {
+  width: 4px;
+}
+.workspaceScrollArea::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
 }
 
 .workspaceDropdownMenu button {
@@ -215,6 +228,21 @@
 .checkMarker {
   margin-left: auto;
   color: var(--color-primary);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 0.35rem 0;
+}
+
+.createWorkspaceBtn {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+.createWorkspaceBtn:hover {
+  background-color: var(--surface-outline) !important;
 }
 
 /* ==========================================================================
@@ -385,12 +413,10 @@
 }
 
 @media (max-width: 768px) {
-  /* Desktop Collapse Pin is unneeded on mobile viewports */
   .desktopCollapsePinButton {
     display: none !important;
   }
 
-  /* Reveal Mobile Control Header */
   .mobileTopBar {
     width: 100%;
     height: 60px;
@@ -425,20 +451,18 @@
     padding: 0.25rem;
   }
 
-  /* Structural transformation: Transform Sidebar aside container into a Slide-out Drawer Panel */
   .sidebarContainer {
-    position: fixed; /* Reactivated exclusively on mobile for layout canvas overlays */
+    position: fixed; 
     width: 280px;
     height: 100vh;
     top: 0;
-    left: -280px; /* Hide completely off-canvas by default */
+    left: -280px; 
     z-index: 1200;
     box-shadow: 4px 0 25px var(--shadow-soft);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    padding-top: 5rem; /* Space to safely clear the absolute close metrics area */
+    padding-top: 5rem; 
   }
 
-  /* Slide-In Trigger execution class */
   .mobileSidebarActive {
     transform: translateX(280px);
   }
@@ -456,7 +480,6 @@
     z-index: 1150;
   }
 
-  /* Ensure all items remain beautifully open inside the drawer tray format */
   .collapsedSidebar {
     width: 280px !important;
     padding: 5rem 1rem 1.5rem 1rem !important;

@@ -5,28 +5,33 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState } from "react";
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // NEW: Connect to the global brain
 import TransactionHeader from "@/components/transactions/TransactionHeader/TransactionHeader";
 import TransactionFilterBar, { TransactionTypeFilter } from "@/components/transactions/TransactionFilterBar/TransactionFilterBar";
-import TransactionLedgerGrid, { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
+import TransactionLedgerGrid, { TransactionRecord as BaseTransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
 import TransactionPagination from "@/components/transactions/TransactionPagination/TransactionPagination";
 import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/BulkActionToolBelt";
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
 import styles from "./page.module.css";
-
-// Updated path targeting your centralized forms layout folder
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-// No external properties needed for root-level engine page routes.
+// We extend the base record to ensure every transaction belongs to a workspace
+interface TransactionRecord extends BaseTransactionRecord {
+  workspaceId: string; 
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function TransactionsPage() {
+  // --- WORKSPACE CONTEXT ---
+  const { activeWorkspaceId } = useWorkspace(); // Grab the currently active mode
+
   /* --- STATE MANAGEMENT ENGINES --- */
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedType, setSelectedType] = useState<TransactionTypeFilter>("all");
@@ -50,14 +55,14 @@ export default function TransactionsPage() {
     "Marketing"
   ]);
 
-  // Production mock tracking record entries containing localized real value configurations
+  // NEW: Every single dummy record now belongs specifically to the default "Personal" workspace
   const [rawRecords, setRawRecords] = useState<TransactionRecord[]>([
-    { id: "tx-101", date: "2026-06-12", description: "Monthly Corporate Base Salary Emolument", category: "salary", amount: 185000, type: "income" },
-    { id: "tx-102", date: "2026-06-11", description: "Alpha Centauri Green Groceries Bazaar Store", category: "groceries", amount: 14200, type: "expense" },
-    { id: "tx-103", date: "2026-06-10", description: "Full-Stack Web App Development Milestone UI Contract", category: "freelance", amount: 65000, type: "income" },
-    { id: "tx-104", date: "2026-06-08", description: "Sui Northern Gas Pipeline Bill Settlement", category: "utilities", amount: 8400, type: "expense" },
-    { id: "tx-105", date: "2026-06-05", description: "Meta Platform Ads Campaign Conversions Growth Run", category: "marketing", amount: 32000, type: "expense" },
-    { id: "tx-106", date: "2026-06-02", description: "PSX Index Dividend Payout Yield Release", category: "investments", amount: 12500, type: "income" },
+    { id: "tx-101", workspaceId: "ws-personal-default", date: "2026-06-12", description: "Monthly Corporate Base Salary Emolument", category: "salary", amount: 185000, type: "income" },
+    { id: "tx-102", workspaceId: "ws-personal-default", date: "2026-06-11", description: "Alpha Centauri Green Groceries Bazaar Store", category: "groceries", amount: 14200, type: "expense" },
+    { id: "tx-103", workspaceId: "ws-personal-default", date: "2026-06-10", description: "Full-Stack Web App Development Milestone UI Contract", category: "freelance", amount: 65000, type: "income" },
+    { id: "tx-104", workspaceId: "ws-personal-default", date: "2026-06-08", description: "Sui Northern Gas Pipeline Bill Settlement", category: "utilities", amount: 8400, type: "expense" },
+    { id: "tx-105", workspaceId: "ws-business-default", date: "2026-06-05", description: "Meta Platform Ads Campaign Conversions Growth Run", category: "marketing", amount: 32000, type: "expense" }, // Assigned to Business to prove it works!
+    { id: "tx-106", workspaceId: "ws-personal-default", date: "2026-06-02", description: "PSX Index Dividend Payout Yield Release", category: "investments", amount: 12500, type: "income" },
   ]);
 
   /* --- SELECTION UTILITY MODIFIERS --- */
@@ -98,13 +103,19 @@ export default function TransactionsPage() {
     setEditingTransaction(null);
   };
 
-  const handleUpsertTransaction = (savedTx: TransactionRecord) => {
+  // NEW: When a user creates a new transaction, force it to belong to the active workspace
+  const handleUpsertTransaction = (savedTx: BaseTransactionRecord) => {
+    const transactionWithWorkspace = {
+      ...savedTx,
+      workspaceId: editingTransaction ? editingTransaction.workspaceId : activeWorkspaceId,
+    };
+
     setRawRecords((prevList) => {
       const exists = prevList.some((t) => t.id === savedTx.id);
       if (exists) {
-        return prevList.map((t) => (t.id === savedTx.id ? savedTx : t));
+        return prevList.map((t) => (t.id === savedTx.id ? transactionWithWorkspace : t));
       }
-      return [savedTx, ...prevList];
+      return [transactionWithWorkspace, ...prevList];
     });
     handleClosePopupModal();
   };
@@ -147,6 +158,9 @@ export default function TransactionsPage() {
 
   /* --- DATA ENGINE CONVERSION: CLIENT SIDE LIVE COMPUTED FILTER MATRIX --- */
   const processedFilteredRecords = rawRecords.filter((singleLog) => {
+    // THE MAGIC FILTER: Only show records that belong to the active workspace
+    if (singleLog.workspaceId !== activeWorkspaceId) return false;
+
     const normalQuery = searchQuery.toLowerCase().trim();
     const matchesSearch = normalQuery === "" || singleLog.description.toLowerCase().includes(normalQuery);
     const matchesType = selectedType === "all" || singleLog.type === selectedType;

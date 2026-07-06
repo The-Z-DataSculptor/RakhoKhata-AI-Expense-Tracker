@@ -1,4 +1,4 @@
-// FILE LOCATION: src/components/layout/Sidebar.tsx
+// src/components/layout/Sidebar.tsx
 "use client";
 
 /* ==========================================================================
@@ -8,7 +8,13 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Importing perfectly unified linear icons from the Feather set within react-icons
+// Importing the new Workspace Brain
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+
+// IMPORT THE NEW STANDALONE MODAL COMPONENT
+import CreateWorkspaceModal from "@/components/forms/CreateWorkspaceModal/CreateWorkspaceModal";
+
+// Importing perfectly unified linear icons from the Feather set
 import { 
   FiGrid, 
   FiActivity, 
@@ -19,11 +25,11 @@ import {
   FiSettings,
   FiChevronDown,
   FiCheck,
-  FiBriefcase,
-  FiUser,
   FiChevronLeft,
   FiMenu,
-  FiX
+  FiX,
+  FiPlus,
+  FiUser
 } from "react-icons/fi";
 
 import styles from "./Sidebar.module.css";
@@ -39,8 +45,6 @@ interface NavItem {
   group: "core" | "growth" | "intelligence";
 }
 
-type WorkspaceType = "personal" | "business";
-
 const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Overview Hub", href: "/dashboard", icon: <FiGrid size={18} />, group: "core" },
   { label: "Transactions", href: "/dashboard/transactions", icon: <FiActivity size={18} />, group: "core" },
@@ -51,12 +55,19 @@ const NAVIGATION_ITEMS: NavItem[] = [
 ];
 /* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
 export default function Sidebar() {
   const pathname = usePathname();
   
-  /* --- STATE ENGINE OVERLAYS --- */
-  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceType>("personal");
+  // --- GLOBAL BRAIN CONNECTION ---
+  // Notice we don't need 'createWorkspace' here anymore, because the Modal handles it!
+  const { workspaces, activeWorkspace, switchWorkspace, renderIcon } = useWorkspace();
+  
+  // --- STATE ENGINE OVERLAYS ---
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
@@ -71,7 +82,11 @@ export default function Sidebar() {
     ${isCollapsed ? styles.collapsedSidebar : ""} 
     ${isMobileOpen ? styles.mobileSidebarActive : ""}
   `.trim();
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <>
       {/* MOBILE HEADER BAR: Only visible on mobile viewports */}
@@ -94,6 +109,11 @@ export default function Sidebar() {
           className={styles.mobileMenuBackdropOverlay} 
           onClick={() => setIsMobileOpen(false)}
         />
+      )}
+
+      {/* CLEANED UP: WE NOW RENDER THE SEPARATED MODAL COMPONENT HERE */}
+      {isCreateModalOpen && (
+        <CreateWorkspaceModal onClose={() => setIsCreateModalOpen(false)} />
       )}
 
       <aside className={containerClassName}>
@@ -121,37 +141,51 @@ export default function Sidebar() {
               aria-label="Toggle structural balance workspace environment"
             >
               <span className={styles.activeWorkspaceIcon}>
-                {activeWorkspace === "personal" ? <FiUser size={14} /> : <FiBriefcase size={14} />}
+                {/* Dynamically draw the icon using the Context helper */}
+                {activeWorkspace ? renderIcon(activeWorkspace.iconName, 14) : null}
               </span>
               <span className={styles.activeWorkspaceLabel}>
-                {activeWorkspace === "personal" ? "Personal Mode" : "Business Mode"}
+                {/* Dynamically show the name */}
+                {activeWorkspace ? activeWorkspace.name : "Loading..."}
               </span>
               <FiChevronDown className={`${styles.chevronIndicator} ${isWorkspaceMenuOpen ? styles.chevronRotated : ""}`} size={14} />
             </button>
 
             {isWorkspaceMenuOpen && (
-              <ul className={styles.workspaceDropdownMenu}>
-                <li>
-                  <button 
-                    onClick={() => { setActiveWorkspace("personal"); setIsWorkspaceMenuOpen(false); }}
-                    className={activeWorkspace === "personal" ? styles.selectedWorkspaceOption : ""}
-                  >
-                    <FiUser size={14} />
-                    <span>Personal Mode</span>
-                    {activeWorkspace === "personal" && <FiCheck className={styles.checkMarker} size={14} />}
-                  </button>
-                </li>
-                <li>
-                  <button 
-                    onClick={() => { setActiveWorkspace("business"); setIsWorkspaceMenuOpen(false); }}
-                    className={activeWorkspace === "business" ? styles.selectedWorkspaceOption : ""}
-                  >
-                    <FiBriefcase size={14} />
-                    <span>Business Mode</span>
-                    {activeWorkspace === "business" && <FiCheck className={styles.checkMarker} size={14} />}
-                  </button>
-                </li>
-              </ul>
+              <div className={styles.workspaceDropdownMenu}>
+                
+                {/* DYNAMIC LIST OF WORKSPACES */}
+                <div className={styles.workspaceScrollArea}>
+                  {workspaces.map((ws) => {
+                    const isSelected = activeWorkspace?.id === ws.id;
+                    return (
+                      <button 
+                        key={ws.id}
+                        onClick={() => { switchWorkspace(ws.id); setIsWorkspaceMenuOpen(false); }}
+                        className={isSelected ? styles.selectedWorkspaceOption : ""}
+                      >
+                        {renderIcon(ws.iconName, 14)}
+                        <span>{ws.name}</span>
+                        {isSelected && <FiCheck className={styles.checkMarker} size={14} />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className={styles.dropdownDivider} />
+
+                {/* CREATE NEW WORKSPACE BUTTON */}
+                <button 
+                  className={styles.createWorkspaceBtn}
+                  onClick={() => {
+                    setIsWorkspaceMenuOpen(false);
+                    setIsCreateModalOpen(true);
+                  }}
+                >
+                  <FiPlus size={14} />
+                  <span>Create Workspace</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -249,3 +283,4 @@ export default function Sidebar() {
     </>
   );
 }
+/* === SECTION 4 END === */

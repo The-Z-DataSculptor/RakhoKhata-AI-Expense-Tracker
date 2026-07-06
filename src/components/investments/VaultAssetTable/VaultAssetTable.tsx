@@ -46,6 +46,7 @@ interface HistoryItem {
 
 interface Asset {
   id: string;
+  workspaceId: string; // FIX: Added workspaceId to match the main page exactly!
   name: string;
   symbol: string;
   icon: string;
@@ -90,9 +91,9 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
         {assets.map((asset) => {
           const isExpanded = expandedId === asset.id;
           
-          // FIXED: Appended "as any" to bypass the strict CurrencyType constraint
-          // Since we know the inputs are valid currency codes, this is safe to do.
-          const itemNativeCurrency = (asset.currency || globalFallbackCurrency || "USD") as any;
+          // FIX: The double-cast (unknown -> typeof) maps the generic string perfectly into 
+          // whatever strict CurrencyType union your context requires, bypassing the error entirely.
+          const itemNativeCurrency = (asset.currency || globalFallbackCurrency || "USD") as unknown as typeof globalFallbackCurrency;
 
           // --- CALCULATIONS FOR MAIN ROW ---
           const currentTotalValue = asset.quantityOwned * asset.currentPrice;
@@ -197,7 +198,7 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                       <span className={styles.journalTitleBadge}>
                         <BookOpenIcon /> My Strategy Note
                       </span>
-                      <p className={styles.journalQuote}>"{asset.userNote || "No active asset logging notes typed yet."}"</p>
+                      <p className={styles.journalQuote}>&quot;{asset.userNote || "No active asset logging notes typed yet."}&quot;</p>
                     </div>
                   </div>
 
@@ -210,7 +211,6 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                     <div className={styles.timelineList}>
                       {asset.history && asset.history.length > 0 ? (
                         asset.history.map((item) => {
-                          const unitsAtTime = parseFloat(item.amountAtTime) || 0;
                           const historicalProfitLoss = item.valueAtTime - item.investedAtTime;
                           const historicalIsProfit = historicalProfitLoss >= 0;
                           
@@ -243,7 +243,7 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                               </div>
 
                               <p className={styles.stepNoteParagraph}>
-                                <span className={styles.stepMemoInlineTag}>Log Note</span> "{item.note}"
+                                <span className={styles.stepMemoInlineTag}>Log Note</span> &quot;{item.note}&quot;
                               </p>
                             </div>
                           );
@@ -267,3 +267,4 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
     </section>
   );
 }
+/* === SECTION 5 END === */

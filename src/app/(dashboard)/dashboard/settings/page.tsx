@@ -89,12 +89,14 @@ export default function SettingsPage() {
   return (
     <div className={styles.settingsCanvasDeck}>
       
-      {/* PAGE HEADER BLOCK */}
-      <header className={styles.pageHeader}>
-        <h1 className={styles.mainHeadline}>Settings</h1>
-        <p className={styles.subtextDescription}>
-          Change your workspace names and lock your investments with a secure password PIN.
-        </p>
+      {/* REDESIGNED HEADER BLOCK: Clean white card container box without badges */}
+      <header className={styles.dashboardHeaderCardBox}>
+        <div className={styles.headingBlock}>
+          <h1 className={styles.mainHeadline}>Settings</h1>
+          <p className={styles.subtextDescription}>
+            Manage your account preferences, customize your environment options, and configure your workspace settings.
+          </p>
+        </div>
       </header>
 
       <div className={styles.cardsStackDeck}>

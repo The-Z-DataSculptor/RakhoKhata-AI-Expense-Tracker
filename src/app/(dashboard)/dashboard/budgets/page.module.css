@@ -12,12 +12,6 @@
   margin: 0 auto;
   padding: 1.5rem 2rem 0 2rem; 
   box-sizing: border-box;
-
-  /* 
-    👉 CHANGE THIS LINE TO CONTROL HOW FAR DOWN THE PAGE STRETCHES:
-    If your footer is cut off or shoots past the screen, increase 110px to 140px or 160px.
-    If there is a blank gap beneath the footer, decrease 110px to 90px or 100px.
-  */
   min-height: calc(100vh - 80px); 
 }
 
@@ -30,7 +24,113 @@
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: FALLBACK STATE ERROR DIAGNOSTICS ===
+   === SECTION 2: WHITE CONTAINER BOX CARDS HEADER SYSTEM ===
+   ========================================================================== */
+.dashboardHeaderCardBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1.5rem;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
+  box-sizing: border-box;
+}
+
+.headingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem; 
+}
+
+.welcomeHeadline {
+  font-family: var(--font-navbar, sans-serif);
+  font-size: 1.75rem; 
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: var(--text-primary, #10043f); 
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: UNIFIED BADGES AND CONTROL INTERFACES ===
+   ========================================================================== */
+.welcomeSubtext {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 500; 
+  line-height: 1.45;
+  color: var(--text-muted, #7e7a9c);
+  padding-left: 0.1rem;
+}
+
+/* Flex layout pairing the ranges switcher and button side-by-side */
+.actionControlsFlexDeck {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.rangePillsControlDeck {
+  display: flex;
+  background-color: var(--surface-muted, #f9f8ff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.25rem;
+  gap: 0.25rem;
+}
+
+.timePeriodPillBtn {
+  background: transparent;
+  border: none;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary, #4e4a6b);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.timePeriodPillActive {
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff !important;
+}
+
+.primaryCreateActionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  height: 36px;
+  box-sizing: border-box;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.primaryCreateActionButton:hover {
+  background-color: #4f2fa3;
+}
+
+.plusIconDecoration {
+  margin-right: 0.4rem;
+  flex-shrink: 0;
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: FALLBACK STATE ERROR DIAGNOSTICS ===
    ========================================================================== */
 .sectionFallback {
   display: flex;
@@ -39,8 +139,8 @@
   justify-content: center;
   text-align: center;
   min-height: 240px;
-  background-color: var(--surface-muted, #f8f9fc);
-  border: 2px dashed var(--border-color, #e2e8f0);
+  background-color: var(--surface-muted, #f9f8ff);
+  border: 1px dashed var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 12px);
   padding: 2rem;
 }
@@ -48,34 +148,67 @@
 .fallbackText {
   margin: 0 0 0.5rem 0;
   font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
 }
 
 .subFallbackText {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   font-weight: 500;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary, #4e4a6b);
   max-width: 440px;
   line-height: 1.5;
 }
-/* === SECTION 2 END === */
+/* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 3: SYSTEM GLOBAL FOOTER ANCHORS ===
+   === SECTION 5: SYSTEM GLOBAL FOOTER ANCHORS ===
    ========================================================================== */
 .footerContainerBlock {
   width: 100%;
-  
-  /* This line forces the footer to hunt down the absolute bottom of the layout floor */
   margin-top: auto; 
-  
-  /* Gives breathing room from the content nodes above it */
   padding-top: 2rem; 
-
   padding-bottom: 1.5rem; 
-  
   transition: var(--transition-fast);
 }
-/* === SECTION 3 END === */
+/* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: PHONE SCREEN RESPONSIVENESS ===
+   ========================================================================== */
+@media (max-width: 850px) {
+  .dashboardHeaderCardBox {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding: 1.25rem;
+  }
+  
+  .actionControlsFlexDeck {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .rangePillsControlDeck {
+    width: 100%;
+  }
+
+  .timePeriodPillBtn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .primaryCreateActionButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 580px) {
+  .pageViewport {
+    padding: 1.25rem 1.25rem 0 1.25rem;
+  }
+}
+/* === SECTION 6 END === */

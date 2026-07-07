@@ -38,7 +38,7 @@ export default function AiInsightsPage() {
     setIsCardVisible(true);
     setIsLoading(true);
     
-    // UPDATED: Now passes the active workspace ID cleanly along with the question context
+    // Passes the active workspace ID cleanly along with the question context
     console.log(`Querying Gemini for Workspace: ${activeWorkspaceId} | Question: "${queryText}"`);
 
     // Simulate Gemini API processing timeline
@@ -54,10 +54,16 @@ export default function AiInsightsPage() {
   return (
     <div className={styles.insightsPageContainer}>
       
-      {/* MASTER HEADER SECTION AREA */}
-      <header className={styles.insightsMainHeaderRow}>
+      {/* MASTER HEADER SECTION AREA: Wrapped inside the consistent white container block */}
+      <header className={styles.insightsMainHeaderCardBox}>
         <div className={styles.titleTextGroup}>
-          <h1 className={styles.mainTitleHeading}>AI Money Insights</h1>
+          
+          {/* Unified horizontal row keeping the Live Analytics status token in front of the headline */}
+          <div className={styles.titleWithBadgeRow}>
+            <h1 className={styles.mainTitleHeading}>AI Money Insights</h1>
+            <span className={styles.liveAnalyticsBadgeElement}>Live Analytics</span>            
+          </div>
+          
           <p className={styles.subtitleDescription}>
             The AI checks your spending to find wasted money, tell you if you can afford things, and help you save more.
           </p>

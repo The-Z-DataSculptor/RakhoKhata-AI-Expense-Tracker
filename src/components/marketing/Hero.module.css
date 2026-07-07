@@ -1,5 +1,8 @@
 /* src/components/Hero.module.css */
 
+/* ==========================================================================
+   === SECTION 1: GLOBAL HERO CONTAINER & LAYOUT ===
+   ========================================================================== */
 .heroContainer {
   width: 100%;
   min-height: 100vh;
@@ -19,9 +22,10 @@
   gap: 5rem;
   align-items: center;
 }
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   LEFT COLUMN STYLES START (Typography & Actions)
+   === SECTION 2: LEFT COLUMN STYLES (Typography & Actions) ===
    ========================================================================== */
 .leftCol {
   display: flex;
@@ -33,7 +37,7 @@
 .badge {
   background-color: var(--primary-soft);
   border: 1px solid var(--primary-soft-strong);
-  color: var(--color-primary-dark); /* FIXED: Swapped out layout foreground for legible label variable */
+  color: var(--color-primary-dark); 
   padding: 0.5rem 1rem;
   border-radius: 100px;
   font-size: 0.82rem;
@@ -47,7 +51,7 @@
   font-size: 2.3rem;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--text-primary); /* FIXED: Ties main heading to deep ink / crisp white variables */
+  color: var(--text-primary); 
   letter-spacing: -0.02em;
   margin-bottom: 1.25rem;
 }
@@ -62,7 +66,7 @@
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.6;
-  color: var(--text-muted); /* FIXED: Now resolves to accessible gray-purple and light lavender */
+  color: var(--text-muted); 
   max-width: 540px;
   margin-bottom: 2rem;
 }
@@ -111,7 +115,7 @@
 
 .secondaryBtn {
   background-color: transparent;
-  color: var(--text-primary); /* FIXED: Buttons keep readable contrast against backdrop vectors */
+  color: var(--text-primary); 
   border: 1px solid var(--border-color);
 }
 
@@ -119,9 +123,10 @@
   background-color: var(--primary-soft-hover);
   border-color: var(--color-primary);
 }
+/* === SECTION 2 END === */
 
 /* ==========================================================================
-   RIGHT COLUMN STYLES START (Responsive Layers Engine)
+   === SECTION 3: RIGHT COLUMN STYLES (Responsive Layers Engine) ===
    ========================================================================== */
 .rightCol {
   display: flex;
@@ -158,6 +163,7 @@
   transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+/* --- Layer 1: Main Dashboard Card --- */
 .mainDashboard {
   width: 100%;
   top: 0;
@@ -177,7 +183,7 @@
 .cardTitle {
   font-weight: 700;
   font-size: 0.95rem;
-  color: var(--text-primary); /* FIXED: Card headers now cleanly pop inside containers */
+  color: var(--text-primary);
 }
 
 .cardAction {
@@ -211,13 +217,13 @@
 .ledgerName {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--text-primary); /* FIXED */
+  color: var(--text-primary); 
   margin-bottom: 0.15rem;
 }
 
-.ledgerDate {
+.ledgerCategory {
   font-size: 0.72rem;
-  color: var(--text-muted); /* FIXED */
+  color: var(--text-muted); 
 }
 
 .ledgerAmount {
@@ -228,6 +234,7 @@
 .negative { color: var(--color-danger); }
 .positive { color: var(--color-success); }
 
+/* --- Layer 2: Breakdown Card --- */
 .breakdownCard {
   width: 175px;
   bottom: -1rem;
@@ -241,7 +248,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted); /* FIXED */
+  color: var(--text-muted); 
   margin-bottom: 0.5rem;
 }
 
@@ -271,11 +278,12 @@
   justify-content: space-between;
   font-size: 0.65rem;
   font-weight: 600;
-  color: var(--text-muted); /* FIXED */
+  color: var(--text-muted); 
 }
 
 .positiveText { color: var(--color-success); }
 
+/* --- Layer 3: Floating Alert --- */
 .floatingAlert {
   display: flex;
   align-items: center;
@@ -309,9 +317,10 @@
   70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(21, 128, 61, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(21, 128, 61, 0); }
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
-   MEDIA QUERY UPGRADES (Desktop Responsive Adaptations)
+   === SECTION 4: MEDIA QUERY UPGRADES (Desktop Responsive Adaptations) ===
    ========================================================================== */
 @media (min-width: 768px) {
   .heroContainer {
@@ -370,3 +379,4 @@
     box-shadow: var(--shadow-soft);
   }
 }
+/* === SECTION 4 END === */

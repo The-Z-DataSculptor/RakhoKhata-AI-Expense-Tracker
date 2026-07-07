@@ -1,8 +1,28 @@
 // src/components/Hero.tsx
-/* ==================== IMPORTS START ==================== */
-import styles from "./Hero.module.css";
-/* ==================== IMPORTS END ====================== */
+"use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
+import React from "react";
+import styles from "./Hero.module.css";
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
+// No external property types needed for the static Hero component.
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
+// Static functional component - no complex state required for the hero visual.
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
 export default function Hero() {
   return (
     <section className={styles.heroContainer}>
@@ -11,15 +31,15 @@ export default function Hero() {
         {/* ==================== LEFT COLUMN START ==================== */}
         {/* Contains the primary value proposition, branding badge, and core CTAs */}
         <div className={styles.leftCol}>
-          <div className={styles.badge}>✨ Introducing Rakho Khata v1.0</div>
+          <div className={styles.badge}>✨ Introducing RakhoKhata v1.0</div>
+          
           <h1 className={styles.title}>
-            Smart Expense Tracking <br />
-            <span className={styles.gradientText}>Made Effortless.</span>
+            Smarter Expense Tracking <br />
+            <span className={styles.gradientText}>Built for Growth.</span>
           </h1>
           
           <p className={styles.subtitle}>
-            Take complete control of your cash flow. Track metrics, organize digital 
-            ledgers, and optimize your budgets with an automated system built for speed.
+            Upgrade your financial habits. Switch seamlessly between workspaces, lock down your investment vault, and let our AI auditor find wasted spending before it happens.
           </p>
           
           <div className={styles.buttonGroup}>
@@ -51,7 +71,7 @@ export default function Hero() {
                   <div className={styles.ledgerIcon}>💻</div>
                   <div className={styles.ledgerInfo}>
                     <p className={styles.ledgerName}>SaaS Subscription</p>
-                    <p className={styles.ledgerDate}>Fixed Expense</p>
+                    <p className={styles.ledgerCategory}>Fixed Expense</p>
                   </div>
                   <span className={`${styles.ledgerAmount} ${styles.negative}`}>-$49.00</span>
                 </div>
@@ -60,7 +80,7 @@ export default function Hero() {
                   <div className={styles.ledgerIcon}>☕</div>
                   <div className={styles.ledgerInfo}>
                     <p className={styles.ledgerName}>Client Coffee Meetup</p>
-                    <p className={styles.ledgerDate}>Business Dining</p>
+                    <p className={styles.ledgerCategory}>Business Dining</p>
                   </div>
                   <span className={`${styles.ledgerAmount} ${styles.negative}`}>-$14.50</span>
                 </div>
@@ -69,7 +89,7 @@ export default function Hero() {
                   <div className={styles.ledgerIcon}>🚀</div>
                   <div className={styles.ledgerInfo}>
                     <p className={styles.ledgerName}>Stripe Payout</p>
-                    <p className={styles.ledgerDate}>Project Revenue</p>
+                    <p className={styles.ledgerCategory}>Project Revenue</p>
                   </div>
                   <span className={`${styles.ledgerAmount} ${styles.positive}`}>+$1,250.00</span>
                 </div>
@@ -105,3 +125,4 @@ export default function Hero() {
     </section>
   );
 }
+/* === SECTION 4 END === */

@@ -5,12 +5,12 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState } from "react";
-import { BudgetHeader } from "@/components/budgets/BudgetHeader/BudgetHeader";
 import { BudgetDonutGrid, type MockDonutItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
 import { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import { CreateBudgetModal, type NewBudgetFormData } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
+import { FiPlus } from "react-icons/fi";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -134,11 +134,43 @@ export default function BudgetsPage() {
     <div className={styles.pageViewport}>
       
       {/* ACTION CONTROLS HEADER */}
-      <BudgetHeader 
-        activeRange={activeRange} 
-        onRangeChange={(range) => setActiveRange(range)} 
-        onCreateBudgetClick={() => setIsModalOpen(true)} 
-      />
+      <header className={styles.dashboardHeaderCardBox}>
+        <div className={styles.headingBlock}>
+          <h1 className={styles.welcomeHeadline}>Budgets</h1>
+          
+          {/* UPDATED: Status row badges layer removed completely to clear out old meta metrics */}
+          <p className={styles.welcomeSubtext}>
+            Monitor and pace your spending thresholds per category.
+          </p>
+        </div>
+
+        {/* Action controllers frame deck holding the timeline switcher pills and the action trigger */}
+        <div className={styles.actionControlsFlexDeck}>
+          
+          <div className={styles.rangePillsControlDeck}>
+            {(["7d", "14d", "30d"] as TimePeriod[]).map((period) => (
+              <button
+                key={period}
+                type="button"
+                className={`${styles.timePeriodPillBtn} ${activeRange === period ? styles.timePeriodPillActive : ""}`}
+                onClick={() => setActiveRange(period)}
+              >
+                {period === "7d" ? "1 Week" : period === "14d" ? "2 Weeks" : "30 Days"}
+              </button>
+            ))}
+          </div>
+
+          <button 
+            type="button" 
+            className={styles.primaryCreateActionButton}
+            onClick={() => setIsModalOpen(true)}
+          >
+            <FiPlus size={14} className={styles.plusIconDecoration} />
+            <span>Add Budget</span>
+          </button>
+
+        </div>
+      </header>
 
       {/* RENDER DYNAMIC BUDGET CARDS PANELS */}
       <main className={styles.contentContainer}>

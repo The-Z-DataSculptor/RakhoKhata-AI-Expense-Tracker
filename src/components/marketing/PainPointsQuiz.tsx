@@ -1,11 +1,16 @@
+// src/components/marketing/PainPointsQuizSection.tsx
 "use client";
 
-/* === SECTION 1: IMPORTS === */
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React, { useState } from "react";
 import styles from "./PainPointsQuiz.module.css";
 /* === SECTION 1 END === */
 
-/* === SECTION 2: TYPES & CONSTANTS === */
+/* ==========================================================================
+   === SECTION 2: TYPES & CONSTANTS ===
+   ========================================================================== */
 type QuizOption = {
   id: string;
   label: string;
@@ -13,40 +18,42 @@ type QuizOption = {
   fix: string;
 };
 
+// UPDATED: These now reflect the actual features built into the dashboard
 const QUIZ_OPTIONS: QuizOption[] = [
   {
-    id: 'subscriptions',
-    label: 'Hidden subscriptions keep taking money from my account.',
-    feature: 'Subscription Finder',
-    fix: 'Finds your forgotten repeating bills and alerts you before a free trial ends.'
+    id: 'workspaces',
+    label: 'Mixing personal expenses with my business spending is a mess.',
+    feature: 'Multi-Workspace Engine',
+    fix: 'Keep personal, freelance, and business transactions completely separate. Switch between them in one click.'
   },
   {
-    id: 'overspending',
-    label: 'My money vanishes by the middle of the month.',
-    feature: 'Bill Spike Tracker',
-    fix: 'Monitors your monthly bills and warns you immediately if a price jumps.'
+    id: 'budgets',
+    label: 'I keep accidentally spending too much on certain categories.',
+    feature: 'Visual Budget Pacing',
+    fix: 'Set custom limits and instantly see if your spending is normal or pacing too fast for the month.'
   },
   {
-    id: 'splits',
-    label: 'Keeping track of regular family bills gets confusing.',
-    feature: 'Family Bill Manager',
-    fix: 'Organizes shared household utilities into simple, easy-to-read group balances.'
+    id: 'ai-insights',
+    label: 'I do not have time to analyze where my money is leaking.',
+    feature: 'AI Money Coach',
+    fix: 'Your personal AI auditor scans your ledger to find wasted money and overspending automatically.'
   },
   {
-    id: 'analytics',
-    label: 'Splitting group dinner or friendly outings is a headache.',
-    feature: 'Instant Bill Splitter',
-    fix: 'Splits group costs among 4 friends or family members and sends fast payment reminders.'
+    id: 'vault',
+    label: 'I want to track investments, but keep them private on my phone.',
+    feature: 'Secure Investment Vault',
+    fix: 'Lock your sensitive crypto and stock details behind a secure, custom 4-digit PIN screen.'
   }
 ];
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
 export default function PainPointsQuizSection() {
-  /* === SECTION 3: STATE INITIALIZATION === */
   const [selectedOption, setSelectedOption] = useState<QuizOption | null>(null);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
-  /* === SECTION 3 END === */
   
-  /* === SECTION 4: HELPER FUNCTIONS === */
   const getActiveFocus = () => {
     return selectedOption?.id ?? hoveredOption;
   };
@@ -67,25 +74,27 @@ export default function PainPointsQuizSection() {
     setSelectedOption(null);
     setHoveredOption(null);
   };
-  /* === SECTION 4 END === */
 
   const activeFocus = getActiveFocus();
+/* === SECTION 3 END === */
 
-  /* === SECTION 5: MAIN JSX RENDER LAYOUT === */
-
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <section className={styles.sectionContainer}>
       <div className={styles.layoutGridContainer}>
         
+        {/* LEFT COLUMN: INTERACTIVE QUIZ CARD */}
         <div className={styles.leftColumn}>
           <div className={`${styles.quizCard} ${selectedOption ? styles.quizCardActive : ''}`}>
             {!selectedOption ? (
               <>
                 <div className={styles.metaRow}>
-                  <span className={styles.badge}>Quick Budget Check</span>
+                  <span className={styles.badge}>Quick Platform Check</span>
                 </div>
                 <h3 className={styles.cardHeading}>What is your biggest money headache right now?</h3>
-                <p className={styles.cardSubtext}>Pick a problem below to see how our dashboard fixes it for you automatically.</p>
+                <p className={styles.cardSubtext}>Pick a problem below to see how the RakhoKhata dashboard solves it.</p>
                 
                 <div className={styles.optionsStack}>
                   {QUIZ_OPTIONS.map((opt) => (
@@ -125,6 +134,7 @@ export default function PainPointsQuizSection() {
           </div>
         </div>
 
+        {/* RIGHT COLUMN: VISUAL FEATURE MATRIX */}
         <div className={styles.rightColumn}>
           <div className={styles.matrixBrowserWindow}>
             
@@ -139,120 +149,75 @@ export default function PainPointsQuizSection() {
 
             <div className={styles.matrixGridContainer}>
               
-              {/* QUADRANT 1 */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'subscriptions' ? styles.quadrantHighlighted : ''}`}>
+              {/* QUADRANT 1: WORKSPACES */}
+              <div className={`${styles.quadrantBox} ${activeFocus === 'workspaces' ? styles.quadrantHighlighted : ''}`}>
                 <div className={styles.quadMetaHeader}>
                   <span className={styles.quadIconCode}>✦</span>
-                  <span className={styles.quadTitleLabel}>Q1 // Subscription Finder</span>
+                  <span className={styles.quadTitleLabel}>Q1 // Workspaces</span>
                 </div>
                 
-                <div className={styles.subWasteTrackingLayout}>
-                  <div className={styles.wasteCircleAnalyticsProgress}>
-                    <span className={styles.wasteCountNumber}>3 Hidden</span>
-                    <span className={styles.wasteSubtextLabel}>Unused Plans</span>
+                <div className={styles.mockWorkspaceLayout}>
+                  <div className={styles.mockWorkspaceActive}>
+                    <span className={styles.mockWsDotBusiness}></span>
+                    <span className={styles.mockWsName}>Business Profile</span>
+                    <span className={styles.mockWsCheck}>✓</span>
                   </div>
-                  <div className={styles.ghostSubscriptionRowsStack}>
-                    <div className={styles.ghostSubItemRow}>
-                      <span className={styles.ghostSubNameLabel}>Cloud Storage Pro</span>
-                      <span className={styles.reminderActionBadgeAlert}>Cancel Alert</span>
-                    </div>
-                    <div className={styles.ghostSubItemRow}>
-                      <span className={styles.ghostSubNameLabel}>Premium Design App</span>
-                      <span className={styles.reminderActionBadgeTrial}>Trial Ending</span>
-                    </div>
+                  <div className={styles.mockWorkspaceInactive}>
+                    <span className={styles.mockWsDotPersonal}></span>
+                    <span className={styles.mockWsName}>Personal Finances</span>
                   </div>
                 </div>
               </div>
 
-              {/* QUADRANT 2 */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'splits' ? styles.quadrantHighlighted : ''}`}>
+              {/* QUADRANT 2: BUDGETS */}
+              <div className={`${styles.quadrantBox} ${activeFocus === 'budgets' ? styles.quadrantHighlighted : ''}`}>
                 <div className={styles.quadMetaHeader}>
-                  <span className={styles.quadIconCode}>⇄</span>
-                  <span className={styles.quadTitleLabel}>Q2 // Family Bill Manager</span>
+                  <span className={styles.quadIconCode}>↻</span>
+                  <span className={styles.quadTitleLabel}>Q2 // Budget Pacing</span>
                 </div>
                 
-                <div className={styles.familySyncHubProfilesStack}>
-                  <div className={styles.familyProfileProgressItem}>
-                    <div className={styles.familyRowMetaLabels}>
-                      <span className={styles.familyNameText}>Mom (Shared Groceries)</span>
-                      <span className={styles.familyBalanceValue}>$93.33 Owed</span>
-                    </div>
-                    <div className={styles.syncMeterTrackBarBase}>
-                      <div className={styles.syncMeterActiveIndicatorFillBlue} style={{ width: '65%' }}></div>
-                    </div>
+                <div className={styles.mockBudgetLayout}>
+                  <div className={styles.mockBudgetRow}>
+                    <span className={styles.mockBudgetName}>Marketing Ads</span>
+                    <span className={styles.mockBudgetAmount}>$12k / $30k</span>
                   </div>
-                  <div className={styles.familyProfileProgressItem}>
-                    <div className={styles.familyRowMetaLabels}>
-                      <span className={styles.familyNameText}>Dad (Phone Group Plan)</span>
-                      <span className={styles.familyBalanceValue}>$45.00 Owed</span>
-                    </div>
-                    <div className={styles.syncMeterTrackBarBase}>
-                      <div className={styles.syncMeterActiveIndicatorFillBlue} style={{ width: '40%' }}></div>
-                    </div>
+                  <div className={styles.mockBudgetTrack}>
+                    <div className={styles.mockBudgetFill} style={{ width: '40%' }}></div>
                   </div>
+                  <span className={styles.mockBudgetStatus}>Pacing Normal</span>
                 </div>
               </div>
 
-              {/* QUADRANT 3 */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'overspending' ? styles.quadrantHighlighted : ''}`}>
+              {/* QUADRANT 3: AI INSIGHTS */}
+              <div className={`${styles.quadrantBox} ${activeFocus === 'ai-insights' ? styles.quadrantHighlighted : ''}`}>
                 <div className={styles.quadMetaHeader}>
-                  <span className={styles.quadIconCode}>⚠</span>
-                  <span className={styles.quadTitleLabel}>Q3 // Bill Spike Tracker</span>
+                  <span className={styles.quadIconCode}>⚡</span>
+                  <span className={styles.quadTitleLabel}>Q3 // AI Insights</span>
                 </div>
                 
-                <div className={styles.anomalyChartTrackerInternalLayout}>
-                  <div className={styles.anomalyGlowWarningStatusBar}>
-                    <span className={styles.spikeAlertLabelHeading}>Electric Bill Price Jump</span>
-                    <span className={styles.spikePercentageIndicatorNumber}>+34%</span>
-                  </div>
-                  <div className={styles.miniChartVisualizationPlaceholderArea}>
-                    <div className={styles.barGraphicNode} style={{ height: '40%' }}></div>
-                    <div className={styles.barGraphicNode} style={{ height: '45%' }}></div>
-                    <div className={styles.barGraphicNode} style={{ height: '52%' }}></div>
-                    <div className={`${styles.barGraphicNode} ${styles.barGraphicNodeSpiked}`} style={{ height: '88%' }}></div>
+                <div className={styles.mockAiLayout}>
+                  <div className={styles.mockAiPersona}>Strict Auditor</div>
+                  <div className={styles.mockAiBubble}>
+                    Warning: You have spent 15% more on food subscriptions this week. Do you want me to list them?
                   </div>
                 </div>
               </div>
 
-              {/* QUADRANT 4 */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'analytics' ? styles.quadrantHighlighted : ''}`}>
+              {/* QUADRANT 4: INVESTMENT VAULT */}
+              <div className={`${styles.quadrantBox} ${activeFocus === 'vault' ? styles.quadrantHighlighted : ''}`}>
                 <div className={styles.quadMetaHeader}>
                   <span className={styles.quadIconCode}>⚿</span>
-                  <span className={styles.quadTitleLabel}>Q4 // Instant Bill Splitter</span>
+                  <span className={styles.quadTitleLabel}>Q4 // Secure Vault</span>
                 </div>
                 
-                <div className={styles.splitPipelineContainer}>
-                  <div className={styles.pipelineCardItem}>
-                    <div className={styles.pipelineMetaDetails}>
-                      <span className={styles.billOriginLabel}>Wi-Fi & Media</span>
-                      <span className={styles.rawBillTotalAmount}>$60.00</span>
-                    </div>
-                    <div className={styles.pipelineActionRow}>
-                      <span className={styles.splitTargetAllocationBadge} data-group="family">Family // $15 ea</span>
-                      <span className={styles.sendInvoiceTriggerLink}>Send</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.pipelineCardItem}>
-                    <div className={styles.pipelineMetaDetails}>
-                      <span className={styles.billOriginLabel}>Friday Dinner</span>
-                      <span className={styles.rawBillTotalAmount}>$160.00</span>
-                    </div>
-                    <div className={styles.pipelineActionRow}>
-                      <span className={styles.splitTargetAllocationBadge} data-group="friends">Friends // $40 ea</span>
-                      <span className={styles.sendInvoiceTriggerLink}>Send</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.pipelineCardItem}>
-                    <div className={styles.pipelineMetaDetails}>
-                      <span className={styles.billOriginLabel}>Road Trip Fuel</span>
-                      <span className={styles.rawBillTotalAmount}>$45.00</span>
-                    </div>
-                    <div className={styles.pipelineActionRow}>
-                      <span className={styles.splitTargetAllocationBadge} data-group="friends">Roommates // $15 ea</span>
-                      <span className={styles.sendInvoiceTriggerLink}>Send</span>
-                    </div>
+                <div className={styles.mockVaultLayout}>
+                  <div className={styles.mockVaultLockIcon}>🔒</div>
+                  <span className={styles.mockVaultTitle}>Vault Locked</span>
+                  <div className={styles.mockPinDots}>
+                    <span className={styles.mockPinDotFilled}></span>
+                    <span className={styles.mockPinDotFilled}></span>
+                    <span className={styles.mockPinDotEmpty}></span>
+                    <span className={styles.mockPinDotEmpty}></span>
                   </div>
                 </div>
               </div>
@@ -265,3 +230,4 @@ export default function PainPointsQuizSection() {
     </section>
   );
 }
+/* === SECTION 4 END === */

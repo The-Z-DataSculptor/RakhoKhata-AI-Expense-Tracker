@@ -65,19 +65,28 @@ export default function DashboardPage() {
   return (
     <div className={styles.workspaceWrapper}>
       
-      {/* HEADER SECTION: Title block text elements */}
-      <header className={styles.dashboardHeader}>
+      {/* HEADER SECTION: Standalone card box wrapper element */}
+      <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
-          <h1 className={styles.welcomeHeadline}>Overview Hub</h1>
+          
+          {/* Unified horizontal row containing the Live Analytics badge directly in front of the heading title */}
+          <div className={styles.titleWithBadgeRow}>
+            <h1 className={styles.welcomeHeadline}>Overview Hub</h1>
+            <span className={styles.liveAnalyticsBadgeElement}>Live Analytics</span>            
+          </div>
+
           <p className={styles.welcomeSubtext}>
             Your financial health at a glance.
           </p>
         </div>
 
-        <TimeSwitcher 
-          activePeriod={activeTimeline} 
-          onPeriodChange={handleTimelineChange} 
-        />
+        {/* Right aligned timeline selection panel frame context */}
+        <div className={styles.timeSwitcherActionFrame}>
+          <TimeSwitcher 
+            activePeriod={activeTimeline} 
+            onPeriodChange={handleTimelineChange} 
+          />
+        </div>
       </header>
 
       {/* QUICK STATS CARDS GRID */}

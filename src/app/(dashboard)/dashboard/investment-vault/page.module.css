@@ -73,7 +73,7 @@
     👉 CHANGE THIS LINE TO TWEAK THE AIR GAP AT THE ABSOLUTE BOTTOM:
     Set this to 1.5rem to match your Categories page perfectly! Reduce to 1rem or 12px for less gap.
   */
-  padding-bottom: 1.5rem; 
+  padding-bottom: 1.0rem; 
   
   transition: var(--transition-fast);
 }

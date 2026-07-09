@@ -18,6 +18,32 @@ const mulish = Mulish({
 export const metadata: Metadata = {
   title: "RakhoKhata - Your Premium Expense Ledger", // FIXED: Standardized spelling to align with core brand identity
   description: "Track your personal and business expenses with precision.",
+  
+  // NEW: Open Graph Metadata Configuration for Facebook, LinkedIn, and WhatsApp Link Previews
+  openGraph: {
+    title: "RakhoKhata - Your Premium Expense Ledger",
+    description: "Track personal and business expenses with isolated workspace precision.",
+    url: "https://rakhokhata.com", // Your future production URL anchor
+    siteName: "RakhoKhata",
+    images: [
+      {
+        url: "/og-banner.png", // Pointing directly to your standard public image asset asset folder route
+        width: 1200,
+        height: 630,
+        alt: "RakhoKhata Application Premium Dashboard Interface Preview Image",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+
+  // NEW: Custom Preview Configuration for X (formerly Twitter) platform streams
+  twitter: {
+    card: "summary_large_image",
+    title: "RakhoKhata - Your Premium Expense Ledger",
+    description: "Track personal and business expenses with isolated workspace precision.",
+    images: ["/og-banner.png"],
+  },
 };
 /* === SECTION 1 END === */
 

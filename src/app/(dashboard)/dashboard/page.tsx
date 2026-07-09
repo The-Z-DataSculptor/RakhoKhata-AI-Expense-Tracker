@@ -4,7 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import TimeSwitcher, { TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import MetricRow from "@/components/dashboard/MetricRow/MetricRow";
 import ControlLever from "@/components/dashboard/ControlLever/ControlLever";
@@ -28,7 +28,6 @@ interface PeriodMetrics {
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-// Static multi-workspace data grid parsed outside render lifecycle loop
 const MOCK_WORKSPACE_DATA: Record<string, Record<TimePeriod, PeriodMetrics>> = {
   "ws-personal-default": {
     "7d": { bills: 150, inflow: 625, outflow: 375 },
@@ -48,15 +47,17 @@ const EMPTY_STATE_METRICS: PeriodMetrics = { bills: 0, inflow: 0, outflow: 0 };
 
 export default function DashboardPage() {
   const { activeWorkspaceId } = useWorkspace(); 
-
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
 
   const handleTimelineChange = (selectedPeriod: TimePeriod) => {
     setActiveTimeline(selectedPeriod);
   };
 
-  const activeWorkspaceData = MOCK_WORKSPACE_DATA[activeWorkspaceId];
-  const currentMetrics = activeWorkspaceData ? activeWorkspaceData[activeTimeline] : EMPTY_STATE_METRICS;
+  // OPTIMIZED: Memoized computation logic ensures calculations remain pure and crash-free
+  const currentMetrics = useMemo(() => {
+    const activeWorkspaceData = MOCK_WORKSPACE_DATA[activeWorkspaceId];
+    return activeWorkspaceData ? activeWorkspaceData[activeTimeline] : EMPTY_STATE_METRICS;
+  }, [activeWorkspaceId, activeTimeline]);
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -65,27 +66,21 @@ export default function DashboardPage() {
   return (
     <div className={styles.workspaceWrapper}>
       
-      {/* HEADER SECTION: Standalone card box wrapper element */}
+      {/* HEADER SECTION */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
-          
-          {/* Unified horizontal row containing the Live Analytics badge directly in front of the heading title */}
           <div className={styles.titleWithBadgeRow}>
             <h1 className={styles.welcomeHeadline}>Overview Hub</h1>
             <span className={styles.liveAnalyticsBadgeElement}>Live Analytics</span>            
           </div>
-
-          <p className={styles.welcomeSubtext}>
-            Your financial health at a glance.
-          </p>
+          <p className={styles.welcomeSubtext}>Your financial health at a glance.</p>
         </div>
 
-        {/* Right aligned timeline selection panel frame context */}
         <div className={styles.timeSwitcherActionFrame}>
           <TimeSwitcher 
             activePeriod={activeTimeline} 
             onPeriodChange={handleTimelineChange} 
-          />
+            />
         </div>
       </header>
 
@@ -106,18 +101,15 @@ export default function DashboardPage() {
 
       {/* BOTTOM ANALYTICS GRAPHS STAGE */}
       <main className={styles.isolatedStage}>
-        
         <div className={styles.chartWrapperNode}>
           <CashFlowChart activePeriod={activeTimeline} />
         </div>
-        
         <div className={styles.chartWrapperNode}>
           <ExpenseDonutChart activePeriod={activeTimeline} />
         </div>
-
       </main>
 
-      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
+      {/* SYSTEM FOOTER ANCHOR */}
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>

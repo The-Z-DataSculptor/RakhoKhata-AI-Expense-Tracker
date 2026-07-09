@@ -1,21 +1,39 @@
+// src/app/(auth)/signup/page.tsx
 "use client";
 
-// FILE LOCATION: src/app/signup/page.tsx
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner"; // NEW: Imported global notification engine hook
 
-// WHY: We import our centralized validation blueprint from the schema folder.
+// Import our centralized validation blueprint from the schema folder
 import { signupSchema, type SignupFormData } from "@/schemas/auth";
 
 import styles from "./page.module.css";
+/* === SECTION 1 END === */
 
-export default function FullScreenBiometricSignupPage() {
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
+// No external property types needed for standalone signup page.
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
+export default function SignupPage() {
   const router = useRouter();
 
-  // WHY: We initialize the form engine using the external schema.
+  // UX Improvement: Toggles to let users double-check their typed passwords
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Initialize the form engine using the external schema
   const {
     register,
     handleSubmit,
@@ -25,6 +43,7 @@ export default function FullScreenBiometricSignupPage() {
     mode: "onBlur",
   });
 
+  // State to track mouse position for the ambient background glare effect
   const [mouseX, setMouseX] = useState(0);
   const [mouseY, setMouseY] = useState(0);
 
@@ -35,10 +54,20 @@ export default function FullScreenBiometricSignupPage() {
   };
 
   const onFormSubmit = async (data: SignupFormData) => {
-    console.log("Validated New Vault Payload:", data);
+    console.log("Validated New Account Payload:", data);
+    
+    // NEW: Trigger micro-feedback message to instantly confirm registration validation pass
+    toast.success("Account created successfully! Preparing your secure ledger...");
+
+    // Simulate a brief network delay for better UX feedback, then redirect
+    await new Promise((resolve) => setTimeout(resolve, 800));
     router.push("/dashboard");
   };
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <div 
       className={styles.fullScreenMasterLayout}
@@ -49,47 +78,96 @@ export default function FullScreenBiometricSignupPage() {
       <div className={styles.mouseGlareLayer} />
 
       <section className={styles.leftFormColumn}>
-        <Link href="/" className={styles.escapeHomeButton}>← Back to main website</Link>
+        <Link href="/" className={styles.escapeHomeButton}>← Back to Home</Link>
 
         <div className={styles.formContainerContent}>
           <div className={styles.formHeader}>
-            <h1 className={styles.mainTitle}>Create Vault</h1>
-            <p className={styles.subtext}>Deploy an encrypted accounting workspace instance.</p>
+            <h1 className={styles.mainTitle}>Create Account</h1>
+            <p className={styles.subtext}>Join RakhoKhata to easily manage your budget, track expenses, and grow your wealth.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm}>
+          <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm} noValidate>
             
             <div className={styles.inputControlGroup}>
               <label htmlFor="fullName" className={styles.fieldLabel}>Full Name</label>
-              <input id="fullName" {...register("fullName")} className={`${styles.primaryInputField} ${errors.fullName ? styles.inputErrorState : ""}`} />
-              {errors.fullName && <span className={styles.fieldErrorText}>{errors.fullName.message}</span>}
+              <input 
+                id="fullName" 
+                type="text"
+                placeholder="e.g. Zain Hassan"
+                {...register("fullName")} 
+                className={`${styles.primaryInputField} ${errors.fullName ? styles.inputErrorState : ""}`}
+                autoFocus
+                aria-invalid={errors.fullName ? "true" : "false"}
+              />
+              {errors.fullName && <span className={styles.fieldErrorText} role="alert">{errors.fullName.message}</span>}
             </div>
 
             <div className={styles.inputControlGroup}>
-              <label htmlFor="email" className={styles.fieldLabel}>Security Email</label>
-              <input id="email" {...register("email")} className={`${styles.primaryInputField} ${errors.email ? styles.inputErrorState : ""}`} />
-              {errors.email && <span className={styles.fieldErrorText}>{errors.email.message}</span>}
+              <label htmlFor="email" className={styles.fieldLabel}>Email Address</label>
+              <input 
+                id="email" 
+                type="email"
+                placeholder="name@example.com"
+                {...register("email")} 
+                className={`${styles.primaryInputField} ${errors.email ? styles.inputErrorState : ""}`} 
+                aria-invalid={errors.email ? "true" : "false"}
+              />
+              {errors.email && <span className={styles.fieldErrorText} role="alert">{errors.email.message}</span>}
             </div>
 
             <div className={styles.inputControlGroup}>
-              <label htmlFor="password" className={styles.fieldLabel}>Master Password</label>
-              <input id="password" type="password" {...register("password")} className={`${styles.primaryInputField} ${errors.password ? styles.inputErrorState : ""}`} />
-              {errors.password && <span className={styles.fieldErrorText}>{errors.password.message}</span>}
+              <label htmlFor="password" className={styles.fieldLabel}>Password</label>
+              <div className={styles.passwordInputWrapper}>
+                <input 
+                  id="password" 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="Create a strong password"
+                  {...register("password")} 
+                  className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.password ? styles.inputErrorState : ""}`} 
+                  aria-invalid={errors.password ? "true" : "false"}
+                />
+                <button 
+                  type="button" 
+                  className={styles.showPasswordToggle}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              {errors.password && <span className={styles.fieldErrorText} role="alert">{errors.password.message}</span>}
             </div>
 
             <div className={styles.inputControlGroup}>
-              <label htmlFor="confirmPassword" className={styles.fieldLabel}>Verify Password</label>
-              <input id="confirmPassword" type="password" {...register("confirmPassword")} className={`${styles.primaryInputField} ${errors.confirmPassword ? styles.inputErrorState : ""}`} />
-              {errors.confirmPassword && <span className={styles.fieldErrorText}>{errors.confirmPassword.message}</span>}
+              <label htmlFor="confirmPassword" className={styles.fieldLabel}>Confirm Password</label>
+              <div className={styles.passwordInputWrapper}>
+                <input 
+                  id="confirmPassword" 
+                  type={showConfirmPassword ? "text" : "password"} 
+                  placeholder="Type your password again"
+                  {...register("confirmPassword")} 
+                  className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.confirmPassword ? styles.inputErrorState : ""}`} 
+                  aria-invalid={errors.confirmPassword ? "true" : "false"}
+                />
+                <button 
+                  type="button" 
+                  className={styles.showPasswordToggle}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              {errors.confirmPassword && <span className={styles.fieldErrorText} role="alert">{errors.confirmPassword.message}</span>}
             </div>
 
             <button type="submit" className={styles.submitPrimaryButton} disabled={isSubmitting}>
-              {isSubmitting ? "Initializing..." : "Initialize Secure Ledger"}
+              {isSubmitting ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
           <div className={styles.footerRedirectArea}>
-            <p>Already certified? <Link href="/login" className={styles.hyperlinkInline}>Unlock existing vault</Link></p>
+            <p>Already have an account? <Link href="/login" className={styles.hyperlinkInline}>Log in here</Link></p>
           </div>
         </div>
       </section>
@@ -104,10 +182,10 @@ export default function FullScreenBiometricSignupPage() {
             </div>
           </div>
           <div className={styles.statusTelemetryReadout}>
-            <p className={styles.telemetryStaticLabel}>System Encryption Status</p>
-            <h4 className={styles.telemetryLiveValueText}>READY_TO_INITIALIZE</h4>
+            <p className={styles.telemetryStaticLabel}>Security Status</p>
+            <h4 className={styles.telemetryLiveValueText}>SYSTEM READY</h4>
             <div className={styles.terminalNetworkSubtextRow}>
-              <span>SECURE_SHELL_v3.3</span><span className={styles.blinkingTerminalDot}>● LIVE</span>
+              <span>ENCRYPTION_ACTIVE</span><span className={styles.blinkingTerminalDot}>● SECURE</span>
             </div>
           </div>
         </div>
@@ -115,3 +193,4 @@ export default function FullScreenBiometricSignupPage() {
     </div>
   );
 }
+/* === SECTION 4 END === */

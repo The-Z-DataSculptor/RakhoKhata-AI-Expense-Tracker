@@ -4,8 +4,9 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react"; // OPTIMIZED: Added useCallback to insulate event side-effects for the React Compiler
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting directly to the Brain
+import { toast } from "sonner"; // NEW: Imported the global notification engine hook
 import styles from "./CreateWorkspaceModal.module.css";
 /* === SECTION 1 END === */
 
@@ -28,22 +29,32 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
   const [newWorkspaceName, setNewWorkspaceName] = useState<string>("");
 
   // Action: What happens when the user clicks "Create Workspace"
-  const handleCreateWorkspaceSubmit = (e: React.FormEvent) => {
+  // OPTIMIZED: Wrapped in useCallback to declare this safely as an event handler block to the compiler
+  const handleCreateWorkspaceSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault(); // Stop the page from refreshing
     
     // Safety check: Don't create empty workspaces
     if (!newWorkspaceName.trim()) return;
     
-    // 1. Tell the brain to create and switch to the new workspace
-    // We pass "folder" as the default icon for now
-    createWorkspace(newWorkspaceName.trim(), "folder");
-    
-    // 2. Clear the input text
-    setNewWorkspaceName("");
-    
-    // 3. Tell the Sidebar to close this modal
-    onClose();
-  };
+    try {
+      // 1. Tell the brain to create and switch to the new workspace
+      // We pass "folder" as the default icon for now
+      createWorkspace(newWorkspaceName.trim(), "folder");
+      
+      // NEW: Trigger micro-feedback message to instantly confirm workspace allocation
+      toast.success("New accounting workspace deployed!");
+
+      // 2. Clear the input text
+      setNewWorkspaceName("");
+      
+      // 3. Tell the Sidebar to close this modal
+      onClose();
+    } catch (error) {
+      console.error("Workspace deployment routine tracking failure:", error);
+      // NEW: Inform user instantly if an operational environment generation failure occurs
+      toast.error("Could not build a new workspace environment safely.");
+    }
+  }, [newWorkspaceName, createWorkspace, onClose]);
 /* === SECTION 3 END === */
 
 /* ==========================================================================

@@ -1,0 +1,146 @@
+/* src/app/(dashboard)/error.module.css */
+
+/* ==========================================================================
+   === SECTION 1: MAIN CANVAS LAYOUT ===
+   ========================================================================== */
+.errorViewportDeck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60vh;
+  box-sizing: border-box;
+  padding: 2rem;
+}
+/* === SECTION 1 END === */
+
+
+/* ==========================================================================
+   === SECTION 2: WHITE CONTAINER BOX PATTERN SYSTEM ===
+   ========================================================================== */
+.errorCardBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
+  padding: 2.5rem 2rem;
+  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
+  box-sizing: border-box;
+}
+
+.errorIconFrame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  background-color: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.12);
+  color: var(--color-danger, #dc2626);
+  border-radius: 50%;
+  margin-bottom: 1.25rem;
+}
+/* === SECTION 2 END === */
+
+
+/* ==========================================================================
+   === SECTION 3: TYPOGRAPHY AND CONTENT DESCRIPTIONS ===
+   ========================================================================== */
+.errorHeadline {
+  font-family: var(--font-navbar, sans-serif);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.5rem 0;
+}
+
+.errorExplanation {
+  margin: 0 0 1.75rem 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-muted, #7e7a9c);
+  max-width: 380px;
+}
+/* === SECTION 3 END === */
+
+
+/* ==========================================================================
+   === SECTION 4: RECOVERY CONTROL ACTIONS ===
+   ========================================================================== */
+.actionControlsFrameDeck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.primaryRecoveryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  height: 38px;
+  box-sizing: border-box;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.primaryRecoveryButton:hover {
+  background-color: #4f2fa3;
+}
+
+.refreshIconDecoration {
+  margin-right: 0.45rem;
+  flex-shrink: 0;
+}
+
+.secondaryHomeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  color: var(--text-secondary, #4e4a6b);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  height: 38px;
+  box-sizing: border-box;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.secondaryHomeButton:hover {
+  background-color: var(--surface-muted, #f9f8ff);
+  border-color: var(--color-primary, #613bbf);
+  color: var(--color-primary, #613bbf);
+}
+
+@media (max-width: 480px) {
+  .actionControlsFrameDeck {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .primaryRecoveryButton, .secondaryHomeButton {
+    width: 100%;
+  }
+}
+/* === SECTION 4 END === */

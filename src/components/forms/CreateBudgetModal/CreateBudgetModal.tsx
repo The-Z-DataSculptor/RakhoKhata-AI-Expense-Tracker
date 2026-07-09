@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { toast } from "sonner"; // NEW: Imported the global notification engine hook
 import styles from "./CreateBudgetModal.module.css";
 /* === SECTION 1 END === */
 
@@ -70,21 +71,30 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
     e.preventDefault();
     if (!categoryName || !limitAmount) return;
 
-    const rawEnteredValue = parseFloat(limitAmount);
+    try {
+      const rawEnteredValue = parseFloat(limitAmount);
 
-    // Convert the input value from the ACTIVE view currency back to baseline PKR units 
-    // to ensure database arrays store uniform telemetry values.
-    const normalizedBaseAmount = convertAmount(rawEnteredValue, currency, "PKR");
+      // Convert the input value from the ACTIVE view currency back to baseline PKR units 
+      // to ensure database arrays store uniform telemetry values.
+      const normalizedBaseAmount = convertAmount(rawEnteredValue, currency, "PKR");
 
-    onSubmit({
-      categoryName,
-      limitAmount: normalizedBaseAmount,
-      startDate,
-      endDate,
-      isCustomPeriod,
-    });
+      onSubmit({
+        categoryName,
+        limitAmount: normalizedBaseAmount,
+        startDate,
+        endDate,
+        isCustomPeriod,
+      });
 
-    handleClose();
+      // NEW: Trigger micro-feedback message to instantly confirm budget metrics generation
+      toast.success("Budget limit established successfully!");
+      
+      handleClose();
+    } catch (error) {
+      console.error("Failed to secure budget metrics setup:", error);
+      // NEW: Safeguard error notice if calculations fail
+      toast.error("Could not allocate budget limit safely. Verify numeric values.");
+    }
   };
 
   if (!isOpen) return null;

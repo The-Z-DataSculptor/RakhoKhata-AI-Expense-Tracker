@@ -1,12 +1,9 @@
-/* ==========================================================================
-   === FILEPATH: src/app/layout.tsx ===
-   ========================================================================== */
-
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Mulish } from "next/font/google";
 import Script from "next/script"; // WHY: Next.js native optimization engine to handle script components smoothly without React hydration warnings.
-// NEW: Import the global currency engine wrapper to broadcast settings to downstream components
 import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
+import ToastProvider from "@/components/providers/ToastProvider"; // NEW: Importing the global toast engine
 import "./globals.css";
 
 /* ==========================================================================
@@ -19,7 +16,7 @@ const mulish = Mulish({
 });
 
 export const metadata: Metadata = {
-  title: "RahoKhata - Your Premium Expense Ledger",
+  title: "RakhoKhata - Your Premium Expense Ledger", // FIXED: Standardized spelling to align with core brand identity
   description: "Track your personal and business expenses with precision.",
 };
 /* === SECTION 1 END === */
@@ -69,9 +66,11 @@ export default function RootLayout({
           }}
         />
         
-        {/* NEW: Wrapping children inside the state context provider to link currency settings globally */}
+        {/* Wrapping children inside both state contexts so currency and notifications run everywhere */}
         <CurrencyProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </CurrencyProvider>
       </body>
     </html>

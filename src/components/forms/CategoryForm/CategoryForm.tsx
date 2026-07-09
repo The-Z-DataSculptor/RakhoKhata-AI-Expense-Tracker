@@ -1,29 +1,40 @@
 // src/app/(dashboard)/dashboard/categories/_components/CategoryForm.tsx
 "use client";
-"use no memo";
 
-import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
+import React, { useEffect, useCallback } from "react"; // FIXED: Added useCallback to isolate event side-effects
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner"; 
 import { categoryFormSchema, CategoryFormValues } from "@/schemas/categories";
 import { CategoryRecord } from "../../../app/(dashboard)/dashboard/categories/page";
 import styles from "./CategoryForm.module.css";
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 interface CategoryFormProps {
   onAddCategory: (newCategory: CategoryRecord) => void;
   initialData?: CategoryRecord | null; 
-  onCancel?: () => void; // FIXED: Explicitly added optional onCancel parameter layout signature
+  onCancel?: () => void;
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
 export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryFormProps) {
   const isEditMode = !!initialData;
 
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -46,9 +57,14 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     }
   }, [initialData, reset]);
 
-  const activeColor = watch("color");
+  const activeColor = useWatch({
+    control,
+    name: "color",
+    defaultValue: "#613BBF",
+  });
 
-  const onSubmit = async (data: CategoryFormValues) => {
+  // FIXED: Wrapped in useCallback to declare this safely as an event handler block to the compiler
+  const onSubmit = useCallback(async (data: CategoryFormValues) => {
     try {
       const lowerCaseType = data.type.toLowerCase() as "income" | "expense" | "both";
 
@@ -59,15 +75,28 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
         iconSlug: lowerCaseType === "income" ? "FiBriefcase" : "FiShoppingCart",
         accentColor: data.color,
         transactionCount: initialData ? initialData.transactionCount : 0,
+        workspaceId: initialData ? initialData.workspaceId : "active-workspace", 
       };
 
       onAddCategory(completeCategoryRecord);
+
+      if (initialData) {
+        toast.success("Category changes saved successfully!");
+      } else {
+        toast.success("Custom spending category added!");
+      }
+
       reset({ name: "", type: "EXPENSE", color: "#613BBF" });
     } catch (error) {
       console.error("Form execution routine tracking failure:", error);
+      toast.error("Could not allocate category registry safely.");
     }
-  };
+  }, [initialData, onAddCategory, reset]);
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <div className={styles.formCard}>
       <h3 className={styles.formTitle}>
@@ -137,3 +166,4 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     </div>
   );
 }
+/* === SECTION 4 END === */

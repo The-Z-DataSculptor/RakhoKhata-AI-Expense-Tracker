@@ -4,8 +4,9 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react"; // OPTIMIZED: Added useCallback to insulate event side-effects for the React Compiler
 import { FiMessageSquare, FiArrowRight, FiZap } from "react-icons/fi";
+import { toast } from "sonner"; // NEW: Imported the global notification engine hook
 import styles from "./AiChatConsole.module.css";
 /* === SECTION 1 END === */
 
@@ -29,7 +30,6 @@ interface SuggestionQuestion {
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export function AiChatConsole({ activePersona, onQueryStart, isExternalLoading }: AiChatConsoleProps) {
-  // FIXED: Cleared out the extra opening parenthesis from the initial state parameter allocation
   const [inputValue, setInputValue] = useState<string>("");
 
   const clearSuggestionsCollection: SuggestionQuestion[] = [
@@ -50,18 +50,37 @@ export function AiChatConsole({ activePersona, onQueryStart, isExternalLoading }
     }
   ];
 
-  const handleSuggestionClick = (questionText: string) => {
+  // OPTIMIZED: Memoized click behavior loop tracking parameter changes cleanly
+  const handleSuggestionClick = useCallback((questionText: string) => {
     setInputValue(questionText);
-  };
+  }, []);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  // Handle analytical toast text compilation safely
+  const triggerTelemetryToast = useCallback((persona: "auditor" | "coach" | "minimalist") => {
+    if (persona === "auditor") {
+      toast.info("AI Auditor is scanning your accounting ledger history...");
+    } else if (persona === "coach") {
+      toast.info("AI Money Coach is auditing your cash flow models...");
+    } else {
+      toast.info("AI Minimalist is processing subscription pipelines...");
+    }
+  }, []);
+
+  // Action: What happens when the user hits "Ask AI"
+  // OPTIMIZED: Wrapped in useCallback to declare this safely as an event handler block to the compiler
+  const handleFormSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isExternalLoading) return;
 
-    // Send the input up to the parent page state coordinator
-    onQueryStart(inputValue);
+    // 1. Fire up a descriptive contextual notification banner matching the current active model
+    triggerTelemetryToast(activePersona);
+
+    // 2. Send the input up to the parent page state coordinator
+    onQueryStart(inputValue.trim());
+    
+    // 3. Clear the input container field
     setInputValue("");
-  };
+  }, [inputValue, isExternalLoading, activePersona, onQueryStart, triggerTelemetryToast]);
 
   const getBoxPlaceholderText = (): string => {
     if (activePersona === "auditor") return "Ask the Auditor: 'Where did I spend too much this week?'";

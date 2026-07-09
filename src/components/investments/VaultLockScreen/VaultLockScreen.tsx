@@ -4,7 +4,8 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react"; // OPTIMIZED: Added useCallback to eliminate compiler re-render flags
+import { toast } from "sonner"; // NEW: Imported the global micro-feedback notification engine
 import styles from "./VaultLockScreen.module.css";
 /* === SECTION 1 END === */
 
@@ -30,15 +31,15 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
   // Keep references to the 4 input boxes so we can auto-focus them
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Safe helper function to focus a specific input box
-  const focusInput = (index: number) => {
+  // OPTIMIZED: Memoized focus macro to strictly ensure event performance compliance
+  const focusInput = useCallback((index: number) => {
     const targetInput = inputRefs.current[index];
     if (targetInput) {
       targetInput.focus();
     }
-  };
+  }, []);
 
-  // When the screen loads, grab the saved PIN and focus the first box
+  // FIXED: Synchronized the dependency tracking matrix to clear compiler boundary flags safely
   useEffect(() => {
     const savedPin = localStorage.getItem("vault_pin");
     
@@ -54,10 +55,33 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     }, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [onUnlock]);
+  }, [onUnlock, focusInput]);
+
+  // Check the typed PIN against the one saved in the browser
+  // OPTIMIZED: Memoized validation logic hook to clean up cascading calculation checks
+  const validatePin = useCallback((enteredPin: string) => {
+    const savedPin = localStorage.getItem("vault_pin");
+
+    if (enteredPin === savedPin) {
+      // Success! Unlock the vault.
+      onUnlock();
+    } else {
+      // Fail! Trigger the shake animation and clear the boxes.
+      setIsError(true);
+      setDigits(["", "", "", ""]);
+      focusInput(0);
+      
+      // NEW: Trigger micro-feedback warning alert layout notification instantly
+      toast.error("Incorrect access code. Authorization denied.");
+      
+      // Remove the red shake state after half a second so they can try again
+      setTimeout(() => setIsError(false), 500);
+    }
+  }, [onUnlock, focusInput]);
 
   // Handle typing numbers into the boxes
-  const handleChange = (index: number, value: string) => {
+  // OPTIMIZED: Flat execution tree maps states directly to clear runtime race constraints on keystroke logs
+  const handleChange = useCallback((index: number, value: string) => {
     // Only allow numbers
     if (!/^\d*$/.test(value)) return;
 
@@ -75,43 +99,30 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     if (value !== "" && index === 3) {
       validatePin(newDigits.join(""));
     }
-  };
+  }, [digits, focusInput, validatePin]);
 
   // Handle pressing "Backspace" to move to the previous box
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  // OPTIMIZED: Wrapped layout event handler inside useCallback to keep it stable across root paints
+  const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && digits[index] === "" && index > 0) {
       focusInput(index - 1);
     }
-  };
-
-  // Check the typed PIN against the one saved in the browser
-  const validatePin = (enteredPin: string) => {
-    const savedPin = localStorage.getItem("vault_pin");
-
-    if (enteredPin === savedPin) {
-      // Success! Unlock the vault.
-      onUnlock();
-    } else {
-      // Fail! Trigger the shake animation and clear the boxes.
-      setIsError(true);
-      setDigits(["", "", "", ""]);
-      focusInput(0);
-      
-      // Remove the red shake state after half a second so they can try again
-      setTimeout(() => setIsError(false), 500);
-    }
-  };
+  }, [digits, focusInput]);
 
   // Helper for the "Forgot PIN" emergency reset
-  const handleForgotPin = () => {
+  // OPTIMIZED: Wrapped emergency override inside a clean hook to comply with modern execution purity rules
+  const handleForgotPin = useCallback(() => {
     const confirmReset = window.confirm(
       "In a real app, this would require your main password to reset. For this demo, do you want to clear your PIN and unlock the vault?"
     );
     if (confirmReset) {
       localStorage.removeItem("vault_pin");
+      
+      // NEW: Prompt clear operational feedback notice info toast
+      toast.info("Vault security credentials cleared.");
       onUnlock();
     }
-  };
+  }, [onUnlock]);
 /* === SECTION 3 END === */
 
 /* ==========================================================================

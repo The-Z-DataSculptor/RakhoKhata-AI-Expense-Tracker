@@ -1,12 +1,13 @@
-// K:\Developer\expense-tracker\src\components\forms\TransactionForm\TransactionForm.tsx
+// src/components/forms/TransactionForm/TransactionForm.tsx
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useCallback, useEffect } from "react";
-import { useForm, useWatch, type SubmitHandler, type FieldError } from "react-hook-form";
+import { useForm, useWatch, type FieldError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner"; 
 import { transactionFormSchema, type TransactionFormValues } from "@/schemas/transactions";
 import type { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
 import styles from "./TransactionForm.module.css";
@@ -39,8 +40,8 @@ export function TransactionForm({
   // Create a clean "YYYY-MM-DD" string for today's default date
   const defaultDateString = new Date().toISOString().substring(0, 10);
 
-  // FIX: We use TransactionFormValues directly from the Zod schema. 
-  // No local interfaces and no 'as any' casts are needed anymore.
+  /* FIXED: Removed the explicit <TransactionFormValues> generic here. 
+     This allows React Hook Form to read Zod's input/output definitions perfectly without errors. */
   const {
     register,
     handleSubmit,
@@ -48,14 +49,14 @@ export function TransactionForm({
     setValue,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<TransactionFormValues>({
+  } = useForm({
     resolver: zodResolver(transactionFormSchema),
     mode: "onBlur",
     defaultValues: {
       date: defaultDateString,
       description: "",
       category: "",
-      type: "EXPENSE",
+      type: "EXPENSE" as "EXPENSE" | "INCOME",
       amount: 0,
     },
   });
@@ -88,9 +89,10 @@ export function TransactionForm({
     }
   }, [initialData, reset, defaultDateString]);
 
-  // Handle valid form submission
-  const onSubmit: SubmitHandler<TransactionFormValues> = useCallback(
-    async (data) => {
+  /* FIXED: Typed the argument 'data' directly instead of mapping the wrapper function signature.
+     This plays beautifully with implicit handleSubmit typings. */
+  const onSubmit = useCallback(
+    async (data: TransactionFormValues) => {
       try {
         const transactionId = initialData ? initialData.id : `tx-${Date.now()}`;
 
@@ -99,13 +101,18 @@ export function TransactionForm({
           date: data.date,
           description: data.description.trim(),
           category: data.category ? data.category.toLowerCase() : "",
-          amount: data.amount, // Guaranteed to be a number by Zod
+          amount: data.amount,
           type: data.type.toLowerCase() as "income" | "expense",
         };
 
         onAddTransaction(compiledRecord);
 
-        // Reset the form if we were creating a brand new transaction
+        if (initialData) {
+          toast.success("Transaction changes modified successfully!");
+        } else {
+          toast.success("New transaction entry recorded successfully!");
+        }
+
         if (!initialData) {
           reset({
             date: defaultDateString,
@@ -117,6 +124,7 @@ export function TransactionForm({
         }
       } catch (error) {
         console.error("Failed to save transaction:", error);
+        toast.error("Could not secure ledger entry records. Please verify field inputs.");
       }
     },
     [initialData, onAddTransaction, reset, defaultDateString]
@@ -151,7 +159,7 @@ export function TransactionForm({
               Posting Date
             </label>
             <input id="date" type="date" className={styles.inputField} {...register("date")} />
-            {errors.date && <span className={styles.errorMessage}>{getErrorMessage(errors.date)}</span>}
+            {errors.date && <span className={styles.errorMessage}>{getErrorMessage(errors.date as FieldError)}</span>}
           </div>
 
           <div className={styles.fieldGroup}>
@@ -193,7 +201,7 @@ export function TransactionForm({
             {...register("description")}
           />
           {errors.description && (
-            <span className={styles.errorMessage}>{getErrorMessage(errors.description)}</span>
+            <span className={styles.errorMessage}>{getErrorMessage(errors.description as FieldError)}</span>
           )}
         </div>
 
@@ -214,7 +222,7 @@ export function TransactionForm({
               </select>
             </div>
             {errors.category && (
-              <span className={styles.errorMessage}>{getErrorMessage(errors.category)}</span>
+              <span className={styles.errorMessage}>{getErrorMessage(errors.category as FieldError)}</span>
             )}
           </div>
 
@@ -229,12 +237,11 @@ export function TransactionForm({
                 step="0.01"
                 className={styles.inputFieldCurrency}
                 placeholder="0.00"
-                /* FIX: valueAsNumber ensures the HTML input sends a number to React Hook Form */
                 {...register("amount", { valueAsNumber: true })}
               />
               <span className={styles.currencyBadge}>{currency}</span>
             </div>
-            {errors.amount && <span className={styles.errorMessage}>{getErrorMessage(errors.amount)}</span>}
+            {errors.amount && <span className={styles.errorMessage}>{getErrorMessage(errors.amount as FieldError)}</span>}
           </div>
         </div>
 

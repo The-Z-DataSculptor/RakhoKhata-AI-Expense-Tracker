@@ -113,7 +113,7 @@ export default function Navbar() {
             )}
           </div>
 
-          <a href="#signin" className={styles.signInLink} onClick={() => setIsOpen(false)}>
+          <a href="/login" className={styles.signInLink} onClick={() => setIsOpen(false)}>
             Sign In
           </a>
           <button className={styles.signUpButton}>

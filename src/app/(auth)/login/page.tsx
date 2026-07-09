@@ -1,41 +1,48 @@
-// FILE LOCATION: src/app/(auth)/login/page.tsx
+// src/app/(auth)/login/page.tsx
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES START ===
+   === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner"; // NEW: Imported the global notification engine hook
 
-// WHY: We clean up our codebase by importing our logic requirements from the schema layer.
+// Import validation rules to ensure the user enters correct data
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
 
 import styles from "./page.module.css";
-/* === SECTION 1: IMPORTS AND DEPENDENCIES END === */
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 type MarketTrendType = "STABLE_GROWTH" | "CORRECTIVE_RECOVERY" | "HIGH_VOLATILITY_BURST";
 
-// FIXED / WHY: Empty subscription setup needed for useSyncExternalStore to verify window availability safely
+// Empty subscription setup needed for useSyncExternalStore to verify window availability safely
 const emptySubscribe = () => () => {};
+/* === SECTION 2 END === */
 
-export default function InteractivePulseLoginPage() {
-  /* ==========================================================================
-     === SECTION 2: STATE INITIALIZATION AND HOOKS START ===
-     ========================================================================== */
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
+export default function LoginPage() {
   const router = useRouter();
 
-  // FIXED / WHY: Directly hooks into the rendering timeline to figure out if it is server or browser environment.
-  // This removes the need for useEffect + setIsClient(true), totally solving the linter error.
+  // UX Improvement: Add a toggle to let users double-check their typed password
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Directly hooks into the rendering timeline to figure out if it is a server or browser environment
   const isClient = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
 
-  // WHY: We wire up the externally imported login schema parameters directly to the engine.
+  // Wire up the externally imported login schema parameters to the form engine
   const {
     register,
     handleSubmit,
@@ -45,7 +52,7 @@ export default function InteractivePulseLoginPage() {
     mode: "onBlur",
   });
 
-  // State elements kept for the reactive parts of the telemetry UI
+  // State elements kept for the reactive parts of the background graph UI
   const [marketVolatility, setMarketVolatility] = useState<number>(12);
   const [marketTrend, setMarketTrend] = useState<MarketTrendType>("STABLE_GROWTH");
 
@@ -55,20 +62,30 @@ export default function InteractivePulseLoginPage() {
 
   const currentAmplitude = useRef<number>(20);
   const targetAmplitude = useRef<number>(20);
-  /* === SECTION 2: STATE INITIALIZATION AND HOOKS END === */
 
-  /* ==========================================================================
-     === SECTION 3: FORM SUBMISSION LOGIC START ===
-     ========================================================================== */
+  // Form submission handler
   const onFormSubmit = async (data: LoginFormData) => {
     console.log("Validated Payload:", data);
+    
+    // NEW: Triggering the micro-feedback layout alert instantly upon validation check pass
+    toast.success("Welcome back! Loading your dashboard securely...");
+
+    // Simulate a brief network delay for better UX feedback, then redirect
+    await new Promise(resolve => setTimeout(resolve, 800));
     router.push("/dashboard");
   };
-  /* === SECTION 3: FORM SUBMISSION LOGIC END === */
 
-  /* ==========================================================================
-     === SECTION 4: CANVAS VOLATILITY ENGINE START ===
-     ========================================================================== */
+  // Helper to format the trend state into friendly text
+  const getDisplayTrend = (trend: MarketTrendType) => {
+    switch (trend) {
+      case "STABLE_GROWTH": return "Stable";
+      case "CORRECTIVE_RECOVERY": return "Recovering";
+      case "HIGH_VOLATILITY_BURST": return "Volatile";
+      default: return "Stable";
+    }
+  };
+
+  // --- CANVAS VOLATILITY ENGINE ---
   useEffect(() => {
     if (!isClient) return;
 
@@ -92,6 +109,7 @@ export default function InteractivePulseLoginPage() {
     let lastStateUpdateTime = 0;
 
     const renderWaveframeLoop = () => {
+      // Pause animation if the user switches browser tabs to save computer memory
       if (document.hidden) {
         animationFrameId = requestAnimationFrame(renderWaveframeLoop);
         return;
@@ -99,10 +117,10 @@ export default function InteractivePulseLoginPage() {
 
       const rootStyles = getComputedStyle(document.documentElement);
       const rawBgToken = rootStyles.getPropertyValue("--background").trim() || "#0A061B";
-      const primaryToken = rootStyles.getPropertyValue("--color-primary").trim() || "#9266FA";
-      const successToken = rootStyles.getPropertyValue("--color-success").trim() || "#4ade80";
+      const primaryToken = rootStyles.getPropertyValue("--color-primary").trim() || "#613bbf";
+      const successToken = rootStyles.getPropertyValue("--color-success").trim() || "#16a34a";
 
-      ctx.fillStyle = rawBgToken.startsWith("#") ? `${rawBgToken}26` : "rgba(10, 6, 27, 0.15)";
+      ctx.fillStyle = rawBgToken.startsWith("#") ? `${rawBgToken}26` : "rgba(255, 255, 255, 0.15)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       waveOffset += 0.04;
@@ -114,8 +132,7 @@ export default function InteractivePulseLoginPage() {
 
       const calculatedSpikeIntensity = Math.round(currentAmplitude.current);
       
-      // FIXED / WHY: Throttling state calls to occur at most once every 100ms. 
-      // Running react state changes 60 to 120 times per second inside an animation frame causes massive lag.
+      // Throttling state calls to occur at most once every 100ms prevents React from lagging
       const now = Date.now();
       if (now - lastStateUpdateTime > 100) {
         setMarketVolatility(calculatedSpikeIntensity);
@@ -178,6 +195,7 @@ export default function InteractivePulseLoginPage() {
     const currentTime = Date.now();
     const timeDelta = currentTime - lastMouseTime.current;
 
+    // Only calculate speed if enough time has passed to avoid math errors
     if (timeDelta > 16) {
       const distanceX = event.clientX - lastMousePos.current.x;
       const distanceY = event.clientY - lastMousePos.current.y;
@@ -194,91 +212,104 @@ export default function InteractivePulseLoginPage() {
       lastMouseTime.current = currentTime;
     }
   };
-  /* === SECTION 4: CANVAS VOLATILITY ENGINE END === */
+/* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 5: MAIN JSX RENDER LAYOUT START ===
-     ========================================================================== */
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <div className={styles.fullScreenMasterLayout} suppressHydrationWarning>
       <section className={styles.leftFormColumn}>
-        <Link href="/" className={styles.escapeHomeButton}>← Back to main website</Link>
+        <Link href="/" className={styles.escapeHomeButton}>← Back to Home</Link>
 
         <div className={styles.formContainerContent}>
           <div className={styles.formHeader}>
-            <h1 className={styles.mainTitle}>Access Hub</h1>
-            <p className={styles.subtext}>Synchronize your credentials to access your secure station parameters.</p>
+            <h1 className={styles.mainTitle}>Welcome Back</h1>
+            <p className={styles.subtext}>Log in to RakhoKhata to manage your finances and track your goals.</p>
           </div>
 
           {isClient && (
-            <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm}>
+            <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm} noValidate>
               
               <div className={styles.inputControlGroup}>
-                <label htmlFor="email" className={styles.fieldLabel}>Security Email</label>
+                <label htmlFor="email" className={styles.fieldLabel}>Email Address</label>
                 <input
                   id="email"
                   type="email"
-                  placeholder="zain@domain.com"
+                  placeholder="name@example.com"
                   {...register("email")}
                   className={`${styles.primaryInputField} ${errors.email ? styles.inputErrorState : ""}`}
                   autoFocus
+                  aria-invalid={errors.email ? "true" : "false"}
                 />
-                {errors.email && <span className={styles.fieldErrorText}>{errors.email.message}</span>}
+                {errors.email && <span className={styles.fieldErrorText} role="alert">{errors.email.message}</span>}
               </div>
 
               <div className={styles.inputControlGroup}>
                 <div className={styles.labelForgotRow}>
-                  <label htmlFor="password" className={styles.fieldLabel}>Master Password</label>
-                  <Link href="/forgot" className={styles.forgotPassLink}>Recover Dial Keys?</Link>
+                  <label htmlFor="password" className={styles.fieldLabel}>Password</label>
+                  <Link href="/forgot-password" className={styles.forgotPassLink}>Forgot password?</Link>
                 </div>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  {...register("password")}
-                  className={`${styles.primaryInputField} ${errors.password ? styles.inputErrorState : ""}`}
-                />
-                {errors.password && <span className={styles.fieldErrorText}>{errors.password.message}</span>}
+                
+                <div className={styles.passwordInputWrapper}>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...register("password")}
+                    className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.password ? styles.inputErrorState : ""}`}
+                    aria-invalid={errors.password ? "true" : "false"}
+                  />
+                  <button 
+                    type="button" 
+                    className={styles.showPasswordToggle}
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {errors.password && <span className={styles.fieldErrorText} role="alert">{errors.password.message}</span>}
               </div>
 
               <button type="submit" className={styles.submitPrimaryButton} disabled={isSubmitting}>
-                {isSubmitting ? "Authorizing..." : "Authorize Master Handshake"}
+                {isSubmitting ? "Logging in..." : "Log In"}
               </button>
             </form>
           )}
 
           <div className={styles.footerRedirectArea}>
-            <p>Unregistered operative? <Link href="/signup" className={styles.hyperlinkInline}>Provision new safe locks</Link></p>
+            <p>Don't have an account? <Link href="/signup" className={styles.hyperlinkInline}>Sign up here</Link></p>
           </div>
         </div>
       </section>
 
       <aside className={styles.rightGraphicsColumn} onMouseMove={handleWavePanelMouseMove}>
-        <canvas ref={canvasRef} className={styles.pulseCanvasAsset} aria-label="Interactive asset tracker data canvas graph" role="img" />
+        <canvas ref={canvasRef} className={styles.pulseCanvasAsset} aria-label="Interactive market activity graph" role="img" />
         <div className={styles.gridOverlayMatrixPattern} />
 
         {isClient && (
           <div className={styles.waveformTelemetryHUD}>
             <div className={styles.hudHeaderRow}>
               <div className={styles.pulseActiveIndicatorDot} />
-              <h3 className={styles.hudWidgetHeadline}>LIVE CAPITAL PULSE</h3>
+              <h3 className={styles.hudWidgetHeadline}>LIVE MARKET SIMULATION</h3>
             </div>
 
             <div className={styles.metricsGridSplitterRow}>
               <div className={styles.hudMetricCell}>
-                <span className={styles.metricLabelText}>VOLATILITY_INDEX</span>
+                <span className={styles.metricLabelText}>ACTIVITY LEVEL</span>
                 <span className={styles.metricLiveValueText}>{marketVolatility} Hz</span>
               </div>
               <div className={styles.hudMetricCell}>
-                <span className={styles.metricLabelText}>CALIBRATION_FLOW</span>
+                <span className={styles.metricLabelText}>TREND STATUS</span>
                 <span className={`${styles.metricLiveValueText} ${marketTrend !== "STABLE_GROWTH" ? styles.alertValueText : ""}`}>
-                  {marketTrend}
+                  {getDisplayTrend(marketTrend)}
                 </span>
               </div>
             </div>
 
             <p className={styles.hudInstructionalSubtext}>
-              *Whip your cursor across the panel void spaces to simulate volatile transactional velocity bursts.
+              *Move your mouse rapidly across this area to simulate market activity and see the chart react.
             </p>
           </div>
         )}
@@ -286,4 +317,4 @@ export default function InteractivePulseLoginPage() {
     </div>
   );
 }
-/* === SECTION 5: MAIN JSX RENDER LAYOUT END === */
+/* === SECTION 4 END === */

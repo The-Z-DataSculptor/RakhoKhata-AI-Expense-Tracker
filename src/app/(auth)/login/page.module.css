@@ -1,3 +1,5 @@
+/* src/app/(auth)/login/page.module.css */
+
 /* ==========================================================================
    === SECTION 1: MASTER RE-FLOW SYSTEM AND VIEWPORT CANVAS ===
    ========================================================================== */
@@ -6,7 +8,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background-color: var(--background);
+  background-color: var(--background, #ffffff);
   position: relative;
   overflow: hidden;
 }
@@ -16,7 +18,7 @@
     grid-template-columns: 1fr;
   }
   .rightGraphicsColumn {
-    display: none;
+    display: none !important;
   }
 }
 /* === SECTION 1 END === */
@@ -29,7 +31,7 @@
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
-  background-color: var(--background);
+  background-color: var(--background, #ffffff);
   position: relative;
   z-index: 20;
 }
@@ -37,16 +39,23 @@
 .escapeHomeButton {
   position: absolute;
   top: 2.5rem;
-  left: 4rem;
+  left: 3.5rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   text-decoration: none;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
 }
 
 .escapeHomeButton:hover {
-  color: var(--color-primary);
+  color: var(--color-primary, #613bbf);
+}
+
+@media (max-width: 600px) {
+  .escapeHomeButton {
+    left: 2rem;
+    top: 2rem;
+  }
 }
 
 .formContainerContent {
@@ -61,15 +70,16 @@
 .mainTitle {
   font-size: 2.5rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   letter-spacing: -0.03em;
   margin-bottom: 0.45rem;
 }
 
 .subtext {
-  font-size: 1rem;
-  color: var(--text-muted);
+  font-size: 0.95rem;
+  color: var(--text-muted, #7e7a9c);
   line-height: 1.5;
+  font-weight: 500;
 }
 
 .registrationForm {
@@ -93,7 +103,7 @@
 .fieldLabel {
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #4e4a6b);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -101,61 +111,90 @@
 .forgotPassLink {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   text-decoration: none;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
 }
 
 .forgotPassLink:hover {
-  color: var(--color-primary);
+  color: var(--color-primary, #613bbf);
+}
+
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 .primaryInputField {
   width: 100%;
   padding: 0.85rem 1.15rem;
   font-size: 0.95rem;
-  color: var(--text-primary);
-  background-color: var(--surface-highlight);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  color: var(--text-primary, #10043f);
+  background-color: var(--surface-highlight, #f8f7fd);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
   outline: none;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
   font-family: inherit;
 }
 
+/* Ensure text does not disappear behind the show/hide button */
+.passwordInput {
+  padding-right: 3.5rem; 
+}
+
+.showPasswordToggle {
+  position: absolute;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #7e7a9c);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.showPasswordToggle:hover {
+  color: var(--color-primary, #613bbf);
+}
+
 .primaryInputField::placeholder {
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   opacity: 0.6;
 }
 
 .primaryInputField:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
-  background-color: var(--background);
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.15);
+  background-color: var(--bg-surface, #ffffff);
 }
 
 .submitPrimaryButton {
   width: 100%;
   padding: 0.9rem;
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
+  background-color: var(--color-primary, #613bbf);
+  color: var(--text-on-primary, #ffffff);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 8px);
   font-size: 1rem;
   font-weight: 700;
   margin-top: 0.5rem;
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
   font-family: inherit;
 }
 
-.submitPrimaryButton:hover {
-  background-color: var(--color-primary-dark);
+.submitPrimaryButton:hover:not(:disabled) {
+  background-color: var(--color-primary-dark, #4a2d96);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--primary-soft);
+  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.2);
 }
 
-.submitPrimaryButton:active {
+.submitPrimaryButton:active:not(:disabled) {
   transform: translateY(0);
 }
 
@@ -170,18 +209,18 @@
   margin-top: 1.75rem;
   text-align: center;
   font-size: 0.925rem;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #4e4a6b);
 }
 
 .hyperlinkInline {
-  color: var(--color-primary);
+  color: var(--color-primary, #613bbf);
   font-weight: 600;
   text-decoration: none;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
 }
 
 .hyperlinkInline:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-primary-dark, #4a2d96);
   text-decoration: underline;
 }
 /* === SECTION 2 END === */
@@ -190,8 +229,8 @@
    === SECTION 3: CANVAS CONTAINER & METADATA LAYOUT ARRAYS ===
    ========================================================================== */
 .rightGraphicsColumn {
-  background-color: var(--background);
-  border-left: 1px solid var(--border-color);
+  background-color: var(--background, #ffffff);
+  border-left: 1px solid var(--border-color, #e5e1f4);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -221,10 +260,10 @@
   background-size: 40px 40px;
   background-image: linear-gradient(
       to right,
-      var(--primary-soft-faint) 1px,
+      rgba(97, 59, 191, 0.05) 1px,
       transparent 1px
     ),
-    linear-gradient(to bottom, var(--primary-soft-faint) 1px, transparent 1px);
+    linear-gradient(to bottom, rgba(97, 59, 191, 0.05) 1px, transparent 1px);
 }
 /* === SECTION 3 END === */
 
@@ -234,13 +273,13 @@
 .waveformTelemetryHUD {
   width: 100%;
   max-width: 440px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
   padding: 1.75rem;
   position: relative;
   z-index: 10;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 8px 30px rgba(16, 4, 63, 0.04);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -256,7 +295,7 @@
 .pulseActiveIndicatorDot {
   width: 8px;
   height: 8px;
-  background-color: var(--color-success);
+  background-color: var(--color-success, #16a34a);
   border-radius: 50%;
   animation: telemetryHeartbeat 1.8s infinite ease-in-out;
   flex-shrink: 0;
@@ -277,7 +316,7 @@
 .hudWidgetHeadline {
   font-size: 0.85rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   letter-spacing: 0.06em;
   margin: 0;
 }
@@ -298,7 +337,7 @@
   font-family: "Courier New", monospace;
   font-size: 0.65rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -307,32 +346,32 @@
   font-family: "Courier New", monospace;
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   letter-spacing: 0.01em;
 }
 
 .alertValueText {
-  color: var(--color-warning);
+  color: var(--color-warning, #f59e0b);
 }
 
 .hudInstructionalSubtext {
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted, #7e7a9c);
   line-height: 1.4;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color, #e5e1f4);
   padding-top: 0.75rem;
   margin: 0;
 }
 /* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 5: ZOD VALIDATION UI STATES START ===
+   === SECTION 5: ZOD VALIDATION UI STATES ===
    ========================================================================== */
-/* Inline field specific error messages provided by React Hook Form & Zod */
 .fieldErrorText {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-danger, #ef4444); 
+  color: var(--color-danger, #dc2626); 
   margin-top: 0.15rem;
   display: block;
   animation: fadeIn 0.2s ease-in-out;
@@ -343,13 +382,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Red-alert border style triggered when Zod catches an error */
 .inputErrorState {
-  border-color: var(--color-danger, #ef4444) !important;
+  border-color: var(--color-danger, #dc2626) !important;
 }
 
-/* Glowing halo red indicator when focusing on a broken field */
 .inputErrorState:focus {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
 }
-/* === SECTION 5: ZOD VALIDATION UI STATES END === */
+/* === SECTION 5 END === */

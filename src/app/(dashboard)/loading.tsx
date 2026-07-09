@@ -1,7 +1,4 @@
-/* ==========================================================================
-   === FILEPATH: src/app/(dashboard)/loading.tsx ===
-   ========================================================================== */
-
+// src/app/(dashboard)/loading.tsx
 import React from "react";
 import styles from "./loading.module.css";
 
@@ -10,40 +7,44 @@ import styles from "./loading.module.css";
    ========================================================================== */
 export default function DashboardLoading() {
   
-  // WHY: Generating 4 explicit metrics cards to perfectly map and mimic the 
-  // real dynamic MetricRow data configuration array slots while content loads.
+  // Generating 4 explicit metric cards to match the layout grid of your stats row
   const skeletonCards = [
-    { cardId: "skeleton-bill" },
-    { cardId: "skeleton-inflow" },
-    { cardId: "skeleton-outflow" },
-    { cardId: "skeleton-safe" }
+    { cardId: "skeleton-1" },
+    { cardId: "skeleton-2" },
+    { cardId: "skeleton-3" },
+    { cardId: "skeleton-4" }
   ];
 
   return (
     <div className={styles.loadingContainer} aria-hidden="true">
       
-      {/* 1. TOP HEADER SKELETON TRACK */}
-      <header className={styles.headerSkeletonTracker}>
-        <div className={styles.titleSkeleton}></div>
-        <div className={styles.subtitleSkeleton}></div>
+      {/* 1. TOP HEADER CONTAINER BOX */}
+      <header className={styles.dashboardHeaderCardBoxSkeleton}>
+        <div className={styles.headingBlockSkeleton}>
+          {/* Combined standard skeleton base with layout sizing classes */}
+          <div className={`${styles.skeletonBase} ${styles.titleSkeleton}`}></div>
+          <div className={`${styles.skeletonBase} ${styles.subtitleSkeleton}`}></div>
+        </div>
+        
+        {/* Simulates the right-aligned workspace/time control panel action buttons */}
+        <div className={`${styles.skeletonBase} ${styles.actionPanelControlSkeleton}`}></div>
       </header>
 
-      {/* 2. SUMMARY METRICS GRID SKELETON */}
-      <section className={styles.metricsGridSkeleton} aria-label="Loading summary data">
+      {/* 2. SUMMARY METRICS CARDS GRID */}
+      <section className={styles.metricsGridSkeleton}>
         {skeletonCards.map((card) => (
-          // FIXED: Utilizes an explicit, predictive string property instead of unsafe array indices
           <div key={card.cardId} className={styles.skeletonCard}>
-            <div className={styles.cardHeaderLine}></div>
-            <div className={styles.cardMainValue}></div>
-            <div className={styles.cardSubtextLine}></div>
+            <div className={`${styles.skeletonBase} ${styles.cardHeaderLine}`}></div>
+            <div className={`${styles.skeletonBase} ${styles.cardMainValue}`}></div>
+            <div className={`${styles.skeletonBase} ${styles.cardSubtextLine}`}></div>
           </div>
         ))}
       </section>
 
-      {/* 3. LARGESCALE DATA GRAPH PLACEHOLDER */}
+      {/* 3. LOWER LARGE-SCALE ANALYTICS BLOCK PLACEHOLDER */}
       <main className={styles.largeGraphBlockSkeleton}>
-        <div className={styles.graphHeaderLine}></div>
-        <div className={styles.graphCanvasBody}></div>
+        <div className={`${styles.skeletonBase} ${styles.graphHeaderLine}`}></div>
+        <div className={`${styles.skeletonBase} ${styles.graphCanvasBody}`}></div>
       </main>
 
     </div>

@@ -4,27 +4,11 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState, useEffect } from "react";
-import { 
-  FaCoins, 
-  FaChartLine, 
-  FaBuilding, 
-  FaPiggyBank, 
-  FaGem, 
-  FaHandHoldingDollar, 
-  FaBriefcase, 
-  FaWheatAwn, 
-  FaWineGlass, 
-  FaCar, 
-  FaBolt, 
-  FaKey, 
-  FaMask, 
-  FaUsersViewfinder, 
-  FaArrowRight,
-  FaHeart
-} from "react-icons/fa6";
+import React, { useState, useCallback } from "react"; 
+import { FaArrowRight, FaHeart } from "react-icons/fa6";
 import { BsToggleOff, BsToggleOn } from "react-icons/bs";
-import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext"; // Adjusted relative import path
+import { toast } from "sonner"; 
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext"; 
 import styles from "./AddInvestmentForm.module.css";
 /* === SECTION 1 END === */
 
@@ -39,10 +23,47 @@ export interface InvestmentTypeOption {
   iconString: string; 
 }
 
+export interface InvestmentHistoryNode {
+  id: string;
+  date: string;
+  title: string;
+  note: string;
+  amountAtTime: string;
+  investedAtTime: number;
+  valueAtTime: number;
+  roiAtTime: string;
+  isProfitAtTime: boolean;
+}
+
+export interface InvestmentAssetPayload {
+  name: string;
+  symbol: string;
+  icon: string;
+  userNote: string;
+  currentPrice: number;
+  quantityOwned: number;
+  totalInvested: number;
+  currency: string;
+  history: InvestmentHistoryNode[];
+}
+
+// FIXED: Defined explicit blueprint contract layout parameters to completely remove 'any'
+export interface InitialInvestmentData {
+  id: string;
+  name?: string;
+  symbol?: string;
+  icon?: string;
+  userNote?: string;
+  currentPrice?: number;
+  quantityOwned?: number;
+  totalInvested?: number;
+  history?: InvestmentHistoryNode[];
+}
+
 interface AddInvestmentFormProps {
   onClose: () => void;
-  onSave: (data: any) => void;
-  initialData?: any; 
+  onSave: (data: InvestmentAssetPayload) => void;
+  initialData?: InitialInvestmentData | null; 
 }
 /* === SECTION 2 END === */
 
@@ -71,128 +92,161 @@ const INVESTMENT_TYPES: InvestmentTypeOption[] = [
 ];
 
 export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmentFormProps) {
-  const { currency } = useCurrency(); // Hooking into the currency changer context state
+  const { currency } = useCurrency(); 
   const [formStep, setFormStep] = useState<number>(1);
 
-  // Form Fields
-  const [assetName, setAssetName] = useState<string>("");
-  const [assetSymbol, setAssetSymbol] = useState<string>("");
-  const [selectedType, setSelectedType] = useState<string>(INVESTMENT_TYPES[0].id);
-  const [customType, setCustomType] = useState<string>("");
-  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
+  // Helper macro configures structural defaults instantly on initialization paint cycles
+  const matchedTypeOnMount = initialData 
+    ? INVESTMENT_TYPES.find(item => item.iconString === initialData.icon) 
+    : null;
 
-  // Financial Fields
-  const [totalMoneySpent, setTotalMoneySpent] = useState<string>("");
-  const [amountReceived, setAmountReceived] = useState<string>("");
-  const [userNote, setUserNote] = useState<string>("");
+  /* FIXED: Initialize state variables DIRECTLY from props to comply with strict state management guidelines */
+  const [assetName, setAssetName] = useState<string>(initialData?.name || "");
+  const [assetSymbol, setAssetSymbol] = useState<string>(initialData?.symbol || (matchedTypeOnMount ? matchedTypeOnMount.symbolDefault : INVESTMENT_TYPES[0].symbolDefault));
+  const [selectedType, setSelectedType] = useState<string>(matchedTypeOnMount ? matchedTypeOnMount.id : INVESTMENT_TYPES[0].id);
+  const [customType, setCustomType] = useState<string>(initialData && !matchedTypeOnMount ? "Custom Item" : "");
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(initialData && !matchedTypeOnMount ? true : false);
 
-  // Populate data when editing an asset
-  useEffect(() => {
-    if (initialData) {
-      setAssetName(initialData.name || "");
-      setAssetSymbol(initialData.symbol || "");
-      setTotalMoneySpent(initialData.totalInvested?.toString() || "");
-      setAmountReceived(initialData.quantityOwned?.toString() || "");
-      setUserNote(initialData.userNote || "");
-      
-      const match = INVESTMENT_TYPES.find(item => item.iconString === initialData.icon);
-      if (match) {
-        setSelectedType(match.id);
-        setIsCustomMode(false);
-      } else {
-        setIsCustomMode(true);
-        setCustomType("Custom Item");
-      }
+  const [totalMoneySpent, setTotalMoneySpent] = useState<string>(initialData?.totalInvested?.toString() || "");
+  const [amountReceived, setAmountReceived] = useState<string>(initialData?.quantityOwned?.toString() || "");
+  const [userNote, setUserNote] = useState<string>(initialData?.userNote || "");
+
+  // Tracks the context lifecycle configuration parameters to see if profile shifts occur
+  const [prevId, setPrevId] = useState<string | undefined>(initialData?.id);
+
+  /* FIXED: Render-phase adjustment pattern replaces useEffect completely, 
+     preventing cascading render warnings when parent props dynamically update */
+  if (initialData?.id !== prevId) {
+    setPrevId(initialData?.id);
+    setAssetName(initialData?.name || "");
+    setAssetSymbol(initialData?.symbol || "");
+    setTotalMoneySpent(initialData?.totalInvested?.toString() || "");
+    setAmountReceived(initialData?.quantityOwned?.toString() || "");
+    setUserNote(initialData?.userNote || "");
+    
+    const match = INVESTMENT_TYPES.find(item => item.iconString === initialData?.icon);
+    if (match) {
+      setSelectedType(match.id);
+      setIsCustomMode(false);
+    } else {
+      setIsCustomMode(initialData ? true : false);
+      setCustomType(initialData ? "Custom Item" : "");
     }
-  }, [initialData]);
+  }
 
-  const handleTypeSelect = (typeId: string) => {
+  const handleTypeSelect = useCallback((typeId: string) => {
     setSelectedType(typeId);
     const matched = INVESTMENT_TYPES.find(item => item.id === typeId);
     if (matched && !assetSymbol) {
       setAssetSymbol(matched.symbolDefault);
     }
-  };
+  }, [assetSymbol]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
 
     if (formStep === 1) {
-      if (!assetName) return;
+      if (!assetName.trim() || !assetSymbol.trim()) {
+        toast.error("Please provide a valid name and ticker symbol.");
+        return;
+      }
       setFormStep(2);
       return;
     }
     
-    const activeTypeObj = INVESTMENT_TYPES.find(item => item.id === selectedType);
-    const finalIconChar = isCustomMode ? "📦" : (activeTypeObj?.iconString || "💰");
-    
-    const totalInvestedCash = parseFloat(totalMoneySpent) || 0;
-    const finalQuantityOwned = parseFloat(amountReceived) || 0;
-    const calculatedUnitPrice = finalQuantityOwned > 0 ? (totalInvestedCash / finalQuantityOwned) : 0;
+    try {
+      const activeTypeObj = INVESTMENT_TYPES.find(item => item.id === selectedType);
+      const finalIconChar = isCustomMode ? "📦" : (activeTypeObj?.iconString || "💰");
+      
+      const totalInvestedCash = parseFloat(totalMoneySpent) || 0;
+      const finalQuantityOwned = parseFloat(amountReceived) || 0;
+      const calculatedUnitPrice = finalQuantityOwned > 0 ? (totalInvestedCash / finalQuantityOwned) : 0;
 
-    let updatedHistory = [];
+      let updatedHistory: InvestmentHistoryNode[] = [];
+      const activeCurrencyLabel = currency.toUpperCase();
+      const localizedDateString = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    // Format active currency for ledger context consistency
-    const activeCurrencyLabel = currency.toUpperCase();
+      if (initialData) {
+        const existingHistory = initialData.history ? [...initialData.history] : [];
 
-    if (initialData) {
-      // --- LEDGER MEMORY LOGIC FOR EDITS ---
-      const existingHistory = initialData.history ? [...initialData.history] : [];
+        if (initialData.totalInvested !== totalInvestedCash || initialData.quantityOwned !== finalQuantityOwned) {
+          const oldTotalValue = (initialData.quantityOwned || 0) * (initialData.currentPrice || 0);
+          const oldProfitLoss = oldTotalValue - (initialData.totalInvested || 0);
+          const oldRoi = (initialData.totalInvested || 0) > 0 ? (oldProfitLoss / (initialData.totalInvested || 0)) * 100 : 0;
 
-      // Create history log entry if quantities changed
-      if (initialData.totalInvested !== totalInvestedCash || initialData.quantityOwned !== finalQuantityOwned) {
-        const oldTotalValue = initialData.quantityOwned * initialData.currentPrice;
-        const oldProfitLoss = oldTotalValue - initialData.totalInvested;
-        const oldRoi = initialData.totalInvested > 0 ? (oldProfitLoss / initialData.totalInvested) * 100 : 0;
+          const historySnapshot: InvestmentHistoryNode = {
+            id: `node-${Date.now()}-update`,
+            date: localizedDateString,
+            title: "Balance Adjusted",
+            note: userNote.trim() || "Asset balances adjusted via secure profile manager.",
+            amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
+            investedAtTime: totalInvestedCash,
+            valueAtTime: oldTotalValue,
+            roiAtTime: `${oldRoi >= 0 ? "+" : ""}${oldRoi.toFixed(1)}% ROI`,
+            isProfitAtTime: oldProfitLoss >= 0
+          };
 
-        const historySnapshot = {
-          id: `node-${Date.now()}-update`,
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          title: "Balance Adjusted",
-          note: userNote.trim() || "Asset balances adjusted via secure profile manager.",
-          amountAtTime: `${initialData.quantityOwned} ${initialData.symbol}`,
-          investedAtTime: initialData.totalInvested,
-          valueAtTime: oldTotalValue,
-          roiAtTime: `${oldRoi >= 0 ? "+" : ""}${oldRoi.toFixed(1)}% ROI`,
-          isProfitAtTime: oldProfitLoss >= 0
-        };
-
-        updatedHistory = [historySnapshot, ...existingHistory];
-      } else {
-        updatedHistory = existingHistory;
-      }
-    } else {
-      // New profile setup logic path
-      updatedHistory = [
-        {
-          id: `node-${Date.now()}-initial`,
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          title: "Initial Log",
-          note: userNote.trim() || "Asset profile successfully logged in safe vault.",
-          amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
-          investedAtTime: totalInvestedCash,
-          valueAtTime: totalInvestedCash,
-          roiAtTime: "0.0% ROI",
-          isProfitAtTime: true
+          updatedHistory = [historySnapshot, ...existingHistory];
+        } else {
+          updatedHistory = existingHistory;
         }
-      ];
+      } else {
+        updatedHistory = [
+          {
+            id: `node-${Date.now()}-initial`,
+            date: localizedDateString,
+            title: "Initial Log",
+            note: userNote.trim() || "Asset profile successfully logged in safe vault.",
+            amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
+            investedAtTime: totalInvestedCash,
+            valueAtTime: totalInvestedCash,
+            roiAtTime: "0.0% ROI",
+            isProfitAtTime: true
+          }
+        ];
+      }
+
+      const builtAssetPayload: InvestmentAssetPayload = {
+        name: assetName.trim(),
+        symbol: assetSymbol.trim().toUpperCase() || "ITEM",
+        icon: finalIconChar,
+        userNote: userNote.trim(),
+        currentPrice: calculatedUnitPrice, 
+        quantityOwned: finalQuantityOwned,
+        totalInvested: totalInvestedCash,
+        currency: activeCurrencyLabel, 
+        history: updatedHistory
+      };
+
+      onSave(builtAssetPayload);
+
+      if (initialData) {
+        toast.success("Investment asset modifications saved successfully!");
+      } else {
+        toast.success("Asset securely pinned to investment vault.");
+      }
+    } catch (error) {
+      console.error("Investment allocation handling operational pipeline failure:", error);
+      toast.error("Could not secure investment entry records. Verify numeric inputs.");
     }
+  }, [
+    formStep, 
+    assetName, 
+    assetSymbol, 
+    selectedType, 
+    isCustomMode, 
+    totalMoneySpent, 
+    amountReceived, 
+    userNote, 
+    currency, 
+    initialData, 
+    onSave
+  ]);
+/* === SECTION 3 END === */
 
-    const builtAssetPayload = {
-      name: assetName,
-      symbol: assetSymbol.trim().toUpperCase() || "ITEM",
-      icon: finalIconChar,
-      userNote: userNote.trim(),
-      currentPrice: calculatedUnitPrice, 
-      quantityOwned: finalQuantityOwned,
-      totalInvested: totalInvestedCash,
-      currency: activeCurrencyLabel, // FIXED: Explicitly passes chosen currency context down to the onSave handler
-      history: updatedHistory
-    };
-
-    onSave(builtAssetPayload);
-  };
-
+/* ==========================================================================
+   === SECTION 4: RENDER (JSX) ===
+   ========================================================================== */
   return (
     <form onSubmit={handleSubmit} className={styles.formContainer}>
       
@@ -206,9 +260,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         </div>
       </div>
 
-      {/* ==========================================================================
-          === STEP 1: ASSET INFORMATION & CATEGORY SELECTION ===
-          ========================================================================== */}
+      {/* STEP 1: ASSET INFORMATION & CATEGORY SELECTION */}
       {formStep === 1 && (
         <div className={styles.stepWrapper}>
           <div className={styles.promptSpeechBubble}>
@@ -298,9 +350,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         </div>
       )}
 
-      {/* ==========================================================================
-          === STEP 2: METRICS & CONVERSATIONAL BALANCE BALANCES ===
-          ========================================================================== */}
+      {/* STEP 2: METRICS & CONVERSATIONAL BALANCE BALANCES */}
       {formStep === 2 && (
         <div className={styles.stepWrapper}>
           <div className={styles.promptSpeechBubble}>

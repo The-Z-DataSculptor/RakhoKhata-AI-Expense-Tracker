@@ -2,7 +2,7 @@ import "dotenv/config";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 // 👇 Point this import to the exact client directory built by Prisma 7
-import { PrismaClient } from "./prisma/generated/client"; 
+import { PrismaClient } from "../prisma/generated/client"; 
 
 // 1. Initialize the raw PostgreSQL connection pool instance
 const pool = new pg.Pool({

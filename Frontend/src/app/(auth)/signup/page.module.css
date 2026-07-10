@@ -1,4 +1,4 @@
-/* src/app/signup/page.module.css */
+/* src/app/(auth)/signup/page.module.css */
 
 /* ==========================================================================
    === SECTION 1: FULL SCREEN VIEWPORT MATRIX SYSTEM ===
@@ -38,7 +38,6 @@
   }
 }
 /* === SECTION 1 END === */
-
 
 /* ==========================================================================
    === SECTION 2: LEFT FORM COLUMN DESIGN METRICS ===
@@ -172,7 +171,6 @@
 }
 /* === SECTION 2 END === */
 
-
 /* ==========================================================================
    === SECTION 3: ACTIONS & NOTIFICATION ALERT CONTAINER STYLES ===
    ========================================================================== */
@@ -227,7 +225,6 @@
   text-decoration: underline;
 }
 /* === SECTION 3 END === */
-
 
 /* ==========================================================================
    === SECTION 4: SYSTEM-LINKED RIGHT GRAPHICS COLUMN ===

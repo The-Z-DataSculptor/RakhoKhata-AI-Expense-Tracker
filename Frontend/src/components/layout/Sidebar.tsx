@@ -6,7 +6,9 @@
    ========================================================================== */
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Cookies from "js-cookie"; // NEW: Used to destroy sessions on sign-out
+import { toast } from "sonner"; // Used to confirm logout status
 
 // Importing the Workspace Context Hook
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
@@ -37,13 +39,23 @@ import styles from "./Sidebar.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: DATA STRUCTURES CONFIGURATION ===
+   === SECTION 2: DATA STRUCTURES & INTERFACES ===
    ========================================================================== */
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
   group: "core" | "growth" | "intelligence";
+}
+
+// NEW: Explicit structure configuration for our incoming Neon database record
+interface SidebarProps {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    uiTheme?: string;
+  } | null;
 }
 
 const NAVIGATION_ITEMS: NavItem[] = [
@@ -59,8 +71,9 @@ const NAVIGATION_ITEMS: NavItem[] = [
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export default function Sidebar() {
+export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   
   // --- GLOBAL WORKSPACE BRAIN CONNECTION ---
   const { workspaces, activeWorkspace, switchWorkspace, renderIcon } = useWorkspace();
@@ -70,9 +83,11 @@ export default function Sidebar() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
-  
-  // Added state parameters to control the profile session popover deck
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
+
+  // Fallbacks to keep layouts fully crash-proof if database sync lags
+  const accountName = user?.name || "RakhoKhata User";
+  const accountEmail = user?.email || "Cloud Synced";
 
   // Group nav items to match visual hierarchy layouts
   const coreItems = NAVIGATION_ITEMS.filter(item => item.group === "core");
@@ -95,6 +110,20 @@ export default function Sidebar() {
   const toggleProfileDropdown = () => {
     setIsProfileMenuOpen(!isProfileMenuOpen);
     if (isWorkspaceMenuOpen) setIsWorkspaceMenuOpen(false);
+  };
+
+  // NEW BY THE BOOK: Authentic session destruction function 
+  const handleSignOutAction = () => {
+    setIsProfileMenuOpen(false);
+    
+    // 1. Terminate the token from the browser cookie safe vault
+    Cookies.remove("token", { path: "/" });
+    
+    // 2. Alert user of successful session closure
+    toast.success("Logged out successfully. See you soon!");
+    
+    // 3. Force route change instantly to login entry gate
+    router.push("/login");
   };
 /* === SECTION 3 END === */
 
@@ -275,7 +304,8 @@ export default function Sidebar() {
               {/* USER PROFILE META ZONE */}
               {!isCollapsed && (
                 <div className={styles.popoverMetaUserBlock}>
-                  <p className={styles.popoverUserLabelTitle}>Zain Hassan</p>
+                  {/* DYNAMIC LOOKUP: Displays live database user name */}
+                  <p className={styles.popoverUserLabelTitle}>{accountName}</p>
                   <p className={styles.popoverUserConnectionTag}>Verified Profile Account</p>
                 </div>
               )}
@@ -295,10 +325,7 @@ export default function Sidebar() {
               <button 
                 type="button" 
                 className={`${styles.popoverInteractButtonRow} ${styles.popoverSignOutActionLink}`}
-                onClick={() => {
-                  setIsProfileMenuOpen(false);
-                  alert("Frontend Session Mock: Executing safe dashboard account sign out routing loop.");
-                }}
+                onClick={handleSignOutAction}
               >
                 <FiLogOut size={14} />
                 <span>Sign Out Account</span>
@@ -320,8 +347,9 @@ export default function Sidebar() {
                 <span className={styles.activePulseStatusDotIndicator} />
               </div>
               <div className={styles.identityTextStack}>
-                <span className={styles.operatorProfileName}>Zain Hassan</span>
-                <span className={styles.operatorSecRole}>Cloud Synced</span>
+                {/* DYNAMIC LOOKUP: Replaces hardcoded strings with actual account values */}
+                <span className={styles.operatorProfileName}>{accountName}</span>
+                <span className={styles.operatorSecRole}>{accountEmail}</span>
               </div>
             </div>
             

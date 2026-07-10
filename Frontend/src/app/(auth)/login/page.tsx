@@ -9,7 +9,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner"; // NEW: Imported the global notification engine hook
+import { toast } from "sonner"; 
+import Cookies from "js-cookie"; // NEW: Industry standard cookie manager
 
 // Import validation rules to ensure the user enters correct data
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
@@ -63,16 +64,52 @@ export default function LoginPage() {
   const currentAmplitude = useRef<number>(20);
   const targetAmplitude = useRef<number>(20);
 
-  // Form submission handler
+  // Form submission handler connected directly to the Express backend API
   const onFormSubmit = async (data: LoginFormData) => {
     console.log("Validated Payload:", data);
     
-    // NEW: Triggering the micro-feedback layout alert instantly upon validation check pass
-    toast.success("Welcome back! Loading your dashboard securely...");
+    try {
+      // Direct network dispatch to your active authentication cluster endpoint
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-    // Simulate a brief network delay for better UX feedback, then redirect
-    await new Promise(resolve => setTimeout(resolve, 800));
-    router.push("/dashboard");
+      const result = await response.json();
+
+      // Catch custom backend rejections (incorrect passwords, un-registered emails)
+      if (!response.ok) {
+        throw new Error(result.error || "Authentication failed. Please verify credentials.");
+      }
+
+      // BY THE BOOK: Safely store the JWT using js-cookie to satisfy Next.js strict mode
+      Cookies.set("token", result.token, {
+        expires: 7, // 7 days
+        path: "/",
+        sameSite: "Lax",
+        secure: true,
+      });
+
+      // Trigger the micro-feedback layout alert instantly upon validation check pass
+      toast.success("Welcome back! Loading your dashboard securely...");
+
+      // Simulate a brief network delay for better UX feedback, then redirect
+      await new Promise(resolve => setTimeout(resolve, 800));
+      router.push("/dashboard");
+
+    } catch (error: unknown) {
+      console.error("Full-Stack Login Error Encountered:", error);
+      
+      // Strict type guard resolution to display native clean error logs safely
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An unexpected error occurred. Please verify your backend engine is running.";
+        
+      toast.error(errorMessage);
+    }
   };
 
   // Helper to format the trend state into friendly text
@@ -279,7 +316,7 @@ export default function LoginPage() {
           )}
 
           <div className={styles.footerRedirectArea}>
-            <p>Don't have an account? <Link href="/signup" className={styles.hyperlinkInline}>Sign up here</Link></p>
+            <p>Don&apos;t have an account? <Link href="/signup" className={styles.hyperlinkInline}>Sign up here</Link></p>
           </div>
         </div>
       </section>

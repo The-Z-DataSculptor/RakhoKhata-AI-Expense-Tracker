@@ -1,33 +1,32 @@
 import express from "express";
 import cors from "cors";
-import { prisma } from "./db"; // Brings in your Neon database bridge
+import { prisma } from "./db";
+import authRoutes from "./routes/authRoutes"; // 👇 Import your new route map
 
 const app = express();
 const PORT = 5000;
 
-// Middlewares
-app.use(cors()); // Allows your frontend to communicate with this server safely
-app.use(express.json()); // Lets your server read incoming JSON data from forms
+// Global Middlewares
+app.use(cors());
+app.use(express.json());
 
-// Upgraded Health Check (Verifies both Server AND Cloud Database are breathing)
+// 1. Existing Health Check Route
 app.get("/api/health", async (req, res) => {
   try {
-    // Run a tiny test query to your Neon database over the web
     await prisma.$queryRaw`SELECT 1`;
-    
     res.json({ 
       status: "active", 
       message: "Welcome to the RakhoKhata Backend Engine!",
-      database: "Connected perfectly to Neon Cloud (Singapore Cluster)!"
+      database: "Connected perfectly to Neon Cloud!"
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: "error", 
-      message: "Server is awake, but database connection failed.",
-      error: error instanceof Error ? error.message : "Unknown database error"
-    });
+    res.status(500).json({ status: "error", error: "Database offline" });
   }
 });
+
+// 2. 👇 The Connection Highway: Link authentication routes to the server
+// This prefixes all endpoints inside authRoutes with "/api/auth"
+app.use("/api/auth", authRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Advanced TypeScript backend running on http://localhost:${PORT}`);

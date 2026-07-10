@@ -20,6 +20,16 @@ interface CurrencyOption {
   label: string;
   flag: string;
 }
+
+// NEW: Explicitly accept user profile parameters dropped from the Server layout matrix
+interface DashboardNavbarProps {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    uiTheme?: string;
+  } | null;
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -41,7 +51,7 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
 
 const emptySubscribe = () => () => {};
 
-export default function DashboardNavbar() {
+export default function DashboardNavbar({ user }: DashboardNavbarProps) {
   const { activeTheme, changeTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
   
@@ -62,6 +72,9 @@ export default function DashboardNavbar() {
   };
 
   const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === currency);
+
+  // NEW ATTENTION TO DETAIL: Extract only the user's first name for a clean, personal greeting header card
+  const displayGreetingName = user?.name ? user.name.split(" ")[0] : "User";
 
   let greeting = "Welcome";
   let formattedDate = "";
@@ -91,7 +104,8 @@ export default function DashboardNavbar() {
       {/* LEFT SECTION: USER GREETING DECK */}
       <div className={styles.welcomeSection}>
         <h2 className={styles.greetingTitle}>
-          {greeting}, <span className={styles.userName}>Zain</span>
+          {/* DYNAMIC: Welcomes you cleanly by your real database account identifier */}
+          {greeting}, <span className={styles.userName}>{displayGreetingName}</span>
         </h2>
         <p className={styles.dateSubtext}>{formattedDate}</p>
       </div>
@@ -140,8 +154,7 @@ export default function DashboardNavbar() {
 
         {/* ACTION NODE: NOTIFICATION SYSTEM BELL */}
         <button className={styles.utilityIconButton} aria-label="Notifications">
-          <FiBell size={18} />
-          <span className={styles.notificationPulseBadge}></span>
+          <SideEffectNotificationDot />
         </button>
 
         {/* ACTION NODE: SYSTEM DISPLAY THEME DROPDOWN */}
@@ -245,6 +258,16 @@ export default function DashboardNavbar() {
       )}
 
     </header>
+  );
+}
+
+// Lightweight inner component to safely render specific notification nodes
+function SideEffectNotificationDot() {
+  return (
+    <>
+      <FiBell size={18} />
+      <span className={styles.notificationPulseBadge}></span>
+    </>
   );
 }
 /* === SECTION 4 END === */

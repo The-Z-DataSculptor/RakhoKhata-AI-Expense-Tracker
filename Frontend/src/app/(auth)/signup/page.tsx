@@ -9,9 +9,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner"; // NEW: Imported global notification engine hook
+import { toast } from "sonner"; 
+import Cookies from "js-cookie"; // NEW: Industry standard cookie manager
 
-// Import our centralized validation blueprint from the schema folder
+// Import centralized validation blueprint from the schema folder
 import { signupSchema, type SignupFormData } from "@/schemas/auth";
 
 import styles from "./page.module.css";
@@ -53,15 +54,53 @@ export default function SignupPage() {
     setMouseY(event.clientY - componentViewport.top);
   };
 
+  // Upgraded Full-Stack Form Submission Engine
   const onFormSubmit = async (data: SignupFormData) => {
     console.log("Validated New Account Payload:", data);
     
-    // NEW: Trigger micro-feedback message to instantly confirm registration validation pass
-    toast.success("Account created successfully! Preparing your secure ledger...");
+    try {
+      // Pass the form payload directly to the server since the backend now natively handles fullName
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-    // Simulate a brief network delay for better UX feedback, then redirect
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    router.push("/dashboard");
+      const result = await response.json();
+
+      // If our backend rejected the request (e.g., email already exists or invalid data)
+      if (!response.ok) {
+        throw new Error(result.error || "An error occurred during registration.");
+      }
+
+      // BY THE BOOK: Safely store the JWT using js-cookie to satisfy Next.js strict mode
+      Cookies.set("token", result.token, {
+        expires: 7, // 7 days
+        path: "/",
+        sameSite: "Lax",
+        secure: true,
+      });
+
+      // Trigger global notification engine to instantly confirm registration success
+      toast.success("Account created successfully! Preparing your secure ledger...");
+
+      // Simulate a brief network delay for better UX feedback, then redirect to core application
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      router.push("/dashboard");
+
+    } catch (error: unknown) {
+      console.error("Full-Stack Connection Failure:", error);
+      
+      // Type Guard: Safely verify if the caught error is an instance of the native Error class
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Unable to reach the server. Please verify your backend engine is running.";
+        
+      // Pass the clean error string directly to our user's notification system
+      toast.error(errorMessage);
+    }
   };
 /* === SECTION 3 END === */
 

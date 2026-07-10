@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String      @id @default(uuid())
+  name         String
+  email        String      @unique
+  passwordHash String
+  uiTheme      String      @default("DARK")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  workspaces   Workspace[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id           String        @id @default(uuid())
+  name         String
+  currency     String        @default("PKR")
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+  investments  Investment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("workspaces")
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  type         String // INCOME, EXPENSE, or BOTH
+  color        String
+  workspaceId  String
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("categories")
+}
+
+model Transaction {
+  id          String    @id @default(uuid())
+  amount      Decimal   @db.Decimal(12, 2) // High-precision financial decimal
+  type        String // INCOME or EXPENSE
+  description String
+  date        DateTime
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("transactions")
+}
+
+model Budget {
+  id          String    @id @default(uuid())
+  limitAmount Decimal   @db.Decimal(12, 2) // High-precision cap limit
+  startDate   DateTime
+  endDate     DateTime
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("budgets")
+}
+
+model Investment {
+  id              String    @id @default(uuid())
+  assetSymbol     String // e.g., BTC, AAPL
+  categoryClass   String // Crypto / Coins, Stocks, etc.
+  isCustomProfile Boolean   @default(false)
+  totalInvested   Decimal   @db.Decimal(12, 2)
+  capitalCurrency String    @default("GBP")
+  quantity        Decimal   @db.Decimal(16, 8) // Handles small fractional crypto units safely
+  strategyNote    String
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("investments")
+}

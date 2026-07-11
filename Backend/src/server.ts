@@ -5,8 +5,9 @@
    ========================================================================== */
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser"; // Handles parsing incoming cookie payloads onto req.cookies
-import { prisma } from "./db";           // Core database client connected to Neon Cloud
+import cookieParser from "cookie-parser";  // Handles parsing incoming cookie payloads onto req.cookies
+import rateLimit from "express-rate-limit"; // FIXED: Added express-rate-limit engine to mitigate DDoS and brute-force flooding
+import { prisma } from "./db";            // Core database client connected to Neon Cloud
 import authRoutes from "./routes/authRoutes"; 
 /* === SECTION 1 END === */
 
@@ -29,6 +30,20 @@ app.use(
 
 app.use(express.json());   // Body parser to extract incoming JSON payloads onto req.body
 app.use(cookieParser());   // Registers the parser to extract cookie strings into readable objects
+
+// 1. Define the Global Network Rate Limiter to protect server resources and CPU overhead
+const globalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15-minute observation window represented cleanly in milliseconds
+  max: 100,                 // Strictly caps each unique IP address to a maximum of 100 requests per window cycle
+  message: {
+    error: "Too many financial ledger requests originating from this address. Safety lock engaged, retry in 15 minutes.",
+  },
+  standardHeaders: true,    // Returns compliant modern rate-limiting telemetry fields within response headers
+  legacyHeaders: false,     // Deactivates deprecated X-RateLimit indicators to conserve network packet space
+});
+
+// 2. Inject the rate-limiting shield globally across all incoming routes matching the API highway
+app.use("/api", globalApiLimiter);
 /* === SECTION 3 END === */
 
 /* ==========================================================================

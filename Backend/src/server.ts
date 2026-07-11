@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";  // Handles parsing incoming cookie pa
 import rateLimit from "express-rate-limit"; // FIXED: Added express-rate-limit engine to mitigate DDoS and brute-force flooding
 import { prisma } from "./db";            // Core database client connected to Neon Cloud
 import authRoutes from "./routes/authRoutes"; 
+import workspaceRoutes from "./routes/workspaceRoutes"; // FIXED: Added workspace routing subsystem to control multi-tenancy partitions
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -67,6 +68,9 @@ app.get("/api/health", async (req, res) => {
 
 // The Connection Highway: Mount all authentication routes under the /api/auth prefix
 app.use("/api/auth", authRoutes);
+
+// The Workspace Highway: Mount workspace multi-tenant configurations under the /api/workspaces prefix
+app.use("/api/workspaces", workspaceRoutes); // FIXED: Linked workspaces controller subsystem to connect business/personal channels
 /* === SECTION 4 END === */
 
 /* ==========================================================================

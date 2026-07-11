@@ -5,8 +5,9 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-// Importing some clean, professional icons from Feather Icons
 import { FiUser, FiBriefcase, FiFolder, FiStar, FiHexagon } from "react-icons/fi";
+import { toast } from "sonner";
+import { apiFetch } from "@/utils/api"; // Upgraded: Imports your custom secure HttpOnly cross-origin fetch utility
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -15,41 +16,44 @@ import { FiUser, FiBriefcase, FiFolder, FiStar, FiHexagon } from "react-icons/fi
 export interface Workspace {
   id: string;
   name: string;
-  iconName: string; // We store a word like "folder" so it can be saved in localStorage
+  currency: string;  // Upgraded: Mapped to capture the backend currency strings (e.g. PKR, GBP)
+  iconName?: string; // Stays optional so we can compute it dynamically from the database record names
 }
 
 interface WorkspaceContextType {
   workspaces: Workspace[];
   activeWorkspaceId: string;
-  activeWorkspace: Workspace | undefined; // Automatically calculated for convenience
+  activeWorkspace: Workspace | undefined; 
+  isLoading: boolean; // Upgraded: Exposes loading status trackers so the sidebar can show spinner states
   switchWorkspace: (id: string) => void;
-  createWorkspace: (name: string, iconName?: string) => void;
-  deleteWorkspace: (id: string) => void; // FIX: Added delete function definition
-  renderIcon: (iconName: string, size?: number) => React.ReactNode; // Helper to draw icons
+  createWorkspace: (name: string, currency?: string) => Promise<void>; // Upgraded: Returns a promise for loading forms
+  deleteWorkspace: (id: string) => Promise<void>;                     // Upgraded: Connects directly to backend cascade delete channels
+  renderIcon: (iconName: string, size?: number) => React.ReactNode; 
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: DEFAULT DATA & ICONS ===
+   === SECTION 3: CORE UTILITIES & ICON MAPPER ===
    ========================================================================== */
-// The standard workspaces a user gets the very first time they log in
-const DEFAULT_WORKSPACES: Workspace[] = [
-  { id: "ws-personal-default", name: "Personal", iconName: "user" },
-  { id: "ws-business-default", name: "Business", iconName: "briefcase" }
-];
+// Helper to automatically assign icons based on database workspace names
+const assignDynamicIcon = (name: string): string => {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("personal")) return "user";
+  if (normalized.includes("business")) return "briefcase";
+  return "folder";
+};
 
-// A helper function to turn text tags into actual visual React Icons
+// Maps text tags directly into React Icons components
 const getIconComponent = (iconName: string, size: number = 18) => {
   switch (iconName) {
     case "user": return <FiUser size={size} />;
     case "briefcase": return <FiBriefcase size={size} />;
     case "folder": return <FiFolder size={size} />;
     case "star": return <FiStar size={size} />;
-    default: return <FiHexagon size={size} />; // A fallback icon if something goes wrong
+    default: return <FiHexagon size={size} />; 
   }
 };
 
-// Create the blank Context Brain
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 /* === SECTION 3 END === */
 
@@ -57,87 +61,122 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
    === SECTION 4: COMPONENT LOGIC (THE PROVIDER) ===
    ========================================================================== */
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  // --- STATE ---
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(DEFAULT_WORKSPACES);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("ws-personal-default");
-  
-  // A safety check to stop the screen from flashing before localStorage loads
-  const [isReady, setIsReady] = useState(false);
+  // --- STATE LAYER ---
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isReady, setIsReady] = useState<boolean>(false);
 
-  // --- EFFECT 1: LOAD FROM BROWSER MEMORY ---
-  // When the app opens, check if the user has saved custom workspaces before
+  // --- EFFECT 1: INITIAL COMPILING FROM BACKEND ---
   useEffect(() => {
-    // Wrapped in setTimeout to prevent React's synchronous cascading render error
-    const timerId = setTimeout(() => {
-      const savedWorkspaces = localStorage.getItem("app_workspaces");
-      const savedActiveId = localStorage.getItem("app_active_workspace_id");
+    const fetchInitialDataStream = async () => {
+      try {
+        setIsLoading(true);
+        // Dispatch the secure handshake query block to fetch all workspaces matching this user profile
+        const data = await apiFetch("/workspaces");
+        
+        if (data.workspaces && data.workspaces.length > 0) {
+          // Map database nodes onto local structures, resolving their icon styles dynamically
+          const compiledSpaces = data.workspaces.map((ws: Workspace) => ({
+            ...ws,
+            iconName: assignDynamicIcon(ws.name)
+          }));
+          
+          setWorkspaces(compiledSpaces);
 
-      if (savedWorkspaces) {
-        setWorkspaces(JSON.parse(savedWorkspaces));
+          // Active Memory Sync: Check if they had a preferred active view cache locked in local storage
+          const savedActiveId = localStorage.getItem("app_active_workspace_id");
+          const verifiedActiveMatch = compiledSpaces.find((ws: Workspace) => ws.id === savedActiveId);
+          
+          // Switch to their cached choice, otherwise default to their oldest remaining active platform tab
+          setActiveWorkspaceId(verifiedActiveMatch ? verifiedActiveMatch.id : compiledSpaces[0].id);
+        }
+      } catch (error: unknown) {
+        console.error("Workspace Pipeline Hydration Exception:", error);
+        toast.error("Unable to load financial workspace configuration layers.");
+      } finally {
+        setIsLoading(false);
+        setIsReady(true);
       }
-      if (savedActiveId) {
-        setActiveWorkspaceId(savedActiveId);
-      }
-      
-      setIsReady(true); // Tell the app it is safe to render now
-    }, 0);
-
-    return () => clearTimeout(timerId); // Clean up the timer
-  }, []);
-
-  // --- EFFECT 2: SAVE TO BROWSER MEMORY ---
-  // Every single time the workspaces or the active ID changes, silently save it
-  useEffect(() => {
-    if (isReady) {
-      localStorage.setItem("app_workspaces", JSON.stringify(workspaces));
-      localStorage.setItem("app_active_workspace_id", activeWorkspaceId);
-    }
-  }, [workspaces, activeWorkspaceId, isReady]);
-
-  // --- ACTION: SWITCH WORKSPACE ---
-  const switchWorkspace = (id: string) => {
-    setActiveWorkspaceId(id);
-  };
-
-  // --- ACTION: CREATE NEW WORKSPACE ---
-  const createWorkspace = (name: string, iconName: string = "folder") => {
-    const newWorkspace: Workspace = {
-      id: `ws-${Date.now()}`, // Generates a totally unique ID using the current time
-      name: name,
-      iconName: iconName,
     };
 
-    // Add the new space to the list, and instantly switch the active view to it
-    setWorkspaces((prev) => [...prev, newWorkspace]);
-    setActiveWorkspaceId(newWorkspace.id);
+    fetchInitialDataStream();
+  }, []);
+
+  // --- ACTION: SWITCH WORKSPACE LEDGER VIEW ---
+  const switchWorkspace = (id: string) => {
+    setActiveWorkspaceId(id);
+    if (isReady) {
+      localStorage.setItem("app_active_workspace_id", id); // Lock user view preferences into local memory channels
+    }
   };
 
-  // --- ACTION: DELETE WORKSPACE ---
-  // FIX: This filters out the target ID, removing it from the list completely
-  const deleteWorkspace = (id: string) => {
-    setWorkspaces((prev) => prev.filter((ws) => ws.id !== id));
+  // --- ACTION: CREATE NEW REMOTE WORKSPACE ---
+  const createWorkspace = async (name: string, currency: string = "PKR") => {
+    try {
+      // Post the new setup specifications down the server endpoints array
+      const data = await apiFetch("/workspaces", {
+        method: "POST",
+        body: JSON.stringify({ name, currency }),
+      });
+
+      const initializedWorkspace: Workspace = {
+        ...data.workspace,
+        iconName: assignDynamicIcon(data.workspace.name)
+      };
+
+      // Merge new instance node into the active array tracking frame and switch active selection context
+      setWorkspaces((prev) => [...prev, initializedWorkspace]);
+      switchWorkspace(initializedWorkspace.id);
+      
+      toast.success(`${name} workspace generated successfully.`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to establish custom ledger profile.";
+      toast.error(msg);
+    }
   };
 
-  // Automatically find the active workspace object so pages don't have to search for it manually
+  // --- ACTION: CASCADE DELETE WORKSPACE ---
+  const deleteWorkspace = async (id: string) => {
+    try {
+      // Direct remote network teardown request 
+      await apiFetch(`/workspaces/${id}`, { method: "DELETE" });
+
+      // Clean the removed workspace tracking block from memory state
+      const filteredSpaces = workspaces.filter((ws) => ws.id !== id);
+      setWorkspaces(filteredSpaces);
+
+      // Routing Fix: If the active workspace was the one removed, redirect user to their primary default setup
+      if (activeWorkspaceId === id && filteredSpaces.length > 0) {
+        switchWorkspace(filteredSpaces[0].id);
+      }
+      
+      toast.success("Workspace tracking profile and logs cleared.");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Security lock preventing workspace removal.";
+      toast.error(msg);
+    }
+  };
+
+  // Automatically compute full object parameters to feed data attributes down to navbars and widgets
   const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
 
-  // --- THE BRAIN PAYLOAD ---
   const value = {
     workspaces,
     activeWorkspaceId,
     activeWorkspace,
+    isLoading,
     switchWorkspace,
     createWorkspace,
-    deleteWorkspace, // FIX: Injected into the payload so other files can use it
+    deleteWorkspace,
     renderIcon: getIconComponent
   };
-
 /* === SECTION 4 END === */
 
 /* ==========================================================================
    === SECTION 5: RENDER (JSX) ===
    ========================================================================== */
-  // We hold off on showing the app until the memory is loaded to prevent UI glitches
+  // Safely blocks application layout flashing while profile tokens authenticate
   if (!isReady) return null;
 
   return (
@@ -147,7 +186,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// A custom hook so any file in our app can just type: const { activeWorkspace } = useWorkspace();
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (context === undefined) {

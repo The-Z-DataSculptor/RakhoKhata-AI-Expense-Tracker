@@ -48,7 +48,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 3: FORM INPUTS ===
+   === SECTION 3: FORM INPUTS & SELECT FIELDS ===
    ========================================================================== */
 .inputGroup {
   display: flex;
@@ -63,7 +63,8 @@
   color: var(--text-primary);
 }
 
-.inputGroup input {
+.inputGroup input,
+.currencySelectField {
   padding: 0.75rem 1rem;
   background-color: var(--surface-muted);
   border: 1px solid var(--border-color);
@@ -71,12 +72,26 @@
   font-size: 0.95rem;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  width: 100%;
 }
 
-.inputGroup input:focus {
+/* FIXED: Premium styled dropdown properties ensuring uniform height metrics across browsers */
+.currencySelectField {
+  cursor: pointer;
+  appearance: auto; /* Retains natural native selector arrow handles cleanly */
+}
+
+.inputGroup input:focus,
+.currencySelectField:focus {
   border-color: var(--color-primary);
   background-color: var(--bg-surface);
+}
+
+.inputGroup input:disabled,
+.currencySelectField:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ==========================================================================
@@ -119,6 +134,11 @@
 
 .confirmBtn:hover {
   opacity: 0.9;
+}
+
+.confirmBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ==========================================================================

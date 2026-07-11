@@ -17,55 +17,64 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 const PASETO_SECRET = process.env.PASETO_SECRET || "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
 
 const getPasetoKey = (): string => {
-  // 1. Hash the secret to ensure we have a cryptographically sound 32-byte input
   const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
-  
-  // 2. Convert to base64url (this outputs exactly 43 characters)
   const base64url = hash.toString("base64url");
-  
-  // 3. Prepend 'k4.local.' (9 characters). 9 + 43 = exactly 52 characters total.
   return `k4.local.${base64url}`;
 };
 
 const COOKIE_OPTIONS = {
-  httpOnly: true, // Blocks client-side JavaScript execution (Immunizes against XSS token theft)
-  secure: process.env.NODE_ENV === "production", // Forces HTTPS usage in production environments
-  sameSite: "lax" as const, // Protects against standard Cross-Site Request Forgery attacks
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days represented cleanly in milliseconds
+  httpOnly: true, 
+  secure: process.env.NODE_ENV === "production", 
+  sameSite: "lax" as const, 
+  maxAge: 7 * 24 * 60 * 60 * 1000 
 };
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: REGISTER USER CONTROLLER ===
+   === SECTION 3: REGISTER USER CONTROLLER (WITH AUTOMATIC WORKSPACE SEEDING) ===
    ========================================================================== */
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { fullName, email, password } = req.body;
 
-    // Validation Check: Guard against blank parameters
     if (!fullName || !email || !password) {
       res.status(400).json({ error: "Please fill in all required fields." });
       return;
     }
 
-    // Unique Constraint Validation: Check if the user record already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       res.status(400).json({ error: "A user with this email already exists." });
       return;
     }
 
-    // Hash the raw credential password with a standard load balance of 10 salt rounds
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Save the user data inside our Neon Cloud engine database instance
+    // ... inside your registerUser try-catch block ...
     const newUser = await prisma.user.create({
-      data: { name: fullName, email, passwordHash: hashedPassword },
-      select: { id: true, name: true, email: true, uiTheme: true, createdAt: true },
+      data: { 
+        name: fullName, 
+        email, 
+        passwordHash: hashedPassword,
+        workspaces: {
+          create: [
+            { name: "Personal", currency: "USD" }, // FIXED: Swapped default from PKR to USD
+            { name: "Business", currency: "USD" }  // FIXED: Swapped default from PKR to USD
+          ]
+        }
+      },
+      // ... rest of the register controller stays exactly the same ...
+      select: { 
+        id: true, 
+        name: true, 
+        email: true, 
+        uiTheme: true, 
+        createdAt: true,
+        workspaces: true // Returns the newly minted workspaces down the pipeline
+      },
     });
 
-    // FIXED: Formatted the expiration target date into a strict ISO string format to resolve the token parsing bug
     const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
     const token = await encrypt(getPasetoKey(), { 
       userId: newUser.id, 
@@ -73,12 +82,18 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       exp: expirationTime 
     });
 
-    // Send the secure verification token inside the network channel cookie jar
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(201).json({
-      message: "User registered successfully!",
-      user: newUser,
+      message: "User registered successfully! Default Personal and Business profiles initialized.",
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        uiTheme: newUser.uiTheme,
+        createdAt: newUser.createdAt
+      },
+      workspaces: newUser.workspaces // Sends both workspaces directly to frontend memory store arrays
     });
   } catch (error) {
     console.error("Signup Error:", error);
@@ -99,21 +114,18 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Query the database to retrieve the active account record matching the input email
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       res.status(401).json({ error: "Invalid email or password credentials." });
       return;
     }
 
-    // Compare input text string to our encrypted base password hash string safely
     const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordMatch) {
       res.status(401).json({ error: "Invalid email or password credentials." });
       return;
     }
 
-    // FIXED: Formatted the expiration target date into an absolute ISO string to avoid decryption verification errors
     const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
     const token = await encrypt(getPasetoKey(), { 
       userId: user.id, 
@@ -121,7 +133,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       exp: expirationTime 
     });
 
-    // Deliver the session verification cookie down the client response pipeline
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(200).json({
@@ -169,12 +180,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<v
    ========================================================================== */
 export const logoutUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Overwrite the tracking token with an empty string and expire its lifetime window immediately
-    res.cookie("token", "", {
-      ...COOKIE_OPTIONS,
-      maxAge: 0
-    });
-
+    res.cookie("token", "", { ...COOKIE_OPTIONS, maxAge: 0 });
     res.status(200).json({ message: "Logged out successfully. Secure session revoked." });
   } catch (error) {
     console.error("Logout Controller Exception:", error);

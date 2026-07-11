@@ -4,9 +4,9 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState, useCallback } from "react"; // OPTIMIZED: Added useCallback to insulate event side-effects for the React Compiler
-import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting directly to the Brain
-import { toast } from "sonner"; // NEW: Imported the global notification engine hook
+import React, { useState, useCallback } from "react"; 
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting directly to the backend context brain
+import { toast } from "sonner"; // Notification popups to deliver immediate visual feedback
 import styles from "./CreateWorkspaceModal.module.css";
 /* === SECTION 1 END === */
 
@@ -22,39 +22,39 @@ interface CreateWorkspaceModalProps {
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
-  // Connect to the global brain to get the creation function
+  // Connect to our global context state engine to tap the async database connection route
   const { createWorkspace } = useWorkspace();
   
-  // Local state just for this input field
-  const [newWorkspaceName, setNewWorkspaceName] = useState<string>("");
+  // --- LOCAL FORM STATES ---
+  const [newWorkspaceName, setNewWorkspaceName] = useState<string>( "");
+  const [currency, setCurrency] = useState<string>("USD"); // Universal baseline standard default
+  const [isPending, setIsPending] = useState<boolean>(false); // Loading tracker to disable buttons during fetch rounds
 
   // Action: What happens when the user clicks "Create Workspace"
-  // OPTIMIZED: Wrapped in useCallback to declare this safely as an event handler block to the compiler
-  const handleCreateWorkspaceSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault(); // Stop the page from refreshing
+  const handleCreateWorkspaceSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault(); // Stop the page from refreshing the whole browser window
     
-    // Safety check: Don't create empty workspaces
+    // Safety check: Don't let users send whitespace strings to Neon Cloud
     if (!newWorkspaceName.trim()) return;
     
     try {
-      // 1. Tell the brain to create and switch to the new workspace
-      // We pass "folder" as the default icon for now
-      createWorkspace(newWorkspaceName.trim(), "folder");
-      
-      // NEW: Trigger micro-feedback message to instantly confirm workspace allocation
-      toast.success("New accounting workspace deployed!");
+      setIsPending(true); // Freeze form inputs to lock out multi-click double-creation bugs
 
-      // 2. Clear the input text
+      // Dispatch the backend network pipeline handshake via context parameters
+      await createWorkspace(newWorkspaceName.trim(), currency);
+      
+      // Clear out local state properties safely
       setNewWorkspaceName("");
       
-      // 3. Tell the Sidebar to close this modal
+      // Close out the popup viewport layout overlay frame
       onClose();
     } catch (error) {
       console.error("Workspace deployment routine tracking failure:", error);
-      // NEW: Inform user instantly if an operational environment generation failure occurs
       toast.error("Could not build a new workspace environment safely.");
+    } finally {
+      setIsPending(false); // Re-open control toggles if a pipeline exception occurs
     }
-  }, [newWorkspaceName, createWorkspace, onClose]);
+  }, [newWorkspaceName, currency, createWorkspace, onClose]);
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -70,28 +70,63 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
         </p>
         
         <form onSubmit={handleCreateWorkspaceSubmit}>
+          {/* FIELD 1: WORKSPACE DESIGNATION INPUT ROW */}
           <div className={styles.inputGroup}>
-            <label>Workspace Name</label>
+            <label htmlFor="workspaceName">Workspace Name</label>
             <input 
+              id="workspaceName"
               type="text" 
               value={newWorkspaceName}
               onChange={(e) => setNewWorkspaceName(e.target.value)}
               placeholder="e.g., Real Estate Side Hustle"
+              disabled={isPending} 
               autoFocus
               required
             />
           </div>
+
+          {/* FIELD 2: SYSTEM DYNAMIC CURRENCY SELECTION DROP-DOWN BLOCK */}
+          <div className={styles.inputGroup}>
+            <label htmlFor="workspaceCurrency">Base Currency Mapping</label>
+            <select
+              id="workspaceCurrency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              disabled={isPending}
+              className={styles.currencySelectField}
+              required
+            >
+              {/* FIXED: Formatted options stack array matching your exact future API keys blueprint */}
+              <option value="USD">USD - United States Dollar ($)</option>
+              <option value="PKR">PKR - Pakistani Rupee (Rs.)</option>
+              <option value="EUR">EUR - Euro Zone (€)</option>
+              <option value="GBP">GBP - British Pound (£)</option>
+              <option value="INR">INR - Indian Rupee (₹)</option>
+              <option value="AED">AED - UAE Dirham</option>
+              <option value="SAR">SAR - Saudi Riyal</option>
+              <option value="KWD">KWD - Kuwaiti Dinar</option>
+              <option value="OMR">OMR - Omani Rial</option>
+              <option value="QAR">QAR - Qatari Riyal</option>
+              <option value="BHD">BHD - Bahraini Dinar</option>
+            </select>
+          </div>
           
+          {/* MODAL BOTTOM BUTTON CONTROL ACTIONS AREA */}
           <div className={styles.modalActions}>
             <button 
               type="button" 
               className={styles.cancelBtn} 
-              onClick={onClose} // Tells the Sidebar to hide this component
+              onClick={onClose} 
+              disabled={isPending}
             >
               Cancel
             </button>
-            <button type="submit" className={styles.confirmBtn}>
-              Create Workspace
+            <button 
+              type="submit" 
+              className={styles.confirmBtn}
+              disabled={isPending || !newWorkspaceName.trim()}
+            >
+              {isPending ? "Deploying..." : "Create Workspace"}
             </button>
           </div>
         </form>

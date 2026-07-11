@@ -6,17 +6,17 @@
    ========================================================================== */
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import Cookies from "js-cookie"; // NEW: Used to destroy sessions on sign-out
-import { toast } from "sonner"; // Used to confirm logout status
+import { usePathname } from "next/navigation";
+import Cookies from "js-cookie"; // Used to destroy sessions by removing the cookie from browser memory
+import { toast } from "sonner";    // Notification popups to give visual feedback to the user
 
-// Importing the Workspace Context Hook
+// Import our custom Workspace Context Hook to read live backend ledger environments
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 
-// Import the standalone creation modal component
+// Import the standalone modal form that allows users to type in new workspace names
 import CreateWorkspaceModal from "@/components/forms/CreateWorkspaceModal/CreateWorkspaceModal";
 
-// Importing linear icons from the Feather set
+// Import clear, minimal icons from the popular Feather Icons library
 import { 
   FiGrid, 
   FiActivity, 
@@ -41,6 +41,7 @@ import styles from "./Sidebar.module.css";
 /* ==========================================================================
    === SECTION 2: DATA STRUCTURES & INTERFACES ===
    ========================================================================== */
+// Blueprint for our sidebar link items
 interface NavItem {
   label: string;
   href: string;
@@ -48,7 +49,7 @@ interface NavItem {
   group: "core" | "growth" | "intelligence";
 }
 
-// NEW: Explicit structure configuration for our incoming Neon database record
+// Blueprint defining the structure of the logged-in user record sent from the database
 interface SidebarProps {
   user?: {
     id: string;
@@ -58,6 +59,7 @@ interface SidebarProps {
   } | null;
 }
 
+// Static configuration map for our sidebar links to avoid messy repeating HTML blocks
 const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Overview Hub", href: "/dashboard", icon: <FiGrid size={18} />, group: "core" },
   { label: "Transactions", href: "/dashboard/transactions", icon: <FiActivity size={18} />, group: "core" },
@@ -72,36 +74,37 @@ const NAVIGATION_ITEMS: NavItem[] = [
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function Sidebar({ user }: SidebarProps) {
+  // Reads the active web address URL path line so we can highlight the matching link row button
   const pathname = usePathname();
-  const router = useRouter();
   
-  // --- GLOBAL WORKSPACE BRAIN CONNECTION ---
-  const { workspaces, activeWorkspace, switchWorkspace, renderIcon } = useWorkspace();
+  // --- CONNECTING TO OUR DYNAMIC BACKEND CONTEXT BRAIN ---
+  // FIXED: Destructured the network status tracker flag 'isLoading' directly from our context provider
+  const { workspaces, activeWorkspace, switchWorkspace, renderIcon, isLoading } = useWorkspace();
   
-  // --- STATE ENGINE OVERLAYS ---
-  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
+  // --- VISUAL UI STATE ENGINE INTERFACES ---
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false); // Tracks if workspace list menu is open
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);       // Tracks if create modal popup is visible
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);                   // Tracks if sidebar is minimized to small icons
+  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);                 // Tracks mobile phone sidebar sliding drawer state
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);       // Tracks settings/logout deck popup view state
 
-  // Fallbacks to keep layouts fully crash-proof if database sync lags
+  // Beginner-Friendly Fallbacks: Protects the application from crashing if the database takes a moment to answer
   const accountName = user?.name || "RakhoKhata User";
   const accountEmail = user?.email || "Cloud Synced";
 
-  // Group nav items to match visual hierarchy layouts
+  // Filter out our static sidebar links into their respective categories
   const coreItems = NAVIGATION_ITEMS.filter(item => item.group === "core");
   const growthItems = NAVIGATION_ITEMS.filter(item => item.group === "growth");
   const intelligenceItems = NAVIGATION_ITEMS.filter(item => item.group === "intelligence");
 
-  // Dynamic style string selectors based on sidebar orientation rules
+  // Combines individual layout rules into a single string for dynamic visual scaling properties
   const containerClassName = `
     ${styles.sidebarContainer} 
     ${isCollapsed ? styles.collapsedSidebar : ""} 
     ${isMobileOpen ? styles.mobileSidebarActive : ""}
   `.trim();
 
-  // Simple handler toggle functions to clean up inline markup calls
+  // Simple clean toggles to open menus while making sure they don't overlay and overlap each other
   const toggleWorkspaceDropdown = () => {
     setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen);
     if (isProfileMenuOpen) setIsProfileMenuOpen(false);
@@ -112,18 +115,19 @@ export default function Sidebar({ user }: SidebarProps) {
     if (isWorkspaceMenuOpen) setIsWorkspaceMenuOpen(false);
   };
 
-  // NEW BY THE BOOK: Authentic session destruction function 
+  // AUTH SESSION TERMINATION ROUTINE
   const handleSignOutAction = () => {
     setIsProfileMenuOpen(false);
     
-    // 1. Terminate the token from the browser cookie safe vault
+    // 1. Erase the secure access keycard from browser memory storage completely
     Cookies.remove("token", { path: "/" });
     
-    // 2. Alert user of successful session closure
+    // 2. Alert user of successful closure tracking status metrics
     toast.success("Logged out successfully. See you soon!");
     
-    // 3. Force route change instantly to login entry gate
-    router.push("/login");
+    // 3. FIXED: Swapped out router.push for a window location assignment.
+    // This wipes Next.js background data caches clean, ensuring the next login session loads completely fresh.
+    window.location.href = "/login";
   };
 /* === SECTION 3 END === */
 
@@ -132,7 +136,7 @@ export default function Sidebar({ user }: SidebarProps) {
    ========================================================================== */
   return (
     <>
-      {/* MOBILE HEADER BAR: Only visible on mobile viewports */}
+      {/* MOBILE HEADER BAR: Only pops up on smaller phone viewports */}
       <div className={styles.mobileTopBar}>
         <div className={styles.mobileLogo}>
           Rakho<span className={styles.logoAccent}>Khata</span>
@@ -146,7 +150,7 @@ export default function Sidebar({ user }: SidebarProps) {
         </button>
       </div>
 
-      {/* MOBILE BACKDROP BLUR OVERLAY */}
+      {/* MOBILE BACKDROP DRAWER BLUR CLOSURE ELEMENT OVERLAY */}
       {isMobileOpen && (
         <div 
           className={styles.mobileMenuBackdropOverlay} 
@@ -154,14 +158,14 @@ export default function Sidebar({ user }: SidebarProps) {
         />
       )}
 
-      {/* CREATE WORKSPACE MODAL POPUP ANCHOR */}
+      {/* DYNAMIC FORM MODAL WINDOW: Drops down over the interface screen layout */}
       {isCreateModalOpen && (
         <CreateWorkspaceModal onClose={() => setIsCreateModalOpen(false)} />
       )}
 
       <aside className={containerClassName}>
         
-        {/* DESKTOP COLLAPSE TRIGGER PIN */}
+        {/* DESKTOP SIDEBAR SHRINK TRIGGER ARROW PIN */}
         <button 
           className={styles.desktopCollapsePinButton}
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -170,7 +174,7 @@ export default function Sidebar({ user }: SidebarProps) {
           <FiChevronLeft size={14} className={`${styles.pinIcon} ${isCollapsed ? styles.pinIconRotated : ""}`} />
         </button>
 
-        {/* 1. TOP BRAND PLATE & WORKSPACE ENGINE */}
+        {/* --- BLOCK A: BRAND INSIGNIA & WORKSPACE PICKER SWITCHER --- */}
         <div className={styles.brandHeaderSection}>
           <div className={styles.logoLayout}>
             Rakho<span className={styles.logoAccent}>Khata</span>
@@ -183,35 +187,42 @@ export default function Sidebar({ user }: SidebarProps) {
               aria-label="Toggle workspace environment selector"
             >
               <span className={styles.activeWorkspaceIcon}>
-                {activeWorkspace ? renderIcon(activeWorkspace.iconName, 14) : null}
+                {activeWorkspace && !isLoading ? renderIcon(activeWorkspace.iconName || "folder", 14) : <FiFolder size={14} />}
               </span>
               <span className={styles.activeWorkspaceLabel}>
-                {activeWorkspace ? activeWorkspace.name : "Loading..."}
+                {isLoading ? "Loading spaces..." : (activeWorkspace ? activeWorkspace.name : "Select Space")}
               </span>
               <FiChevronDown className={`${styles.chevronIndicator} ${isWorkspaceMenuOpen ? styles.chevronRotated : ""}`} size={14} />
             </button>
 
+            {/* DROP-DOWN DRAWER CONTEXT OPTIONS INDEX */}
             {isWorkspaceMenuOpen && (
               <div className={styles.workspaceDropdownMenu}>
                 <div className={styles.workspaceScrollArea}>
-                  {workspaces.map((ws) => {
-                    const isSelected = activeWorkspace?.id === ws.id;
-                    return (
-                      <button 
-                        key={ws.id}
-                        onClick={() => { switchWorkspace(ws.id); setIsWorkspaceMenuOpen(false); }}
-                        className={isSelected ? styles.selectedWorkspaceOption : ""}
-                      >
-                        {renderIcon(ws.iconName, 14)}
-                        <span>{ws.name}</span>
-                        {isSelected && <FiCheck className={styles.checkMarker} size={14} />}
-                      </button>
-                    );
-                  })}
+                  {/* Beginner-Friendly Safe Check: Render loading string if the database request is still in flight */}
+                  {isLoading ? (
+                    <div className={styles.loadingPlaceholderText}>Fetching active ledgers...</div>
+                  ) : (
+                    workspaces.map((ws) => {
+                      const isSelected = activeWorkspace?.id === ws.id;
+                      return (
+                        <button 
+                          key={ws.id}
+                          onClick={() => { switchWorkspace(ws.id); setIsWorkspaceMenuOpen(false); }}
+                          className={isSelected ? styles.selectedWorkspaceOption : ""}
+                        >
+                          {renderIcon(ws.iconName || "folder", 14)}
+                          <span>{ws.name}</span>
+                          {isSelected && <FiCheck className={styles.checkMarker} size={14} />}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
 
                 <div className={styles.dropdownDivider} />
 
+                {/* ACTION TRIGGER: Triggers the new create modal screen */}
                 <button 
                   className={styles.createWorkspaceBtn}
                   onClick={() => {
@@ -227,10 +238,10 @@ export default function Sidebar({ user }: SidebarProps) {
           </div>
         </div>
 
-        {/* 2. CORE NAVIGATION MATRIX LAYER */}
+        {/* --- BLOCK B: PRIMARY ROUTE NAV HIGHLIGHT LINERS --- */}
         <nav className={styles.navNavigationStack}>
           
-          {/* CORE SECTION */}
+          {/* CORE FLOW VIEW LABELS */}
           <div className={styles.navGroupSection}>
             {coreItems.map((item) => {
               const isLinkActive = pathname === item.href;
@@ -241,7 +252,6 @@ export default function Sidebar({ user }: SidebarProps) {
                   onClick={() => setIsMobileOpen(false)}
                   className={`${styles.navLinkRow} ${isLinkActive ? styles.activeNavLinkRow : ""}`}
                   title={isCollapsed ? item.label : undefined}
-                  aria-label={isCollapsed ? item.label : undefined}
                 >
                   <span className={styles.vectorIconFrame}>{item.icon}</span>
                   <span className={styles.linkTitleLabel}>{item.label}</span>
@@ -250,7 +260,7 @@ export default function Sidebar({ user }: SidebarProps) {
             })}
           </div>
 
-          {/* WEALTH MANAGEMENT SECTION */}
+          {/* ASSET INVESTMENT ACCELERATORS */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Wealth Management</div>
             {growthItems.map((item) => {
@@ -262,7 +272,6 @@ export default function Sidebar({ user }: SidebarProps) {
                   onClick={() => setIsMobileOpen(false)}
                   className={`${styles.navLinkRow} ${styles.growthRowVariant} ${isLinkActive ? styles.activeNavLinkRow : ""}`}
                   title={isCollapsed ? item.label : undefined}
-                  aria-label={isCollapsed ? item.label : undefined}
                 >
                   <span className={styles.vectorIconFrame}>{item.icon}</span>
                   <span className={styles.linkTitleLabel}>{item.label}</span>
@@ -271,7 +280,7 @@ export default function Sidebar({ user }: SidebarProps) {
             })}
           </div>
 
-          {/* AI INTELLIGENCE SECTION */}
+          {/* AI COMPUTE LAYER */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Core Intelligence</div>
             {intelligenceItems.map((item) => {
@@ -283,7 +292,6 @@ export default function Sidebar({ user }: SidebarProps) {
                   onClick={() => setIsMobileOpen(false)}
                   className={`${styles.navLinkRow} ${styles.intelligenceRowVariant} ${isLinkActive ? styles.activeNavLinkRow : ""}`}
                   title={isCollapsed ? item.label : undefined}
-                  aria-label={isCollapsed ? item.label : undefined}
                 >
                   <span className={styles.vectorIconFrame}>{item.icon}</span>
                   <span className={styles.linkTitleLabel}>{item.label}</span>
@@ -294,17 +302,15 @@ export default function Sidebar({ user }: SidebarProps) {
 
         </nav>
 
-        {/* 3. LOWER INTERACTIVE SESSION FOOTER ENGINE */}
+        {/* --- BLOCK C: BOTTOM USER DRAWER ACCOUNT MANAGER --- */}
         <div className={styles.profileMasterSectionWrapper}>
           
-          {/* POPOVER DECK DROPDOWN OVERLAY ELEMENT */}
+          {/* PROFILE CONTROL POP-UP ELEMENT DECK */}
           {isProfileMenuOpen && (
             <div className={styles.profilePopoverMenuDeck}>
               
-              {/* USER PROFILE META ZONE */}
               {!isCollapsed && (
                 <div className={styles.popoverMetaUserBlock}>
-                  {/* DYNAMIC LOOKUP: Displays live database user name */}
                   <p className={styles.popoverUserLabelTitle}>{accountName}</p>
                   <p className={styles.popoverUserConnectionTag}>Verified Profile Account</p>
                 </div>
@@ -312,7 +318,6 @@ export default function Sidebar({ user }: SidebarProps) {
 
               <div className={styles.dropdownDivider} />
 
-              {/* NAVIGATION INTERACTION LINKS */}
               <Link 
                 href="/dashboard/settings" 
                 className={styles.popoverInteractButtonRow}
@@ -334,12 +339,12 @@ export default function Sidebar({ user }: SidebarProps) {
             </div>
           )}
 
-          {/* THE INTERACTIVE FLAT TRIGGER CONTROL PLATE CARD */}
+          {/* SYSTEM USER DECK TRIGGER BUTTON BANNER */}
           <button 
             type="button"
             className={`${styles.accountProfileFooterSection} ${isProfileMenuOpen ? styles.footerSectionActiveTrigger : ""}`}
             onClick={toggleProfileDropdown}
-            aria-label="Toggle user session profile management popover menu"
+            aria-label="Toggle profile management settings layout popover window"
           >
             <div className={styles.userProfileIdentificationCard}>
               <div className={styles.userAvatarIndicatorBubble}>
@@ -347,7 +352,6 @@ export default function Sidebar({ user }: SidebarProps) {
                 <span className={styles.activePulseStatusDotIndicator} />
               </div>
               <div className={styles.identityTextStack}>
-                {/* DYNAMIC LOOKUP: Replaces hardcoded strings with actual account values */}
                 <span className={styles.operatorProfileName}>{accountName}</span>
                 <span className={styles.operatorSecRole}>{accountEmail}</span>
               </div>

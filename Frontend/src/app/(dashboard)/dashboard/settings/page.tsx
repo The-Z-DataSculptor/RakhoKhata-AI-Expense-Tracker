@@ -4,10 +4,10 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState } from "react"; // FIXED: Removed the unused 'useCallback' import
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
-import { FiShield, FiSliders as FiLayers, FiCheck, FiTrash2, FiEdit2 } from "react-icons/fi";
+import { FiShield, FiSliders as FiLayers, FiCheck, FiTrash2, FiEdit2, FiLoader } from "react-icons/fi";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -26,9 +26,9 @@ export default function SettingsPage() {
   // --- WORKSPACE STATES ---
   const [renameInput, setRenameInput] = useState<string>(activeWorkspace ? activeWorkspace.name : "");
   const [isSuccessFeedbackVisible, setIsSuccessFeedbackVisible] = useState<boolean>(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null); // FIXED: Added deletion pointer state tracking active network threads
 
   // --- VAULT SECURITY STATES ---
-  // Initialize state safely by inspecting window / localStorage definitions directly
   const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const savedPin = localStorage.getItem("vault_pin");
@@ -68,8 +68,8 @@ export default function SettingsPage() {
     return () => clearTimeout(timeoutId);
   };
 
-  // Action: Handles absolute deletion loops across targeted profile indexes
-  const handleDeleteClick = (targetWorkspaceId: string) => {
+  // FIXED: Converted to async function to cleanly await our live HTTP delete request execution chain
+  const handleDeleteClick = async (targetWorkspaceId: string) => {
     if (targetWorkspaceId === activeWorkspaceId) {
       alert("You cannot delete the workspace you are currently using. Please switch to a different workspace first.");
       return;
@@ -78,7 +78,14 @@ export default function SettingsPage() {
     const userConfirmed = confirm("Are you completely sure you want to delete this workspace? This will permanently erase all transactions and investments inside it.");
     
     if (userConfirmed) {
-      deleteWorkspace(targetWorkspaceId);
+      try {
+        setDeletingId(targetWorkspaceId); // Activate visual loader track on specific target row index card
+        await deleteWorkspace(targetWorkspaceId); // Await full cascade teardown script on Neon Database clusters
+      } catch (error) {
+        console.error("Workspace teardown runtime pipeline exception:", error);
+      } finally {
+        setDeletingId(null); // Release visual lockout states cleanly
+      }
     }
   };
 /* === SECTION 3 END === */
@@ -89,7 +96,7 @@ export default function SettingsPage() {
   return (
     <div className={styles.settingsCanvasDeck}>
       
-      {/* REDESIGNED HEADER BLOCK: Clean white card container box without badges */}
+      {/* HEADER BLOCK */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.mainHeadline}>Settings</h1>
@@ -101,9 +108,7 @@ export default function SettingsPage() {
 
       <div className={styles.cardsStackDeck}>
 
-        {/* ==========================================
-            === BLOCKS SECTION 1: WORKSPACE CONTROL ===
-            ========================================== */}
+        {/* WORKSPACE CONTROL NODE CARD */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame}>
@@ -118,7 +123,7 @@ export default function SettingsPage() {
           </div>
 
           <div className={styles.cardBodyContent}>
-            {/* RENAME CURRENT WORKSPACE */}
+            {/* RENAME CURRENT WORKSPACE FORM CONTAINER */}
             <form onSubmit={handleRenameSubmit} className={styles.renameFormBlock}>
               <div className={styles.inputFieldGroup}>
                 <label className={styles.fieldLabelText}>Change Current Workspace Name</label>
@@ -141,31 +146,40 @@ export default function SettingsPage() {
 
             <div className={styles.dividerSplitLine} />
 
-            {/* LIST OF ALL AVAILABLE WORKSPACES */}
+            {/* LIST OF ALL AVAILABLE DATABASE WORKSPACES */}
             <div className={styles.directoryEntriesListWrapper}>
               <h3 className={styles.subSectionLabel}>All Your Workspaces ({workspaces.length})</h3>
               <div className={styles.entriesGridList}>
                 {workspaces.map((ws) => {
                   const isActive = ws.id === activeWorkspaceId;
+                  const isCurrentTargetDeleting = deletingId === ws.id;
+                  
                   return (
                     <div 
                       key={ws.id} 
-                      className={`${styles.wsRowCardItem} ${isActive ? styles.wsActiveCardHighlight : ""}`}
+                      className={`${styles.wsRowCardItem} ${isActive ? styles.wsActiveCardHighlight : ""} ${isCurrentTargetDeleting ? styles.wsRowCardDeleting : ""}`}
                     >
                       <div className={styles.wsRowIdentityFrame}>
                         <span className={styles.wsVisualMarkerDot} />
                         <span className={styles.wsIdentityNameLabel}>{ws.name}</span>
                         {isActive && <span className={styles.activeStatusPillBadge}>Active Now</span>}
+                        {isCurrentTargetDeleting && <span className={styles.deletingStatusPillBadge}>Erasing...</span>}
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleDeleteClick(ws.id)}
-                        disabled={isActive}
+                        // FIXED: Added multi-layer button disable protections to block navigation tampering while calls process
+                        disabled={isActive || deletingId !== null}
                         title={isActive ? "You cannot delete the workspace you are currently using" : "Delete this workspace"}
                         className={styles.rowDeleteTriggerActionBtn}
                       >
-                        <FiTrash2 size={14} />
+                        {/* FIXED: Dynamic icon switch rendering animated spinner or standard trash container */}
+                        {isCurrentTargetDeleting ? (
+                          <FiLoader size={14} className={styles.loadingSpinnerAnimation} />
+                        ) : (
+                          <FiTrash2 size={14} />
+                        )}
                       </button>
                     </div>
                   );
@@ -175,9 +189,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ==========================================
-            === BLOCKS SECTION 2: INVESTMENT LOCK ===
-            ========================================= */}
+        {/* INVESTMENT LOCK CARD MANAGEMENT BLOCK */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success)' }}>
@@ -230,7 +242,6 @@ export default function SettingsPage() {
 
       </div>
 
-      {/* RENDER THE SECRET PIN MODAL ON DEMAND */}
       <PinSetupModal 
         isOpen={isPinModalOpen}
         onClose={() => setIsPinModalOpen(false)}

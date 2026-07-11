@@ -15,7 +15,6 @@
   padding-bottom: 1.5rem; 
 }
 
-/* Standalone white card box architecture matching the standard dashboard look */
 .dashboardHeaderCardBox {
   display: flex;
   align-items: center;
@@ -213,7 +212,7 @@
   background-color: var(--surface-muted, #f9f8ff);
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 8px);
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.2s ease;
 }
 
 .wsRowCardItem:hover {
@@ -223,6 +222,13 @@
 .wsActiveCardHighlight {
   border-color: var(--color-primary, #613bbf);
   background-color: rgba(97, 59, 191, 0.02);
+}
+
+/* FIXED: Opaque styling layout for items processing network teardowns */
+.wsRowCardDeleting {
+  opacity: 0.6;
+  background-color: rgba(220, 38, 38, 0.02);
+  border-color: var(--color-danger, #dc2626);
 }
 
 .wsRowIdentityFrame {
@@ -242,6 +248,10 @@
   background-color: var(--color-primary, #613bbf);
 }
 
+.wsRowCardDeleting .wsVisualMarkerDot {
+  background-color: var(--color-danger, #dc2626);
+}
+
 .wsIdentityNameLabel {
   font-size: 0.88rem;
   font-weight: 700;
@@ -253,6 +263,16 @@
   font-weight: 800;
   color: var(--color-primary, #613bbf);
   background-color: rgba(97, 59, 191, 0.06);
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+}
+
+/* FIXED: Warning operational pill layout for live deletion statuses */
+.deletingStatusPillBadge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--color-danger, #dc2626);
+  background-color: rgba(220, 38, 38, 0.06);
   padding: 0.1rem 0.5rem;
   border-radius: 10px;
 }
@@ -276,8 +296,19 @@
 }
 
 .rowDeleteTriggerActionBtn:disabled {
-  opacity: 0.25;
+  opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* FIXED: Keyframe layout forcing the Feather loader icon to spin gracefully */
+.loadingSpinnerAnimation {
+  animation: rotateSpinner 1s linear infinite;
+  color: var(--color-danger, #dc2626);
+}
+
+@keyframes rotateSpinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================
@@ -352,4 +383,3 @@
     text-align: center;
   }
 }
-/* === SECTION 6 END === */

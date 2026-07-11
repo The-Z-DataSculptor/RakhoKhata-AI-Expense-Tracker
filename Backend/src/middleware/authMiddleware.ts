@@ -4,65 +4,79 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import { Response, NextFunction, Request } from "express";
-import jwt from "jsonwebtoken";
+import crypto from "crypto";          // Used to derive the matching 52-character secret key layout
+import { decrypt } from "paseto-ts/v4"; // Pure TypeScript PASETO v4 local decrypt engine
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-// This interface defines what properties are hidden inside our signed token cargo payload
 interface TokenPayload {
   userId: string;
   email: string;
 }
 
-// We extend the default Express Request type to create a clean custom interface
-// This safely attaches the verified user metadata to the request cycle
+// Custom interface extending the standard Express Request layout to attach profile data
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: MIDDLEWARE LOGIC ===
+   === SECTION 3: KEY DERIVATION UTILITIES ===
    ========================================================================== */
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key";
+const PASETO_SECRET = process.env.PASETO_SECRET || "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
 
-export const verifyTokenGuard = (
+// Generates the matching 52-character key footprint required by paseto-ts 
+// to mirror your authController encryption key perfectly.
+const getPasetoKey = (): string => {
+  const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
+  const base64url = hash.toString("base64url");
+  return `k4.local.${base64url}`;
+};
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: VERIFICATION GUARD MIDDLEWARE ===
+   ========================================================================== */
+export const verifyTokenGuard = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
-    // 1. Extract the Authorization header string sent by the frontend client
-    const authHeader = req.headers.authorization;
+    // 1. Extract the secure token string directly from the cookie container
+    const token = req.cookies?.token;
 
-    // 2. Check: If the header is missing or doesn't start with 'Bearer ', deny entry
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401).json({ error: "Access denied. No security session token provided." });
+    // 2. Structural Gate: If the token is missing from the cookie slot, deny access instantly
+    if (!token) {
+      res.status(401).json({ error: "Access denied. Active session token missing." });
       return;
     }
 
-    // 3. Extract the clean token string by splitting off the 'Bearer ' label prefix
-    const token = authHeader.split(" ")[1];
+    // 3. Cryptographic Handshake: Decrypt the envelope using the synchronized PASERK key format
+    const { payload } = await decrypt(getPasetoKey(), token);
+    const decoded = payload as unknown as TokenPayload;
 
-    // 4. Verification: Decrypt and check the token signature against our secret vault key
-    const decodedPayload = jwt.verify(token, JWT_SECRET) as TokenPayload;
-
-    // 5. Assignment: Attach the verified identity cargo directly onto the request ticket
+    // 4. Assignment: Attach the verified user metadata safely to the request lifecycle
     req.user = {
-      userId: decodedPayload.userId,
-      email: decodedPayload.email,
+      userId: decoded.userId,
+      email: decoded.email,
     };
 
-    // 6. Handoff: The keycard is valid! Tell Express to pass this request to the final controller
+    // 5. Handoff: Control passes cleanly to the next controller down the pipeline
     next();
 
   } catch (error) {
-    console.error("Security Guard Middleware Exception:", error);
+    console.error("PASETO Verification Guard Exception:", error);
     
-    // If the token was altered by an attacker or expired, return a clean error code
-    res.status(403).json({ error: "Session expired or invalid token keycard authentication." });
+    const errorString = String(error);
+    if (errorString.includes("expired")) {
+      res.status(403).json({ error: "Your financial session has expired. Please log in again." });
+      return;
+    }
+    
+    res.status(403).json({ error: "Session authentication failed or token has been tampered with." });
   }
 };
-/* === SECTION 3 END === */
+/* === SECTION 4 END === */

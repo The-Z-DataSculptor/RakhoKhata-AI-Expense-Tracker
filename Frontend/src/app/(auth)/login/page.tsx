@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner"; 
-import Cookies from "js-cookie"; // NEW: Industry standard cookie manager
 
 // Import validation rules to ensure the user enters correct data
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
@@ -69,13 +68,16 @@ export default function LoginPage() {
     console.log("Validated Payload:", data);
     
     try {
-      // Direct network dispatch to your active authentication cluster endpoint
+      // RESTORED: Reverted route back to unified localhost path mapping for cleaner cookie parity
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
+        // CRITICAL CROSS-ORIGIN FLAG: Tells the browser it is explicitly allowed 
+        // to capture and process the backend's secure HttpOnly 'Set-Cookie' header stream.
+        credentials: "include", 
       });
 
       const result = await response.json();
@@ -85,13 +87,8 @@ export default function LoginPage() {
         throw new Error(result.error || "Authentication failed. Please verify credentials.");
       }
 
-      // BY THE BOOK: Safely store the JWT using js-cookie to satisfy Next.js strict mode
-      Cookies.set("token", result.token, {
-        expires: 7, // 7 days
-        path: "/",
-        sameSite: "Lax",
-        secure: true,
-      });
+      // BY THE BOOK: Client-side storage is bypassed completely. 
+      // The browser automatically locked the cookie into secure storage.
 
       // Trigger the micro-feedback layout alert instantly upon validation check pass
       toast.success("Welcome back! Loading your dashboard securely...");

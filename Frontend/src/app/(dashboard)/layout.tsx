@@ -4,15 +4,14 @@
    === SECTION 1: IMPORTS AND DEPENDENCIES ===
    ========================================================================== */
 import React from "react";
-import { cookies } from "next/headers"; // Next.js native tool to read browser cookies on the server
+import { cookies } from "next/headers";     // Next.js native tool to read browser cookies on the server
 import { redirect } from "next/navigation"; // Next.js native tool to handle immediate server-side redirection
 import Sidebar from "@/components/layout/Sidebar";
-import DashboardNavbar from "@/components/layout/DashboardNavbar"; // Global top utility hub
-import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext"; // Global financial state manager
-import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext"; // Global workspace state manager
+import DashboardNavbar from "@/components/layout/DashboardNavbar"; 
+import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext"; 
+import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext"; 
 import styles from "./layout.module.css";
 /* === SECTION 1 END === */
-
 
 /* ==========================================================================
    === SECTION 2: TYPESCRIPT INTERFACES ===
@@ -21,7 +20,6 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 /* === SECTION 2 END === */
-
 
 /* ==========================================================================
    === SECTION 3: MAIN COMPONENT RENDER ===
@@ -43,14 +41,16 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     const response = await fetch("http://localhost:5000/api/auth/me", {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${sessionToken}`, // Presenting our token keycard cleanly
+        // FIXED: Swapped out Authorization Bearer header for a raw Cookie payload definition string.
+        // This allows your backend Express cookie-parser middleware to parse 'req.cookies.token' flawlessly.
+        Cookie: `token=${sessionToken}`, 
       },
-      cache: "no-store", // Crucial: Disables caching so layout profile metrics are always real-time
+      cache: "no-store", // Disables internal caching mechanisms so user state profiles match the DB perfectly
     });
 
     const result = await response.json();
 
-    // 4. Security Gate B: If the Express backend rejects the token signature, clear entry and force re-login
+    // 4. Security Gate B: If the Express backend rejects the cookie configuration, force immediate re-login
     if (!response.ok) {
       redirect("/login");
     }
@@ -60,7 +60,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
   } catch (error) {
     console.error("Dashboard Server Layout Token Bridge Exception:", error);
-    // Safety Fallback: If your Express backend server goes offline mid-session, protect data privacy
+    // Safety Fallback: If your Express backend server goes offline mid-session, safeguard application privacy
     redirect("/login");
   }
 
@@ -80,8 +80,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
             {/* INJECTED CORE APP CONTENT (THE OVERVIEW HUB DROPS IN HERE) */}
             <main className={styles.pageInjectionViewport}>
-              {/* WHY: This inner wrapper ensures scroll anchoring functions perfectly 
-                  and forces minimum height constraints across injected sub-components. */}
+              {/* INNER WRAPPER: Ensures scroll anchoring functions perfectly across dynamic heights */}
               <div className={styles.scrollAnchorWrapper}>
                 {children}
               </div>

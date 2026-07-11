@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner"; 
-import Cookies from "js-cookie"; // NEW: Industry standard cookie manager
 
 // Import centralized validation blueprint from the schema folder
 import { signupSchema, type SignupFormData } from "@/schemas/auth";
@@ -66,6 +65,9 @@ export default function SignupPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
+        // CRITICAL CROSS-ORIGIN FLAG: Mandates the browser to listen for and store 
+        // the backend server's secure HttpOnly cookie response automatically.
+        credentials: "include",
       });
 
       const result = await response.json();
@@ -75,13 +77,8 @@ export default function SignupPage() {
         throw new Error(result.error || "An error occurred during registration.");
       }
 
-      // BY THE BOOK: Safely store the JWT using js-cookie to satisfy Next.js strict mode
-      Cookies.set("token", result.token, {
-        expires: 7, // 7 days
-        path: "/",
-        sameSite: "Lax",
-        secure: true,
-      });
+      // BY THE BOOK: Plaintext token scraping is deleted completely. 
+      // The browser natively captures the cookie behind the scenes.
 
       // Trigger global notification engine to instantly confirm registration success
       toast.success("Account created successfully! Preparing your secure ledger...");

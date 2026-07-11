@@ -1,33 +1,19 @@
-import express from "express";
-import cors from "cors";
-import { prisma } from "./db";
-import authRoutes from "./routes/authRoutes"; // 👇 Import your new route map
+// src/index.ts
 
-const app = express();
-const PORT = 5000;
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
+import app from "./server"; // Import the fully configured Express application core
+/* === SECTION 1 END === */
 
-// Global Middlewares
-app.use(cors());
-app.use(express.json());
+/* ==========================================================================
+   === SECTION 2: ENGINE ACTIVATION & NETWORK LISTENER ===
+   ========================================================================== */
+const PORT = 5000; // Network port assigned for the backend service
 
-// 1. Existing Health Check Route
-app.get("/api/health", async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ 
-      status: "active", 
-      message: "Welcome to the RakhoKhata Backend Engine!",
-      database: "Connected perfectly to Neon Cloud!"
-    });
-  } catch (error) {
-    res.status(500).json({ status: "error", error: "Database offline" });
-  }
+// Binding to "0.0.0.0" forces Node to listen across all internal network interfaces,
+// protecting the app from IPv4 vs IPv6 local routing conflicts that cause "Failed to fetch".
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Financial secure core engine active on http://localhost:${PORT}`);
 });
-
-// 2. 👇 The Connection Highway: Link authentication routes to the server
-// This prefixes all endpoints inside authRoutes with "/api/auth"
-app.use("/api/auth", authRoutes);
-
-app.listen(PORT, () => {
-  console.log(`🚀 Advanced TypeScript backend running on http://localhost:${PORT}`);
-});
+/* === SECTION 2 END === */

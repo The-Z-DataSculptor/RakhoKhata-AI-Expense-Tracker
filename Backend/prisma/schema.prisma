@@ -1,12 +1,28 @@
+// prisma/schema.prisma
+
+/**
+ * ==========================================================================
+ * === SECTION 1: GENERATOR & DATA SOURCE CONFIGURATION LAYOUT ===
+ * ==========================================================================
+ */
 generator client {
-  provider = "prisma-client"
-  output   = "./generated"
+  provider = "prisma-client-js" // Standard client library generation target engine
+  output   = "./generated" // Compiles the TypeScript types into your custom subfolder target
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // FIXED: Removed the `url` property completely to comply with Prisma 7 layout rules
 }
 
+/**
+ * === SECTION 1 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 2: USER ACCOUNT CORE IDENTITY SCHEMA ===
+ * ==========================================================================
+ */
 model User {
   id           String      @id @default(uuid())
   name         String
@@ -20,6 +36,15 @@ model User {
   @@map("users")
 }
 
+/**
+ * === SECTION 2 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 3: WORKSPACE MULTI-TENANCY ANCHOR CORE ===
+ * ==========================================================================
+ */
 model Workspace {
   id           String        @id @default(uuid())
   name         String
@@ -36,10 +61,19 @@ model Workspace {
   @@map("workspaces")
 }
 
+/**
+ * === SECTION 3 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 4: DYNAMIC TRANSACTION CATEGORIES SCHEMA ===
+ * ==========================================================================
+ */
 model Category {
   id           String        @id @default(uuid())
   name         String
-  type         String // INCOME, EXPENSE, or BOTH
+  type         String
   color        String
   workspaceId  String
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -51,10 +85,19 @@ model Category {
   @@map("categories")
 }
 
+/**
+ * === SECTION 4 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 5: HISTORICAL TRANSACTION LEDGER SCHEMA ===
+ * ==========================================================================
+ */
 model Transaction {
   id          String    @id @default(uuid())
-  amount      Decimal   @db.Decimal(12, 2) // High-precision financial decimal
-  type        String // INCOME or EXPENSE
+  amount      Decimal   @db.Decimal(12, 2)
+  type        String
   description String
   date        DateTime
   workspaceId String
@@ -67,9 +110,18 @@ model Transaction {
   @@map("transactions")
 }
 
+/**
+ * === SECTION 5 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 6: BUDGETING LIMIT & CAP MECHANICS ===
+ * ==========================================================================
+ */
 model Budget {
   id          String    @id @default(uuid())
-  limitAmount Decimal   @db.Decimal(12, 2) // High-precision cap limit
+  limitAmount Decimal   @db.Decimal(12, 2)
   startDate   DateTime
   endDate     DateTime
   categoryId  String
@@ -82,14 +134,23 @@ model Budget {
   @@map("budgets")
 }
 
+/**
+ * === SECTION 6 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 7: SECURE INVESTMENT VAULT ASSET ENGINE ===
+ * ==========================================================================
+ */
 model Investment {
   id              String    @id @default(uuid())
-  assetSymbol     String // e.g., BTC, AAPL
-  categoryClass   String // Crypto / Coins, Stocks, etc.
+  assetSymbol     String
+  categoryClass   String
   isCustomProfile Boolean   @default(false)
   totalInvested   Decimal   @db.Decimal(12, 2)
   capitalCurrency String    @default("GBP")
-  quantity        Decimal   @db.Decimal(16, 8) // Handles small fractional crypto units safely
+  quantity        Decimal   @db.Decimal(16, 8)
   strategyNote    String
   workspaceId     String
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -98,3 +159,7 @@ model Investment {
 
   @@map("investments")
 }
+
+/**
+ * === SECTION 7 END ===
+ */

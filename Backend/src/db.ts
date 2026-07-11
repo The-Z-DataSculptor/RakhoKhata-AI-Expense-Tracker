@@ -1,18 +1,31 @@
+// src/db.ts
+
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import "dotenv/config";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-// 👇 Point this import to the exact client directory built by Prisma 7
-import { PrismaClient } from "../prisma/generated/client"; 
+import { PrismaClient } from "../prisma/generated/client"; // Links directly to your compiled models folder
+/* === SECTION 1 END === */
 
-// 1. Initialize the raw PostgreSQL connection pool instance
+/* ==========================================================================
+   === SECTION 2: POOL AND ADAPTER LAYER ===
+   ========================================================================== */
+// Initialize the raw PostgreSQL connection pool instance
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// 2. Pass the pool instance into Prisma's native v7 driver adapter
+// Pass the raw connection pool into the Prisma driver adapter wrapper
 const adapter = new PrismaPg(pool);
+/* === SECTION 2 END === */
 
-// 3. Instantiate the global single client instance using the adapter
+/* ==========================================================================
+   === SECTION 3: CLIENT GENERATION EXPORT ===
+   ========================================================================== */
+// Instantiate the global client instance passing the custom PostgreSQL driver adapter
 const prisma = new PrismaClient({ adapter });
 
 export { prisma };
+/* === SECTION 3 END === */

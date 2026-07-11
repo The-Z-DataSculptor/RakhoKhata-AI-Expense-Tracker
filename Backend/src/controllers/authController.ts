@@ -1,64 +1,83 @@
 // src/controllers/authController.ts
-import { Request, Response } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { prisma } from "../db";
-// Import our custom AuthenticatedRequest interface to safely manage user profile tokens
-import { AuthenticatedRequest } from "../middleware/authMiddleware";
-
-// Fallback secret check to ensure environment variables are configured correctly
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key";
 
 /* ==========================================================================
-   === SECTION 1: REGISTER USER CONTROLLER ===
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
+import { Request, Response } from "express";
+import crypto from "crypto"; 
+import bcrypt from "bcrypt";
+import { encrypt } from "paseto-ts/v4"; // Pure TypeScript PASETO v4 local encryption engine
+import { prisma } from "../db";          // Core shared Prisma client connection instance
+import { AuthenticatedRequest } from "../middleware/authMiddleware";
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: STRATEGIC CONTROLLER CONFIGURATIONS & UTILITIES ===
+   ========================================================================== */
+const PASETO_SECRET = process.env.PASETO_SECRET || "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
+
+const getPasetoKey = (): string => {
+  // 1. Hash the secret to ensure we have a cryptographically sound 32-byte input
+  const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
+  
+  // 2. Convert to base64url (this outputs exactly 43 characters)
+  const base64url = hash.toString("base64url");
+  
+  // 3. Prepend 'k4.local.' (9 characters). 9 + 43 = exactly 52 characters total.
+  return `k4.local.${base64url}`;
+};
+
+const COOKIE_OPTIONS = {
+  httpOnly: true, // Blocks client-side JavaScript execution (Immunizes against XSS token theft)
+  secure: process.env.NODE_ENV === "production", // Forces HTTPS usage in production environments
+  sameSite: "lax" as const, // Protects against standard Cross-Site Request Forgery attacks
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days represented cleanly in milliseconds
+};
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: REGISTER USER CONTROLLER ===
    ========================================================================== */
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { fullName, email, password } = req.body;
 
+    // Validation Check: Guard against blank parameters
     if (!fullName || !email || !password) {
       res.status(400).json({ error: "Please fill in all required fields." });
       return;
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
+    // Unique Constraint Validation: Check if the user record already exists
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       res.status(400).json({ error: "A user with this email already exists." });
       return;
     }
 
+    // Hash the raw credential password with a standard load balance of 10 salt rounds
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Save the user data inside our Neon Cloud engine database instance
     const newUser = await prisma.user.create({
-      data: {
-        name: fullName, 
-        email,
-        passwordHash: hashedPassword,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        uiTheme: true,
-        createdAt: true,
-      },
+      data: { name: fullName, email, passwordHash: hashedPassword },
+      select: { id: true, name: true, email: true, uiTheme: true, createdAt: true },
     });
 
-    // BY THE BOOK: Generate a secure session token containing the new user's real ID
-    const token = jwt.sign(
-      { userId: newUser.id, email: newUser.email },
-      JWT_SECRET,
-      { expiresIn: "7d" } // Token remains valid for 7 days
-    );
+    // FIXED: Formatted the expiration target date into a strict ISO string format to resolve the token parsing bug
+    const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
+    const token = await encrypt(getPasetoKey(), { 
+      userId: newUser.id, 
+      email: newUser.email, 
+      exp: expirationTime 
+    });
 
-    // Ship both the user profile metrics AND the secure authentication token
+    // Send the secure verification token inside the network channel cookie jar
+    res.cookie("token", token, COOKIE_OPTIONS);
+
     res.status(201).json({
       message: "User registered successfully!",
-      token,
       user: newUser,
     });
   } catch (error) {
@@ -66,10 +85,10 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ error: "Internal server error during registration." });
   }
 };
-/* === SECTION 1 END === */
+/* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 2: LOGIN USER CONTROLLER ===
+   === SECTION 4: LOGIN USER CONTROLLER ===
    ========================================================================== */
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -80,85 +99,86 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
+    // Query the database to retrieve the active account record matching the input email
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       res.status(401).json({ error: "Invalid email or password credentials." });
       return;
     }
 
+    // Compare input text string to our encrypted base password hash string safely
     const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
-
     if (!isPasswordMatch) {
       res.status(401).json({ error: "Invalid email or password credentials." });
       return;
     }
 
-    // BY THE BOOK: Generate a secure session token containing the verified user's real ID
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    // FIXED: Formatted the expiration target date into an absolute ISO string to avoid decryption verification errors
+    const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
+    const token = await encrypt(getPasetoKey(), { 
+      userId: user.id, 
+      email: user.email, 
+      exp: expirationTime 
+    });
+
+    // Deliver the session verification cookie down the client response pipeline
+    res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(200).json({
       message: "Login successful! Welcome back to RakhoKhata.",
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        uiTheme: user.uiTheme,
-      },
+      user: { id: user.id, name: user.name, email: user.email, uiTheme: user.uiTheme },
     });
   } catch (error) {
     console.error("Login Controller Error:", error);
     res.status(500).json({ error: "Internal server error during login verification." });
   }
 };
-/* === SECTION 2 END === */
+/* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 3: GET ME (PROFILE DETECTOR) CONTROLLER ===
+   === SECTION 5: GET ME (PROFILE DETECTOR) CONTROLLER ===
    ========================================================================== */
 export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    // 1. Extract the verified userId attached to this transaction row by the security middleware
     const userId = req.user?.userId;
-
     if (!userId) {
       res.status(401).json({ error: "Unauthorized access. Valid profile identifier missing." });
       return;
     }
 
-    // 2. Query: Look up the unique account profile rows inside your Neon cloud database
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        uiTheme: true,
-        createdAt: true,
-      },
+      select: { id: true, name: true, email: true, uiTheme: true, createdAt: true },
     });
 
-    // 3. Fallback check: If the user deleted their profile mid-session
     if (!user) {
       res.status(404).json({ error: "Active database account record could not be found." });
       return;
     }
 
-    // 4. Success payload: Ship the live profile parameters directly back to the front-end layout
-    res.status(200).json({
-      message: "Authenticated identity verified successfully.",
-      user,
-    });
+    res.status(200).json({ message: "Authenticated identity verified successfully.", user });
   } catch (error) {
     console.error("Profile Fetch Controller Exception:", error);
     res.status(500).json({ error: "Internal server error during profile verification." });
   }
 };
-/* === SECTION 3 END === */
+/* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: LOGOUT CONTROLLER ===
+   ========================================================================== */
+export const logoutUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Overwrite the tracking token with an empty string and expire its lifetime window immediately
+    res.cookie("token", "", {
+      ...COOKIE_OPTIONS,
+      maxAge: 0
+    });
+
+    res.status(200).json({ message: "Logged out successfully. Secure session revoked." });
+  } catch (error) {
+    console.error("Logout Controller Exception:", error);
+    res.status(500).json({ error: "Internal server error during session teardown." });
+  }
+};
+/* === SECTION 6 END === */

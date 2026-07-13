@@ -1,15 +1,11 @@
 // src/components/categories/CategoryStats/CategoryStats.tsx
+"use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React from "react";
-import { 
-  FiTrendingUp, 
-  FiTrendingDown, 
-  FiActivity, 
-  FiZap 
-} from "react-icons/fi";
+import { FiTrendingUp, FiTrendingDown, FiActivity, FiZap } from "react-icons/fi";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./CategoryStats.module.css";
 /* === SECTION 1 END === */
@@ -19,10 +15,10 @@ import styles from "./CategoryStats.module.css";
    ========================================================================== */
 export interface CategoryStatData {
   topExpenseName: string;
-  topExpenseAmount: number;
+  topExpenseAmount: number; // in base USD
   topExpensePercentage: number;
   topIncomeName: string;
-  topIncomeAmount: number;
+  topIncomeAmount: number; // in base USD
   topIncomePercentage: number;
   fastClimberName: string;
   fastClimberGrowthPercentage: number;
@@ -55,7 +51,7 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
   };
 
   const ringRadius = 20;
-  const ringCircumference = 2 * Math.PI * ringRadius; 
+  const ringCircumference = 2 * Math.PI * ringRadius;
 
   const calculateOffset = (percentageValue: number) => {
     const safePercent = Math.min(Math.max(percentageValue, 0), 100);
@@ -104,7 +100,10 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
               {data.topExpenseName}
             </h4>
             <p className={styles.railValueSubtext}>
-              Spent: <span className={styles.brightAccentHighlight}>{formatAmount(data.topExpenseAmount, "PKR")}</span>
+              Spent: <span className={styles.brightAccentHighlight}>
+                {/* ✅ FIXED: source is USD */}
+                {formatAmount(data.topExpenseAmount, "USD")}
+              </span>
             </p>
           </div>
         </div>
@@ -142,7 +141,9 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
               {data.topIncomeName}
             </h4>
             <p className={styles.railValueSubtext}>
-              Inflow: <span className={styles.brightAccentHighlight}>{formatAmount(data.topIncomeAmount, "PKR")}</span>
+              Inflow: <span className={styles.brightAccentHighlight}>
+                {formatAmount(data.topIncomeAmount, "USD")}
+              </span>
             </p>
           </div>
         </div>
@@ -227,4 +228,3 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
     </div>
   );
 }
-/* === SECTION 4 END === */

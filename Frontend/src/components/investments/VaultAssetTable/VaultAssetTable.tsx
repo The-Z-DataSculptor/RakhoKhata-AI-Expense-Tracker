@@ -49,7 +49,7 @@ interface SafeHistoryNode {
 
 interface VaultAssetTableProps {
   assets: HydratedAsset[];
-  currency?: string; // FIXED: Made this optional so the parent page doesn't throw a fit if it passes it
+  currency?: string; // kept for compatibility but not used (the parent passes it)
   onDeleteAsset: (id: string) => void;
   onEditClick?: (asset: HydratedAsset) => void;
 }
@@ -92,7 +92,6 @@ function extractNoteFromUserNote(input: string): string {
    ========================================================================== */
 export function VaultAssetTable({
   assets,
-  // FIXED: Removed the unused 'currency' variable completely from destructuring
   onDeleteAsset,
   onEditClick,
 }: VaultAssetTableProps) {
@@ -289,8 +288,9 @@ export function VaultAssetTable({
                                 </div>
                                 <div className={styles.miniDataCell}>
                                   <span className={styles.stepMetaLabel}>Value at Time</span>
+                                  {/* 👇 FIXED: Added "USD" as source currency for historical values */}
                                   <span className={styles.stepMetaValue}>
-                                    {formatAmount(historicalValue)}
+                                    {formatAmount(historicalValue, "USD")}
                                   </span>
                                 </div>
                                 <div className={styles.miniDataCell}>
@@ -302,7 +302,8 @@ export function VaultAssetTable({
                                     `}
                                   >
                                     {historicalIsProfit ? "+" : ""}
-                                    {formatAmount(historicalProfitLoss)} 
+                                    {/* 👇 FIXED: Added "USD" as source currency for historical values */}
+                                    {formatAmount(historicalProfitLoss, "USD")} 
                                     ({historicalIsProfit ? "▲" : "▼"}
                                     {Math.abs(historicalRoi).toFixed(1)}%)
                                   </span>

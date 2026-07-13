@@ -4,8 +4,8 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import { Router } from "express";
-import { createBudget, getWorkspaceBudgets, deleteBudget } from "../controllers/budgetController";
-import { verifyTokenGuard } from "../middleware/authMiddleware"; // Global security perimeter guard check
+import { createBudget, getWorkspaceBudgets, updateBudget, deleteBudget } from "../controllers/budgetController";
+import { verifyTokenGuard } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -19,8 +19,10 @@ router.get("/", verifyTokenGuard, getWorkspaceBudgets);
 // Secure Highway: Inject a new category spending ceiling rule into Neon Cloud
 router.post("/", verifyTokenGuard, createBudget);
 
+// Secure Highway: Update an existing budget rule
+router.put("/:id", verifyTokenGuard, updateBudget);
+
 // Secure Highway: Delete an existing budget alert rule card cleanly via dynamic path URL params
 router.delete("/:id", verifyTokenGuard, deleteBudget);
-/* === SECTION 2 END === */
 
 export default router;

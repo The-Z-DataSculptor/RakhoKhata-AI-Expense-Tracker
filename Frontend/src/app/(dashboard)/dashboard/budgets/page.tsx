@@ -5,9 +5,11 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState, useEffect } from "react";
-import { BudgetDonutGrid, type MockDonutItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
+import { BudgetDonutGrid, type BudgetItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
 import { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
-import { CreateBudgetModal, type NewBudgetFormData } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
+// 👇 FIXED: Import the modal as named (it's a named export)
+import { CreateBudgetModal } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
+import type { NewBudgetFormData } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { budgetService, categoryService } from "@/utils/api";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
@@ -15,7 +17,6 @@ import { FiPlus } from "react-icons/fi";
 import { toast } from "sonner";
 import styles from "./page.module.css";
 
-// Import the Budget type from api to extend
 import { Budget as ApiBudget, Category as ApiCategory } from "@/utils/api";
 /* === SECTION 1 END === */
 
@@ -95,9 +96,8 @@ export default function BudgetsPage() {
         return;
       }
 
-      // Common payload: include both legacy and enterprise fields
       const basePayload = {
-        limitAmount: formData.originalAmount, // legacy
+        limitAmount: formData.baseAmountUSD,
         originalAmount: formData.originalAmount,
         originalCurrency: formData.originalCurrency,
         baseAmountUSD: formData.baseAmountUSD,
@@ -144,26 +144,35 @@ export default function BudgetsPage() {
   /* ==========================================================================
      === DATA RENDERING COMPILATION PASS ===
      ========================================================================== */
-  const computedBudgetItems: MockDonutItem[] = budgets.map((budget) => {
+  const getMonthDays = (): number => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  };
+
+  const getScalingFactor = (period: TimePeriod): number => {
+    const monthDays = getMonthDays();
+    switch (period) {
+      case "7d": return 7 / monthDays;
+      case "14d": return 14 / monthDays;
+      case "30d": return 1;
+      case "all": return 1;
+      default: return 1;
+    }
+  };
+
+  const computedBudgetItems: BudgetItem[] = budgets.map((budget) => {
     const limit = Number(budget.limitAmount);
     const spent = Number(budget.spentAmount || 0);
+    const scale = getScalingFactor(activeRange);
 
-    let calculatedLimit = limit;
-    let calculatedSpent = spent;
-
-    if (activeRange === "7d") {
-      calculatedLimit = limit / 4;
-      calculatedSpent = spent / 4;
-    } else if (activeRange === "14d") {
-      calculatedLimit = limit / 2;
-      calculatedSpent = spent / 2;
-    }
+    const scaledLimit = Math.round(limit * scale * 100) / 100;
+    const scaledSpent = Math.round(spent * scale * 100) / 100;
 
     return {
       id: budget.id,
       categoryName: budget.category?.name || "Unknown Label",
-      spentAmount: Math.round(calculatedSpent),
-      limitAmount: Math.round(calculatedLimit),
+      spentAmount: scaledSpent,
+      limitAmount: scaledLimit,
       startDate: formatShortDisplay(new Date(budget.startDate)),
       endDate: formatShortDisplay(new Date(budget.endDate)),
     };
@@ -201,7 +210,7 @@ export default function BudgetsPage() {
                 className={`${styles.timePeriodPillBtn} ${activeRange === period ? styles.timePeriodPillActive : ""}`}
                 onClick={() => setActiveRange(period)}
               >
-                {period === "7d" ? "1 Week" : period === "14d" ? "2 Weeks" : "30 Days"}
+                {period === "7d" ? "This Week" : period === "14d" ? "Half Month" : "This Month"}
               </button>
             ))}
           </div>

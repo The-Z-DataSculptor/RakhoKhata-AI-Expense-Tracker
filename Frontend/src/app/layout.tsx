@@ -1,9 +1,9 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Mulish } from "next/font/google";
-import Script from "next/script"; // WHY: Next.js native optimization engine to handle script components smoothly without React hydration warnings.
+// Removed: Script import – replaced with a regular <script> tag for React 19 compatibility
 import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
-import ToastProvider from "@/components/providers/ToastProvider"; // NEW: Importing the global toast engine
+import ToastProvider from "@/components/providers/ToastProvider";
 import "./globals.css";
 
 /* ==========================================================================
@@ -16,18 +16,17 @@ const mulish = Mulish({
 });
 
 export const metadata: Metadata = {
-  title: "RakhoKhata - Your Premium Expense Ledger", // FIXED: Standardized spelling to align with core brand identity
+  title: "RakhoKhata - Your Premium Expense Ledger",
   description: "Track your personal and business expenses with precision.",
   
-  // NEW: Open Graph Metadata Configuration for Facebook, LinkedIn, and WhatsApp Link Previews
   openGraph: {
     title: "RakhoKhata - Your Premium Expense Ledger",
     description: "Track personal and business expenses with isolated workspace precision.",
-    url: "https://rakhokhata.com", // Your future production URL anchor
+    url: "https://rakhokhata.com",
     siteName: "RakhoKhata",
     images: [
       {
-        url: "/og-banner.png", // Pointing directly to your standard public image asset asset folder route
+        url: "/og-banner.png",
         width: 1200,
         height: 630,
         alt: "RakhoKhata Application Premium Dashboard Interface Preview Image",
@@ -37,7 +36,6 @@ export const metadata: Metadata = {
     type: "website",
   },
 
-  // NEW: Custom Preview Configuration for X (formerly Twitter) platform streams
   twitter: {
     card: "summary_large_image",
     title: "RakhoKhata - Your Premium Expense Ledger",
@@ -82,14 +80,14 @@ export default function RootLayout({
     <html lang="en" className={mulish.variable} suppressHydrationWarning>
       <body>
         
-        {/* WHY: Capitalized Script engine executes immediately before page paint cycles 
-            to prevent background-flashing layouts while maintaining clean browser DOM records. */}
-        <Script
-          id="theme-initializer"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: themeInitializerScript,
-          }}
+        {/* 
+          FIXED: Replaced Next.js <Script> with a standard <script> tag 
+          to avoid React 19.3 warnings about script tags inside components.
+          The script runs before hydration, setting the theme correctly.
+        */}
+        <script
+          dangerouslySetInnerHTML={{ __html: themeInitializerScript }}
+          suppressHydrationWarning
         />
         
         {/* Wrapping children inside both state contexts so currency and notifications run everywhere */}

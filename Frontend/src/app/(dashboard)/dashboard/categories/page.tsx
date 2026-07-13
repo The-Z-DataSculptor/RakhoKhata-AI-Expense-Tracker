@@ -211,7 +211,8 @@ export default function CategoriesPage() {
   /* ==========================================================================
      === LIVE COMPUTED DATA MATRICES ===
      ========================================================================== */
-  const filteredUnassigned: UnassignedTransactionRecord[] = []; 
+  // FIXED: Use baseAmountUSD for accurate currency-agnostic aggregation
+  const filteredUnassigned: UnassignedTransactionRecord[] = []; // Placeholder – implement if needed
 
   const categoryOptions: CategoryOption[] = categories.map((cat) => ({ 
     id: cat.id, 
@@ -230,7 +231,8 @@ export default function CategoriesPage() {
     transactions.forEach(tx => {
       const cat = categories.find(c => c.id === tx.categoryId);
       const catName = cat?.name || "Unknown";
-      const amt = Number(tx.amount);
+      // Use baseAmountUSD for consistent USD-normalized values
+      const amt = Number(tx.baseAmountUSD ?? tx.amount ?? 0);
       
       if (!categorySums[catName]) categorySums[catName] = { amount: 0, count: 0 };
       categorySums[catName].amount += amt;

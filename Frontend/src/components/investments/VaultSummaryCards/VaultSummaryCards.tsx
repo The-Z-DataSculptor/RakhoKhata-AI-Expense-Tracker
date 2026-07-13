@@ -1,3 +1,4 @@
+// src/components/investments/VaultSummaryCards/VaultSummaryCards.tsx
 "use client";
 
 /* ==========================================================================
@@ -14,7 +15,7 @@ import styles from "./VaultSummaryCards.module.css";
 interface VaultSummaryCardsProps {
   /** The currently selected global currency string (e.g., "PKR", "USD") */
   currency: string;
-  /** The aggregated total amount of money invested across all assets */
+  /** The aggregated total amount of money invested across all assets (in the user's active currency) */
   totalInvested: number;
   /** The total count of individual assets currently in the vault */
   positionsCount: number;
@@ -29,14 +30,10 @@ export function VaultSummaryCards({
   totalInvested,
   positionsCount,
 }: VaultSummaryCardsProps) {
-  // Grab state-aware localized format helpers from global navigation canvas shell wrapper
   const { formatAmount } = useCurrency();
 
-  // FIXED: Replaced 'as any' with an safe indexed parameter lookup type to resolve the linter warning
-  const displayInvestedCapital = formatAmount(
-    totalInvested, 
-    currency as Parameters<typeof formatAmount>[1]
-  );
+  // totalInvested is already in the user's active currency (converted in the parent)
+  const displayInvestedCapital = formatAmount(totalInvested);
 
   return (
     <section className={styles.summaryGridWrapper}>

@@ -23,7 +23,6 @@ import styles from "./page.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES ===
    ========================================================================== */
-// 👇 Updated to match the new TransactionForm payload
 type FormPayload = {
   originalAmount: number;
   originalCurrency: string;
@@ -110,7 +109,6 @@ export default function TransactionsPage() {
     setEditingTransaction(null);
   };
 
-  // 👇 Updated to accept the new payload and call the backend with the new fields
   const handleUpsertTransaction = async (payload: FormPayload) => {
     try {
       if (payload.id) {
@@ -118,7 +116,6 @@ export default function TransactionsPage() {
       }
       
       await transactionService.create({
-        // Use the new enterprise fields
         originalAmount: payload.originalAmount,
         originalCurrency: payload.originalCurrency,
         baseAmountUSD: payload.baseAmountUSD,
@@ -127,8 +124,7 @@ export default function TransactionsPage() {
         date: payload.date,
         workspaceId: activeWorkspaceId,
         categoryId: payload.categoryId,
-        // Keep amount for backward compatibility
-        amount: payload.originalAmount, // or you can set amount = baseAmountUSD? but better to use the original
+        amount: payload.originalAmount, // legacy field
       });
 
       await refreshLedgerData(); 
@@ -202,11 +198,12 @@ export default function TransactionsPage() {
     return matchesSearch && matchesType && matchesCategory;
   });
 
+  // 👇 Use baseAmountUSD for totals (consistent across currencies)
   let calculatedIncomeTotal = 0;
   let calculatedExpenseTotal = 0;
 
   processedFilteredRecords.forEach((recordItem) => {
-    const value = Number(recordItem.amount) || 0;
+    const value = Number(recordItem.baseAmountUSD ?? recordItem.amount ?? 0);
     if (recordItem.type.toUpperCase() === "INCOME") {
       calculatedIncomeTotal += value;
     } else if (recordItem.type.toUpperCase() === "EXPENSE") {
@@ -218,14 +215,13 @@ export default function TransactionsPage() {
   const indexPositionOfLastRowItem = currentPage * itemsPerPage;
   const indexPositionOfFirstRowItem = indexPositionOfLastRowItem - itemsPerPage;
   
-  // 👇 Mapped rows include originalAmount and originalCurrency
   const adaptiveGridRows = processedFilteredRecords.map(tx => ({
     id: tx.id,
     date: tx.date.substring(0, 10),
     description: tx.description,
     category: tx.category?.name || "General",
-    originalAmount: Number(tx.originalAmount || tx.amount), // fallback to amount if missing
-    originalCurrency: tx.originalCurrency || "USD",
+    originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
+    originalCurrency: tx.originalCurrency ?? "USD",
     amount: Number(tx.amount), // keep for backward compatibility
     type: tx.type.toLowerCase() as "income" | "expense"
   })).slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);

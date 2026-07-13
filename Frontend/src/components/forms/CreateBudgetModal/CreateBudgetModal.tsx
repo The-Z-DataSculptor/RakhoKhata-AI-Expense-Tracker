@@ -14,7 +14,6 @@ import styles from "./CreateBudgetModal.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-// 👇 EXPORTED for parent components
 export interface NewBudgetFormData {
   originalAmount: number;
   originalCurrency: string;
@@ -33,7 +32,7 @@ interface CreateBudgetModalProps {
   initialData?: {
     id: string;
     categoryName: string;
-    limitAmount: number; // in USD (database)
+    limitAmount: number;
     startDate: string;
     endDate: string;
   } | null;
@@ -52,10 +51,23 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  // Helper: Get first and last day of the current month in YYYY-MM-DD format
+  const getCurrentMonthRange = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const formatDate = (date: Date) => date.toISOString().split("T")[0];
+    return { start: formatDate(firstDay), end: formatDate(lastDay) };
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
     const timerId = setTimeout(() => {
+      const monthRange = getCurrentMonthRange();
+
       if (initialData) {
         setCategoryName(initialData.categoryName);
         const displayAmount = convertAmount(initialData.limitAmount, "USD", currency);
@@ -64,16 +76,12 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
         setEndDate(initialData.endDate.split("T")[0]);
         setIsCustomPeriod(true);
       } else {
-        const today = new Date();
-        const futureDate = new Date();
-        futureDate.setDate(today.getDate() + 30);
-        const formatDate = (date: Date) => date.toISOString().split("T")[0];
-
+        // 👇 FIXED: Use 1st and last day of current month
         setCategoryName("");
         setLimitAmount("");
         setIsCustomPeriod(false);
-        setStartDate(formatDate(today));
-        setEndDate(formatDate(futureDate));
+        setStartDate(monthRange.start);
+        setEndDate(monthRange.end);
       }
     }, 0);
 

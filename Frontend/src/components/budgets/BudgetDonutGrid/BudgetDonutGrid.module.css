@@ -61,7 +61,6 @@
   letter-spacing: 0.01em;
 }
 
-/* NEW: Action Menu Header Groupings */
 .headerActions {
   display: flex;
   align-items: center;
@@ -243,12 +242,10 @@
 /* ==========================================================================
    === SECTION 6: UTILITY STATE VARIANT TOKENS ===
    ========================================================================== */
-/* SVG Progress Fills */
 .colorSuccess { stroke: var(--color-success, #16a34a); color: var(--color-success, #16a34a); }
 .colorWarning { stroke: var(--color-warning, #d97706); color: var(--color-warning, #d97706); }
 .colorDanger  { stroke: var(--color-danger, #dc2626); color: var(--color-danger, #dc2626); }
 
-/* Status Pill Badges */
 .statusBadge {
   font-size: 0.65rem;
   font-weight: 800;
@@ -262,6 +259,49 @@
 .badgeWarning { background-color: var(--warning-soft, #fffbeb); color: var(--color-warning, #d97706); }
 .badgeDanger  { background-color: var(--danger-soft, #fef2f2); color: var(--color-danger, #dc2626); }
 
+/* ==========================================================================
+   === SECTION 7: EMPTY & LOADING STATES ===
+   ========================================================================== */
+.emptyState,
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  grid-column: 1 / -1;
+  min-height: 300px;
+}
+
+.emptyState p,
+.loadingState p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.emptySubtext {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+  margin-top: 0.5rem;
+}
+
+.loadingState p {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+/* === SECTION 7 END === */
+
 @media (max-width: 380px) {
   .cardMainSection {
     flex-direction: column-reverse;
@@ -269,4 +309,3 @@
     gap: 1.25rem;
   }
 }
-/* === SECTION 6 END === */

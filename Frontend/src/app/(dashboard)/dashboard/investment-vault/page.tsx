@@ -28,15 +28,19 @@ interface BackendInvestmentItem {
   assetSymbol: string;
   categoryClass: string;
   isCustomProfile: boolean;
-  totalInvested: string | number;
+  totalInvested: string | number;      // legacy field
   quantity: string | number;
-  capitalCurrency: string;
+  capitalCurrency: string;             // legacy field
   strategyNote: string;
   workspaceId: string;
   name?: string;
   icon?: string;
   userNote?: string;
   history?: InvestmentHistoryNode[];
+  // Enterprise fields (if available from the API)
+  originalAmount?: string | number;
+  originalCurrency?: string;
+  baseAmountUSD?: string | number;
 }
 
 export interface HydratedAsset {
@@ -48,12 +52,12 @@ export interface HydratedAsset {
   userNote: string;
   currentPrice: number;
   quantityOwned: number;
-  totalInvested: number;
+  totalInvested: number;        // in the user's active currency (for display)
   categoryClass: string;
   isCustomProfile: boolean;
-  capitalCurrency: string;
+  capitalCurrency: string;      // original currency of the asset
   history: InvestmentHistoryNode[];
-  // 👇 Enterprise fields for editing
+  // Enterprise fields for editing
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
@@ -146,8 +150,14 @@ export default function InvestmentVaultPage() {
             }
 
             const rawQuantity = Number(item.quantity) || 0;
-            const databaseTotalInvested = Number(item.totalInvested) || 0;
-            const localizedTotalInvested = convertAmount(databaseTotalInvested, "PKR", currency);
+            
+            // Use enterprise fields if available, otherwise fallback to legacy
+            const baseAmount = Number(item.baseAmountUSD ?? item.totalInvested ?? 0);
+            const originalAmount = Number(item.originalAmount ?? item.totalInvested ?? 0);
+            const originalCurrency = item.originalCurrency ?? item.capitalCurrency ?? "USD";
+
+            // Convert the base amount (USD) to the user's active currency for display
+            const localizedTotalInvested = convertAmount(baseAmount, "USD", currency);
             const localizedUnitPrice = rawQuantity > 0 ? (localizedTotalInvested / rawQuantity) : 0;
 
             return {
@@ -156,18 +166,18 @@ export default function InvestmentVaultPage() {
               symbol: item.assetSymbol,
               categoryClass: item.categoryClass,
               isCustomProfile: item.isCustomProfile,
-              totalInvested: localizedTotalInvested, 
+              totalInvested: localizedTotalInvested,      // in user's currency
               quantityOwned: rawQuantity,
-              currentPrice: localizedUnitPrice, 
-              capitalCurrency: currency, 
+              currentPrice: localizedUnitPrice,          // in user's currency
+              capitalCurrency: originalCurrency,         // store the original currency
               name: parsedDetails.displayName || item.name || `${item.assetSymbol} Position`,
               icon: parsedDetails.displayIcon || item.icon || "💰",
               userNote: parsedDetails.rawNote || "",
               history: parsedDetails.changeLog || [],
-              // 👇 Enterprise fields for editing – using the actual capital currency from the database
-              originalAmount: databaseTotalInvested,
-              originalCurrency: item.capitalCurrency || "PKR", // fallback to PKR if missing
-              baseAmountUSD: databaseTotalInvested,
+              // Enterprise fields (unchanged)
+              originalAmount,
+              originalCurrency,
+              baseAmountUSD: baseAmount,
             };
           });
 
@@ -199,7 +209,6 @@ export default function InvestmentVaultPage() {
 
   const handleSaveInvestment = async (payload: InvestmentAssetPayload) => {
     try {
-      // 👇 Use the enterprise fields from the form payload
       const apiPayload = {
         assetSymbol: payload.symbol,
         categoryClass: payload.categoryClass,
@@ -214,7 +223,7 @@ export default function InvestmentVaultPage() {
           changeLog: payload.history
         }),
         workspaceId: activeWorkspaceId,
-        // 👇 ENTERPRISE FIELDS
+        // Enterprise fields
         originalAmount: payload.originalAmount,
         originalCurrency: payload.originalCurrency,
         baseAmountUSD: payload.baseAmountUSD,

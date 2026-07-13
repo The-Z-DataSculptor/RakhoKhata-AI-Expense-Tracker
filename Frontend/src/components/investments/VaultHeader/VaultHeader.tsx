@@ -13,22 +13,19 @@ import styles from "./VaultHeader.module.css";
    ========================================================================== */
 interface VaultHeaderProps {
   /** Callback function triggered when a user clicks the add investment button */
-  onAddInvestmentClick: () => void;
+  onAddAssetClick: () => void; 
   /** Callback function triggered when a user clicks to setup the 4-digit PIN */
   onSetupPinClick?: () => void;
+  /** FIXED: Tracks if the database PIN lock is currently active */
+  hasPinEnabled?: boolean;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: COMPONENT LOGIC & RENDER (JSX) ===
    ========================================================================== */
-export function VaultHeader({ onAddInvestmentClick, onSetupPinClick }: VaultHeaderProps) {
+export function VaultHeader({ onAddAssetClick, onSetupPinClick, hasPinEnabled = false }: VaultHeaderProps) {
   return (
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
     <header className={styles.headerLayoutRow}>
       
       {/* LEFT SIDE: TITLES WITH MODERN STRATIFIED WEIGHTS */}
@@ -43,13 +40,14 @@ export function VaultHeader({ onAddInvestmentClick, onSetupPinClick }: VaultHead
       <div className={styles.actionControlWrapper}>
         
         {/* SECONDARY ACTION: VAULT PIN LOCK SETUP */}
+        {/* FIXED: Applies conditional styling layout classes and disables the button if already active */}
         <button 
           type="button" 
-          className={styles.lockSetupBtn} 
-          onClick={onSetupPinClick}
-          title="Secure your vault with a 4-digit PIN"
+          className={`${styles.lockSetupBtn} ${hasPinEnabled ? styles.lockActiveBtn : ""}`} 
+          onClick={hasPinEnabled ? undefined : onSetupPinClick}
+          title={hasPinEnabled ? "Security lock is active" : "Secure your vault with a 4-digit PIN"}
+          disabled={hasPinEnabled}
         >
-          {/* Crisp SVG Padlock Icon */}
           <svg 
             className={styles.buttonIconGraphic} 
             xmlns="http://www.w3.org/2000/svg" 
@@ -60,19 +58,31 @@ export function VaultHeader({ onAddInvestmentClick, onSetupPinClick }: VaultHead
             strokeLinecap="round" 
             strokeLinejoin="round"
           >
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            {hasPinEnabled ? (
+              /* Completely closed solid padlock for active state */
+              <>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </>
+            ) : (
+              /* Open padlock for setup state */
+              <>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+              </>
+            )}
           </svg>
-          <span className={styles.buttonTextLabel}>Enable Lock</span>
+          <span className={styles.buttonTextLabel}>
+            {hasPinEnabled ? "PIN Set" : "Enable Lock"}
+          </span>
         </button>
 
         {/* PRIMARY ACTION: ADD INVESTMENT */}
         <button 
           type="button" 
           className={styles.addAssetRecordBtn} 
-          onClick={onAddInvestmentClick}
+          onClick={onAddAssetClick}
         >
-          {/* Crisp Plus Icon */}
           <svg 
             className={styles.buttonIconGraphic} 
             xmlns="http://www.w3.org/2000/svg" 
@@ -93,4 +103,4 @@ export function VaultHeader({ onAddInvestmentClick, onSetupPinClick }: VaultHead
     </header>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

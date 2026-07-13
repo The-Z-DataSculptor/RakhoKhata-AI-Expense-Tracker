@@ -33,7 +33,7 @@
 .cardHeaderTop {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* Aligns clean with the multi-line meta text block */
+  align-items: flex-start; 
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
@@ -59,6 +59,44 @@
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.01em;
+}
+
+/* NEW: Action Menu Header Groupings */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.actionIconGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-left: 1px solid var(--border-color);
+  padding-left: 0.75rem;
+}
+
+.iconBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #7e7a9c);
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: var(--radius-md, 6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+  background-color: var(--surface-outline, #f1eefc);
+  color: var(--color-primary, #613bbf);
+}
+
+.deleteBtn:hover {
+  background-color: rgba(220, 38, 38, 0.08);
+  color: var(--color-danger, #dc2626);
 }
 /* === SECTION 2 END === */
 
@@ -220,9 +258,9 @@
   letter-spacing: 0.05em;
 }
 
-.badgeSuccess { background-color: var(--success-soft); color: var(--color-success, #16a34a); }
-.badgeWarning { background-color: var(--warning-soft); color: var(--color-warning, #d97706); }
-.badgeDanger  { background-color: var(--danger-soft); color: var(--color-danger, #dc2626); }
+.badgeSuccess { background-color: var(--success-soft, #f0fdf4); color: var(--color-success, #16a34a); }
+.badgeWarning { background-color: var(--warning-soft, #fffbeb); color: var(--color-warning, #d97706); }
+.badgeDanger  { background-color: var(--danger-soft, #fef2f2); color: var(--color-danger, #dc2626); }
 
 @media (max-width: 380px) {
   .cardMainSection {

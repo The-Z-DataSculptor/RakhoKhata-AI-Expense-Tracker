@@ -6,12 +6,12 @@
  * ==========================================================================
  */
 generator client {
-  provider = "prisma-client-js" // Standard client library generation target engine
-  output   = "./generated" // Compiles the TypeScript types into your custom subfolder target
+  provider = "prisma-client-js"
+  output   = "./generated"
 }
 
 datasource db {
-  provider = "postgresql" // FIXED: Removed the `url` property completely to comply with Prisma 7 layout rules
+  provider = "postgresql"
 }
 
 /**
@@ -28,6 +28,7 @@ model User {
   name         String
   email        String      @unique
   passwordHash String
+  vaultPin     String? // Secure 4-digit PIN hash
   uiTheme      String      @default("DARK")
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -48,7 +49,7 @@ model User {
 model Workspace {
   id           String        @id @default(uuid())
   name         String
-  currency     String        @default("PKR")
+  currency     String        @default("PKR") // Default viewing currency
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   categories   Category[]
@@ -75,6 +76,11 @@ model Category {
   name         String
   type         String
   color        String
+  isFixed      Boolean       @default(false)
+  isRecurring  Boolean       @default(false)
+  frequency    String?
+  dueDay       Int?
+  reminderDays Int?
   workspaceId  String
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -95,8 +101,15 @@ model Category {
  * ==========================================================================
  */
 model Transaction {
-  id          String    @id @default(uuid())
-  amount      Decimal   @db.Decimal(12, 2)
+  id     String  @id @default(uuid())
+  // DEPRECATED: Use originalAmount + originalCurrency + baseAmountUSD instead
+  amount Decimal @db.Decimal(12, 2) // kept for compatibility; will be removed later
+
+  // 👇 NEW ENTERPRISE FIELDS
+  originalAmount   Decimal @db.Decimal(12, 2) // Amount as entered by user
+  originalCurrency String  @default("USD") // Currency code of the original amount
+  baseAmountUSD    Decimal @db.Decimal(12, 2) // Normalized USD value (for aggregations)
+
   type        String
   description String
   date        DateTime
@@ -120,8 +133,15 @@ model Transaction {
  * ==========================================================================
  */
 model Budget {
-  id          String    @id @default(uuid())
-  limitAmount Decimal   @db.Decimal(12, 2)
+  id          String  @id @default(uuid())
+  // DEPRECATED: limitAmount
+  limitAmount Decimal @db.Decimal(12, 2) // kept for compatibility
+
+  // 👇 NEW ENTERPRISE FIELDS
+  originalAmount   Decimal @db.Decimal(12, 2)
+  originalCurrency String  @default("USD")
+  baseAmountUSD    Decimal @db.Decimal(12, 2)
+
   startDate   DateTime
   endDate     DateTime
   categoryId  String
@@ -144,18 +164,25 @@ model Budget {
  * ==========================================================================
  */
 model Investment {
-  id              String    @id @default(uuid())
+  id              String  @id @default(uuid())
   assetSymbol     String
   categoryClass   String
-  isCustomProfile Boolean   @default(false)
-  totalInvested   Decimal   @db.Decimal(12, 2)
-  capitalCurrency String    @default("GBP")
-  quantity        Decimal   @db.Decimal(16, 8)
-  strategyNote    String
-  workspaceId     String
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  isCustomProfile Boolean @default(false)
+  // DEPRECATED: totalInvested and capitalCurrency
+  totalInvested   Decimal @db.Decimal(12, 2) // kept for compatibility
+  capitalCurrency String  @default("GBP") // kept for compatibility
+
+  // 👇 NEW ENTERPRISE FIELDS
+  originalAmount   Decimal @db.Decimal(12, 2) // Total invested in original currency
+  originalCurrency String  @default("USD")
+  baseAmountUSD    Decimal @db.Decimal(12, 2) // Normalized USD value
+
+  quantity     Decimal   @db.Decimal(16, 8)
+  strategyNote String
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@map("investments")
 }

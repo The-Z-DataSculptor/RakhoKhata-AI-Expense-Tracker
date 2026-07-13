@@ -10,7 +10,7 @@
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
-  /* FIX: Explicit layout constraint added here to force short content pages to stretch out */
+  /* Provides a minimum height but allows it to grow naturally */
   min-height: calc(100vh - 80px); 
   padding-bottom: 0; 
   box-sizing: border-box;
@@ -25,6 +25,8 @@
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   box-shadow: var(--shadow-soft);
+  /* Prevents the header from shrinking when content grows */
+  flex-shrink: 0; 
 }
 
 /* ==========================================================================
@@ -116,18 +118,30 @@
 }
 
 /* ==========================================================================
-   === SECTION 4: FOOTER BLOCK (TIGHTENED) ===
+   === SECTION 4: MAIN CONTENT, STATS & FOOTER ===
    ========================================================================== */
+.statsWrapperDeck {
+  width: 100%;
+  /* FIX: Prevents the 4 stat boxes from getting squeezed or crushed */
+  flex-shrink: 0; 
+}
+
 .mainContentStage {
   width: 100%;
+  /* FIX: Forces the main content to take up available space, preventing squeezing */
+  flex-grow: 1; 
+  display: flex;
+  flex-direction: column;
 }
 
 .footerContainerBlock {
   width: 100%;
+  /* Ensures the footer always stays at the bottom of the content */
   margin-top: auto; 
-  /* FIX: Controls the gap safely from inside the footer itself */
   padding-bottom: 1.5rem; 
   transition: var(--transition-fast);
+  /* Prevents the footer from shrinking */
+  flex-shrink: 0; 
 }
 
 /* ==========================================================================

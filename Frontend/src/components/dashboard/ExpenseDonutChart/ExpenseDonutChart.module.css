@@ -189,7 +189,27 @@
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: SMARTPHONE STRUCTURAL BREAKPOINTS START ===
+   === SECTION 4: EMPTY STATE STYLES ===
+   ========================================================================== */
+.emptyStateContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  width: 100%;
+  padding: 2rem 0;
+}
+
+.emptyStateText {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+}
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: SMARTPHONE STRUCTURAL BREAKPOINTS START ===
    ========================================================================== */
 @media (max-width: 640px) {
   .focusCardBody {
@@ -206,5 +226,4 @@
     transform: none; /* Nullify sliding movements on mobile tap configurations */
   }
 }
-/* ==========================================================================
-   === SECTION 4 END === */
+/* === SECTION 5 END === */

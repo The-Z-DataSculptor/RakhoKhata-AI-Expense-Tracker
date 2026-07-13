@@ -6,7 +6,8 @@
 import "dotenv/config";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../prisma/generated/client"; // Links directly to your compiled models folder
+// FIXED: Adjusted import route path to point straight to the generated root index layout
+import { PrismaClient } from "../prisma/generated"; 
 /* === SECTION 1 END === */
 
 /* ==========================================================================

@@ -28,10 +28,33 @@ const COOKIE_OPTIONS = {
   sameSite: "lax" as const, 
   maxAge: 7 * 24 * 60 * 60 * 1000 
 };
+
+// Blueprint category configurations automatically provisioned on every new user sign-up
+const PERSONAL_CATEGORIES = [
+  { name: "Salary", type: "INCOME", color: "#10b981" },
+  { name: "Housing", type: "EXPENSE", color: "#3b82f6" },
+  { name: "Food", type: "EXPENSE", color: "#ef4444" },
+  { name: "Bills", type: "EXPENSE", color: "#f59e0b" },
+  { name: "Transport", type: "EXPENSE", color: "#8b5cf6" },
+  { name: "Shopping", type: "EXPENSE", color: "#ec4899" },
+  { name: "Health", type: "EXPENSE", color: "#14b8a6" },
+  { name: "Savings", type: "EXPENSE", color: "#059669" }
+];
+
+const BUSINESS_CATEGORIES = [
+  { name: "Revenue", type: "INCOME", color: "#10b981" },
+  { name: "Payroll", type: "EXPENSE", color: "#f43f5e" },
+  { name: "Marketing", type: "EXPENSE", color: "#6366f1" },
+  { name: "Software", type: "EXPENSE", color: "#0ea5e9" },
+  { name: "Inventory", type: "EXPENSE", color: "#d97706" },
+  { name: "Office", type: "EXPENSE", color: "#64748b" },
+  { name: "Travel", type: "EXPENSE", color: "#d946ef" },
+  { name: "Taxes", type: "EXPENSE", color: "#dc2626" }
+];
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: REGISTER USER CONTROLLER (WITH AUTOMATIC WORKSPACE SEEDING) ===
+   === SECTION 3: REGISTER USER CONTROLLER (WITH ATOMIC PROFILE SEEDING) ===
    ========================================================================== */
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -51,7 +74,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // ... inside your registerUser try-catch block ...
+    // UPGRADED: Single atomic query block deep-creates user, workspaces, and matching folder labels
     const newUser = await prisma.user.create({
       data: { 
         name: fullName, 
@@ -59,12 +82,23 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         passwordHash: hashedPassword,
         workspaces: {
           create: [
-            { name: "Personal", currency: "USD" }, // FIXED: Swapped default from PKR to USD
-            { name: "Business", currency: "USD" }  // FIXED: Swapped default from PKR to USD
+            { 
+              name: "Personal", 
+              currency: "USD",
+              categories: {
+                create: PERSONAL_CATEGORIES
+              }
+            },
+            { 
+              name: "Business", 
+              currency: "USD",
+              categories: {
+                create: BUSINESS_CATEGORIES
+              }
+            }
           ]
         }
       },
-      // ... rest of the register controller stays exactly the same ...
       select: { 
         id: true, 
         name: true, 

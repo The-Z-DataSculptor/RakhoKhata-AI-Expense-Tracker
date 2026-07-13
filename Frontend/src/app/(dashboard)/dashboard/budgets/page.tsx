@@ -4,149 +4,195 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BudgetDonutGrid, type MockDonutItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
 import { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import { CreateBudgetModal, type NewBudgetFormData } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
-import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { budgetService, categoryService } from "@/utils/api";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { FiPlus } from "react-icons/fi";
+import { toast } from "sonner";
 import styles from "./page.module.css";
+
+// Import the Budget type from api to extend
+import { Budget as ApiBudget, Category as ApiCategory } from "@/utils/api";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-interface MasterBudget {
-  id: string;
-  workspaceId: string; 
-  categoryName: string;
-  totalLimit: number;
-  // Simulated database transactions grouped by timeframe
-  spentData: Record<TimePeriod, number>;
-  // The absolute custom boundaries set during creation
-  absoluteStart: string; // YYYY-MM-DD
-  absoluteEnd: string;   // YYYY-MM-DD
+interface ExtendedBudget extends ApiBudget {
+  spentAmount?: number;
 }
 /* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
-const MASTER_BUDGETS_COLLECTION: MasterBudget[] = [
-  {
-    id: "b1",
-    workspaceId: "ws-personal-default", 
-    categoryName: "Marketing Ads",
-    totalLimit: 30000,
-    absoluteStart: "2026-06-01",
-    absoluteEnd: "2026-06-30",
-    spentData: { "7d": 2500, "14d": 6000, "30d": 12000, "all": 12000 }
-  },
-  {
-    id: "b2",
-    workspaceId: "ws-business-default", 
-    categoryName: "Cloud Servers",
-    totalLimit: 15000,
-    absoluteStart: "2026-06-01",
-    absoluteEnd: "2026-06-30",
-    spentData: { "7d": 3500, "14d": 7000, "30d": 14500, "all": 14500 }
-  },
-  {
-    id: "b3",
-    workspaceId: "ws-personal-default", 
-    categoryName: "Office Supplies",
-    totalLimit: 5000,
-    absoluteStart: "2026-06-05",
-    absoluteEnd: "2026-06-25",
-    spentData: { "7d": 200, "14d": 1200, "30d": 3100, "all": 3100 }
-  }
-];
-
 export default function BudgetsPage() {
-  const { activeWorkspaceId } = useWorkspace(); 
+  const { activeWorkspaceId } = useWorkspace();
 
+  // --- STATE MATRIX ---
   const [activeRange, setActiveRange] = useState<TimePeriod>("30d");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [masterBudgets, setMasterBudgets] = useState<MasterBudget[]>(MASTER_BUDGETS_COLLECTION);
+  const [editingBudget, setEditingBudget] = useState<ExtendedBudget | null>(null);
+  const [budgets, setBudgets] = useState<ExtendedBudget[]>([]);
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  // Helper helper to turn date objects into standard clean display labels (e.g. "Jun 16")
   const formatShortDisplay = (date: Date): string => {
-    return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+    return date.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" });
   };
 
-  // --- DATA FILTERING ENGINE ---
-  // Core isolation filters: Only look at data matching our currently active workspace profile
-  const filteredBudgets = masterBudgets.filter(budget => budget.workspaceId === activeWorkspaceId);
+  /* ==========================================================================
+     === LIFECYCLE SYNC CORE ENGINE ===
+     ========================================================================== */
+  useEffect(() => {
+    let isMounted = true;
 
-  // Recalculates display dates and paces budget limits down on the fly matching the active filter range selection
-  const computedBudgetItems: MockDonutItem[] = filteredBudgets.map((budget) => {
-    const today = new Date("2026-06-16"); 
-    let displayStart = new Date(budget.absoluteStart);
-    let displayEnd = new Date(budget.absoluteEnd);
-    let calculatedLimit = budget.totalLimit;
+    if (!activeWorkspaceId) return;
+
+    const fetchLiveBudgetData = async () => {
+      try {
+        const [budgetsData, categoriesData] = await Promise.all([
+          budgetService.getByWorkspace(activeWorkspaceId),
+          categoryService.getByWorkspace(activeWorkspaceId)
+        ]);
+
+        if (isMounted) {
+          setBudgets((budgetsData.budgets as ExtendedBudget[]) || []);
+          setCategories(categoriesData.categories || []);
+        }
+      } catch (error: unknown) {
+        if (isMounted) {
+          const msg = error instanceof Error ? error.message : "Database fetch configuration failure.";
+          toast.error(msg);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchLiveBudgetData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspaceId, refreshKey]);
+
+  /* ==========================================================================
+     === ACTION HANDLERS ===
+     ========================================================================== */
+  const handleSaveBudgetSubmit = async (formData: NewBudgetFormData) => {
+    try {
+      const matchedCategory = categories.find(
+        (cat) => cat.name.toLowerCase() === formData.categoryName.toLowerCase()
+      );
+
+      if (!matchedCategory) {
+        toast.error(`The category "${formData.categoryName}" could not be found in this workspace.`);
+        return;
+      }
+
+      // Common payload: include both legacy and enterprise fields
+      const basePayload = {
+        limitAmount: formData.originalAmount, // legacy
+        originalAmount: formData.originalAmount,
+        originalCurrency: formData.originalCurrency,
+        baseAmountUSD: formData.baseAmountUSD,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        categoryId: matchedCategory.id,
+      };
+
+      if (editingBudget) {
+        await budgetService.update(editingBudget.id, {
+          ...basePayload,
+        });
+        toast.success("Budget tracking rule updated successfully!");
+      } else {
+        await budgetService.create({
+          ...basePayload,
+          workspaceId: activeWorkspaceId,
+        });
+        toast.success("Spending watch rule deployed to cloud ledger successfully!");
+      }
+
+      setIsModalOpen(false);
+      setEditingBudget(null);
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Internal system crash saving metrics.";
+      toast.error(msg);
+    }
+  };
+
+  const handleDeleteBudget = async (id: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this budget tracking limit?")) return;
+
+    try {
+      await budgetService.delete(id);
+      toast.success("Budget limit permanently removed.");
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Teardown sequence error.";
+      toast.error(msg);
+    }
+  };
+
+  /* ==========================================================================
+     === DATA RENDERING COMPILATION PASS ===
+     ========================================================================== */
+  const computedBudgetItems: MockDonutItem[] = budgets.map((budget) => {
+    const limit = Number(budget.limitAmount);
+    const spent = Number(budget.spentAmount || 0);
+
+    let calculatedLimit = limit;
+    let calculatedSpent = spent;
 
     if (activeRange === "7d") {
-      displayStart = new Date(today);
-      displayStart.setDate(today.getDate() - 7);
-      displayEnd = today;
-      calculatedLimit = budget.totalLimit / 4; 
+      calculatedLimit = limit / 4;
+      calculatedSpent = spent / 4;
     } else if (activeRange === "14d") {
-      displayStart = new Date(today);
-      displayStart.setDate(today.getDate() - 14);
-      displayEnd = today;
-      calculatedLimit = budget.totalLimit / 2; 
-    } else if (activeRange === "30d") {
-      displayStart = new Date(today);
-      displayStart.setDate(today.getDate() - 30);
-      displayEnd = today;
+      calculatedLimit = limit / 2;
+      calculatedSpent = spent / 2;
     }
 
     return {
       id: budget.id,
-      categoryName: budget.categoryName,
-      spentAmount: budget.spentData[activeRange], 
+      categoryName: budget.category?.name || "Unknown Label",
+      spentAmount: Math.round(calculatedSpent),
       limitAmount: Math.round(calculatedLimit),
-      startDate: formatShortDisplay(displayStart),
-      endDate: formatShortDisplay(displayEnd),
+      startDate: formatShortDisplay(new Date(budget.startDate)),
+      endDate: formatShortDisplay(new Date(budget.endDate)),
     };
   });
 
-  const handleCreateBudgetSubmit = (formData: NewBudgetFormData) => {
-    const newEntry: MasterBudget = {
-      id: `budget_${Date.now()}`,
-      workspaceId: activeWorkspaceId, 
-      categoryName: formData.categoryName,
-      totalLimit: formData.limitAmount,
-      absoluteStart: formData.startDate,
-      absoluteEnd: formData.endDate,
-      spentData: { "7d": 0, "14d": 0, "30d": 0, "all": 0 } 
-    };
+  /* ==========================================================================
+     === RENDER (JSX) ===
+     ========================================================================== */
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">
+          Syncing Live Wallet Spending Thresholds...
+        </p>
+      </div>
+    );
+  }
 
-    setMasterBudgets((prev) => [newEntry, ...prev]);
-  };
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
   return (
     <div className={styles.pageViewport}>
-      
-      {/* ACTION CONTROLS HEADER */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.welcomeHeadline}>Budgets</h1>
-          
-          {/* UPDATED: Status row badges layer removed completely to clear out old meta metrics */}
           <p className={styles.welcomeSubtext}>
             Monitor and pace your spending thresholds per category.
           </p>
         </div>
 
-        {/* Action controllers frame deck holding the timeline switcher pills and the action trigger */}
         <div className={styles.actionControlsFlexDeck}>
-          
           <div className={styles.rangePillsControlDeck}>
             {(["7d", "14d", "30d"] as TimePeriod[]).map((period) => (
               <button
@@ -160,45 +206,68 @@ export default function BudgetsPage() {
             ))}
           </div>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={styles.primaryCreateActionButton}
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingBudget(null);
+              setIsModalOpen(true);
+            }}
           >
             <FiPlus size={14} className={styles.plusIconDecoration} />
             <span>Add Budget</span>
           </button>
-
         </div>
       </header>
 
-      {/* RENDER DYNAMIC BUDGET CARDS PANELS */}
       <main className={styles.contentContainer}>
         {computedBudgetItems.length > 0 ? (
-           <BudgetDonutGrid items={computedBudgetItems} />
+          <BudgetDonutGrid
+            items={computedBudgetItems}
+            onEditClick={(id) => {
+              const targetBudget = budgets.find((b) => b.id === id);
+              if (targetBudget) {
+                setEditingBudget(targetBudget);
+                setIsModalOpen(true);
+              }
+            }}
+            onDeleteClick={handleDeleteBudget}
+          />
         ) : (
           <div className={styles.sectionFallback}>
             <p className={styles.fallbackText}>No active budgets found in this workspace.</p>
             <p className={styles.subFallbackText}>
-              Create a new budget to track your spending limits specifically for {activeWorkspaceId.includes('business') ? 'your business' : 'your personal'} expenses.
+              Create a new budget to track your spending limits specifically for{" "}
+              {activeWorkspaceId?.includes("business") ? "your business" : "your personal"} expenses.
             </p>
           </div>
         )}
       </main>
 
-      {/* OVERLAY SYSTEM CREATION DIALOG DRAWER */}
       <CreateBudgetModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateBudgetSubmit}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingBudget(null);
+        }}
+        onSubmit={handleSaveBudgetSubmit}
+        categories={categories}
+        initialData={
+          editingBudget
+            ? {
+                id: editingBudget.id,
+                categoryName: editingBudget.category?.name || "",
+                limitAmount: Number(editingBudget.limitAmount),
+                startDate: editingBudget.startDate,
+                endDate: editingBudget.endDate,
+              }
+            : null
+        }
       />
 
-      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>
-
     </div>
   );
 }
-/* === SECTION 4 END === */

@@ -1,4 +1,4 @@
-/* src/components/budgets/BudgetDonutGrid/BudgetDonutGrid.tsx*/
+// src/components/budgets/BudgetDonutGrid/BudgetDonutGrid.tsx
 "use client";
 
 /* ==========================================================================
@@ -6,6 +6,7 @@
    ========================================================================== */
 import React from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { FiEdit2, FiTrash2 } from "react-icons/fi"; // NEW: Imported Feather icons for actions
 import styles from "./BudgetDonutGrid.module.css";
 /* === SECTION 1 END === */
 
@@ -17,20 +18,22 @@ export interface MockDonutItem {
   categoryName: string;
   spentAmount: number;
   limitAmount: number;
-  startDate: string; // e.g., "Jun 01"
-  endDate: string;   // e.g., "Jun 07"
+  startDate: string; 
+  endDate: string;   
 }
 
 interface BudgetDonutGridProps {
   items?: MockDonutItem[];
+  // NEW: Exposed handler functions to the parent component
+  onEditClick?: (id: string) => void;
+  onDeleteClick?: (id: string) => void;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export function BudgetDonutGrid({ items }: BudgetDonutGridProps) {
-  // Pull currency engine functions directly from our global context matrix
+export function BudgetDonutGrid({ items, onEditClick, onDeleteClick }: BudgetDonutGridProps) {
   const { formatAmount } = useCurrency();
 
   const fallbackMockItems: MockDonutItem[] = [
@@ -79,7 +82,7 @@ export function BudgetDonutGrid({ items }: BudgetDonutGridProps) {
         return (
           <div key={budget.id} className={styles.donutCard}>
             
-            {/* TOP LINE: CATEGORY TITLES, DATES, & STATUS PILL */}
+            {/* TOP LINE: CATEGORY TITLES, DATES, STATUS PILL, & ACTIONS */}
             <div className={styles.cardHeaderTop}>
               <div className={styles.titleAndDateMeta}>
                 <h3 className={styles.categoryTitle}>{budget.categoryName}</h3>
@@ -87,9 +90,32 @@ export function BudgetDonutGrid({ items }: BudgetDonutGridProps) {
                   🗓️ {budget.startDate} – {budget.endDate}
                 </span>
               </div>
-              <span className={`${styles.statusBadge} ${badgeColorClass}`}>
-                {isOverBudget ? "Over Limit" : "On Track"}
-              </span>
+
+              {/* NEW: Action Group Cluster */}
+              <div className={styles.headerActions}>
+                <span className={`${styles.statusBadge} ${badgeColorClass}`}>
+                  {isOverBudget ? "Over Limit" : "On Track"}
+                </span>
+                
+                <div className={styles.actionIconGroup}>
+                  <button 
+                    type="button"
+                    className={styles.iconBtn} 
+                    onClick={() => onEditClick?.(budget.id)}
+                    title="Edit Budget"
+                  >
+                    <FiEdit2 size={14} />
+                  </button>
+                  <button 
+                    type="button"
+                    className={`${styles.iconBtn} ${styles.deleteBtn}`} 
+                    onClick={() => onDeleteClick?.(budget.id)}
+                    title="Delete Budget"
+                  >
+                    <FiTrash2 size={14} />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* MIDDLE ROW: DONUT RING SIDE-BY-SIDE WITH ACCENT METRICS */}
@@ -122,7 +148,6 @@ export function BudgetDonutGrid({ items }: BudgetDonutGridProps) {
                 <div className={styles.spentGroup}>
                   <span className={styles.metaLabelHeader}>Total Spent</span>
                   <p className={styles.bigBoldAmount}>
-                    {/* FIXED: Uses unified context engine formatting to dynamically compute outputs */}
                     {formatAmount(budget.spentAmount, "PKR")}
                   </p>
                 </div>
@@ -130,7 +155,6 @@ export function BudgetDonutGrid({ items }: BudgetDonutGridProps) {
                 <div className={styles.limitGroup}>
                   <span className={styles.metaLabelHeader}>Target Pool Limit</span>
                   <p className={styles.subAmountLabel}>
-                    {/* FIXED: Formats limit targeting baseline matching navigation preference parameters */}
                     {formatAmount(budget.limitAmount, "PKR")}
                   </p>
                 </div>
@@ -143,12 +167,10 @@ export function BudgetDonutGrid({ items }: BudgetDonutGridProps) {
               <span className={styles.remainingContextLabel}>Available funds</span>
               {isOverBudget ? (
                 <span className={styles.dangerNoticeText}>
-                  {/* FIXED: Dynamic context scaling for negative values */}
                   -{formatAmount(Math.abs(remainingCash), "PKR")}
                 </span>
               ) : (
                 <span className={styles.successNoticeText}>
-                  {/* FIXED: Dynamic context scaling for positive values */}
                   +{formatAmount(remainingCash, "PKR")}
                 </span>
               )}

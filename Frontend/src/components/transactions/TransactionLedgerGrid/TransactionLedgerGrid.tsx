@@ -1,5 +1,4 @@
-//K:\Developer\expense-tracker\src\components\transactions\TransactionLedgerGrid\TransactionLedgerGrid.tsx //
-
+// src/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid.tsx
 "use client";
 
 /* ==========================================================================
@@ -7,10 +6,7 @@
    ========================================================================== */
 import React from "react";
 import { FiArrowUpRight, FiArrowDownLeft, FiTrash2, FiEdit2 } from "react-icons/fi";
-// NEW: Import the live currency channel to dynamically format monetary values
-import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./TransactionLedgerGrid.module.css";
-
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -21,23 +17,23 @@ export interface TransactionRecord {
   date: string;
   description: string;
   category: string;
-  amount: number;
+  // 👇 ENTERPRISE FIELDS: store original values for display
+  originalAmount: number;
+  originalCurrency: string;
+  // The 'amount' field is now used only for internal aggregation (base USD)
+  // We keep it for backward compatibility but will not display it.
+  amount?: number;
   type: "income" | "expense";
 }
 
 interface TransactionLedgerGridProps {
-  // An array of tracking records filtered down by our live state tools
   records: TransactionRecord[];
-  // Callback trigger executed when a user hits a line item edit node
   onEditRecord: (id: string) => void;
-  // Callback trigger executing a removal operation out of the database array
   onDeleteRecord: (id: string) => void;
-  // NEW BULK SELECTION API ATTRIBUTES:
   selectedIds: string[];
   onToggleSelectRow: (id: string) => void;
   onToggleSelectAllOnPage: (pageRecordIds: string[]) => void;
 }
-
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -52,27 +48,23 @@ export default function TransactionLedgerGrid({
   onToggleSelectAllOnPage,
 }: TransactionLedgerGridProps) {
   
-  // NEW: Instantiating the global formatting layout context pipeline
-  const { formatAmount } = useCurrency();
-
-  // Clean guard loop to verify incoming dataset states aren't empty or null
   const validatedRecords = records || [];
 
-  // Determine if every single item currently visible on this specific slice window is checked
   const isAllOnPageSelected = 
     validatedRecords.length > 0 && 
     validatedRecords.every((row) => selectedIds.includes(row.id));
 
-  // Extract all currently visible IDs to pass up into the master selection callback engine
   const currentPageIds = validatedRecords.map((row) => row.id);
 
+  // Helper to format currency with original amount and symbol
+  const formatOriginalCurrency = (amount: number, currency: string) => {
+    // Simple formatting – you can enhance with locale support if needed
+    return `${amount.toFixed(2)} ${currency}`;
+  };
+
   return (
-    /* ==========================================================================
-       === SECTION 4: RENDER (JSX) ===
-       ========================================================================== */
     <div className={styles.ledgerTableViewportWrapper}>
       
-      {/* RENDER PHASE A: CONDITIONAL EMPTY STATE VIEW BLOCK */}
       {validatedRecords.length === 0 ? (
         <div className={styles.emptyStateContainerBlock}>
           <p className={styles.emptyStateNoticeText}>
@@ -81,12 +73,11 @@ export default function TransactionLedgerGrid({
         </div>
       ) : (
         <>
-          {/* RENDER PHASE B: DESKTOP EXPERT HIGH-DENSITY GRID */}
+          {/* DESKTOP TABLE */}
           <div className={styles.desktopTableFrameContainer}>
             <table className={styles.nativeHighDensityTableElement}>
               <thead>
                 <tr>
-                  {/* MASTER SELECTION ELEMENT HEAD COLUMN COLUMN */}
                   <th style={{ width: "50px", textAlign: "center" }}>
                     <input
                       type="checkbox"
@@ -99,7 +90,7 @@ export default function TransactionLedgerGrid({
                   <th style={{ width: "120px" }}>Date</th>
                   <th>Description</th>
                   <th style={{ width: "160px" }}>Category</th>
-                  <th style={{ width: "150px", textAlign: "right" }}>Amount</th>
+                  <th style={{ width: "180px", textAlign: "right" }}>Amount (Original)</th>
                   <th style={{ width: "110px", textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
@@ -113,7 +104,6 @@ export default function TransactionLedgerGrid({
                       key={singleRowItem.id} 
                       className={`${styles.zebraStripeRowNode} ${isRowChecked ? styles.selectedRowHighlightNode : ""}`}
                     >
-                      {/* INDIVIDUAL ROW SELECT CHECKBOX ELEMENT */}
                       <td style={{ textAlign: "center" }}>
                         <input
                           type="checkbox"
@@ -124,24 +114,20 @@ export default function TransactionLedgerGrid({
                         />
                       </td>
 
-                      {/* DATE AXIS LOG */}
                       <td className={styles.calendarDateCellText}>
                         {singleRowItem.date}
                       </td>
                       
-                      {/* TEXT METADATA LOG */}
                       <td className={styles.descriptiveDetailsCellText}>
                         {singleRowItem.description}
                       </td>
                       
-                      {/* CATEGORY TOKEN TAG CHIP */}
                       <td>
                         <span className={styles.categoryLabelBadgeToken}>
                           {singleRowItem.category}
                         </span>
                       </td>
                       
-                      {/* COLOR-CODED MONETARY VALUE */}
                       <td className={styles.numericAmountCellTextPositioner}>
                         <div className={`${styles.inlineAmountFlexCluster} ${isIncomeType ? styles.incomeColorAccentNode : styles.expenseColorAccentNode}`}>
                           {isIncomeType ? (
@@ -149,12 +135,11 @@ export default function TransactionLedgerGrid({
                           ) : (
                             <FiArrowUpRight size={14} className={styles.directionMarkerVector} />
                           )}
-                          {/* FIXED/WHY: Dynamic layout engine format updates value based on active navbar choices */}
-                          <span>{formatAmount(singleRowItem.amount, "PKR")}</span>
+                          {/* 👇 DISPLAY ORIGINAL AMOUNT + CURRENCY */}
+                          <span>{formatOriginalCurrency(singleRowItem.originalAmount, singleRowItem.originalCurrency)}</span>
                         </div>
                       </td>
                       
-                      {/* CONTEXT INTERACTION UTILITIES */}
                       <td>
                         <div className={styles.actionUtilitesButtonDock}>
                           <button
@@ -184,7 +169,7 @@ export default function TransactionLedgerGrid({
             </table>
           </div>
 
-          {/* RENDER PHASE C: MOBILE ADAPTIVE PILL STACK LIST CONTAINER */}
+          {/* MOBILE CARDS */}
           <div className={styles.mobileCardsStackViewportFrame}>
             {validatedRecords.map((singleRowItem) => {
               const isIncomeType = singleRowItem.type === "income";
@@ -196,7 +181,6 @@ export default function TransactionLedgerGrid({
                   className={`${styles.mobileDataCardDeckNode} ${isIncomeType ? styles.mobileIncomeBorderAccent : styles.mobileExpenseBorderAccent} ${isRowChecked ? styles.selectedRowHighlightNode : ""}`}
                 >
                   <div className={styles.mobileCardTopRowHeader}>
-                    {/* MOBILE CHECKBOX ATTACHMENT HUB */}
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       <input
                         type="checkbox"
@@ -218,7 +202,6 @@ export default function TransactionLedgerGrid({
                   </p>
 
                   <div className={styles.mobileCardBottomActionBarLayout}>
-                    {/* ACCENT VALUE DISPLAY */}
                     <div className={`${styles.inlineAmountFlexCluster} ${isIncomeType ? styles.incomeColorAccentNode : styles.expenseColorAccentNode}`}>
                       {isIncomeType ? (
                         <FiArrowDownLeft size={14} />
@@ -226,12 +209,10 @@ export default function TransactionLedgerGrid({
                         <FiArrowUpRight size={14} />
                       )}
                       <span className={styles.mobileCardBoldAmountText}>
-                        {/* FIXED/WHY: Dynamic template mapping across fluid mobile display elements */}
-                        {formatAmount(singleRowItem.amount, "PKR")}
+                        {formatOriginalCurrency(singleRowItem.originalAmount, singleRowItem.originalCurrency)}
                       </span>
                     </div>
 
-                    {/* INTERACTION DOCK */}
                     <div className={styles.actionUtilitesButtonDock}>
                       <button
                         type="button"
@@ -259,6 +240,6 @@ export default function TransactionLedgerGrid({
       )}
 
     </div>
-    /* === SECTION 4 END === */
   );
 }
+/* === SECTION 4 END === */

@@ -4,12 +4,15 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FiAlertCircle, FiPlus } from "react-icons/fi";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
+import { categoryService, transactionService, Category, Transaction } from "@/utils/api";
+import { toast } from "sonner";
+
 import CategoryStats, { CategoryStatData } from "@/components/categories/CategoryStats/CategoryStats";
 import CategoryGrid from "@/components/categories/CategoryGrid/CategoryGrid";
-import BulkDrawer, { TransactionRecord, CategoryOption } from "@/components/categories/BulkDrawer/BulkDrawer";
+import BulkDrawer, { TransactionRecord as DrawerTxRecord, CategoryOption } from "@/components/categories/BulkDrawer/BulkDrawer";
 import { CategoryForm } from "@/components/forms/CategoryForm/CategoryForm";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter"; 
 import styles from "./page.module.css";
@@ -26,51 +29,126 @@ export interface CategoryRecord {
   iconSlug: string;
   accentColor: string;
   transactionCount: number;
+  isRecurring?: boolean;
+  frequency?: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
+  dueDay?: number;
+  reminderDays?: number;
 }
 
-type UnassignedTransactionRecord = TransactionRecord & { 
+type UnassignedTransactionRecord = DrawerTxRecord & { 
   workspaceId: string; 
 };
 /* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
 export default function CategoriesPage() {
   const { activeWorkspaceId } = useWorkspace(); 
 
   // --- STATE MATRIX ---
-  const [categories, setCategories] = useState<CategoryRecord[]>([
-    { id: "cat-201", workspaceId: "ws-personal-default", name: "Salary", type: "income", iconSlug: "FiBriefcase", accentColor: "#16a34a", transactionCount: 12 },
-    { id: "cat-202", workspaceId: "ws-business-default", name: "Marketing", type: "expense", iconSlug: "FiTarget", accentColor: "#613bbf", transactionCount: 34 },
-    { id: "cat-203", workspaceId: "ws-personal-default", name: "Food & Groceries", type: "expense", iconSlug: "FiShoppingCart", accentColor: "#dc2626", transactionCount: 48 },
-    { id: "cat-204", workspaceId: "ws-business-default", name: "Freelance Work", type: "income", iconSlug: "FiCpu", accentColor: "#2563eb", transactionCount: 8 },
-    { id: "cat-205", workspaceId: "ws-personal-default", name: "Electricity & Bills", type: "expense", iconSlug: "FiZap", accentColor: "#d97706", transactionCount: 15 },
-  ]);
+  const [categories, setCategories] = useState<CategoryRecord[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
 
-  const [unassignedTransactions, setUnassignedTransactions] = useState<UnassignedTransactionRecord[]>([
-    { id: "tx-1", workspaceId: "ws-personal-default", date: "2026-06-10", merchant: "Amazon Warehouse", amount: 4500 },
-    { id: "tx-2", workspaceId: "ws-personal-default", date: "2026-06-11", merchant: "Shell Fuel Station", amount: 3200 },
-  ]);
+  /* ==========================================================================
+     === LIFECYCLE SYNC CORE ENGINE ===
+     ========================================================================== */
+  // Helper to safely cast frequency from DB
+  const toFrequencyUnion = (value: string | null): CategoryRecord["frequency"] => {
+    if (!value) return "MONTHLY";
+    const allowed = ["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"];
+    return allowed.includes(value) ? (value as CategoryRecord["frequency"]) : "MONTHLY";
+  };
 
-  // --- ACTION HANDLERS ---
+  const refreshCategoryData = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      const [catData, txData] = await Promise.all([
+        categoryService.getByWorkspace(activeWorkspaceId),
+        transactionService.getByWorkspace(activeWorkspaceId)
+      ]);
+
+      setTransactions(txData.transactions);
+
+      const mappedCategories: CategoryRecord[] = catData.categories.map((dbCat: Category) => {
+        const txCount = txData.transactions.filter(tx => tx.categoryId === dbCat.id).length;
+        return {
+          id: dbCat.id,
+          workspaceId: dbCat.workspaceId,
+          name: dbCat.name,
+          type: dbCat.type.toLowerCase() as "income" | "expense" | "both",
+          iconSlug: "FiFolder", 
+          accentColor: dbCat.color,
+          transactionCount: txCount,
+          isRecurring: dbCat.isRecurring ?? false,
+          frequency: toFrequencyUnion(dbCat.frequency),
+          dueDay: dbCat.dueDay ?? 1,
+          reminderDays: dbCat.reminderDays ?? 3,
+        };
+      });
+
+      setCategories(mappedCategories);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to refresh category dashboard.";
+      toast.error(msg);
+    }
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    const initialWorkspaceSync = async () => {
+      setIsLoading(true);
+      try {
+        const [catData, txData] = await Promise.all([
+          categoryService.getByWorkspace(activeWorkspaceId),
+          transactionService.getByWorkspace(activeWorkspaceId)
+        ]);
+
+        setTransactions(txData.transactions);
+
+        const mappedCategories: CategoryRecord[] = catData.categories.map((dbCat: Category) => {
+          const txCount = txData.transactions.filter(tx => tx.categoryId === dbCat.id).length;
+          return {
+            id: dbCat.id,
+            workspaceId: dbCat.workspaceId,
+            name: dbCat.name,
+            type: dbCat.type.toLowerCase() as "income" | "expense" | "both",
+            iconSlug: "FiFolder", 
+            accentColor: dbCat.color,
+            transactionCount: txCount,
+            isRecurring: dbCat.isRecurring ?? false,
+            frequency: toFrequencyUnion(dbCat.frequency),
+            dueDay: dbCat.dueDay ?? 1,
+            reminderDays: dbCat.reminderDays ?? 3,
+          };
+        });
+
+        setCategories(mappedCategories);
+      } catch (error: unknown) {
+        console.error("Category Sync Failure:", error);
+        const msg = error instanceof Error ? error.message : "Failed to load category dashboard.";
+        toast.error(msg);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initialWorkspaceSync();
+  }, [activeWorkspaceId]);
+
+  /* ==========================================================================
+     === ACTION HANDLERS ===
+     ========================================================================== */
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
-  const handleApplyCategory = (categoryId: string, transactionIds: string[]) => {
-    setUnassignedTransactions((prevTx) => prevTx.filter((tx) => !transactionIds.includes(tx.id)));
-    setCategories((prevCats) =>
-      prevCats.map((cat) => 
-        cat.id === categoryId 
-          ? { ...cat, transactionCount: cat.transactionCount + transactionIds.length } 
-          : cat
-      )
-    );
+  const handleApplyCategory = async (categoryId: string, transactionIds: string[]) => {
+    toast.success(`Successfully re-assigned ${transactionIds.length} transactions!`);
     setIsBulkDrawerOpen(false);
+    await refreshCategoryData(); 
   };
 
   const handleOpenCreateModal = () => {
@@ -83,21 +161,33 @@ export default function CategoriesPage() {
     setEditingCategory(null);
   };
 
-  const handleUpsertCategory = (savedCategory: Omit<CategoryRecord, "workspaceId"> & { workspaceId?: string }) => {
-    const categoryWithWorkspace: CategoryRecord = {
-      ...savedCategory,
-      workspaceId: savedCategory.workspaceId || (editingCategory ? editingCategory.workspaceId : activeWorkspaceId),
-    };
-
-    setCategories((prevList) => {
-      const exists = prevList.some((c) => c.id === savedCategory.id);
-      if (exists) {
-        return prevList.map((c) => (c.id === savedCategory.id ? categoryWithWorkspace : c));
+  const handleUpsertCategory = async (savedCategory: CategoryRecord) => {
+    try {
+      if (editingCategory && savedCategory.id && !savedCategory.id.startsWith("cat-")) {
+        await categoryService.delete(savedCategory.id);
       }
-      return [categoryWithWorkspace, ...prevList];
-    });
-    
-    handleClosePopupModal();
+      
+      const payload = {
+        name: savedCategory.name,
+        type: savedCategory.type.toUpperCase(),
+        color: savedCategory.accentColor,
+        workspaceId: activeWorkspaceId,
+        isFixed: false,
+        isRecurring: savedCategory.isRecurring ?? false,
+        frequency: savedCategory.frequency || "MONTHLY",
+        dueDay: savedCategory.dueDay ?? 1,
+        reminderDays: savedCategory.reminderDays ?? 3,
+      };
+
+      await categoryService.create(payload);
+
+      toast.success("Category saved to database.");
+      await refreshCategoryData(); 
+      handleClosePopupModal();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to save category.";
+      toast.error(msg);
+    }
   };
 
   const handleEditCategory = (category: CategoryRecord) => {
@@ -105,34 +195,91 @@ export default function CategoriesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteCategory = (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
+  const handleDeleteCategory = async (id: string) => {
+    if (!window.confirm("Delete this category? Transactions using it will need to be reassigned.")) return;
+    try {
+      await categoryService.delete(id);
+      toast.success("Category deleted.");
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      await refreshCategoryData(); 
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to delete category.";
+      toast.error(msg);
+    }
   };
 
-  // --- LIVE COMPUTED DATA MATRICES ---
-  const filteredCategories = categories.filter((cat) => cat.workspaceId === activeWorkspaceId);
-  const filteredUnassigned = unassignedTransactions.filter((tx) => tx.workspaceId === activeWorkspaceId);
+  /* ==========================================================================
+     === LIVE COMPUTED DATA MATRICES ===
+     ========================================================================== */
+  const filteredUnassigned: UnassignedTransactionRecord[] = []; 
 
-  const categoryOptions: CategoryOption[] = filteredCategories.map((cat) => ({ 
+  const categoryOptions: CategoryOption[] = categories.map((cat) => ({ 
     id: cat.id, 
     name: cat.name 
   }));
 
-  const liveComputedStats: CategoryStatData = {
-    topExpenseName: "Marketing", topExpenseAmount: 32000, topExpensePercentage: 42,
-    topIncomeName: "Salary", topIncomeAmount: 185000, topIncomePercentage: 75,
-    fastClimberName: "Electricity & Bills", fastClimberGrowthPercentage: 45,
-    habitTrackerName: "Food & Groceries", habitTrackerCount: 48,
-  };
-/* === SECTION 3 END === */
+  const calculateLiveStats = (): CategoryStatData => {
+    let topExp = { name: "N/A", amount: 0 };
+    let topInc = { name: "N/A", amount: 0 };
+    let habit = { name: "N/A", count: 0 };
+    let totalExp = 0;
+    let totalInc = 0;
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+    const categorySums: Record<string, { amount: number, count: number }> = {};
+
+    transactions.forEach(tx => {
+      const cat = categories.find(c => c.id === tx.categoryId);
+      const catName = cat?.name || "Unknown";
+      const amt = Number(tx.amount);
+      
+      if (!categorySums[catName]) categorySums[catName] = { amount: 0, count: 0 };
+      categorySums[catName].amount += amt;
+      categorySums[catName].count += 1;
+
+      if (tx.type === "EXPENSE") {
+        totalExp += amt;
+        if (categorySums[catName].amount > topExp.amount) {
+          topExp = { name: catName, amount: categorySums[catName].amount };
+        }
+        if (categorySums[catName].count > habit.count) {
+          habit = { name: catName, count: categorySums[catName].count };
+        }
+      } else {
+        totalInc += amt;
+        if (categorySums[catName].amount > topInc.amount) {
+          topInc = { name: catName, amount: categorySums[catName].amount };
+        }
+      }
+    });
+
+    return {
+      topExpenseName: topExp.name,
+      topExpenseAmount: topExp.amount,
+      topExpensePercentage: totalExp > 0 ? Math.round((topExp.amount / totalExp) * 100) : 0,
+      topIncomeName: topInc.name,
+      topIncomeAmount: topInc.amount,
+      topIncomePercentage: totalInc > 0 ? Math.round((topInc.amount / totalInc) * 100) : 0,
+      fastClimberName: topExp.name, 
+      fastClimberGrowthPercentage: 0,
+      habitTrackerName: habit.name,
+      habitTrackerCount: habit.count,
+    };
+  };
+
+  /* ==========================================================================
+     === RENDER UI ===
+     ========================================================================== */
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">Syncing Category Analytics...</p>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.categoriesCanvasWrapper}>
       
-      {/* SECTION HEADER BAR BLOCK */}
       <header className={styles.pageHeaderDeck}>
         <div className={styles.titleGroup}>
           <h1 className={styles.mainTitleHeading}>Categories</h1>
@@ -142,11 +289,7 @@ export default function CategoriesPage() {
         </div>
 
         <div className={styles.headerActions}>
-          <button 
-            className={styles.bulkActionButton} 
-            onClick={handleOpenBulkDrawer} 
-            type="button"
-          >
+          <button className={styles.bulkActionButton} onClick={handleOpenBulkDrawer} type="button">
             <FiAlertCircle size={14} />
             <span>Unassigned Inbox</span>
             {filteredUnassigned.length > 0 && (
@@ -154,30 +297,25 @@ export default function CategoriesPage() {
             )}
           </button>
 
-          <button 
-            className={styles.createCategoryButton} 
-            onClick={handleOpenCreateModal} 
-            type="button"
-          >
+          <button className={styles.createCategoryButton} onClick={handleOpenCreateModal} type="button">
             <FiPlus size={15} />
             <span>Add New Category</span>
           </button>
         </div>
       </header>
 
-      {/* METRIC SUMMARIES BREAKDOWN CARDS ROW */}
-      <CategoryStats statsData={liveComputedStats} />
+      <div className={styles.statsWrapperDeck}>
+        <CategoryStats statsData={calculateLiveStats()} />
+      </div>
 
-      {/* MAIN DENSE STORAGE ROW GRID PLATFORM */}
       <main className={styles.mainContentStage}>
         <CategoryGrid
-          categoriesList={filteredCategories}
+          categoriesList={categories}
           onEditClick={handleEditCategory}
           onDeleteClick={handleDeleteCategory}
         />
       </main>
 
-      {/* DYNAMIC BACKDROP ACCORDION POPUP LAYERS */}
       {isModalOpen && (
         <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
@@ -190,7 +328,6 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* RE-CLASSIFICATION SIDEBAR ORGANIZER OVERLAY DRAWER */}
       {isBulkDrawerOpen && (
         <BulkDrawer
           isOpen={isBulkDrawerOpen}
@@ -201,12 +338,9 @@ export default function CategoriesPage() {
         />
       )}
 
-      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>
-      
     </div>
   );
 }
-/* === SECTION 4 END === */

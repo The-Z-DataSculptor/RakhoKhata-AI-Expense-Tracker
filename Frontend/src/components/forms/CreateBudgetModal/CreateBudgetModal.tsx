@@ -6,60 +6,80 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { toast } from "sonner"; // NEW: Imported the global notification engine hook
+import { toast } from "sonner";
+import { Category as ApiCategory } from "@/utils/api";
 import styles from "./CreateBudgetModal.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
+// 👇 EXPORTED for parent components
+export interface NewBudgetFormData {
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmountUSD: number;
+  categoryName: string;
+  startDate: string;
+  endDate: string;
+  isCustomPeriod: boolean;
+}
+
 interface CreateBudgetModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: NewBudgetFormData) => void;
-}
-
-export interface NewBudgetFormData {
-  categoryName: string;
-  limitAmount: number;
-  startDate: string;
-  endDate: string;
-  isCustomPeriod: boolean;
+  categories: ApiCategory[];
+  initialData?: {
+    id: string;
+    categoryName: string;
+    limitAmount: number; // in USD (database)
+    startDate: string;
+    endDate: string;
+  } | null;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetModalProps) {
-  // Pull currency type string and safe data converters from global context state
+export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initialData }: CreateBudgetModalProps) {
   const { currency, convertAmount } = useCurrency();
 
-  // Form input fields state
   const [categoryName, setCategoryName] = useState("");
   const [limitAmount, setLimitAmount] = useState("");
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Set automatic default dates (Starts today, ends 30 days from now)
   useEffect(() => {
     if (!isOpen) return;
 
-    const today = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + 30);
+    const timerId = setTimeout(() => {
+      if (initialData) {
+        setCategoryName(initialData.categoryName);
+        const displayAmount = convertAmount(initialData.limitAmount, "USD", currency);
+        setLimitAmount(displayAmount.toFixed(2));
+        setStartDate(initialData.startDate.split("T")[0]);
+        setEndDate(initialData.endDate.split("T")[0]);
+        setIsCustomPeriod(true);
+      } else {
+        const today = new Date();
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + 30);
+        const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
-    const formatDate = (date: Date) => date.toISOString().split("T")[0];
-    const id = window.setTimeout(() => {
-      setStartDate(formatDate(today));
-      setEndDate(formatDate(futureDate));
+        setCategoryName("");
+        setLimitAmount("");
+        setIsCustomPeriod(false);
+        setStartDate(formatDate(today));
+        setEndDate(formatDate(futureDate));
+      }
     }, 0);
 
-    return () => clearTimeout(id);
-  }, [isOpen]);
+    return () => clearTimeout(timerId);
+  }, [isOpen, initialData, currency, convertAmount]);
 
-  // Reset all input fields when closing the modal
   const handleClose = () => {
     setCategoryName("");
     setLimitAmount("");
@@ -72,66 +92,61 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
     if (!categoryName || !limitAmount) return;
 
     try {
-      const rawEnteredValue = parseFloat(limitAmount);
-
-      // Convert the input value from the ACTIVE view currency back to baseline PKR units 
-      // to ensure database arrays store uniform telemetry values.
-      const normalizedBaseAmount = convertAmount(rawEnteredValue, currency, "PKR");
+      const originalAmount = parseFloat(limitAmount);
+      const baseAmountUSD = convertAmount(originalAmount, currency, "USD");
 
       onSubmit({
+        originalAmount,
+        originalCurrency: currency,
+        baseAmountUSD,
         categoryName,
-        limitAmount: normalizedBaseAmount,
         startDate,
         endDate,
         isCustomPeriod,
       });
-
-      // NEW: Trigger micro-feedback message to instantly confirm budget metrics generation
-      toast.success("Budget limit established successfully!");
-      
-      handleClose();
     } catch (error) {
       console.error("Failed to secure budget metrics setup:", error);
-      // NEW: Safeguard error notice if calculations fail
       toast.error("Could not allocate budget limit safely. Verify numeric values.");
     }
   };
 
   if (!isOpen) return null;
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.modalOverlay} onClick={handleClose}>
       <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
-        
-        {/* Header Section */}
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Create Budget</h2>
+          <h2 className={styles.modalTitle}>{initialData ? "Edit Budget" : "Create Budget"}</h2>
           <button type="button" className={styles.closeButton} onClick={handleClose}>
             &times;
           </button>
         </div>
 
-        {/* Form Body Section */}
         <form onSubmit={handleSubmit} className={styles.formBody}>
-          
-          {/* Input: Category Name */}
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Category Name</label>
-            <input
-              type="text"
+            <label className={styles.formLabel}>Select Workspace Category</label>
+            <select
               required
-              placeholder="e.g., Marketing Ads, Cloud Servers"
               className={styles.inputField}
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
-            />
+            >
+              <option value="" disabled hidden>-- Choose a Category --</option>
+              {categories.length > 0 ? (
+                categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name} ({cat.type})
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>No categories found</option>
+              )}
+            </select>
           </div>
 
-          {/* Input: Budget Limit Amount */}
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Budget Limit</label>
             <div className={styles.currencyInputWrapper}>
@@ -149,7 +164,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
             </div>
           </div>
 
-          {/* Toggle Switch: Custom Dates Option */}
           <div className={styles.toggleRow}>
             <div className={styles.toggleText}>
               <span className={styles.toggleTitle}>Set Custom Dates</span>
@@ -166,7 +180,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
             </label>
           </div>
 
-          {/* Collapsible Section: Date Inputs */}
           <div className={`${styles.dateSectionContainer} ${isCustomPeriod ? styles.showDateSection : ""}`}>
             <div className={styles.dateGrid}>
               <div className={styles.formGroup}>
@@ -190,18 +203,15 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit }: CreateBudgetMod
             </div>
           </div>
 
-          {/* Footer Section: Action Buttons */}
           <div className={styles.formActions}>
             <button type="button" className={styles.cancelButton} onClick={handleClose}>
               Cancel
             </button>
             <button type="submit" className={styles.submitButton}>
-              Create Budget
+              {initialData ? "Save Changes" : "Create Budget"}
             </button>
           </div>
-
         </form>
-
       </div>
     </div>
   );

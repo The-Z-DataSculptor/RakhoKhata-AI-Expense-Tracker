@@ -4,23 +4,33 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import { Router } from "express";
-import rateLimit from "express-rate-limit"; // Built-in node engine wrapper to throttle malicious threat actors
-import { registerUser, loginUser, getMe, logoutUser } from "../controllers/authController"; 
+import rateLimit from "express-rate-limit";
+import { registerUser, loginUser, getMe, logoutUser } from "../controllers/authController";
+import { checkVaultPinStatus, setupVaultPin, verifyVaultPin, disableVaultPin } from "../controllers/vaultAuthController";
 import { verifyTokenGuard } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: SPECIFIC SECURITY RATE LIMITERS ===
    ========================================================================== */
-// Strict defensive shield targeting endpoints executing heavy cryptographic computations (bcrypt hashing)
 const strictAuthLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1-hour time window tracking index represented in milliseconds
-  max: 7,                   // FIXED: Limits the unique IP footprint to exactly 7 attempts per hour window scale
+  windowMs: 60 * 60 * 1000,
+  max: 7,
   message: {
     error: "Too many login or registration attempts. Brute-force security lock active. Please try again in an hour.",
   },
-  standardHeaders: true,    // Retains standard telemetry limits reporting transparency inside client response headers
-  legacyHeaders: false,     // Disables older X-RateLimit headers to keep network data payloads concise
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const pinAttemptLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    error: "Excessive PIN entry attempts detected. Vault securely locked for 15 minutes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 /* === SECTION 2 END === */
 
@@ -29,22 +39,18 @@ const strictAuthLimiter = rateLimit({
    ========================================================================== */
 const router = Router();
 
-// Public Route: http://localhost:5000/api/auth/signup
-// Guarded: Throttles registration flooding to prevent fake user inflation attacks
 router.post("/signup", strictAuthLimiter, registerUser);
-
-// Public Route: http://localhost:5000/api/auth/login
-// Guarded: Limits brute-force cracking attempts to shield CPU hash cycles from spike loops
 router.post("/login", strictAuthLimiter, loginUser);
-
-// Public Route: http://localhost:5000/api/auth/logout
-// Drops an expired blank cookie to securely clear the session tracking out of browser memory cache instantly
 router.post("/logout", logoutUser);
-
-// Protected Route: http://localhost:5000/api/auth/me
-// BY THE BOOK: The request stream must pass the verifyTokenGuard verification gate
-// before Express delivers execution context over to the getMe profile controller.
 router.get("/me", verifyTokenGuard, getMe);
-/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: VAULT PIN SECURITY SUB-ROUTES ===
+   ========================================================================== */
+router.get("/vault/pin-status", verifyTokenGuard, checkVaultPinStatus);
+router.post("/vault/pin-setup", verifyTokenGuard, strictAuthLimiter, setupVaultPin);
+router.post("/vault/pin-verify", verifyTokenGuard, pinAttemptLimiter, verifyVaultPin);
+router.post("/vault/pin-disable", verifyTokenGuard, pinAttemptLimiter, disableVaultPin);
+/* === SECTION 4 END === */
 
 export default router;

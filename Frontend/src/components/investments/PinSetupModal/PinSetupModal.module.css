@@ -127,7 +127,7 @@
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: MESSAGES AND ANIMATIONS ===
+   === SECTION 4: MESSAGES, ANIMATIONS & STATE UTILITIES ===
    ========================================================================== */
 .messageArea {
   height: 20px;
@@ -146,6 +146,14 @@
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--color-danger);
+}
+
+/* FIXED: Added a processing fade utility to lock down fields during backend queries */
+.processingFade {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+  transition: opacity 0.2s ease;
 }
 
 /* Keyframes Animations */

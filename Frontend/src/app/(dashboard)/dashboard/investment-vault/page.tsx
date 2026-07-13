@@ -2,39 +2,46 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DEPENDENCIES ===
    ========================================================================== */
 import React, { useState, useEffect } from "react";
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { investmentService, vaultAuthService } from "@/utils/api";
+
 import { VaultHeader } from "@/components/investments/VaultHeader/VaultHeader";
 import { VaultSummaryCards } from "@/components/investments/VaultSummaryCards/VaultSummaryCards";
 import { VaultAssetTable } from "@/components/investments/VaultAssetTable/VaultAssetTable";
-import { AddInvestmentForm } from "@/components/forms/AddInvestmentForm/AddInvestmentForm";
 import { VaultLockScreen } from "@/components/investments/VaultLockScreen/VaultLockScreen";
+import { AddInvestmentForm, type InvestmentAssetPayload, type InvestmentHistoryNode } from "@/components/forms/AddInvestmentForm/AddInvestmentForm";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
-import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
+import { toast } from "sonner";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPE CONTRACTS & CUSTOM MAPPINGS ===
    ========================================================================== */
-interface HistoryItem {
+interface BackendInvestmentItem {
   id: string;
-  date: string;
-  title: string;
-  note: string;
-  amountAtTime: string;
-  investedAtTime: number;
-  valueAtTime: number;
-  roiAtTime: string;
-  isProfitAtTime: boolean;
+  assetSymbol: string;
+  categoryClass: string;
+  isCustomProfile: boolean;
+  totalInvested: string | number;
+  quantity: string | number;
+  capitalCurrency: string;
+  strategyNote: string;
+  workspaceId: string;
+  name?: string;
+  icon?: string;
+  userNote?: string;
+  history?: InvestmentHistoryNode[];
 }
 
-export interface Asset {
+export interface HydratedAsset {
   id: string;
-  workspaceId: string; 
+  workspaceId: string;
   name: string;
   symbol: string;
   icon: string;
@@ -42,220 +49,291 @@ export interface Asset {
   currentPrice: number;
   quantityOwned: number;
   totalInvested: number;
-  currency?: string; 
-  history: HistoryItem[];
+  categoryClass: string;
+  isCustomProfile: boolean;
+  capitalCurrency: string;
+  history: InvestmentHistoryNode[];
+  // 👇 Enterprise fields for editing
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmountUSD: number;
 }
 
-export interface InvestmentFormData {
-  name: string;
-  symbol: string;
-  quantity: number;
-  price: number;
-  invested: number;
-  note: string;
-  currency?: string;
+interface ParsedStrategyData {
+  displayName: string;
+  displayIcon: string;
+  rawNote: string;
+  changeLog: InvestmentHistoryNode[];
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: STATE MECHANICS & FETCH PIPELINES ===
    ========================================================================== */
 export default function InvestmentVaultPage() {
-  const { currency: globalActiveCurrency } = useCurrency(); 
-  const { activeWorkspaceId } = useWorkspace(); 
-  
-  // --- SECURITY & LOCK STATE ---
-  const [isAppReady, setIsAppReady] = useState<boolean>(false);
-  const [isLocked, setIsLocked] = useState<boolean>(false);
-  const [isPinSetupOpen, setIsPinSetupOpen] = useState<boolean>(false);
+  const { activeWorkspaceId } = useWorkspace();
+  const { currency, convertAmount } = useCurrency();
 
-  // --- ASSET DATA STATE ---
-  const [assets, setAssets] = useState<Asset[]>([
-    {
-      id: "asset-1",
-      workspaceId: "ws-personal-default", 
-      name: "Bitcoin",
-      symbol: "BTC",
-      icon: "₿",
-      userNote: "Stored safely in my hardware wallet. Keeping this for long-term savings.",
-      currentPrice: 65000,
-      quantityOwned: 0.060,
-      totalInvested: 35000,
-      currency: "USD",
-      history: [
-        {
-          id: "node-1",
-          date: "2026-04-12",
-          title: "First Purchase",
-          note: "Bought my first setup amount of Bitcoin.",
-          amountAtTime: "0.060 BTC",
-          investedAtTime: 35000,
-          valueAtTime: 35000,
-          roiAtTime: "0.0% ROI",
-          isProfitAtTime: true
-        }
-      ]
-    },
-    {
-      id: "asset-2",
-      workspaceId: "ws-business-default", 
-      name: "Ethereum",
-      symbol: "ETH",
-      icon: "Ξ",
-      userNote: "Business treasury reserve. Holding for smart contract deployments.",
-      currentPrice: 3500,
-      quantityOwned: 5.5,
-      totalInvested: 15000,
-      currency: "USD",
-      history: []
-    }
-  ]);
-
-  // --- MODAL STATES ---
+  const [isVaultUnlocked, setIsVaultUnlocked] = useState<boolean>(false);
+  const [hasDatabasePin, setHasDatabasePin] = useState<boolean>(true);
+  const [assets, setAssets] = useState<HydratedAsset[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  
+  const [editingAsset, setEditingAsset] = useState<HydratedAsset | null>(null);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState<boolean>(false);
 
-  // Check vault validation parameters cleanly upon initial component compilation structures
   useEffect(() => {
-    const timerId = setTimeout(() => {
-      const savedPin = localStorage.getItem("vault_pin");
-      if (savedPin) {
-        setIsLocked(true);
+    let isMounted = true;
+    const verifySecurityStatus = async () => {
+      try {
+        const status = await vaultAuthService.checkStatus();
+        if (isMounted) {
+          setHasDatabasePin(status.hasPin);
+          if (!status.hasPin) {
+            setIsVaultUnlocked(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to sync security credentials:", err);
       }
-      setIsAppReady(true);
-    }, 0);
+    };
+    verifySecurityStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
 
-    return () => clearTimeout(timerId);
-  }, []);
+  useEffect(() => {
+    let isMounted = true;
+    if (!activeWorkspaceId || (hasDatabasePin && !isVaultUnlocked)) return;
 
-  const handleOpenAddModal = () => {
-    setEditingAsset(null);
-    setIsModalOpen(true);
+    const fetchVaultHoldings = async () => {
+      try {
+        const response = await investmentService.getByWorkspace(activeWorkspaceId);
+
+        if (isMounted) {
+          const typedResponse = response as { investments: BackendInvestmentItem[] };
+          const fetchedAssets = (typedResponse.investments || []).map((item: BackendInvestmentItem) => {
+            const parsedDetails: ParsedStrategyData = {
+              displayName: "",
+              displayIcon: "💰",
+              rawNote: "",
+              changeLog: []
+            };
+
+            const rawData: unknown = item.strategyNote;
+
+            try {
+              let currentData: unknown = rawData;
+              while (typeof currentData === 'string') {
+                if (!currentData.trim().startsWith('{') && !currentData.trim().startsWith('"') && !currentData.trim().startsWith('[')) {
+                  break;
+                }
+                currentData = JSON.parse(currentData) as unknown;
+              }
+
+              if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
+                const safeData = currentData as Record<string, unknown>;
+                parsedDetails.displayName = (safeData.displayName as string) || "";
+                parsedDetails.displayIcon = (safeData.displayIcon as string) || "💰";
+                parsedDetails.rawNote = (safeData.rawNote as string) || "";
+                parsedDetails.changeLog = (safeData.changeLog as InvestmentHistoryNode[]) || [];
+              }
+            } catch (jsonError) {
+              console.error("Failed to parse custom strategy metadata details object:", jsonError);
+            }
+
+            const rawQuantity = Number(item.quantity) || 0;
+            const databaseTotalInvested = Number(item.totalInvested) || 0;
+            const localizedTotalInvested = convertAmount(databaseTotalInvested, "PKR", currency);
+            const localizedUnitPrice = rawQuantity > 0 ? (localizedTotalInvested / rawQuantity) : 0;
+
+            return {
+              id: item.id,
+              workspaceId: item.workspaceId,
+              symbol: item.assetSymbol,
+              categoryClass: item.categoryClass,
+              isCustomProfile: item.isCustomProfile,
+              totalInvested: localizedTotalInvested, 
+              quantityOwned: rawQuantity,
+              currentPrice: localizedUnitPrice, 
+              capitalCurrency: currency, 
+              name: parsedDetails.displayName || item.name || `${item.assetSymbol} Position`,
+              icon: parsedDetails.displayIcon || item.icon || "💰",
+              userNote: parsedDetails.rawNote || "",
+              history: parsedDetails.changeLog || [],
+              // 👇 Enterprise fields for editing – using the actual capital currency from the database
+              originalAmount: databaseTotalInvested,
+              originalCurrency: item.capitalCurrency || "PKR", // fallback to PKR if missing
+              baseAmountUSD: databaseTotalInvested,
+            };
+          });
+
+          setAssets(fetchedAssets);
+        }
+      } catch (error: unknown) {
+        if (isMounted) {
+          const msg = error instanceof Error ? error.message : "Vault data link sync failure.";
+          toast.error(msg);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchVaultHoldings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspaceId, refreshKey, isVaultUnlocked, hasDatabasePin, currency, convertAmount]);
+
+  const handleEditClick = (asset: HydratedAsset) => {
+    setEditingAsset(asset);        
+    setIsModalOpen(true);          
   };
 
-  const handleOpenEditModal = (assetToEdit: Asset) => {
-    setEditingAsset(assetToEdit);
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteAsset = (assetId: string) => {
-    setAssets(prev => prev.filter(item => item.id !== assetId));
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingAsset(null);
-  };
-
-  const handleSaveAsset = (savedData: InvestmentFormData) => {
-    if (editingAsset) {
-      setAssets(prevAssets =>
-        prevAssets.map(item => 
-          item.id === editingAsset.id 
-            ? { 
-                ...item, 
-                name: savedData.name,
-                symbol: savedData.symbol,
-                currentPrice: savedData.price, 
-                quantityOwned: savedData.quantity, 
-                totalInvested: savedData.invested, 
-                userNote: savedData.note, 
-              } 
-            : item
-        )
-      );
-    } else {
-      const completelyNewAsset: Asset = {
-        id: `asset-${Date.now()}`,
-        workspaceId: activeWorkspaceId, 
-        name: savedData.name,
-        symbol: savedData.symbol,
-        icon: "📈", 
-        userNote: savedData.note,
-        currentPrice: savedData.price,
-        quantityOwned: savedData.quantity,
-        totalInvested: savedData.invested,
-        currency: savedData.currency || globalActiveCurrency.toUpperCase(),
-        history: [], 
+  const handleSaveInvestment = async (payload: InvestmentAssetPayload) => {
+    try {
+      // 👇 Use the enterprise fields from the form payload
+      const apiPayload = {
+        assetSymbol: payload.symbol,
+        categoryClass: payload.categoryClass,
+        isCustomProfile: payload.name.toLowerCase().includes("custom"),
+        totalInvested: payload.originalAmount,
+        capitalCurrency: payload.originalCurrency,
+        quantity: payload.quantityOwned,
+        strategyNote: JSON.stringify({
+          displayName: payload.name,
+          displayIcon: payload.icon,
+          rawNote: payload.userNote,
+          changeLog: payload.history
+        }),
+        workspaceId: activeWorkspaceId,
+        // 👇 ENTERPRISE FIELDS
+        originalAmount: payload.originalAmount,
+        originalCurrency: payload.originalCurrency,
+        baseAmountUSD: payload.baseAmountUSD,
       };
-      setAssets(prevAssets => [completelyNewAsset, ...prevAssets]);
+
+      if (editingAsset) {
+        await investmentService.update(editingAsset.id, apiPayload);
+        toast.success("Asset profile updated successfully!");
+      } else {
+        await investmentService.create(apiPayload);
+        toast.success("New asset profile securely appended to storage trackers.");
+      }
+
+      setIsModalOpen(false);
+      setEditingAsset(null);        
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Database ingestion processing crash.";
+      toast.error(msg);
     }
-    handleCloseModal();
   };
 
-  // --- DATA FILTERING ENGINE ---
-  const filteredAssets = assets.filter(item => item.workspaceId === activeWorkspaceId);
+  const handleDeleteAsset = async (id: string) => {
+    if (!window.confirm("Are you sure you want to remove this asset row from your secure vault?")) return;
+    try {
+      await investmentService.delete(id);
+      toast.success("Asset row profile cleanly purged out of records.");
+      setRefreshKey((prev) => prev + 1);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Teardown routine sequence error.";
+      toast.error(msg);
+    }
+  };
 
-  const totalCurrentValue = filteredAssets.reduce((sum, item) => sum + (item.quantityOwned * item.currentPrice), 0);
-  const totalInvestedCapital = filteredAssets.reduce((sum, item) => sum + item.totalInvested, 0);
+  const globalTotalInvested = assets.reduce((sum, item) => sum + item.totalInvested, 0);
+  const totalPositionsCount = assets.length;
+  /* === SECTION 3 END === */
 
-  const topRunner = filteredAssets.length > 0 ? filteredAssets[0] : null;
+  /* ==========================================================================
+     === SECTION 4: STRUCTURAL LAYOUT OUTPUT SYSTEM (JSX) ===
+     ========================================================================== */
 
-  if (!isAppReady) {
-    return null; 
+  if (hasDatabasePin && !isVaultUnlocked) {
+    return (
+      <div className={styles.vaultMainPageWrapper}>
+        <VaultLockScreen onUnlock={() => setIsVaultUnlocked(true)} />
+      </div>
+    );
   }
 
-  if (isLocked) {
-    return <VaultLockScreen onUnlock={() => setIsLocked(false)} />;
+  if (isLoading && !isVaultUnlocked) {
+    return (
+      <div className={styles.loadingSpinnerContainer}>
+        <p className={styles.loadingPulseText}>Synchronizing Secure Asset Portfolios...</p>
+      </div>
+    );
   }
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
   return (
-    <main className={styles.vaultMainPageWrapper}>
-      
-      {/* HEADER SECTION PANEL CONTROLS */}
+    <div className={styles.vaultMainPageWrapper}>
+
       <VaultHeader 
-        onAddInvestmentClick={handleOpenAddModal} 
-        onSetupPinClick={() => setIsPinSetupOpen(true)}
+        hasPinEnabled={hasDatabasePin}
+        onAddAssetClick={() => {
+          setEditingAsset(null);  
+          setIsModalOpen(true);
+        }} 
+        onSetupPinClick={() => setIsSecurityModalOpen(true)}
       />
 
-      {/* SUMMARY CAPITAL METRIC TRACKERS */}
-      <VaultSummaryCards 
-        totalCurrentValueUSD={totalCurrentValue}
-        totalInvestedCapitalUSD={totalInvestedCapital}
-        topRunnerLabel={topRunner ? topRunner.symbol : "None"}
-        portfolioMixLabel={`${filteredAssets.length} Active Tracks`}
-        activeAssetsCount={filteredAssets.length}
+      <VaultSummaryCards
+        currency={currency}
+        positionsCount={totalPositionsCount}
+        totalInvested={globalTotalInvested}
       />
 
-      {/* MAIN DATA STORAGE SHEET COMPONENT */}
-      <VaultAssetTable 
-        assets={filteredAssets} 
-        onEditClick={handleOpenEditModal} 
-        onDeleteClick={handleDeleteAsset}
-      />
+      <main className={styles.mainContentLayoutBlock}>
+        <VaultAssetTable
+          assets={assets}
+          currency={currency}
+          onDeleteAsset={handleDeleteAsset}
+          onEditClick={handleEditClick}  
+        />
+      </main>
 
-      {/* ADD / EDIT ASSET OVERLAY DIALOGS */}
       {isModalOpen && (
-        <div className={styles.modalOverlay} onClick={handleCloseModal}>
+        <div className={styles.modalOverlay} onClick={() => {
+          setIsModalOpen(false);
+          setEditingAsset(null);  
+        }}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <AddInvestmentForm 
-              onClose={handleCloseModal} 
-              onSave={handleSaveAsset} 
+            <AddInvestmentForm
+              onClose={() => {
+                setIsModalOpen(false);
+                setEditingAsset(null);  
+              }}
+              onSave={handleSaveInvestment}
+              initialData={editingAsset}  
             />
           </div>
         </div>
       )}
 
-      {/* PIN SETUP INTERACTIVE POPUP SHEET */}
-      {/* IMPROVEMENT: Now conditionally checked to prevent blank container footprints */}
-      {isPinSetupOpen && (
-        <PinSetupModal 
-          isOpen={isPinSetupOpen}
-          onClose={() => setIsPinSetupOpen(false)}
-          onSuccess={() => setIsPinSetupOpen(false)} 
-        />
-      )}
+      <PinSetupModal 
+        isOpen={isSecurityModalOpen}
+        mode="SETUP"
+        onClose={() => setIsSecurityModalOpen(false)}
+        onSuccess={() => {
+          setIsSecurityModalOpen(false);
+          setIsVaultUnlocked(false); 
+          setRefreshKey((prev) => prev + 1); 
+        }} 
+      />
 
-      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>
 
-    </main>
+    </div>
   );
 }
 /* === SECTION 4 END === */

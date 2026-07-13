@@ -5,22 +5,32 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useCallback, useEffect } from "react";
-import { useForm, useWatch, type FieldError } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner"; 
+import { toast } from "sonner";
 import { transactionFormSchema, type TransactionFormValues } from "@/schemas/transactions";
-import type { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
-import styles from "./TransactionForm.module.css";
+import { Category, Transaction } from "@/utils/api";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import styles from "./TransactionForm.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
 interface TransactionFormProps {
-  onAddTransaction: (newTx: TransactionRecord) => void;
-  availableCategories: string[];
-  initialData?: TransactionRecord | null;
+  onAddTransaction: (payload: {
+    originalAmount: number;
+    originalCurrency: string;
+    baseAmountUSD: number;
+    type: string;
+    description: string;
+    date: string;
+    workspaceId: string;
+    categoryId: string;
+    id?: string;
+  }) => Promise<void>;
+  availableCategories: Category[];
+  initialData?: Transaction | null;
   onCancel?: () => void;
 }
 /* === SECTION 2 END === */
@@ -35,13 +45,12 @@ export function TransactionForm({
   onCancel,
 }: TransactionFormProps) {
   const isEditMode = Boolean(initialData);
-  const { currency } = useCurrency();
-
-  // Create a clean "YYYY-MM-DD" string for today's default date
+  const { currency, convertAmount } = useCurrency();
   const defaultDateString = new Date().toISOString().substring(0, 10);
 
-  /* FIXED: Removed the explicit <TransactionFormValues> generic here. 
-     This allows React Hook Form to read Zod's input/output definitions perfectly without errors. */
+  // 👇 FIXED: Explicitly type the resolver
+  const resolver = zodResolver(transactionFormSchema) as Resolver<TransactionFormValues>;
+
   const {
     register,
     handleSubmit,
@@ -49,34 +58,33 @@ export function TransactionForm({
     setValue,
     control,
     formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(transactionFormSchema),
+  } = useForm<TransactionFormValues>({
+    resolver, // 👈 Use the typed resolver
     mode: "onBlur",
     defaultValues: {
       date: defaultDateString,
       description: "",
       category: "",
-      type: "EXPENSE" as "EXPENSE" | "INCOME",
+      type: "EXPENSE",
       amount: 0,
     },
   });
 
-  // Watch the type field to update our UI buttons dynamically
   const currentType = useWatch({
     control,
     name: "type",
     defaultValue: "EXPENSE",
   });
 
-  // Handle setting up data if we are editing an old transaction
   useEffect(() => {
     if (initialData) {
+      const displayAmount = convertAmount(Number(initialData.amount), "USD", currency);
       reset({
-        date: initialData.date,
+        date: new Date(initialData.date).toISOString().substring(0, 10),
         description: initialData.description,
-        category: initialData.category ? initialData.category.toLowerCase() : "",
+        category: initialData.categoryId,
         type: (initialData.type || "EXPENSE").toUpperCase() as "EXPENSE" | "INCOME",
-        amount: initialData.amount,
+        amount: Number(displayAmount.toFixed(2)),
       });
     } else {
       reset({
@@ -87,33 +95,32 @@ export function TransactionForm({
         amount: 0,
       });
     }
-  }, [initialData, reset, defaultDateString]);
+  }, [initialData, reset, defaultDateString, convertAmount, currency]);
 
-  /* FIXED: Typed the argument 'data' directly instead of mapping the wrapper function signature.
-     This plays beautifully with implicit handleSubmit typings. */
   const onSubmit = useCallback(
     async (data: TransactionFormValues) => {
       try {
-        const transactionId = initialData ? initialData.id : `tx-${Date.now()}`;
+        const originalAmount = Number(data.amount);
+        const baseAmountUSD = convertAmount(originalAmount, currency, "USD");
 
-        const compiledRecord: TransactionRecord = {
-          id: transactionId,
-          date: data.date,
+        const payload = {
+          originalAmount,
+          originalCurrency: currency,
+          baseAmountUSD,
+          type: data.type.toUpperCase(),
           description: data.description.trim(),
-          category: data.category ? data.category.toLowerCase() : "",
-          amount: data.amount,
-          type: data.type.toLowerCase() as "income" | "expense",
+          date: new Date(data.date).toISOString(),
+          categoryId: data.category,
+          workspaceId: "",
+          id: initialData?.id,
         };
 
-        onAddTransaction(compiledRecord);
+        await onAddTransaction(payload);
 
-        if (initialData) {
-          toast.success("Transaction changes modified successfully!");
+        if (isEditMode) {
+          toast.success("Transaction updated successfully!");
         } else {
-          toast.success("New transaction entry recorded successfully!");
-        }
-
-        if (!initialData) {
+          toast.success("Transaction recorded successfully!");
           reset({
             date: defaultDateString,
             description: "",
@@ -122,44 +129,32 @@ export function TransactionForm({
             amount: 0,
           });
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to save transaction:", error);
-        toast.error("Could not secure ledger entry records. Please verify field inputs.");
+        toast.error("Could not save transaction. Please check your inputs.");
       }
     },
-    [initialData, onAddTransaction, reset, defaultDateString]
+    [initialData, isEditMode, onAddTransaction, reset, defaultDateString, convertAmount, currency]
   );
 
-  // Helper safely grabs error message text
-  const getErrorMessage = (error: FieldError | undefined): string | undefined => {
-    if (!error) return undefined;
-    return error.message;
-  };
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.formCard}>
       <div className={styles.headerArea}>
         <h3 className={styles.formTitle}>
           {isEditMode ? "Modify Transaction Details" : "Create Transaction Entry"}
         </h3>
-        <p className={styles.formSubtitle}>
-          Log financial cash flows into your accounting ledger books.
-        </p>
+        <p className={styles.formSubtitle}>Log financial cash flows into your accounting ledger.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout}>
-        {/* ROW 1: DATE & CLASSIFICATION */}
         <div className={styles.formRowSideBySide}>
           <div className={styles.fieldGroup}>
-            <label className={styles.label} htmlFor="date">
-              Posting Date
-            </label>
+            <label className={styles.label} htmlFor="date">Posting Date</label>
             <input id="date" type="date" className={styles.inputField} {...register("date")} />
-            {errors.date && <span className={styles.errorMessage}>{getErrorMessage(errors.date as FieldError)}</span>}
+            {errors.date && <span className={styles.errorMessage}>{errors.date.message}</span>}
           </div>
 
           <div className={styles.fieldGroup}>
@@ -167,19 +162,14 @@ export function TransactionForm({
             <div className={styles.segmentedControl}>
               <button
                 type="button"
-                className={`${styles.segmentOption} ${
-                  currentType === "EXPENSE" ? styles.segmentActiveExpense : ""
-                }`}
+                className={`${styles.segmentOption} ${currentType === "EXPENSE" ? styles.segmentActiveExpense : ""}`}
                 onClick={() => setValue("type", "EXPENSE", { shouldValidate: true })}
               >
                 Expense
               </button>
-
               <button
                 type="button"
-                className={`${styles.segmentOption} ${
-                  currentType === "INCOME" ? styles.segmentActiveIncome : ""
-                }`}
+                className={`${styles.segmentOption} ${currentType === "INCOME" ? styles.segmentActiveIncome : ""}`}
                 onClick={() => setValue("type", "INCOME", { shouldValidate: true })}
               >
                 Income
@@ -188,11 +178,8 @@ export function TransactionForm({
           </div>
         </div>
 
-        {/* ROW 2: DESCRIPTION */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="description">
-            Ledger Description
-          </label>
+          <label className={styles.label} htmlFor="description">Ledger Description</label>
           <input
             id="description"
             type="text"
@@ -200,36 +187,27 @@ export function TransactionForm({
             placeholder="e.g., Office Supplies, Client Retainer, Cloud hosting"
             {...register("description")}
           />
-          {errors.description && (
-            <span className={styles.errorMessage}>{getErrorMessage(errors.description as FieldError)}</span>
-          )}
+          {errors.description && <span className={styles.errorMessage}>{errors.description.message}</span>}
         </div>
 
-        {/* ROW 3: CATEGORY & AMOUNT */}
         <div className={styles.formRowSideBySide}>
           <div className={styles.fieldGroup}>
-            <label className={styles.label} htmlFor="category">
-              Category Allocation
-            </label>
+            <label className={styles.label} htmlFor="category">Category Allocation</label>
             <div className={styles.selectWrapper}>
               <select id="category" className={styles.selectField} {...register("category")}>
                 <option value="">-- Select Category --</option>
-                {availableCategories.map((catName) => (
-                  <option key={catName} value={catName.toLowerCase()}>
-                    {catName}
+                {availableCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
                   </option>
                 ))}
               </select>
             </div>
-            {errors.category && (
-              <span className={styles.errorMessage}>{getErrorMessage(errors.category as FieldError)}</span>
-            )}
+            {errors.category && <span className={styles.errorMessage}>{errors.category.message}</span>}
           </div>
 
           <div className={styles.fieldGroup}>
-            <label className={styles.label} htmlFor="amount">
-              Transaction Value
-            </label>
+            <label className={styles.label} htmlFor="amount">Transaction Value</label>
             <div className={styles.currencyInputContainer}>
               <input
                 id="amount"
@@ -241,16 +219,14 @@ export function TransactionForm({
               />
               <span className={styles.currencyBadge}>{currency}</span>
             </div>
-            {errors.amount && <span className={styles.errorMessage}>{getErrorMessage(errors.amount as FieldError)}</span>}
+            {errors.amount && <span className={styles.errorMessage}>{errors.amount.message}</span>}
           </div>
         </div>
 
-        {/* BUTTON ACTIONS GROUP */}
         <div className={styles.buttonGroup}>
           <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
             {isSubmitting ? "Processing..." : isEditMode ? "Commit Changes" : "Record Entry"}
           </button>
-
           {onCancel && (
             <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={isSubmitting}>
               Cancel

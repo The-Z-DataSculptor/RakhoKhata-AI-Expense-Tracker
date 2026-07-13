@@ -7,13 +7,16 @@
 import React, { useState, useSyncExternalStore } from "react";
 import { FiSun, FiMoon, FiMonitor, FiBell, FiCheck, FiMenu, FiX } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
-import { useCurrency, CurrencyType } from "@/app/(dashboard)/context/CurrencyContext";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./DashboardNavbar.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
+// FIXED: Define CurrencyType locally since it's not exported from the context
+type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAR" | "BHD";
+
 interface CurrencyOption {
   code: CurrencyType;
   symbol: string;
@@ -21,7 +24,6 @@ interface CurrencyOption {
   flag: string;
 }
 
-// NEW: Explicitly accept user profile parameters dropped from the Server layout matrix
 interface DashboardNavbarProps {
   user?: {
     id: string;
@@ -73,7 +75,6 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
 
   const activeCurrencyDetails = CURRENCY_OPTIONS.find(c => c.code === currency);
 
-  // NEW ATTENTION TO DETAIL: Extract only the user's first name for a clean, personal greeting header card
   const displayGreetingName = user?.name ? user.name.split(" ")[0] : "User";
 
   let greeting = "Welcome";
@@ -104,7 +105,6 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
       {/* LEFT SECTION: USER GREETING DECK */}
       <div className={styles.welcomeSection}>
         <h2 className={styles.greetingTitle}>
-          {/* DYNAMIC: Welcomes you cleanly by your real database account identifier */}
           {greeting}, <span className={styles.userName}>{displayGreetingName}</span>
         </h2>
         <p className={styles.dateSubtext}>{formattedDate}</p>

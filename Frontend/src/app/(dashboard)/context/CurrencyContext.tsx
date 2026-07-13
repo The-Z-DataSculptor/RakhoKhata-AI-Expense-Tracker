@@ -4,132 +4,122 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { getExchangeRates } from "@/utils/exchangeRate";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPES ===
    ========================================================================== */
-// FIX: Changed "QAT" back to "QAR". QAR is the universally accepted standard code for Qatar.
-export type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAR" | "BHD";
-
 interface CurrencyContextType {
-  currency: CurrencyType;
-  setCurrency: (currency: CurrencyType) => void;
-  formatAmount: (amount: number, sourceCurrency?: CurrencyType) => string;
-  convertAmount: (amount: number, from: CurrencyType, to: CurrencyType) => number;
+  currency: string;
+  setCurrency: (currency: string) => void;
+  formatAmount: (amount: number, sourceCurrency?: string) => string;
+  convertAmount: (amount: number, from: string, to: string) => number;
+  isLoadingRates: boolean;
 }
 
-// Define how the symbols look when printed on the screen
-const CURRENCY_SYMBOLS: Record<CurrencyType, string> = {
-  PKR: "Rs. ",
-  USD: "$ ",
-  EUR: "€ ",
-  GBP: "£ ",
-  INR: "₹ ",
-  AED: "AED ",
-  SAR: "SAR ",
-  KWD: "KWD ",
-  OMR: "OMR ",
-  QAR: "QAR ",
-  BHD: "BHD ",
-};
+interface CurrencyProviderProps {
+  children: React.ReactNode;
+}
 
-// Static conversion rates (Base: 1 USD)
-const EXCHANGE_RATES_TO_1_USD: Record<CurrencyType, number> = {
-  USD: 1.00,
-  PKR: 278.50,
-  EUR: 0.87,
-  GBP: 0.75,
-  INR: 95.60,
-  AED: 3.67,
-  SAR: 3.75,
-  KWD: 0.31,
-  OMR: 0.38,
-  QAR: 3.64,
-  BHD: 0.38,
-};
-
-// A simple array to check if a saved currency is safe to use
-const VALID_CURRENCIES: CurrencyType[] = ["PKR", "USD", "EUR", "GBP", "INR", "AED", "SAR", "KWD", "OMR", "QAR", "BHD"];
+type RateMap = Record<string, number>;
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: CONTEXT ===
    ========================================================================== */
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
-export function CurrencyProvider({ children }: { children: ReactNode }) {
-  // We start with PKR as the default before the browser has time to check saved settings
-  const [currency, setCurrencyState] = useState<CurrencyType>("PKR");
+export function CurrencyProvider({ children }: CurrencyProviderProps) {
+  const [currency, setCurrency] = useState<string>("USD");
+  const [rates, setRates] = useState<RateMap>({ USD: 1 });
+  const [isLoadingRates, setIsLoadingRates] = useState<boolean>(true);
 
-  // We use this reference to make sure we only read from the browser's memory once
-  const isMountedRef = useRef(false);
-
-  // When the app first loads, check if the user has a saved currency from a previous visit
+  // Fetch live exchange rates on mount
   useEffect(() => {
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
-      const savedCurrency = localStorage.getItem("dashboard_currency");
-
-      // If they have a saved currency and it's in our approved list, use it!
-      if (savedCurrency && VALID_CURRENCIES.includes(savedCurrency as CurrencyType)) {
-        setCurrencyState(savedCurrency as CurrencyType);
+    let isMounted = true;
+    const fetchRates = async () => {
+      try {
+        const exchangeRates = await getExchangeRates();
+        if (isMounted) {
+          setRates(exchangeRates);
+          setIsLoadingRates(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch exchange rates:", error);
+        // Fallback to USD-only (no conversion) if API fails
+        if (isMounted) {
+          setRates({ USD: 1 });
+          setIsLoadingRates(false);
+        }
       }
-    }
+    };
+    fetchRates();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Action: Updates the currency on screen AND saves it to the browser for next time
-  const setCurrency = (newCurrency: CurrencyType) => {
-    setCurrencyState(newCurrency);
-    localStorage.setItem("dashboard_currency", newCurrency);
+  /**
+   * Convert an amount from one currency to another.
+   * If rates are still loading, falls back to a 1:1 conversion.
+   */
+  const convertAmount = (amount: number, from: string, to: string): number => {
+    if (isLoadingRates || amount === 0 || from === to) {
+      return amount;
+    }
+
+    const fromUpper = from.toUpperCase();
+    const toUpper = to.toUpperCase();
+
+    const rateFrom = rates[fromUpper];
+    const rateTo = rates[toUpper];
+
+    // If we don't have rates for these currencies, return the original amount
+    if (!rateFrom || !rateTo) {
+      return amount;
+    }
+
+    const converted = (amount / rateFrom) * rateTo;
+    return Math.round(converted * 100) / 100;
   };
 
-  // Action: Does the math to convert money from one country's value to another
-  const convertAmount = (amount: number, from: CurrencyType, to: CurrencyType): number => {
-    if (from === to) return amount; // No math needed if they are the same!
+  /**
+   * Format an amount with the current currency symbol.
+   */
+  const formatAmount = (amount: number, sourceCurrency?: string): string => {
+    // If a source currency is provided, convert it to the active currency
+    const finalAmount = sourceCurrency
+      ? convertAmount(amount, sourceCurrency, currency)
+      : amount;
 
-    // Step 1: Convert original money into US Dollars first (as a middle ground)
-    const amountInUSD = amount / EXCHANGE_RATES_TO_1_USD[from];
-
-    // Step 2: Convert those US Dollars into the final target currency
-    return amountInUSD * EXCHANGE_RATES_TO_1_USD[to];
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency,
+    }).format(finalAmount);
   };
 
-  // Action: Takes a raw number, converts it to the active currency, and adds commas and symbols
-  const formatAmount = (amount: number, sourceCurrency: CurrencyType = "PKR") => {
-    // Math: get the updated value based on what currency the user has chosen to view
-    const convertedValue = convertAmount(amount, sourceCurrency, currency);
-
-    // Visuals: Make the numbers look pretty (show cents for USD/EUR, whole numbers for others)
-    const formattedNumber = new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0,
-      maximumFractionDigits: currency === "USD" || currency === "EUR" ? 2 : 0,
-    }).format(convertedValue);
-
-    // Attach the correct symbol (like $ or Rs.) to the front of the number
-    const symbolPrefix = CURRENCY_SYMBOLS[currency] || "";
-    return `${symbolPrefix}${formattedNumber}`;
+  const value = {
+    currency,
+    setCurrency,
+    formatAmount,
+    convertAmount,
+    isLoadingRates,
   };
 
-  /* === SECTION 3 END === */
-
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, formatAmount, convertAmount }}>
+    <CurrencyContext.Provider value={value}>
       {children}
     </CurrencyContext.Provider>
   );
 }
 
-// Hook to use these tools easily in any other file
-export function useCurrency() {
+export function useCurrency(): CurrencyContextType {
   const context = useContext(CurrencyContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useCurrency must be used within a CurrencyProvider");
   }
   return context;
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

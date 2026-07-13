@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { useState } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { HydratedAsset } from "@/app/(dashboard)/dashboard/investment-vault/page";
 import styles from "./VaultAssetTable.module.css";
 /* === SECTION 1 END === */
 
@@ -15,15 +16,19 @@ import styles from "./VaultAssetTable.module.css";
 const ChevronDownIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
 );
+
 const PencilIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
 );
+
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
 );
+
 const BookOpenIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
 );
+
 const HistoryIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
 );
@@ -32,50 +37,68 @@ const HistoryIcon = () => (
 /* ==========================================================================
    === SECTION 3: TYPES & INTERFACES ===
    ========================================================================== */
-interface HistoryItem {
-  id: string;
-  date: string;
-  title: string;
-  note: string;
-  amountAtTime: string;
-  investedAtTime: number;
-  valueAtTime: number;
-  roiAtTime: string;
-  isProfitAtTime: boolean;
-}
-
-interface Asset {
-  id: string;
-  workspaceId: string; // FIX: Added workspaceId to match the main page exactly!
-  name: string;
-  symbol: string;
-  icon: string;
-  userNote: string;
-  currentPrice: number;
-  quantityOwned: number;
-  totalInvested: number;
-  currency?: string; 
-  history: HistoryItem[];
+interface SafeHistoryNode {
+  id?: string;
+  title?: string;
+  date?: string;
+  amountAtTime?: string | number;
+  valueAtTime?: string | number;
+  investedAtTime?: string | number;
+  note?: string;
 }
 
 interface VaultAssetTableProps {
-  assets: Asset[];
-  onEditClick: (asset: Asset) => void;
-  onDeleteClick: (id: string) => void;
+  assets: HydratedAsset[];
+  currency?: string; // FIXED: Made this optional so the parent page doesn't throw a fit if it passes it
+  onDeleteAsset: (id: string) => void;
+  onEditClick?: (asset: HydratedAsset) => void;
 }
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: COMPONENT LOGIC ===
+   === SECTION 4: HELPER – EXTRACT RAW NOTE ===
    ========================================================================== */
-export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAssetTableProps) {
-  const { formatAmount, currency: globalFallbackCurrency } = useCurrency();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+function extractNoteFromUserNote(input: string): string {
+  if (!input) return "";
+
+  if (typeof input === "string" && input.trim().startsWith("{")) {
+    try {
+      const parsed: unknown = JSON.parse(input);
+
+      if (
+        parsed !== null &&
+        typeof parsed === "object" &&
+        "rawNote" in parsed
+      ) {
+        const obj = parsed as Record<string, unknown>;
+        const raw = obj.rawNote;
+        return typeof raw === "string" ? raw : "";
+      }
+
+      if (typeof parsed === "string") {
+        return parsed;
+      }
+    } catch {
+      // Not valid JSON, return original
+    }
+  }
+
+  return input;
+}
 /* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 5: RENDER (JSX) ===
+   === SECTION 5: MAIN COMPONENT ===
    ========================================================================== */
+export function VaultAssetTable({
+  assets,
+  // FIXED: Removed the unused 'currency' variable completely from destructuring
+  onDeleteAsset,
+  onEditClick,
+}: VaultAssetTableProps) {
+  const { formatAmount } = useCurrency();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <section className={styles.container}>
       
@@ -90,28 +113,32 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
       <div className={styles.assetList}>
         {assets.map((asset) => {
           const isExpanded = expandedId === asset.id;
-          
-          // FIX: The double-cast (unknown -> typeof) maps the generic string perfectly into 
-          // whatever strict CurrencyType union your context requires, bypassing the error entirely.
-          const itemNativeCurrency = (asset.currency || globalFallbackCurrency || "USD") as unknown as typeof globalFallbackCurrency;
 
-          // --- CALCULATIONS FOR MAIN ROW ---
+          // ----- CALCULATE PROFIT/LOSS METRICS -----
           const currentTotalValue = asset.quantityOwned * asset.currentPrice;
           const totalProfitLoss = currentTotalValue - asset.totalInvested;
           const isProfit = totalProfitLoss >= 0;
-          
+
           const roiValue = asset.totalInvested > 0
             ? (totalProfitLoss / asset.totalInvested) * 100
             : 0;
 
+          const displayNote = extractNoteFromUserNote(asset.userNote);
+
           return (
-            <div 
-              key={asset.id} 
-              className={`${styles.assetCard} ${isProfit ? styles.profitCardTheme : styles.lossCardTheme} ${isExpanded ? styles.activeCard : ""}`}
+            <div
+              key={asset.id}
+              className={`
+                ${styles.assetCard} 
+                ${isProfit ? styles.profitCardTheme : styles.lossCardTheme} 
+                ${isExpanded ? styles.activeCard : ""}
+              `}
             >
-              <div className={styles.rowGrid} onClick={() => setExpandedId(isExpanded ? null : asset.id)}>
+              <div
+                className={styles.rowGrid}
+                onClick={() => setExpandedId(isExpanded ? null : asset.id)}
+              >
                 
-                {/* 1. ASSET NAME */}
                 <div className={styles.cell}>
                   <div className={styles.assetIdentity}>
                     <span className={styles.avatar}>{asset.icon}</span>
@@ -122,35 +149,40 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                   </div>
                 </div>
 
-                {/* 2. TOTAL QUANTITY */}
                 <div className={styles.cell}>
                   <div className={styles.dataStack}>
                     <span className={styles.primaryNumber}>
-                      {asset.quantityOwned} <span className={styles.inlineTickerSymbol}>{asset.symbol}</span>
+                      {asset.quantityOwned}{" "}
+                      <span className={styles.inlineTickerSymbol}>{asset.symbol}</span>
                     </span>
                     <span className={styles.secondaryLabel}>
-                      at {formatAmount(asset.currentPrice, itemNativeCurrency)} avg
+                      at {formatAmount(asset.currentPrice)} avg
                     </span>
                   </div>
                 </div>
 
-                {/* 3. TOTAL INVESTED */}
                 <div className={styles.cell}>
                   <div className={styles.dataStack}>
                     <span className={styles.primaryValueNumber}>
-                      {formatAmount(asset.totalInvested, itemNativeCurrency)} <span className={styles.inlineValueContext}>Spent</span>
+                      {formatAmount(asset.totalInvested)}{" "}
+                      <span className={styles.inlineValueContext}>Spent</span>
                     </span>
                     <span className={styles.secondarySpentLabel}>
-                      Value: {formatAmount(currentTotalValue, itemNativeCurrency)}
+                      Value: {formatAmount(currentTotalValue)}
                     </span>
                   </div>
                 </div>
 
-                {/* 4. PROGRESS */}
                 <div className={styles.cell}>
-                  <div className={`${styles.cleanProgressStack} ${isProfit ? styles.profitText : styles.lossText}`}>
+                  <div
+                    className={`
+                      ${styles.cleanProgressStack} 
+                      ${isProfit ? styles.profitText : styles.lossText}
+                    `}
+                  >
                     <span className={styles.progressAmount}>
-                      {isProfit ? "+" : ""}{formatAmount(totalProfitLoss, itemNativeCurrency)}
+                      {isProfit ? "+" : ""}
+                      {formatAmount(totalProfitLoss)}
                     </span>
                     <span className={styles.progressPercentage}>
                       {isProfit ? "▲" : "▼"} {Math.abs(roiValue).toFixed(1)}%
@@ -158,37 +190,47 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                   </div>
                 </div>
 
-                {/* ACTIONS CONTROLS */}
-                <div className={styles.cell} style={{ justifyContent: 'flex-end' }}>
+                <div className={styles.cell} style={{ justifyContent: "flex-end" }}>
                   <div className={styles.actionsGroup}>
-                    <button 
-                      className={styles.iconBtn} 
-                      title="Edit Asset" 
+                    
+                    {onEditClick && (
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        title="Edit this asset"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditClick(asset);
+                        }}
+                      >
+                        <PencilIcon />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      title="Delete this asset"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEditClick(asset);
-                      }}
-                    >
-                      <PencilIcon />
-                    </button>
-                    <button 
-                      className={styles.iconBtn} 
-                      title="Delete Asset" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteClick(asset.id);
+                        onDeleteAsset(asset.id);
                       }}
                     >
                       <TrashIcon />
                     </button>
-                    <div className={`${styles.accordionIndicatorArrow} ${isExpanded ? styles.arrowRotated : ""}`}>
+
+                    <div
+                      className={`
+                        ${styles.accordionIndicatorArrow} 
+                        ${isExpanded ? styles.arrowRotated : ""}
+                      `}
+                    >
                       <ChevronDownIcon />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* EXPANDABLE LEDGER HISTORY TIMELINE DRAWER */}
               {isExpanded && (
                 <div className={styles.drawerContent}>
                   
@@ -198,7 +240,9 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                       <span className={styles.journalTitleBadge}>
                         <BookOpenIcon /> My Strategy Note
                       </span>
-                      <p className={styles.journalQuote}>&quot;{asset.userNote || "No active asset logging notes typed yet."}&quot;</p>
+                      <p className={styles.journalQuote}>
+                        &quot;{displayNote || "No active asset logging notes typed yet."}&quot;
+                      </p>
                     </div>
                   </div>
 
@@ -207,49 +251,73 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
                       <HistoryIcon />
                       <h4 className={styles.historySectionTitle}>History Timeline Ledger</h4>
                     </div>
-                    
+
                     <div className={styles.timelineList}>
                       {asset.history && asset.history.length > 0 ? (
                         asset.history.map((item) => {
-                          const historicalProfitLoss = item.valueAtTime - item.investedAtTime;
+                          const historyItem = item as unknown as SafeHistoryNode;
+
+                          const historicalInvested = Number(historyItem.investedAtTime) || 0;
+                          const historicalValue = Number(historyItem.valueAtTime) || 0;
+                          const historicalProfitLoss = historicalValue - historicalInvested;
                           const historicalIsProfit = historicalProfitLoss >= 0;
-                          
-                          const historicalRoi = item.investedAtTime > 0
-                            ? (historicalProfitLoss / item.investedAtTime) * 100
+
+                          const historicalRoi = historicalInvested > 0
+                            ? (historicalProfitLoss / historicalInvested) * 100
                             : 0;
 
                           return (
-                            <div key={item.id} className={styles.timelineStepCard}>
+                            <div
+                              key={historyItem.id || Math.random().toString()}
+                              className={styles.timelineStepCard}
+                            >
                               <div className={styles.stepHeader}>
-                                <span className={styles.stepTitle}>{item.title}</span>
-                                <span className={styles.stepDate}>{item.date}</span>
+                                <span className={styles.stepTitle}>
+                                  {historyItem.title || "Position Log Update"}
+                                </span>
+                                <span className={styles.stepDate}>
+                                  {historyItem.date || "N/A"}
+                                </span>
                               </div>
-                              
+
                               <div className={styles.stepMetricsGrid}>
                                 <div className={styles.miniDataCell}>
-                                  <span className={styles.stepMetaLabel}>Quantity Owned</span>
-                                  <span className={styles.stepMetaValue}>{item.amountAtTime}</span>
+                                  <span className={styles.stepMetaLabel}>Quantity Traded</span>
+                                  <span className={styles.stepMetaValue}>
+                                    {historyItem.amountAtTime || "0"}
+                                  </span>
                                 </div>
                                 <div className={styles.miniDataCell}>
                                   <span className={styles.stepMetaLabel}>Value at Time</span>
-                                  <span className={styles.stepMetaValue}>{formatAmount(item.valueAtTime, itemNativeCurrency)}</span>
+                                  <span className={styles.stepMetaValue}>
+                                    {formatAmount(historicalValue)}
+                                  </span>
                                 </div>
                                 <div className={styles.miniDataCell}>
                                   <span className={styles.stepMetaLabel}>Progress</span>
-                                  <span className={`${styles.stepMetaValue} ${historicalIsProfit ? styles.profitTextLabel : styles.lossTextLabel}`}>
-                                    {historicalIsProfit ? "+" : ""}{formatAmount(historicalProfitLoss, itemNativeCurrency)} ({historicalIsProfit ? "▲" : "▼"}{Math.abs(historicalRoi).toFixed(1)}%)
+                                  <span
+                                    className={`
+                                      ${styles.stepMetaValue} 
+                                      ${historicalIsProfit ? styles.profitTextLabel : styles.lossTextLabel}
+                                    `}
+                                  >
+                                    {historicalIsProfit ? "+" : ""}
+                                    {formatAmount(historicalProfitLoss)} 
+                                    ({historicalIsProfit ? "▲" : "▼"}
+                                    {Math.abs(historicalRoi).toFixed(1)}%)
                                   </span>
                                 </div>
                               </div>
 
                               <p className={styles.stepNoteParagraph}>
-                                <span className={styles.stepMemoInlineTag}>Log Note</span> &quot;{item.note}&quot;
+                                <span className={styles.stepMemoInlineTag}>Log Note</span>
+                                &quot;{historyItem.note || "No memo parameters saved."}&quot;
                               </p>
                             </div>
                           );
                         })
                       ) : (
-                        <p className={styles.stepNoteParagraph} style={{ color: 'var(--text-muted)' }}>
+                        <p className={styles.stepNoteParagraph} style={{ color: "var(--text-muted)" }}>
                           No historical logs recorded for this asset profile.
                         </p>
                       )}
@@ -258,12 +326,10 @@ export function VaultAssetTable({ assets, onEditClick, onDeleteClick }: VaultAss
 
                 </div>
               )}
-
             </div>
           );
         })}
       </div>
-
     </section>
   );
 }

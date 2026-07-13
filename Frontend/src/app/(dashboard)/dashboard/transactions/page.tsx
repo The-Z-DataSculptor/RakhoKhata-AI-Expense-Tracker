@@ -4,95 +4,102 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { transactionService, categoryService, Transaction, Category } from "@/utils/api";
+import { toast } from "sonner";
+
 import TransactionHeader from "@/components/transactions/TransactionHeader/TransactionHeader";
 import TransactionFilterBar, { TransactionTypeFilter } from "@/components/transactions/TransactionFilterBar/TransactionFilterBar";
-import TransactionLedgerGrid, { TransactionRecord as BaseTransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
+import TransactionLedgerGrid from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
 import TransactionPagination from "@/components/transactions/TransactionPagination/TransactionPagination";
 import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/BulkActionToolBelt";
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
-import styles from "./page.module.css";
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
+import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPES ===
    ========================================================================== */
-interface TransactionRecord extends BaseTransactionRecord {
-  workspaceId: string; 
-}
+// 👇 Updated to match the new TransactionForm payload
+type FormPayload = {
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmountUSD: number;
+  type: string;
+  description: string;
+  date: string;
+  workspaceId: string;
+  categoryId: string;
+  id?: string;
+};
 /* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
 export default function TransactionsPage() {
-  // --- WORKSPACE CONTEXT ---
   const { activeWorkspaceId } = useWorkspace();
 
-  /* --- STATE MANAGEMENT ENGINES --- */
+  /* --- STATE --- */
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedType, setSelectedType] = useState<TransactionTypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(10); 
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
 
-  /* --- MODAL OVERLAY VISIBILITY CONTROL ENGINE --- */
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // System categories to populate filter options
-  const [categories] = useState<string[]>([
-    "Salary",
-    "Freelance",
-    "Groceries",
-    "Utilities",
-    "Investments",
-    "Marketing"
-  ]);
+  /* ==========================================================================
+     === LIFECYCLE SYNC ===
+     ========================================================================== */
+  const refreshLedgerData = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      const txData = await transactionService.getByWorkspace(activeWorkspaceId);
+      setTransactions(txData.transactions);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to refresh data stream.";
+      toast.error(msg);
+    }
+  }, [activeWorkspaceId]);
 
-  // Base list of static records assigned across default workspaces
-  const [rawRecords, setRawRecords] = useState<TransactionRecord[]>([
-    { id: "tx-101", workspaceId: "ws-personal-default", date: "2026-06-12", description: "Monthly Corporate Base Salary Emolument", category: "salary", amount: 185000, type: "income" },
-    { id: "tx-102", workspaceId: "ws-personal-default", date: "2026-06-11", description: "Alpha Centauri Green Groceries Bazaar Store", category: "groceries", amount: 14200, type: "expense" },
-    { id: "tx-103", workspaceId: "ws-personal-default", date: "2026-06-10", description: "Full-Stack Web App Development Milestone UI Contract", category: "freelance", amount: 65000, type: "income" },
-    { id: "tx-104", workspaceId: "ws-personal-default", date: "2026-06-08", description: "Sui Northern Gas Pipeline Bill Settlement", category: "utilities", amount: 8400, type: "expense" },
-    { id: "tx-105", workspaceId: "ws-business-default", date: "2026-06-05", description: "Meta Platform Ads Campaign Conversions Growth Run", category: "marketing", amount: 32000, type: "expense" },
-    { id: "tx-106", workspaceId: "ws-personal-default", date: "2026-06-02", description: "PSX Index Dividend Payout Yield Release", category: "investments", amount: 12500, type: "income" },
-  ]);
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
 
-  /* --- SELECTION UTILITY MODIFIERS --- */
-  const handleToggleSingleRowSelection = (targetId: string) => {
-    setSelectedRecordIds((currentSelectedList) => {
-      if (currentSelectedList.includes(targetId)) {
-        return currentSelectedList.filter(id => id !== targetId);
-      } else {
-        return [...currentSelectedList, targetId];
+    const syncWorkspaceLedgerOnSwitch = async () => {
+      setIsLoading(true);
+      try {
+        const [txData, catData] = await Promise.all([
+          transactionService.getByWorkspace(activeWorkspaceId),
+          categoryService.getByWorkspace(activeWorkspaceId)
+        ]);
+        
+        setTransactions(txData.transactions);
+        setCategories(catData.categories);
+        setCurrentPage(1);
+        setSelectedRecordIds([]);
+      } catch (error: unknown) {
+        console.error("Ledger Sync Failure:", error);
+        const msg = error instanceof Error ? error.message : "Failed to sync entries with Neon Cloud database.";
+        toast.error(msg);
+      } finally {
+        setIsLoading(false);
       }
-    });
-  };
+    };
 
-  const handleToggleSelectAllOnPage = (visiblePageIds: string[]) => {
-    setSelectedRecordIds((currentSelectedList) => {
-      const isAllOnPageChecked = visiblePageIds.every(id => currentSelectedList.includes(id));
-      
-      if (isAllOnPageChecked) {
-        return currentSelectedList.filter(id => !visiblePageIds.includes(id));
-      } else {
-        return Array.from(new Set([...currentSelectedList, ...visiblePageIds]));
-      }
-    });
-  };
+    syncWorkspaceLedgerOnSwitch();
+  }, [activeWorkspaceId]);
 
-  const handleClearSelectionQueue = () => {
-    setSelectedRecordIds([]);
-  };
-
-  /* --- MODAL TOGGLE MECHANICS --- */
+  /* ==========================================================================
+     === TRANSACTION MUTATION HANDLERS ===
+     ========================================================================== */
   const handleOpenCreateModal = () => {
     setEditingTransaction(null);
     setIsModalOpen(true);
@@ -103,115 +110,162 @@ export default function TransactionsPage() {
     setEditingTransaction(null);
   };
 
-  const handleUpsertTransaction = (savedTx: BaseTransactionRecord) => {
-    const transactionWithWorkspace = {
-      ...savedTx,
-      workspaceId: editingTransaction ? editingTransaction.workspaceId : activeWorkspaceId,
-    };
-
-    setRawRecords((prevList) => {
-      const exists = prevList.some((t) => t.id === savedTx.id);
-      if (exists) {
-        return prevList.map((t) => (t.id === savedTx.id ? transactionWithWorkspace : t));
+  // 👇 Updated to accept the new payload and call the backend with the new fields
+  const handleUpsertTransaction = async (payload: FormPayload) => {
+    try {
+      if (payload.id) {
+        await transactionService.delete(payload.id);
       }
-      return [transactionWithWorkspace, ...prevList];
-    });
-    handleClosePopupModal();
+      
+      await transactionService.create({
+        // Use the new enterprise fields
+        originalAmount: payload.originalAmount,
+        originalCurrency: payload.originalCurrency,
+        baseAmountUSD: payload.baseAmountUSD,
+        type: payload.type,
+        description: payload.description,
+        date: payload.date,
+        workspaceId: activeWorkspaceId,
+        categoryId: payload.categoryId,
+        // Keep amount for backward compatibility
+        amount: payload.originalAmount, // or you can set amount = baseAmountUSD? but better to use the original
+      });
+
+      await refreshLedgerData(); 
+      handleClosePopupModal();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Could not log transaction down onto server logs.";
+      toast.error(msg);
+    }
   };
 
-  /* --- INTERACTIVE ACTION CALLBACK TRIPPERS --- */
   const handleEditRecordTrigger = (targetRecordId: string) => {
-    const match = rawRecords.find((t) => t.id === targetRecordId);
+    const match = transactions.find((t) => t.id === targetRecordId);
     if (match) {
       setEditingTransaction(match);
       setIsModalOpen(true);
     }
   };
 
-  const handleDeleteRecordTrigger = (targetRecordId: string) => {
-    setRawRecords(currentRows => currentRows.filter(item => item.id !== targetRecordId));
-    setSelectedRecordIds(currentSelected => currentSelected.filter(id => id !== targetRecordId));
-    setCurrentPage(1);
+  const handleDeleteRecordTrigger = async (targetRecordId: string) => {
+    try {
+      await transactionService.delete(targetRecordId);
+      setTransactions(prev => prev.filter(item => item.id !== targetRecordId));
+      setSelectedRecordIds(current => current.filter(id => id !== targetRecordId));
+      toast.success("Ledger entry dropped completely.");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to drop entry row from database storage.";
+      toast.error(msg);
+    }
   };
 
-  const handleBulkDeleteExecution = () => {
-    setRawRecords(currentRows => currentRows.filter(row => !selectedRecordIds.includes(row.id)));
-    setSelectedRecordIds([]);
-    setCurrentPage(1);
+  const handleBulkDeleteExecution = async () => {
+    try {
+      await Promise.all(selectedRecordIds.map(id => transactionService.delete(id)));
+      toast.success(`Successfully cleared ${selectedRecordIds.length} financial rows.`);
+      setTransactions(prev => prev.filter(row => !selectedRecordIds.includes(row.id)));
+      setSelectedRecordIds([]);
+      setCurrentPage(1);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Bulk ledger flush operation experienced a failure.";
+      toast.error(msg);
+      await refreshLedgerData();
+    }
   };
 
-  const handleSearchModification = (value: string) => {
-    setSearchQuery(value);
-    setCurrentPage(1);
+  /* ==========================================================================
+     === SELECTION MATRIX ===
+     ========================================================================== */
+  const handleToggleSingleRowSelection = (targetId: string) => {
+    setSelectedRecordIds((current) => 
+      current.includes(targetId) ? current.filter(id => id !== targetId) : [...current, targetId]
+    );
   };
 
-  const handleTypeModification = (type: TransactionTypeFilter) => {
-    setSelectedType(type);
-    setCurrentPage(1);
+  const handleToggleSelectAllOnPage = (visiblePageIds: string[]) => {
+    setSelectedRecordIds((current) => {
+      const isAllChecked = visiblePageIds.every(id => current.includes(id));
+      return isAllChecked ? current.filter(id => !visiblePageIds.includes(id)) : Array.from(new Set([...current, ...visiblePageIds]));
+    });
   };
 
-  const handleCategoryModification = (category: string) => {
-    setSelectedCategory(category);
-    setCurrentPage(1);
-  };
+  const handleClearSelectionQueue = () => setSelectedRecordIds([]);
 
-  /* --- CLIENT SIDE FILTERING ENGINE --- */
-  const processedFilteredRecords = rawRecords.filter((singleLog) => {
-    if (singleLog.workspaceId !== activeWorkspaceId) return false;
-
+  /* ==========================================================================
+     === SEARCH & FILTER ===
+     ========================================================================== */
+  const processedFilteredRecords = transactions.filter((singleLog) => {
     const normalQuery = searchQuery.toLowerCase().trim();
     const matchesSearch = normalQuery === "" || singleLog.description.toLowerCase().includes(normalQuery);
-    const matchesType = selectedType === "all" || singleLog.type === selectedType;
-    const matchesCategory = selectedCategory === "all" || singleLog.category.toLowerCase() === selectedCategory.toLowerCase();
-
+    const matchesType = selectedType === "all" || singleLog.type.toUpperCase() === selectedType.toUpperCase();
+    const matchesCategory = selectedCategory === "all" || singleLog.categoryId === selectedCategory;
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  /* --- LIVE CALCULATIONS SUMS ENGINE --- */
   let calculatedIncomeTotal = 0;
   let calculatedExpenseTotal = 0;
 
   processedFilteredRecords.forEach((recordItem) => {
-    if (recordItem.type === "income") {
-      calculatedIncomeTotal += recordItem.amount;
-    } else if (recordItem.type === "expense") {
-      calculatedExpenseTotal += recordItem.amount;
+    const value = Number(recordItem.amount) || 0;
+    if (recordItem.type.toUpperCase() === "INCOME") {
+      calculatedIncomeTotal += value;
+    } else if (recordItem.type.toUpperCase() === "EXPENSE") {
+      calculatedExpenseTotal += value;
     }
   });
 
-  /* --- PAGINATION COMPUTATION --- */
+  /* --- PAGINATION --- */
   const indexPositionOfLastRowItem = currentPage * itemsPerPage;
   const indexPositionOfFirstRowItem = indexPositionOfLastRowItem - itemsPerPage;
-  const currentPaginatedRowsSubset = processedFilteredRecords.slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);
-/* === SECTION 3 END === */
+  
+  // 👇 Mapped rows include originalAmount and originalCurrency
+  const adaptiveGridRows = processedFilteredRecords.map(tx => ({
+    id: tx.id,
+    date: tx.date.substring(0, 10),
+    description: tx.description,
+    category: tx.category?.name || "General",
+    originalAmount: Number(tx.originalAmount || tx.amount), // fallback to amount if missing
+    originalCurrency: tx.originalCurrency || "USD",
+    amount: Number(tx.amount), // keep for backward compatibility
+    type: tx.type.toLowerCase() as "income" | "expense"
+  })).slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === RENDER ===
+     ========================================================================== */
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">Synchronizing Cloud Ledgers...</p>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.ledgerCanvasWrapper}>
       
-      {/* THE FIRST COMPONENT: Premium glass header layout */}
       <TransactionHeader 
         totalCount={processedFilteredRecords.length}
         onAddTransactionClick={handleOpenCreateModal}
       />
 
-      {/* THE SECOND COMPONENT: Stateful data search and toggle filters */}
       <TransactionFilterBar
         searchQuery={searchQuery}
-        onSearchChange={handleSearchModification}
+        onSearchChange={(v) => { setSearchQuery(v); setCurrentPage(1); }}
         selectedType={selectedType}
-        onTypeChange={handleTypeModification}
-        availableCategories={categories}
+        onTypeChange={(t) => { setSelectedType(t); setCurrentPage(1); }}
+        availableCategories={categories.map(c => c.name)}
         selectedCategory={selectedCategory}
-        onCategoryChange={handleCategoryModification}
+        onCategoryChange={(c) => {
+          const match = categories.find(cat => cat.name.toLowerCase() === c.toLowerCase());
+          setSelectedCategory(match ? match.id : "all");
+          setCurrentPage(1);
+        }}
       />
 
-      {/* THE THIRD COMPONENT: High-Density Stripe Ledger List Stage */}
       <main className={styles.mainContentStage}>
         <TransactionLedgerGrid
-          records={currentPaginatedRowsSubset}
+          records={adaptiveGridRows}
           onEditRecord={handleEditRecordTrigger}
           onDeleteRecord={handleDeleteRecordTrigger}
           selectedIds={selectedRecordIds}
@@ -220,17 +274,12 @@ export default function TransactionsPage() {
         />
       </main>
 
-      {/* THE FOURTH COMPONENT BLOCK: Rows per page selector & Pagination control */}
       <div className={styles.paginationControlRowDeck}>
-        
         <div className={styles.capacitySelectorFlexCluster}>
           <span className={styles.capacityLabelText}>Rows per page:</span>
           <select 
             value={itemsPerPage} 
-            onChange={(event) => {
-              setItemsPerPage(Number(event.target.value));
-              setCurrentPage(1); 
-            }}
+            onChange={(event) => { setItemsPerPage(Number(event.target.value)); setCurrentPage(1); }}
             className={styles.nativeCapacitySelectDropdown}
           >
             <option value={5}>5</option>
@@ -246,16 +295,13 @@ export default function TransactionsPage() {
           currentPage={currentPage}
           onPageChange={setCurrentPage}
         />
-
       </div>
 
-      {/* THE FIFTH COMPONENT BLOCK: Computed summary totals footer split */}
       <TransactionFooter 
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
       />
 
-      {/* DYNAMIC MODAL OVERLAY BACKDROP LAYER */}
       {isModalOpen && (
         <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
@@ -269,19 +315,15 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* FLOATING ACTION BELT: Triggers rendering instantly when checkboxes fill */}
       <BulkActionToolBelt
         selectedCount={selectedRecordIds.length}
         onClearSelection={handleClearSelectionQueue}
         onBulkDelete={handleBulkDeleteExecution}
       />
 
-      {/* CLEAN & GENERIC SYSTEM FOOTER ANCHOR */}
       <footer className={styles.systemGlobalFooterWrapper}>
         <DashboardFooter />
       </footer>
-
     </div>
   );
 }
-/* === SECTION 4 END === */

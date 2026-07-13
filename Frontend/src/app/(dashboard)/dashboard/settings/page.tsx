@@ -4,18 +4,15 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react"; // FIXED: Removed the unused 'useCallback' import
+import React, { useState, useEffect } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { vaultAuthService } from "@/utils/api";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
 import { FiShield, FiSliders as FiLayers, FiCheck, FiTrash2, FiEdit2, FiLoader } from "react-icons/fi";
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
-
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 1 END ===
    ========================================================================== */
-// No external property types needed for standalone settings page.
-/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
@@ -26,77 +23,111 @@ export default function SettingsPage() {
   // --- WORKSPACE STATES ---
   const [renameInput, setRenameInput] = useState<string>(activeWorkspace ? activeWorkspace.name : "");
   const [isSuccessFeedbackVisible, setIsSuccessFeedbackVisible] = useState<boolean>(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null); // FIXED: Added deletion pointer state tracking active network threads
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // --- VAULT SECURITY STATES ---
-  const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const savedPin = localStorage.getItem("vault_pin");
-      return !!savedPin;
-    }
-    return false;
-  });
-  
+  const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
+  const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
+  const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
 
-  // Action: Turns the vault PIN lock configuration on or off dynamically
+  // FIXED: Single fetch function used both on mount and after PIN operations
+  const fetchVaultPinStatus = async () => {
+    try {
+      const status = await vaultAuthService.checkStatus();
+      setIsVaultSecurityEnabled(status.hasPin);
+    } catch (err) {
+      console.error("Could not fetch database status keys:", err);
+    } finally {
+      setIsSecurityLoading(false);
+    }
+  };
+
+  // FIXED: Simplified useEffect – calls fetchVaultPinStatus directly with cleanup
+  useEffect(() => {
+    let isMounted = true;
+    const syncPinStatus = async () => {
+      try {
+        const status = await vaultAuthService.checkStatus();
+        if (isMounted) {
+          setIsVaultSecurityEnabled(status.hasPin);
+        }
+      } catch (err) {
+        console.error("Could not fetch database status keys:", err);
+      } finally {
+        if (isMounted) {
+          setIsSecurityLoading(false);
+        }
+      }
+    };
+    syncPinStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleSecurityToggle = () => {
     if (isVaultSecurityEnabled) {
-      const verifyAction = confirm("Are you sure you want to turn off the password lock? Anyone using this device will be able to see your investments.");
-      if (verifyAction) {
-        localStorage.removeItem("vault_pin");
-        setIsVaultSecurityEnabled(false);
-      }
+      setPinModalMode("DISABLE");
+      setIsPinModalOpen(true);
     } else {
+      setPinModalMode("SETUP");
       setIsPinModalOpen(true);
     }
   };
 
-  // Action: Callback running immediately upon successful PIN creation steps
-  const handlePinSetupSuccess = () => {
-    setIsPinModalOpen(false);
-    setIsVaultSecurityEnabled(true);
+  const handleChangePinClick = () => {
+    setPinModalMode("CHANGE");
+    setIsPinModalOpen(true);
   };
 
-  // Action: Commits title changes to local context states
+  // FIXED: Simplified – just refresh status and close modal
+  const handlePinSetupSuccess = async () => {
+    setIsPinModalOpen(false);
+    setIsSecurityLoading(true);
+    await fetchVaultPinStatus();
+  };
+
   const handleRenameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!renameInput.trim() || !activeWorkspace) return;
 
+    // TODO: Call workspace update API here when implemented
+    // For now, just show visual feedback
     setIsSuccessFeedbackVisible(true);
     const timeoutId = setTimeout(() => setIsSuccessFeedbackVisible(false), 2500);
     return () => clearTimeout(timeoutId);
   };
 
-  // FIXED: Converted to async function to cleanly await our live HTTP delete request execution chain
   const handleDeleteClick = async (targetWorkspaceId: string) => {
     if (targetWorkspaceId === activeWorkspaceId) {
       alert("You cannot delete the workspace you are currently using. Please switch to a different workspace first.");
       return;
     }
-    
+
     const userConfirmed = confirm("Are you completely sure you want to delete this workspace? This will permanently erase all transactions and investments inside it.");
-    
+
     if (userConfirmed) {
       try {
-        setDeletingId(targetWorkspaceId); // Activate visual loader track on specific target row index card
-        await deleteWorkspace(targetWorkspaceId); // Await full cascade teardown script on Neon Database clusters
+        setDeletingId(targetWorkspaceId);
+        await deleteWorkspace(targetWorkspaceId);
       } catch (error) {
         console.error("Workspace teardown runtime pipeline exception:", error);
       } finally {
-        setDeletingId(null); // Release visual lockout states cleanly
+        setDeletingId(null);
       }
     }
   };
-/* === SECTION 3 END === */
+  /* ==========================================================================
+     === SECTION 3 END ===
+     ========================================================================== */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.settingsCanvasDeck}>
-      
-      {/* HEADER BLOCK */}
+
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.mainHeadline}>Settings</h1>
@@ -108,7 +139,7 @@ export default function SettingsPage() {
 
       <div className={styles.cardsStackDeck}>
 
-        {/* WORKSPACE CONTROL NODE CARD */}
+        {/* WORKSPACE CONTROL CARD */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame}>
@@ -123,15 +154,14 @@ export default function SettingsPage() {
           </div>
 
           <div className={styles.cardBodyContent}>
-            {/* RENAME CURRENT WORKSPACE FORM CONTAINER */}
             <form onSubmit={handleRenameSubmit} className={styles.renameFormBlock}>
               <div className={styles.inputFieldGroup}>
                 <label className={styles.fieldLabelText}>Change Current Workspace Name</label>
                 <div className={styles.inputActionCluster}>
-                  <input 
-                    type="text" 
-                    value={renameInput} 
-                    onChange={(e) => setRenameInput(e.target.value)} 
+                  <input
+                    type="text"
+                    value={renameInput}
+                    onChange={(e) => setRenameInput(e.target.value)}
                     placeholder="e.g., Personal Finances"
                     required
                     className={styles.primaryTextInputElement}
@@ -146,17 +176,16 @@ export default function SettingsPage() {
 
             <div className={styles.dividerSplitLine} />
 
-            {/* LIST OF ALL AVAILABLE DATABASE WORKSPACES */}
             <div className={styles.directoryEntriesListWrapper}>
               <h3 className={styles.subSectionLabel}>All Your Workspaces ({workspaces.length})</h3>
               <div className={styles.entriesGridList}>
                 {workspaces.map((ws) => {
                   const isActive = ws.id === activeWorkspaceId;
                   const isCurrentTargetDeleting = deletingId === ws.id;
-                  
+
                   return (
-                    <div 
-                      key={ws.id} 
+                    <div
+                      key={ws.id}
                       className={`${styles.wsRowCardItem} ${isActive ? styles.wsActiveCardHighlight : ""} ${isCurrentTargetDeleting ? styles.wsRowCardDeleting : ""}`}
                     >
                       <div className={styles.wsRowIdentityFrame}>
@@ -169,12 +198,10 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => handleDeleteClick(ws.id)}
-                        // FIXED: Added multi-layer button disable protections to block navigation tampering while calls process
                         disabled={isActive || deletingId !== null}
                         title={isActive ? "You cannot delete the workspace you are currently using" : "Delete this workspace"}
                         className={styles.rowDeleteTriggerActionBtn}
                       >
-                        {/* FIXED: Dynamic icon switch rendering animated spinner or standard trash container */}
                         {isCurrentTargetDeleting ? (
                           <FiLoader size={14} className={styles.loadingSpinnerAnimation} />
                         ) : (
@@ -189,10 +216,10 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* INVESTMENT LOCK CARD MANAGEMENT BLOCK */}
+        {/* VAULT SECURITY CARD MANAGEMENT BLOCK */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
-            <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success)' }}>
+            <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success, #16a34a)' }}>
               <FiShield size={18} />
             </div>
             <div>
@@ -208,32 +235,43 @@ export default function SettingsPage() {
               <div className={styles.metaInformationLeftTextBlock}>
                 <span className={styles.rowControlHeadline}>Password Screen Lock</span>
                 <span className={styles.rowControlSecondaryExplanation}>
-                  {isVaultSecurityEnabled 
-                    ? "Your password lock is active. Your investments are safe and hidden behind a lock screen."
-                    : "Your password lock is turned off. Anyone who opens this app can see your investments."
-                  }
+                  {isSecurityLoading ? (
+                    "Analyzing secure validation state tokens..."
+                  ) : isVaultSecurityEnabled ? (
+                    "Your password lock is active. Your investments are safe and hidden behind a lock screen."
+                  ) : (
+                    "Your password lock is turned off. Anyone who opens this app can see your investments."
+                  )}
                 </span>
               </div>
-              
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                {isVaultSecurityEnabled && (
-                  <button 
-                    type="button" 
-                    onClick={() => setIsPinModalOpen(true)}
+
+              {/* FIXED: Added flexShrink: 0 to prevent the button container from squishing to 0px width */}
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
+                {isVaultSecurityEnabled && !isSecurityLoading && (
+                  <button
+                    type="button"
+                    onClick={handleChangePinClick}
                     className={styles.saveActionSubmitBtn}
-                    style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                    style={{ backgroundColor: 'var(--bg-surface, #ffffff)', color: 'var(--text-primary, #10043f)', border: '1px solid var(--border-color, #e5e1f4)' }}
                   >
                     Change PIN
                   </button>
                 )}
 
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleSecurityToggle}
+                  disabled={isSecurityLoading}
                   className={styles.saveActionSubmitBtn}
-                  style={{ backgroundColor: isVaultSecurityEnabled ? 'var(--color-danger)' : 'var(--color-success)' }}
+                  style={{ backgroundColor: isVaultSecurityEnabled ? 'var(--color-danger, #dc2626)' : 'var(--color-success, #16a34a)' }}
                 >
-                  {isVaultSecurityEnabled ? "Turn Off Lock" : "Turn On Lock"}
+                  {isSecurityLoading ? (
+                    <FiLoader className={styles.loadingSpinnerAnimation} />
+                  ) : isVaultSecurityEnabled ? (
+                    "Turn Off Lock"
+                  ) : (
+                    "Turn On Lock"
+                  )}
                 </button>
               </div>
             </div>
@@ -242,10 +280,13 @@ export default function SettingsPage() {
 
       </div>
 
-      <PinSetupModal 
+      {/* FIXED: Added key prop to force remount when mode changes */}
+      <PinSetupModal
+        key={`pin-modal-${pinModalMode}-${isPinModalOpen}`}
         isOpen={isPinModalOpen}
+        mode={pinModalMode}
         onClose={() => setIsPinModalOpen(false)}
-        onSuccess={handlePinSetupSuccess} 
+        onSuccess={handlePinSetupSuccess}
       />
 
     </div>

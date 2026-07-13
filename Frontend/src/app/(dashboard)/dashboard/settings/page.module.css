@@ -13,6 +13,9 @@
   box-sizing: border-box;
   letter-spacing: -0.02em;
   padding-bottom: 1.5rem; 
+  /* FIXED: Declared explicit fallback variables directly in local scope */
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
 }
 
 .dashboardHeaderCardBox {
@@ -224,7 +227,6 @@
   background-color: rgba(97, 59, 191, 0.02);
 }
 
-/* FIXED: Opaque styling layout for items processing network teardowns */
 .wsRowCardDeleting {
   opacity: 0.6;
   background-color: rgba(220, 38, 38, 0.02);
@@ -267,7 +269,6 @@
   border-radius: 10px;
 }
 
-/* FIXED: Warning operational pill layout for live deletion statuses */
 .deletingStatusPillBadge {
   font-size: 0.68rem;
   font-weight: 800;
@@ -300,7 +301,6 @@
   cursor: not-allowed;
 }
 
-/* FIXED: Keyframe layout forcing the Feather loader icon to spin gracefully */
 .loadingSpinnerAnimation {
   animation: rotateSpinner 1s linear infinite;
   color: var(--color-danger, #dc2626);

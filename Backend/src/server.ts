@@ -9,7 +9,11 @@ import cookieParser from "cookie-parser";  // Handles parsing incoming cookie pa
 import rateLimit from "express-rate-limit"; // FIXED: Added express-rate-limit engine to mitigate DDoS and brute-force flooding
 import { prisma } from "./db";            // Core database client connected to Neon Cloud
 import authRoutes from "./routes/authRoutes"; 
-import workspaceRoutes from "./routes/workspaceRoutes"; // FIXED: Added workspace routing subsystem to control multi-tenancy partitions
+import workspaceRoutes from "./routes/workspaceRoutes";   // FIXED: Added workspace routing subsystem to control multi-tenancy partitions
+import transactionRoutes from "./routes/transactionRoutes"; // FIXED: Added transaction accounting routing matrix to handle ledger logs
+import categoryRoutes from "./routes/categoryRoutes";       // FIXED: Added category budget sorting routes to manage ledger folder structures
+import budgetRoutes from "./routes/budgetRoutes";           // FIXED: Added budget ceiling limit routes to establish spending guardrails
+import investmentRoutes from "./routes/investmentRoutes";   // FIXED: Added investment vault asset routes to manage financial portfolios
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -71,6 +75,18 @@ app.use("/api/auth", authRoutes);
 
 // The Workspace Highway: Mount workspace multi-tenant configurations under the /api/workspaces prefix
 app.use("/api/workspaces", workspaceRoutes); // FIXED: Linked workspaces controller subsystem to connect business/personal channels
+
+// The Transaction Highway: Mount dynamic accounting ledgers under the /api/transactions prefix
+app.use("/api/transactions", transactionRoutes); // FIXED: Linked transaction controller subsystem to stream cash flow logs securely
+
+// The Category Highway: Mount custom categorization tracking rules under the /api/categories prefix
+app.use("/api/categories", categoryRoutes); // FIXED: Linked category folder controller mappings to stream database buckets cleanly
+
+// The Budget Highway: Mount spending guardrail threshold watch rules under the /api/budgets prefix
+app.use("/api/budgets", budgetRoutes); // FIXED: Linked budget watch systems to manage warning thresholds dynamically
+
+// The Investment Vault Highway: Mount asset tracking matrices under the /api/investments prefix
+app.use("/api/investments", investmentRoutes); // FIXED: Linked capital portfolio configurations to stream stock and crypto logs securely
 /* === SECTION 4 END === */
 
 /* ==========================================================================

@@ -4,117 +4,205 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import TimeSwitcher, { TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import MetricRow from "@/components/dashboard/MetricRow/MetricRow";
 import ControlLever from "@/components/dashboard/ControlLever/ControlLever";
 import CashFlowChart from "@/components/dashboard/CashFlowChart/CashFlowChart";
 import ExpenseDonutChart from "@/components/dashboard/ExpenseDonutChart/ExpenseDonutChart";
-import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter"; 
-import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; 
+import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { transactionService } from "@/utils/api";
+import {
+  filterTransactionsByPeriod,
+  computeMetrics,
+  computeCategoryBreakdown,
+  computeCashFlowData,
+  getPeriodLabel,
+  type Transaction,
+} from "@/utils/dashboardHelpers";
+import type { Transaction as ApiTransaction } from "@/utils/api";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: COMPONENT LOGIC ===
    ========================================================================== */
-interface PeriodMetrics {
-  bills: number;
-  inflow: number;
-  outflow: number;
-}
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
-const MOCK_WORKSPACE_DATA: Record<string, Record<TimePeriod, PeriodMetrics>> = {
-  "ws-personal-default": {
-    "7d": { bills: 150, inflow: 625, outflow: 375 },
-    "14d": { bills: 300, inflow: 1250, outflow: 750 },
-    "30d": { bills: 600, inflow: 2710, outflow: 1960 },
-    "all": { bills: 3240, inflow: 32400, outflow: 21500 },
-  },
-  "ws-business-default": {
-    "7d": { bills: 400, inflow: 3200, outflow: 800 },
-    "14d": { bills: 800, inflow: 6500, outflow: 1500 },
-    "30d": { bills: 1600, inflow: 14200, outflow: 3200 },
-    "all": { bills: 18500, inflow: 125000, outflow: 45000 },
-  }
-};
-
-const EMPTY_STATE_METRICS: PeriodMetrics = { bills: 0, inflow: 0, outflow: 0 };
-
 export default function DashboardPage() {
-  const { activeWorkspaceId } = useWorkspace(); 
+  const { activeWorkspaceId } = useWorkspace();
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      if (!activeWorkspaceId) {
+        if (isMounted) setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await transactionService.getByWorkspace(activeWorkspaceId);
+        if (!isMounted) return;
+
+        const mappedTransactions: Transaction[] = (response.transactions || []).map((apiTx: ApiTransaction) => ({
+          id: apiTx.id,
+          amount: Number(apiTx.amount),
+          originalAmount: Number(apiTx.originalAmount ?? apiTx.amount),
+          originalCurrency: apiTx.originalCurrency ?? "USD",
+          baseAmountUSD: Number(apiTx.baseAmountUSD ?? apiTx.amount),
+          type: apiTx.type as "INCOME" | "EXPENSE",
+          description: apiTx.description || "",
+          date: apiTx.date,
+          workspaceId: apiTx.workspaceId,
+          categoryId: apiTx.categoryId,
+          category: {
+            id: apiTx.category?.id || "",
+            name: apiTx.category?.name || "",
+            type: apiTx.category?.type || "",
+            color: apiTx.category?.color || "",
+            isFixed: apiTx.category?.isFixed || false,
+            isRecurring: apiTx.category?.isRecurring || false,
+            frequency: apiTx.category?.frequency ?? undefined,
+            dueDay: apiTx.category?.dueDay ?? undefined,
+            reminderDays: apiTx.category?.reminderDays ?? undefined,
+          },
+        }));
+        setTransactions(mappedTransactions);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error("Failed to fetch transactions:", err);
+        setError("Could not load your transactions. Please try again.");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspaceId]);
+
+  const dashboardData = useMemo(() => {
+    if (transactions.length === 0) {
+      return {
+        filteredTransactions: [],
+        metrics: {
+          totalIncome: 0,
+          totalExpenses: 0,
+          fixedExpenses: 0,
+          flexibleExpenses: 0,
+          safeToSpend: 0,
+          projected: {
+            totalIncome: 0,
+            totalExpenses: 0,
+            fixedExpenses: 0,
+            flexibleExpenses: 0,
+            safeToSpend: 0,
+          },
+        },
+        categoryData: [],
+        cashFlowData: [],
+        periodLabel: getPeriodLabel(activeTimeline),
+      };
+    }
+
+    const filtered = filterTransactionsByPeriod(transactions, activeTimeline);
+    // 👇 Removed the third argument (allTransactions) – no longer needed
+    const metrics = computeMetrics(filtered, activeTimeline);
+    const categoryData = computeCategoryBreakdown(filtered);
+    const cashFlowData = computeCashFlowData(filtered, activeTimeline);
+
+    return {
+      filteredTransactions: filtered,
+      metrics,
+      categoryData,
+      cashFlowData,
+      periodLabel: getPeriodLabel(activeTimeline),
+    };
+  }, [transactions, activeTimeline]);
+
+  const { metrics, categoryData, cashFlowData, periodLabel } = dashboardData;
 
   const handleTimelineChange = (selectedPeriod: TimePeriod) => {
     setActiveTimeline(selectedPeriod);
   };
 
-  // OPTIMIZED: Memoized computation logic ensures calculations remain pure and crash-free
-  const currentMetrics = useMemo(() => {
-    const activeWorkspaceData = MOCK_WORKSPACE_DATA[activeWorkspaceId];
-    return activeWorkspaceData ? activeWorkspaceData[activeTimeline] : EMPTY_STATE_METRICS;
-  }, [activeWorkspaceId, activeTimeline]);
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
   return (
     <div className={styles.workspaceWrapper}>
-      
-      {/* HEADER SECTION */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <div className={styles.titleWithBadgeRow}>
             <h1 className={styles.welcomeHeadline}>Overview Hub</h1>
-            <span className={styles.liveAnalyticsBadgeElement}>Live Analytics</span>            
+            <span className={styles.liveAnalyticsBadgeElement}>
+              {isLoading ? "Loading..." : "Live Analytics"}
+            </span>
           </div>
           <p className={styles.welcomeSubtext}>Your financial health at a glance.</p>
         </div>
-
         <div className={styles.timeSwitcherActionFrame}>
-          <TimeSwitcher 
-            activePeriod={activeTimeline} 
-            onPeriodChange={handleTimelineChange} 
-            />
+          <TimeSwitcher
+            activePeriod={activeTimeline}
+            onPeriodChange={handleTimelineChange}
+          />
         </div>
       </header>
 
-      {/* QUICK STATS CARDS GRID */}
-      <section className={styles.metricsRowStage} aria-label="Quick Summary">
-        <MetricRow activePeriod={activeTimeline} />
-      </section>
-
-      {/* VISUAL CONTROL LEVER SPLIT BAR */}
-      <section className={styles.gaugeRowStage} aria-label="Spending Control Guide">
-        <ControlLever 
-          totalIncome={currentMetrics.inflow}
-          fixedExpenses={currentMetrics.bills}
-          flexibleExpenses={currentMetrics.outflow}
-          activePeriod={activeTimeline}
-        />
-      </section>
-
-      {/* BOTTOM ANALYTICS GRAPHS STAGE */}
-      <main className={styles.isolatedStage}>
-        <div className={styles.chartWrapperNode}>
-          <CashFlowChart activePeriod={activeTimeline} />
+      {isLoading ? (
+        <div className={styles.loadingState}>
+          <p>Loading your financial data...</p>
         </div>
-        <div className={styles.chartWrapperNode}>
-          <ExpenseDonutChart activePeriod={activeTimeline} />
+      ) : error ? (
+        <div className={styles.errorState}>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()}>Retry</button>
         </div>
-      </main>
+      ) : transactions.length === 0 ? (
+        <div className={styles.emptyState}>
+          <p>No transactions yet. Start adding your expenses and income!</p>
+        </div>
+      ) : (
+        <>
+          <section className={styles.metricsRowStage} aria-label="Quick Summary">
+            <MetricRow
+              metrics={metrics}
+              periodLabel={periodLabel}
+              activePeriod={activeTimeline}
+            />
+          </section>
 
-      {/* SYSTEM FOOTER ANCHOR */}
+          <section className={styles.gaugeRowStage} aria-label="Spending Control Guide">
+            <ControlLever
+              totalIncome={metrics.totalIncome}
+              fixedExpenses={metrics.fixedExpenses}
+              flexibleExpenses={metrics.flexibleExpenses}
+              activePeriod={activeTimeline}
+            />
+          </section>
+
+          <main className={styles.isolatedStage}>
+            <div className={styles.chartWrapperNode}>
+              <CashFlowChart data={cashFlowData} />
+            </div>
+            <div className={styles.chartWrapperNode}>
+              <ExpenseDonutChart data={categoryData} />
+            </div>
+          </main>
+        </>
+      )}
+
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>
-
     </div>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

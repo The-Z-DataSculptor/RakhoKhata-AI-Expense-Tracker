@@ -1,15 +1,15 @@
-// src/app/(dashboard)/dashboard/categories/_components/CategoryForm.tsx
+// src/components/forms/CategoryForm/CategoryForm.tsx
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useEffect, useCallback } from "react"; // FIXED: Added useCallback to isolate event side-effects
-import { useForm, useWatch } from "react-hook-form";
+import React, { useEffect, useCallback } from "react";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner"; 
+import { toast } from "sonner";
 import { categoryFormSchema, CategoryFormValues } from "@/schemas/categories";
-import { CategoryRecord } from "../../../app/(dashboard)/dashboard/categories/page";
+import { CategoryRecord } from "@/app/(dashboard)/dashboard/categories/page";
 import styles from "./CategoryForm.module.css";
 /* === SECTION 1 END === */
 
@@ -18,7 +18,7 @@ import styles from "./CategoryForm.module.css";
    ========================================================================== */
 interface CategoryFormProps {
   onAddCategory: (newCategory: CategoryRecord) => void;
-  initialData?: CategoryRecord | null; 
+  initialData?: CategoryRecord | null;
   onCancel?: () => void;
 }
 /* === SECTION 2 END === */
@@ -29,6 +29,9 @@ interface CategoryFormProps {
 export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryFormProps) {
   const isEditMode = !!initialData;
 
+  // ✅ FIXED: Explicitly type the resolver
+  const resolver = zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>;
+
   const {
     register,
     handleSubmit,
@@ -37,11 +40,15 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     control,
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormValues>({
-    resolver: zodResolver(categoryFormSchema),
+    resolver, // 👈 No `as any` needed
     defaultValues: {
       name: "",
       type: "EXPENSE",
       color: "#613BBF",
+      isRecurring: false,
+      frequency: "MONTHLY",
+      dueDay: 1,
+      reminderDays: 3,
     },
   });
 
@@ -51,86 +58,107 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
         name: initialData.name,
         type: initialData.type.toUpperCase() as "INCOME" | "EXPENSE" | "BOTH",
         color: initialData.accentColor,
+        isRecurring: initialData.isRecurring || false,
+        frequency: (initialData.frequency as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY") || "MONTHLY",
+        dueDay: initialData.dueDay || 1,
+        reminderDays: initialData.reminderDays || 3,
       });
     } else {
-      reset({ name: "", type: "EXPENSE", color: "#613BBF" });
+      reset({
+        name: "",
+        type: "EXPENSE",
+        color: "#613BBF",
+        isRecurring: false,
+        frequency: "MONTHLY",
+        dueDay: 1,
+        reminderDays: 3,
+      });
     }
   }, [initialData, reset]);
 
-  const activeColor = useWatch({
-    control,
-    name: "color",
-    defaultValue: "#613BBF",
-  });
+  const activeColor = useWatch({ control, name: "color", defaultValue: "#613BBF" });
+  const isRecurring = useWatch({ control, name: "isRecurring", defaultValue: false });
 
-  // FIXED: Wrapped in useCallback to declare this safely as an event handler block to the compiler
-  const onSubmit = useCallback(async (data: CategoryFormValues) => {
-    try {
-      const lowerCaseType = data.type.toLowerCase() as "income" | "expense" | "both";
+  const onSubmit = useCallback(
+    async (data: CategoryFormValues) => {
+      try {
+        const lowerCaseType = data.type.toLowerCase() as "income" | "expense" | "both";
 
-      const completeCategoryRecord: CategoryRecord = {
-        id: initialData ? initialData.id : `cat-${Date.now()}`,
-        name: data.name,
-        type: lowerCaseType,
-        iconSlug: lowerCaseType === "income" ? "FiBriefcase" : "FiShoppingCart",
-        accentColor: data.color,
-        transactionCount: initialData ? initialData.transactionCount : 0,
-        workspaceId: initialData ? initialData.workspaceId : "active-workspace", 
-      };
+        const completeCategoryRecord: CategoryRecord = {
+          id: initialData ? initialData.id : `cat-${Date.now()}`,
+          name: data.name,
+          type: lowerCaseType,
+          iconSlug: lowerCaseType === "income" ? "FiBriefcase" : "FiShoppingCart",
+          accentColor: data.color,
+          transactionCount: initialData ? initialData.transactionCount : 0,
+          workspaceId: initialData ? initialData.workspaceId : "active-workspace",
+          isRecurring: data.isRecurring || false,
+          frequency: data.frequency || "MONTHLY",
+          dueDay: data.dueDay || 1,
+          reminderDays: data.reminderDays || 3,
+        };
 
-      onAddCategory(completeCategoryRecord);
+        onAddCategory(completeCategoryRecord);
 
-      if (initialData) {
-        toast.success("Category changes saved successfully!");
-      } else {
-        toast.success("Custom spending category added!");
+        if (initialData) {
+          toast.success("Category changes saved successfully!");
+        } else {
+          toast.success("Custom spending category added!");
+        }
+
+        if (!initialData) {
+          reset({
+            name: "",
+            type: "EXPENSE",
+            color: "#613BBF",
+            isRecurring: false,
+            frequency: "MONTHLY",
+            dueDay: 1,
+            reminderDays: 3,
+          });
+        }
+      } catch (error) {
+        console.error("Form submission error:", error);
+        toast.error("Could not save category.");
       }
+    },
+    [initialData, onAddCategory, reset]
+  );
 
-      reset({ name: "", type: "EXPENSE", color: "#613BBF" });
-    } catch (error) {
-      console.error("Form execution routine tracking failure:", error);
-      toast.error("Could not allocate category registry safely.");
-    }
-  }, [initialData, onAddCategory, reset]);
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.formCard}>
       <h3 className={styles.formTitle}>
         {isEditMode ? `Edit Category: ${initialData?.name}` : "Create New Category"}
       </h3>
-      
+
       <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout}>
-        {/* NAME INPUT */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="name">Category Label Name</label>
+          <label className={styles.label} htmlFor="name">Category Name</label>
           <input
             id="name"
             type="text"
             className={styles.inputField}
-            placeholder="e.g., Marketing, Office Supplies"
+            placeholder="e.g., Groceries, Rent, Salary"
             {...register("name")}
           />
           {errors.name && <span className={styles.errorMessage}>{errors.name.message}</span>}
         </div>
 
-        {/* DIRECTION TYPE SELECTOR */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="type">Transaction Allocation Mapping</label>
+          <label className={styles.label} htmlFor="type">Transaction Type</label>
           <select id="type" className={styles.selectField} {...register("type")}>
-            <option value="EXPENSE">Expense (Cash Outflow)</option>
-            <option value="INCOME">Income (Cash Inflow)</option>
-            <option value="BOTH">Both (Shared Pipeline)</option>
+            <option value="EXPENSE">Expense (Money Out)</option>
+            <option value="INCOME">Income (Money In)</option>
+            <option value="BOTH">Both (Income & Expense)</option>
           </select>
           {errors.type && <span className={styles.errorMessage}>{errors.type.message}</span>}
         </div>
 
-        {/* HEX CHROMATIC CONFIGURATOR */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label}>Visual Brand Accent Theme</label>
+          <label className={styles.label}>Color</label>
           <div className={styles.colorPickerWrapper}>
             <input
               type="color"
@@ -150,12 +178,76 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           {errors.color && <span className={styles.errorMessage}>{errors.color.message}</span>}
         </div>
 
-        {/* BUTTON ACTIONS GROUP */}
+        <div className={styles.fieldGroup}>
+          <div className={styles.recurringToggleRow}>
+            <label className={styles.label} htmlFor="isRecurring">Recurring Payment?</label>
+            <div className={styles.toggleSwitch}>
+              <input
+                type="checkbox"
+                id="isRecurring"
+                {...register("isRecurring")}
+                className={styles.toggleCheckbox}
+              />
+              <label htmlFor="isRecurring" className={styles.toggleLabel}>
+                <span className={styles.toggleSlider}></span>
+              </label>
+            </div>
+          </div>
+          <p className={styles.hintText}>Enable for bills, subscriptions, and other regular payments.</p>
+        </div>
+
+        {isRecurring && (
+          <div className={styles.recurringDetailsPanel}>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label} htmlFor="frequency">Frequency</label>
+              <select id="frequency" className={styles.selectField} {...register("frequency")}>
+                <option value="WEEKLY">Weekly</option>
+                <option value="BIWEEKLY">Bi-Weekly</option>
+                <option value="MONTHLY">Monthly</option>
+                <option value="QUARTERLY">Quarterly</option>
+                <option value="YEARLY">Yearly</option>
+              </select>
+              {errors.frequency && <span className={styles.errorMessage}>{errors.frequency.message}</span>}
+            </div>
+
+            <div className={styles.fieldGroup}>
+              <label className={styles.label} htmlFor="dueDay">Due Day (of the month)</label>
+              <select
+                id="dueDay"
+                className={styles.selectField}
+                {...register("dueDay", { valueAsNumber: true })}
+              >
+                {[...Array(28)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+                <option value="31">31 (Last day)</option>
+              </select>
+              {errors.dueDay && <span className={styles.errorMessage}>{errors.dueDay.message}</span>}
+            </div>
+
+            <div className={styles.fieldGroup}>
+              <label className={styles.label} htmlFor="reminderDays">Remind Me</label>
+              <select
+                id="reminderDays"
+                className={styles.selectField}
+                {...register("reminderDays", { valueAsNumber: true })}
+              >
+                <option value="0">Same day</option>
+                <option value="1">1 day before</option>
+                <option value="2">2 days before</option>
+                <option value="3">3 days before</option>
+                <option value="5">5 days before</option>
+                <option value="7">1 week before</option>
+              </select>
+              {errors.reminderDays && <span className={styles.errorMessage}>{errors.reminderDays.message}</span>}
+            </div>
+          </div>
+        )}
+
         <div className={styles.buttonGroup}>
           <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-            {isSubmitting ? "Processing Parameters..." : isEditMode ? "Save Changes" : "Create Category"}
+            {isSubmitting ? "Saving..." : isEditMode ? "Save Changes" : "Create Category"}
           </button>
-          
           {onCancel && (
             <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={isSubmitting}>
               Cancel

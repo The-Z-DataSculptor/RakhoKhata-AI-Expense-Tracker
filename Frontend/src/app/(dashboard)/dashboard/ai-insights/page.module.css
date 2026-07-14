@@ -10,15 +10,12 @@
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
-  padding: 1.5rem 2rem 0 2rem; 
+  padding: 1.5rem 2rem 0 2rem;
   box-sizing: border-box;
   letter-spacing: -0.02em;
-
-  /* Balances the page canvas layout to pin footer down precisely */
   min-height: calc(100vh - 80px);
 }
 
-/* Transformed into a fully separate standalone white card container box */
 .insightsMainHeaderCardBox {
   display: flex;
   align-items: center;
@@ -40,14 +37,12 @@
   max-width: 700px;
 }
 
-/* Aligns the green status badge and page heading perfectly on a horizontal row plane */
 .titleWithBadgeRow {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
-/* Standalone high-contrast status token positioned directly before the text */
 .liveAnalyticsBadgeElement {
   font-size: 0.72rem;
   font-weight: 800;
@@ -79,7 +74,6 @@
   line-height: 1.45;
   padding-left: 0.1rem;
 }
-/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: AI COACH PERSONA SWITCH CONTROLS ===
@@ -131,23 +125,22 @@
   color: #ffffff !important;
 }
 
+/* ✅ FIXED: Active Minimalist uses a dedicated blue color */
 .personaActiveMinimalist {
-  background-color: var(--text-primary, #10043f);
+  background-color: var(--color-info, #2563eb) !important;
   color: #ffffff !important;
 }
-/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: SYSTEM GLOBAL FOOTER ANCHORS ===
    ========================================================================== */
 .footerContainerBlock {
   width: 100%;
-  margin-top: auto; 
+  margin-top: auto;
   padding-top: 2rem;
-  padding-bottom: 1.5rem; 
+  padding-bottom: 1.5rem;
   transition: var(--transition-fast);
 }
-/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: ADAPTIVE MEDIA SCALING SYSTEMS ===
@@ -186,4 +179,3 @@
     padding: 1.25rem 1.25rem 0 1.25rem;
   }
 }
-/* === SECTION 4 END === */

@@ -192,4 +192,26 @@ export const vaultAuthService = {
       method: "POST",
     }),
 };
+
+// 6. AI Insights Service
+// Handles communication with the Gemini AI backend for financial advice
+export const aiService = {
+  /**
+   * Send a question to the AI with financial data and get a personalized response
+   * @param question - The user's question (e.g., "Where am I wasting money?")
+   * @param persona - The AI personality: "auditor", "coach", or "minimalist"
+   * @param data - Financial data including income, expenses, top category, and budgets
+   * @returns Promise with the AI's response text
+   */
+  ask: (question: string, persona: "auditor" | "coach" | "minimalist", data: {
+    income: number;
+    expenses: number;
+    topCategory: string;
+    budgets: Array<{ categoryName: string; limitAmount: number; spentAmount: number }>;
+  }) =>
+    apiFetch<{ response: string }>("/ai/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, persona, data }),
+    }),
+};
 /* === SECTION 3 END === */

@@ -14,6 +14,7 @@ import transactionRoutes from "./routes/transactionRoutes"; // FIXED: Added tran
 import categoryRoutes from "./routes/categoryRoutes";       // FIXED: Added category budget sorting routes to manage ledger folder structures
 import budgetRoutes from "./routes/budgetRoutes";           // FIXED: Added budget ceiling limit routes to establish spending guardrails
 import investmentRoutes from "./routes/investmentRoutes";   // FIXED: Added investment vault asset routes to manage financial portfolios
+import aiRoutes from "./routes/aiRoutes";                   // NEW: AI insights route for Gemini integration
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -87,6 +88,9 @@ app.use("/api/budgets", budgetRoutes); // FIXED: Linked budget watch systems to 
 
 // The Investment Vault Highway: Mount asset tracking matrices under the /api/investments prefix
 app.use("/api/investments", investmentRoutes); // FIXED: Linked capital portfolio configurations to stream stock and crypto logs securely
+
+// The AI Insights Highway: Mount AI-powered financial advice under the /api/ai prefix
+app.use("/api/ai", aiRoutes); // NEW: Routes for Gemini AI integration
 /* === SECTION 4 END === */
 
 /* ==========================================================================

@@ -16,103 +16,60 @@ interface AiResponseCardProps {
   isVisible: boolean;
   isLoading: boolean;
   activePersona: "auditor" | "coach" | "minimalist";
+  response: string;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export function AiResponseCard({ isVisible, isLoading, activePersona }: AiResponseCardProps) {
-  // Hide completely if not active
+export function AiResponseCard({
+  isVisible,
+  isLoading,
+  activePersona,
+  response,
+}: AiResponseCardProps) {
   if (!isVisible) return null;
 
-  // Render different headers and icons depending on the persona chosen
-  const renderHeaderContent = () => {
-    if (activePersona === "auditor") {
-      return (
-        <>
-          <FiShield className={styles.iconAuditor} size={16} />
-          <span className={styles.personaTitleText}>Strict Auditor Assessment</span>
-        </>
-      );
-    }
-    if (activePersona === "coach") {
-      return (
-        <>
-          <FiTrendingUp className={styles.iconCoach} size={16} />
-          <span className={styles.personaTitleText}>Money Coach Suggestion</span>
-        </>
-      );
-    }
-    return (
-      <>
-        <FiActivity className={styles.iconMinimalist} size={16} />
-        <span className={styles.personaTitleText}>Minimalist Review</span>
-      </>
-    );
+  // UPGRADED: Icons increased to size 24 to match the grander text
+  const getIcon = () => {
+    if (activePersona === "auditor") return <FiShield className={styles.iconAuditor} size={24} />;
+    if (activePersona === "coach") return <FiTrendingUp className={styles.iconCoach} size={24} />;
+    return <FiActivity className={styles.iconMinimalist} size={24} />;
   };
 
-  // Simple and direct text answers for the frontend layout
-  const getSummaryLine = (): string => {
-    if (activePersona === "auditor") return "You are spending money too fast on non-essential things.";
-    if (activePersona === "coach") return "Great job! You are on track to save more money this month.";
-    return "We found 3 extra bills you can cancel right now to save space.";
+  const getPersonaName = () => {
+    if (activePersona === "auditor") return "Auditor";
+    if (activePersona === "coach") return "Coach";
+    return "Minimalist";
   };
 
-  const getDetailParagraph = (): string => {
-    if (activePersona === "auditor") {
-      return "Your ads and eating out categories went up sharply this week. You should lock your budget spending limits right now so you do not run out of cash before the month ends.";
-    }
-    if (activePersona === "coach") {
-      return "Your saving habits look healthy this cycle. If you keep going at this speed, you will hit your savings goal 2 weeks early. Think about moving this extra money into your investment vault.";
-    }
-    return "You are paying for multiple online tools that do the same exact job. Trimming away the ones you do not use will easily save you 3,500 PKR every month.";
-  };
-
-  // Dynamic style selector class helper
-  const getPersonaCardClass = (): string => {
+  const getCardThemeClass = () => {
     if (activePersona === "auditor") return styles.cardAuditor;
     if (activePersona === "coach") return styles.cardCoach;
     return styles.cardMinimalist;
   };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
   return (
-    <div className={`${styles.responseCardOuterBounds} ${getPersonaCardClass()}`}>
-      
-      {/* LOADING STATE DISPLAYED ON INPUT SUBMISSION LINKAGES */}
+    <div className={`${styles.responseCardOuterBounds} ${getCardThemeClass()}`}>
       {isLoading ? (
         <div className={styles.loadingPulseFrameContainer}>
           <div className={styles.animatedPulseDotElement} />
-          <p className={styles.loadingStatusText}>Reading your workspace data logs...</p>
+          <p className={styles.loadingStatusText}>Thinking about your question...</p>
         </div>
       ) : (
-        /* RENDER RESPONSIVE RESULTS MATRIX */
         <div className={styles.innerResultLayoutDeck}>
-          
-          {/* MICRO ZONE 1: ACTIVE PERSONA HEADER TITLE TAG */}
           <div className={styles.cardPersonaIdentityHeaderRow}>
-            {renderHeaderContent()}
+            {getIcon()}
+            <span className={styles.personaTitleText}>{getPersonaName()} Says:</span>
           </div>
-
           <div className={styles.textGroupingLayoutBlock}>
-            {/* MICRO ZONE 2: BOLD HIGH CONTRAST QUICK SUMMARY STATEMENT */}
-            <h4 className={styles.boldSummaryAlertBullet}>
-              {getSummaryLine()}
-            </h4>
-
-            {/* MICRO ZONE 3: SIMPLE EXPLANATION STORY TEXT */}
             <p className={styles.cleanDetailParagraphDescription}>
-              {getDetailParagraph()}
+              {response || "No response yet. Try asking a question!"}
             </p>
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

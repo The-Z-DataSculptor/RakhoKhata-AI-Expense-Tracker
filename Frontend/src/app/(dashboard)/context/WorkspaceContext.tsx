@@ -7,7 +7,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { FiUser, FiBriefcase, FiFolder, FiStar, FiHexagon } from "react-icons/fi";
 import { toast } from "sonner";
-import { apiFetch } from "@/utils/api"; // Upgraded: Imports your custom secure HttpOnly cross-origin fetch utility
+import { apiFetch } from "@/utils/api"; // Upgraded: Secure HttpOnly cross-origin fetch utility
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -16,19 +16,28 @@ import { apiFetch } from "@/utils/api"; // Upgraded: Imports your custom secure 
 export interface Workspace {
   id: string;
   name: string;
-  currency: string;  // Upgraded: Mapped to capture the backend currency strings (e.g. PKR, GBP)
-  iconName?: string; // Stays optional so we can compute it dynamically from the database record names
+  currency: string;  // Upgraded: Mapped to capture backend currency strings (e.g. PKR, GBP)
+  iconName?: string; // Optional field computed dynamically from record names
 }
 
 interface WorkspaceContextType {
   workspaces: Workspace[];
   activeWorkspaceId: string;
   activeWorkspace: Workspace | undefined; 
-  isLoading: boolean; // Upgraded: Exposes loading status trackers so the sidebar can show spinner states
+  isLoading: boolean; // Upgraded: Exposes loading status trackers for sidebar spinner states
   switchWorkspace: (id: string) => void;
   createWorkspace: (name: string, currency?: string) => Promise<void>; // Upgraded: Returns a promise for loading forms
   deleteWorkspace: (id: string) => Promise<void>;                     // Upgraded: Connects directly to backend cascade delete channels
   renderIcon: (iconName: string, size?: number) => React.ReactNode; 
+}
+
+// 🚀 NEW: Declared typed backend response contracts to eliminate 'unknown' compiler bugs
+interface FetchWorkspacesResponse {
+  workspaces: Workspace[];
+}
+
+interface CreateWorkspaceResponse {
+  workspace: Workspace;
 }
 /* === SECTION 2 END === */
 
@@ -72,8 +81,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const fetchInitialDataStream = async () => {
       try {
         setIsLoading(true);
-        // Dispatch the secure handshake query block to fetch all workspaces matching this user profile
-        const data = await apiFetch("/workspaces");
+        // 🚀 FIXED: Passed the generic type block so TypeScript knows 'data' contains workspaces array
+        const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
         
         if (data.workspaces && data.workspaces.length > 0) {
           // Map database nodes onto local structures, resolving their icon styles dynamically
@@ -114,8 +123,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // --- ACTION: CREATE NEW REMOTE WORKSPACE ---
   const createWorkspace = async (name: string, currency: string = "PKR") => {
     try {
-      // Post the new setup specifications down the server endpoints array
-      const data = await apiFetch("/workspaces", {
+      // 🚀 FIXED: Injected explicit creation contract structure to validate response metadata properties
+      const data = await apiFetch<CreateWorkspaceResponse>("/workspaces", {
         method: "POST",
         body: JSON.stringify({ name, currency }),
       });
@@ -125,7 +134,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         iconName: assignDynamicIcon(data.workspace.name)
       };
 
-      // Merge new instance node into the active array tracking frame and switch active selection context
+      // Merge new instance node into active array and update runtime selection context
       setWorkspaces((prev) => [...prev, initializedWorkspace]);
       switchWorkspace(initializedWorkspace.id);
       
@@ -146,7 +155,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const filteredSpaces = workspaces.filter((ws) => ws.id !== id);
       setWorkspaces(filteredSpaces);
 
-      // Routing Fix: If the active workspace was the one removed, redirect user to their primary default setup
+      // Routing Fix: If active workspace was removed, redirect to primary default setup
       if (activeWorkspaceId === id && filteredSpaces.length > 0) {
         switchWorkspace(filteredSpaces[0].id);
       }

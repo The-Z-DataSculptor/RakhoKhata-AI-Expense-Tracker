@@ -16,9 +16,14 @@ import {
   FiSunrise,
   FiSunset,
   FiStar,
+  FiCalendar,
+  FiAlertCircle,
+  FiInfo,
+  FiCheckCircle
 } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { notificationService, Notification } from "@/utils/api"; 
 import styles from "./DashboardNavbar.module.css";
 /* === SECTION 1 END === */
 
@@ -45,7 +50,34 @@ interface DashboardNavbarProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: UTILITY FUNCTIONS ===
+   ========================================================================== */
+function timeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.round(minutes / 60);
+  const days = Math.round(hours / 24);
+
+  if (seconds < 60) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 30) return `${days}d ago`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function getNotificationIcon(sourceType: string) {
+  switch (sourceType) {
+    case "BILL_REMINDER": return <FiCalendar size={18} className={styles.iconBill} />;
+    case "BUDGET_ALERT": return <FiAlertCircle size={18} className={styles.iconAlert} />;
+    default: return <FiInfo size={18} className={styles.iconSystem} />;
+  }
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: COMPONENT LOGIC ===
    ========================================================================== */
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: "PKR", symbol: "₨", label: "Pakistani Rupee", flag: "🇵🇰" },
@@ -101,7 +133,11 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
 
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const [dynamicGreeting, setDynamicGreeting] = useState<{
     icon: React.ReactNode;
@@ -109,7 +145,6 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
   } | null>(null);
   const [dynamicFact, setDynamicFact] = useState<string>("");
 
-  // Safely set dynamic data on mount
   useEffect(() => {
     const timer = setTimeout(() => {
       const hour = new Date().getHours();
@@ -132,17 +167,45 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // PERFECT UX: Close dropdowns if user clicks outside of them
+  useEffect(() => {
+    if (user?.id) {
+      notificationService
+        .getAll()
+        .then((res) => setNotifications(res.notifications))
+        .catch((err) => console.error("Failed to load notifications:", err));
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCurrencyOpen(false);
         setIsThemeOpen(false);
+        setIsNotificationOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleMarkAsRead = async (id: string, isRead: boolean) => {
+    if (isRead) return;
+    try {
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      await notificationService.markAsRead(id);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      await notificationService.markAllAsRead();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const getThemeIcon = () => {
     if (activeTheme === "light") return <FiSun size={16} />;
@@ -207,6 +270,7 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
             onClick={() => {
               setIsCurrencyOpen(!isCurrencyOpen);
               setIsThemeOpen(false);
+              setIsNotificationOpen(false);
             }}
             aria-label="Change currency"
             aria-expanded={isCurrencyOpen}
@@ -243,10 +307,72 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
           )}
         </div>
 
-        {/* NOTIFICATIONS */}
-        <button className={styles.utilityIconButton} aria-label="Notifications">
-          <SideEffectNotificationDot />
-        </button>
+        {/* NOTIFICATIONS DROPDOWN */}
+        <div className={styles.dropdownMenuContainer}>
+          <button
+            className={`${styles.utilityIconButton} ${isNotificationOpen ? styles.iconButtonActive : ""}`}
+            onClick={() => {
+              setIsNotificationOpen(!isNotificationOpen);
+              setIsThemeOpen(false);
+              setIsCurrencyOpen(false);
+            }}
+            aria-label="Notifications"
+          >
+            <FiBell size={18} />
+            {unreadCount > 0 && (
+              <span className={styles.notificationBadgeCount}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotificationOpen && (
+            <div className={styles.notificationDropdownMenuFrame}>
+              <div className={styles.notificationHeader}>
+                <div className={styles.notificationTitleRow}>
+                  <span className={styles.dropdownMenuHeaderTitle}>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className={styles.unreadPill}>{unreadCount} new</span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <button className={styles.markAllReadBtn} onClick={handleMarkAllAsRead}>
+                    <FiCheckCircle size={14} /> Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className={styles.notificationScrollableContainer}>
+                {notifications.length === 0 ? (
+                  <div className={styles.emptyNotificationState}>
+                    <FiCheckCircle size={28} className={styles.emptyIcon} />
+                    <p>You are all caught up!</p>
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`${styles.notificationCard} ${!notification.isRead ? styles.notificationCardUnread : ""}`}
+                      onClick={() => handleMarkAsRead(notification.id, notification.isRead)}
+                    >
+                      <div className={styles.notificationIconWrapper}>
+                        {getNotificationIcon(notification.sourceType)}
+                      </div>
+                      <div className={styles.notificationContent}>
+                        <div className={styles.notificationTopRow}>
+                          <p className={styles.notificationCardTitle}>{notification.title}</p>
+                          <span className={styles.notificationTime}>{timeAgo(notification.createdAt)}</span>
+                        </div>
+                        <p className={styles.notificationCardMessage}>{notification.message}</p>
+                      </div>
+                      {!notification.isRead && <div className={styles.unreadIndicatorDot} />}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* THEME DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
@@ -255,6 +381,7 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
             onClick={() => {
               setIsThemeOpen(!isThemeOpen);
               setIsCurrencyOpen(false);
+              setIsNotificationOpen(false);
             }}
             aria-label="Change color theme"
             aria-expanded={isThemeOpen}
@@ -389,14 +516,5 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
         </>
       )}
     </header>
-  );
-}
-
-function SideEffectNotificationDot() {
-  return (
-    <>
-      <FiBell size={18} />
-      <span className={styles.notificationPulseBadge}></span>
-    </>
   );
 }

@@ -4,28 +4,30 @@
    === SECTION 1: IMPORTS AND SETUP ===
    ========================================================================== */
 import { Response } from "express";
-import { prisma } from "../db";                                       // Core database client link
-import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure session tracker layout
+import { prisma } from "../db";
+import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CATEGORY SEEDER HELPER (THE AUTOMATIC SETUP ENGINE) ===
+   === SECTION 2: CATEGORY SEEDER HELPER ===
    ========================================================================== */
-// Beginner-friendly helper function that builds 6 standard starter folders for any workspace ID
-const seedDefaultCategoriesForWorkspace = async (workspaceId: string): Promise<void> => {
-  const starterCategories = [
-    // Income Streams (Visual Accent Theme: Greens and Blues)
-    { name: "Salary", type: "INCOME", color: "#10B981", workspaceId },
-    { name: "Investments", type: "INCOME", color: "#3B82F6", workspaceId },
-    
-    // Expense Streams (Visual Accent Theme: Oranges, Reds, Purples, Pinks)
-    { name: "Food & Groceries", type: "EXPENSE", color: "#F97316", workspaceId },
-    { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444", workspaceId },
-    { name: "Utilities", type: "EXPENSE", color: "#8B5CF6", workspaceId },
-    { name: "Entertainment", type: "EXPENSE", color: "#EC4899", workspaceId }
-  ];
+const seedDefaultCategoriesForWorkspace = async (workspaceId: string, workspaceName: string): Promise<void> => {
+  let starterCategories = [];
 
-  // Batch-insert the categories directly into Neon Cloud
+  if (workspaceName.toLowerCase() === "business") {
+    starterCategories = [
+      { name: "Revenue", type: "INCOME", color: "#10b981", workspaceId },
+      { name: "Marketing", type: "EXPENSE", color: "#6366f1", workspaceId },
+      { name: "Inventory", type: "EXPENSE", color: "#d97706", workspaceId }
+    ];
+  } else {
+    starterCategories = [
+      { name: "Salary", type: "INCOME", color: "#10B981", workspaceId },
+      { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444", workspaceId },
+      { name: "Food & Groceries", type: "EXPENSE", color: "#F97316", workspaceId }
+    ];
+  }
+
   await prisma.category.createMany({
     data: starterCategories
   });
@@ -33,7 +35,7 @@ const seedDefaultCategoriesForWorkspace = async (workspaceId: string): Promise<v
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: FETCH USER WORKSPACES (WITH LAZY-SEEDER FALLBACK) ===
+   === SECTION 3: FETCH USER WORKSPACES ===
    ========================================================================== */
 export const getUserWorkspaces = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -44,29 +46,29 @@ export const getUserWorkspaces = async (req: AuthenticatedRequest, res: Response
       return;
     }
 
-    // 1. Look up all existing workspaces assigned to this user account
     let workspaces = await prisma.workspace.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" }
     });
 
-    // 2. FALLBACK GUARD: If an older profile holds 0 workspaces, build them right now!
     if (workspaces.length === 0) {
-      // Create 'Personal' workspace node
+      const userProfile = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { currency: true }
+      });
+      
+      const preferredCurrency = userProfile?.currency || "PKR";
+
       const personalSpace = await prisma.workspace.create({
-        data: { name: "Personal", currency: "USD", userId }
+        data: { name: "Personal", currency: preferredCurrency, userId }
       });
-      // Instantly seed its default baseline folders
-      await seedDefaultCategoriesForWorkspace(personalSpace.id);
+      await seedDefaultCategoriesForWorkspace(personalSpace.id, "Personal");
 
-      // Create 'Business' workspace node
       const businessSpace = await prisma.workspace.create({
-        data: { name: "Business", currency: "USD", userId }
+        data: { name: "Business", currency: preferredCurrency, userId }
       });
-      // Instantly seed its default baseline folders
-      await seedDefaultCategoriesForWorkspace(businessSpace.id);
+      await seedDefaultCategoriesForWorkspace(businessSpace.id, "Business");
 
-      // Re-query the database to pull down the newly minted entries with their actual cloud UUIDs
       workspaces = await prisma.workspace.findMany({
         where: { userId },
         orderBy: { createdAt: "asc" }
@@ -99,17 +101,15 @@ export const createWorkspace = async (req: AuthenticatedRequest, res: Response):
       return;
     }
 
-    // 1. Log the new workspace container shell row inside Neon Cloud
     const newWorkspace = await prisma.workspace.create({
       data: {
         name: name.trim(),
-        currency: currency || "USD", // System universal fallback standard
+        currency: currency || "PKR", 
         userId
       }
     });
 
-    // 2. TRIGGER SEEDER: Populate the new custom workspace with starter folders instantly
-    await seedDefaultCategoriesForWorkspace(newWorkspace.id);
+    await seedDefaultCategoriesForWorkspace(newWorkspace.id, newWorkspace.name);
 
     res.status(201).json({
       message: "Workspace created and seeded successfully!",
@@ -128,7 +128,7 @@ export const createWorkspace = async (req: AuthenticatedRequest, res: Response):
 export const deleteWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.params.id ? String(req.params.id) : undefined;
+    const targetWorkspaceId = req.params.id as string;   // FIXED: cast to string
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized access tracking parameters." });
@@ -140,14 +140,12 @@ export const deleteWorkspace = async (req: AuthenticatedRequest, res: Response):
       return;
     }
 
-    // Confirm workspace ownership before running destructive commands
     const workspaceTarget = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
     if (!workspaceTarget || workspaceTarget.userId !== userId) {
       res.status(403).json({ error: "Access denied. Action signature verification failed." });
       return;
     }
 
-    // Execute standard database record removal
     await prisma.workspace.delete({ where: { id: targetWorkspaceId } });
 
     res.status(200).json({ message: "Workspace tracking container cleared successfully." });
@@ -157,3 +155,44 @@ export const deleteWorkspace = async (req: AuthenticatedRequest, res: Response):
   }
 };
 /* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: UPDATE WORKSPACE (NEW) ===
+   ========================================================================== */
+export const updateWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const workspaceId = req.params.id as string;   // FIXED: cast to string
+
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (!workspaceId) {
+      res.status(400).json({ error: "Workspace ID required." });
+      return;
+    }
+
+    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    if (!workspace || workspace.userId !== userId) {
+      res.status(403).json({ error: "Access denied." });
+      return;
+    }
+
+    const { name, currency } = req.body;
+    const data: Record<string, string> = {};
+    if (name) data.name = name.trim();
+    if (currency) data.currency = currency;
+
+    const updated = await prisma.workspace.update({
+      where: { id: workspaceId },
+      data
+    });
+
+    res.status(200).json({ message: "Workspace updated successfully.", workspace: updated });
+  } catch (error) {
+    console.error("Update Workspace Error:", error);
+    res.status(500).json({ error: "Internal server error updating workspace." });
+  }
+};
+/* === SECTION 6 END === */

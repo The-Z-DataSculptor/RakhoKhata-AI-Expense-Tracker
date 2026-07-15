@@ -6,13 +6,89 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
-import { vaultAuthService } from "@/utils/api";
+import { vaultAuthService, userService, workspaceService } from "@/utils/api";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
-import { FiShield, FiSliders as FiLayers, FiCheck, FiTrash2, FiEdit2, FiLoader } from "react-icons/fi";
+import {
+  FiShield,
+  FiSliders as FiLayers,
+  FiCheck,
+  FiTrash2,
+  FiEdit2,
+  FiLoader,
+  FiUser,
+  FiLock,
+  FiGlobe,
+  FiTarget,
+  FiCpu
+} from "react-icons/fi";
+import { toast } from "sonner";
 import styles from "./page.module.css";
+/* === SECTION 1 END === */
+
 /* ==========================================================================
-   === SECTION 1 END ===
+   === SECTION 2: GLOBAL DATA ===
    ========================================================================== */
+const CURRENCIES = [
+  "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
+  "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
+  "RUB", "ZAR", "TRY", "BRL", "TWD", "PLN", "THB", "IDR", "HUF", "DKK",
+  "ILS", "CLP", "PHP", "COP", "MYR", "RON", "VND", "KWD",
+];
+
+const COUNTRIES = [
+  "Pakistan", "United States", "United Kingdom", "Germany", "Japan",
+  "India", "Canada", "Australia", "United Arab Emirates", "Saudi Arabia",
+  "Afghanistan", "Albania", "Algeria", "Argentina", "Austria", "Bangladesh",
+  "Belgium", "Brazil", "Chile", "China", "Colombia", "Denmark", "Egypt",
+  "Finland", "France", "Greece", "Hong Kong", "Indonesia", "Iran", "Iraq",
+  "Ireland", "Israel", "Italy", "Jordan", "Kenya", "Kuwait", "Malaysia",
+  "Mexico", "Morocco", "Netherlands", "New Zealand", "Norway", "Oman",
+  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia",
+  "Singapore", "South Africa", "South Korea", "Spain", "Sweden", "Switzerland",
+  "Thailand", "Turkey", "Ukraine", "Vietnam", "Yemen", "Zimbabwe",
+];
+
+const PRIORITY_LANGUAGES = [
+  "English", "Urdu (اُردو)", "Punjabi (پنجابی)", "Sindhi (سنڌي)", 
+  "Pashto (پښتو)", "Hindi (हिन्दी)", "Spanish (Español)", 
+  "Arabic (العربية)", "French (Français)", "German (Deutsch)", "Japanese (日本語)"
+];
+
+const EXTENDED_LANGUAGES = [
+  "Bengali (বাংলা)", "Tamil (தமிழ்)", "Telugu (తెలుగు)", "Marathi (मराठी)",
+  "Italian (Italiano)", "Portuguese (Português)", "Russian (Русский)",
+  "Turkish (Türkçe)", "Mandarin (中文)", "Korean (한국어)", 
+  "Vietnamese (Tiếng Việt)", "Thai (ภาษาไทย)", "Kashmiri (کٲشُر)",
+  "Saraiki (سرائیکی)", "Balochi (بلوچی)"
+];
+
+const OCCUPATIONS = [
+  { id: "salaried", label: "Salaried Employee" },
+  { id: "freelancer", label: "Freelancer / Contractor" },
+  { id: "entrepreneur", label: "Entrepreneur / Business" },
+  { id: "student", label: "Student" },
+  { id: "gig_worker", label: "Gig Worker / Creator" },
+  { id: "prefer_not_to_say", label: "Prefer Not to Say" },
+];
+
+const FINANCIAL_GOALS = [
+  { id: "hustler", emoji: "🚀", label: "The Hustler", desc: "Managing multiple gigs & side incomes." },
+  { id: "saver", emoji: "🏦", label: "The Saver", desc: "Building a rock-solid emergency fund." },
+  { id: "tight_budgeter", emoji: "🔍", label: "The Budgeter", desc: "Finding leaks & living paycheck-to-paycheck." },
+  { id: "zen_master", emoji: "🧘‍♂️", label: "The Zen Master", desc: "Zero stress. Just watching cash flow." },
+  { id: "wealth_builder", emoji: "📈", label: "The Wealth Builder", desc: "Focusing heavily on compound growth." },
+  { id: "debt_destroyer", emoji: "🔨", label: "The Debt Destroyer", desc: "Aggressively crushing loans." },
+  { id: "nomad", emoji: "🗺️", label: "The Nomad", desc: "Handling multi-currency global life." },
+  { id: "privacy_sentinel", emoji: "🛡️", label: "Prefer Private", desc: "Keep my goals unanalyzed." },
+];
+
+const AI_PERSONAS = [
+  { id: "savage_roaster", emoji: "🔥", label: "Savage Roaster", desc: "Tough love. Playfully roasts your spending." },
+  { id: "supportive_coach", emoji: "🤝", label: "Supportive Coach", desc: "Warm mentor. Celebrates wins gently." },
+  { id: "forensic_detective", emoji: "🕵️‍♂️", label: "Forensic Detective", desc: "Hyper-analytical. Finds hidden leaks." },
+  { id: "silent_accountant", emoji: "📊", label: "Silent Accountant", desc: "Pure business. Raw mathematical logic." },
+];
+/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
@@ -20,126 +96,279 @@ import styles from "./page.module.css";
 export default function SettingsPage() {
   const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace } = useWorkspace();
 
-  // --- WORKSPACE STATES ---
+  // --- USER PROFILE STATE ---
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // 🚀 NEW: Modern UI Tab State
+  const [activeTab, setActiveTab] = useState<"general" | "location" | "vibe" | "ai" | "security">("general");
+
+  // --- PROFILE FORM STATES ---
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [country, setCountry] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [occupation, setOccupation] = useState("");
+  const [financialGoal, setFinancialGoal] = useState("");
+  const [aiPersona, setAiPersona] = useState("");
+
+  // --- PASSWORD CHANGE STATE ---
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // --- WORKSPACE RENAME STATE ---
   const [renameInput, setRenameInput] = useState<string>(activeWorkspace ? activeWorkspace.name : "");
-  const [isSuccessFeedbackVisible, setIsSuccessFeedbackVisible] = useState<boolean>(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isWorkspaceSaving, setIsWorkspaceSaving] = useState<boolean>(false);
+  const [, setRefreshKey] = useState(0);
 
   // --- VAULT SECURITY STATES ---
   const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // FIXED: Single fetch function used both on mount and after PIN operations
+  // --- FETCH USER PROFILE (inlined to avoid setState-in-effect warning) ---
+  useEffect(() => {
+    (async () => {
+      setIsProfileLoading(true);
+      try {
+        const response = await userService.getProfile();
+        const user = response.user;
+        setName(user.name || "");
+        setEmail(user.email || "");
+        setCountry(user.country || "");
+        setCurrency(user.currency || "");
+        setLanguages(user.languages || []);
+        setOccupation(user.occupation || "");
+        setFinancialGoal(user.financialGoal || "");
+        setAiPersona(user.aiPersona || "");
+      } catch {
+        toast.error("Could not load your profile data.");
+      } finally {
+        setIsProfileLoading(false);
+      }
+    })();
+  }, []); // run only on mount
+
+  // --- VAULT PIN STATUS (inlined in effect to avoid lint warning) ---
+  useEffect(() => {
+    let cancelled = false;
+    const loadStatus = async () => {
+      try {
+        const status = await vaultAuthService.checkStatus();
+        if (!cancelled) setIsVaultSecurityEnabled(status.hasPin);
+      } catch {
+        // silently ignore – keep previous state
+      } finally {
+        if (!cancelled) setIsSecurityLoading(false);
+      }
+    };
+    loadStatus();
+    return () => { cancelled = true; };
+  }, []);
+
+  // --- VAULT PIN STATUS (kept for other handlers, not used in effects) ---
   const fetchVaultPinStatus = async () => {
     try {
       const status = await vaultAuthService.checkStatus();
       setIsVaultSecurityEnabled(status.hasPin);
-    } catch (err) {
-      console.error("Could not fetch database status keys:", err);
+    } catch {
+      // ignore
     } finally {
       setIsSecurityLoading(false);
     }
   };
 
-  // FIXED: Simplified useEffect – calls fetchVaultPinStatus directly with cleanup
-  useEffect(() => {
-    let isMounted = true;
-    const syncPinStatus = async () => {
-      try {
-        const status = await vaultAuthService.checkStatus();
-        if (isMounted) {
-          setIsVaultSecurityEnabled(status.hasPin);
-        }
-      } catch (err) {
-        console.error("Could not fetch database status keys:", err);
-      } finally {
-        if (isMounted) {
-          setIsSecurityLoading(false);
-        }
-      }
-    };
-    syncPinStatus();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // --- SAVE ACTIONS ---
+  const handleSaveBasicInfo = async () => {
+    if (!name.trim() || !email.trim()) return toast.error("Name and email are required.");
+    setIsSaving(true);
+    try {
+      await userService.updateProfile({ name, email });
+      toast.success("Profile updated successfully!");
+      // re-fetch after save to sync state
+      const response = await userService.getProfile();
+      const user = response.user;
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setCountry(user.country || "");
+      setCurrency(user.currency || "");
+      setLanguages(user.languages || []);
+      setOccupation(user.occupation || "");
+      setFinancialGoal(user.financialGoal || "");
+      setAiPersona(user.aiPersona || "");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update profile.";
+      toast.error(message);
+    } finally { setIsSaving(false); }
+  };
 
-  const handleSecurityToggle = () => {
-    if (isVaultSecurityEnabled) {
-      setPinModalMode("DISABLE");
-      setIsPinModalOpen(true);
-    } else {
-      setPinModalMode("SETUP");
-      setIsPinModalOpen(true);
+  const handleSaveLocation = async () => {
+    setIsSaving(true);
+    try {
+      await userService.updateProfile({ country, currency, languages });
+      toast.success("Location & Language settings updated!");
+      const response = await userService.getProfile();
+      const user = response.user;
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setCountry(user.country || "");
+      setCurrency(user.currency || "");
+      setLanguages(user.languages || []);
+      setOccupation(user.occupation || "");
+      setFinancialGoal(user.financialGoal || "");
+      setAiPersona(user.aiPersona || "");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update location.";
+      toast.error(message);
+    } finally { setIsSaving(false); }
+  };
+
+  const handleSaveVibe = async () => {
+    setIsSaving(true);
+    try {
+      await userService.updateProfile({ occupation, financialGoal });
+      toast.success("Financial profile updated!");
+      const response = await userService.getProfile();
+      const user = response.user;
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setCountry(user.country || "");
+      setCurrency(user.currency || "");
+      setLanguages(user.languages || []);
+      setOccupation(user.occupation || "");
+      setFinancialGoal(user.financialGoal || "");
+      setAiPersona(user.aiPersona || "");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update profile.";
+      toast.error(message);
+    } finally { setIsSaving(false); }
+  };
+
+  const handleSaveAIPersona = async () => {
+    setIsSaving(true);
+    try {
+      await userService.updateProfile({ aiPersona });
+      toast.success("AI personality updated!");
+      const response = await userService.getProfile();
+      const user = response.user;
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setCountry(user.country || "");
+      setCurrency(user.currency || "");
+      setLanguages(user.languages || []);
+      setOccupation(user.occupation || "");
+      setFinancialGoal(user.financialGoal || "");
+      setAiPersona(user.aiPersona || "");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update AI persona.";
+      toast.error(message);
+    } finally { setIsSaving(false); }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) return toast.error("Please fill in all password fields.");
+    if (newPassword !== confirmPassword) return toast.error("New passwords do not match.");
+    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters.");
+    
+    setIsChangingPassword(true);
+    try {
+      await userService.changePassword(currentPassword, newPassword);
+      toast.success("Password changed successfully!");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to change password.";
+      toast.error(message);
+    } finally { setIsChangingPassword(false); }
+  };
+
+  // --- WORKSPACE HANDLERS ---
+  const handleRenameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renameInput.trim() || !activeWorkspace) return;
+    setIsWorkspaceSaving(true);
+    try {
+      await workspaceService.update(activeWorkspace.id, { name: renameInput.trim() });
+      toast.success("Workspace renamed successfully!");
+      setRefreshKey(prev => prev + 1);
+      window.location.reload();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to rename workspace.";
+      toast.error(message);
+    } finally { setIsWorkspaceSaving(false); }
+  };
+
+  const handleDeleteClick = async (targetWorkspaceId: string) => {
+    if (targetWorkspaceId === activeWorkspaceId) {
+      alert("You cannot delete the workspace you are currently using.");
+      return;
+    }
+    const userConfirmed = confirm("Are you sure you want to delete this workspace?");
+    if (userConfirmed) {
+      try {
+        setDeletingId(targetWorkspaceId);
+        await deleteWorkspace(targetWorkspaceId);
+      } catch (error: unknown) {
+        console.error("Workspace delete error:", error);
+      } finally { setDeletingId(null); }
     }
   };
 
+  // --- VAULT SECURITY HANDLERS ---
+  const handleSecurityToggle = () => {
+    setPinModalMode(isVaultSecurityEnabled ? "DISABLE" : "SETUP");
+    setIsPinModalOpen(true);
+  };
   const handleChangePinClick = () => {
     setPinModalMode("CHANGE");
     setIsPinModalOpen(true);
   };
-
-  // FIXED: Simplified – just refresh status and close modal
   const handlePinSetupSuccess = async () => {
     setIsPinModalOpen(false);
     setIsSecurityLoading(true);
     await fetchVaultPinStatus();
   };
 
-  const handleRenameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!renameInput.trim() || !activeWorkspace) return;
-
-    // TODO: Call workspace update API here when implemented
-    // For now, just show visual feedback
-    setIsSuccessFeedbackVisible(true);
-    const timeoutId = setTimeout(() => setIsSuccessFeedbackVisible(false), 2500);
-    return () => clearTimeout(timeoutId);
+  // --- HELPERS ---
+  const toggleLanguage = (lang: string) => {
+    setLanguages(prev => prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]);
   };
+  const allLanguages = [...PRIORITY_LANGUAGES, ...EXTENDED_LANGUAGES];
 
-  const handleDeleteClick = async (targetWorkspaceId: string) => {
-    if (targetWorkspaceId === activeWorkspaceId) {
-      alert("You cannot delete the workspace you are currently using. Please switch to a different workspace first.");
-      return;
-    }
+  // --- RENDER ---
+  if (isProfileLoading) {
+    return (
+      <div className={styles.settingsCanvasDeck}>
+        <div className={styles.loadingState}>
+          <FiLoader className={styles.loadingSpinnerAnimation} size={24} />
+          <p>Loading your settings...</p>
+        </div>
+      </div>
+    );
+  }
 
-    const userConfirmed = confirm("Are you completely sure you want to delete this workspace? This will permanently erase all transactions and investments inside it.");
-
-    if (userConfirmed) {
-      try {
-        setDeletingId(targetWorkspaceId);
-        await deleteWorkspace(targetWorkspaceId);
-      } catch (error) {
-        console.error("Workspace teardown runtime pipeline exception:", error);
-      } finally {
-        setDeletingId(null);
-      }
-    }
-  };
-  /* ==========================================================================
-     === SECTION 3 END ===
-     ========================================================================== */
-
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
   return (
     <div className={styles.settingsCanvasDeck}>
 
+      {/* HEADER */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.mainHeadline}>Settings</h1>
           <p className={styles.subtextDescription}>
-            Manage your account preferences, customize your environment options, and configure your workspace settings.
+            Manage your account preferences, tailor your AI, and secure your vault.
           </p>
         </div>
       </header>
 
       <div className={styles.cardsStackDeck}>
 
-        {/* WORKSPACE CONTROL CARD */}
+        {/* ============================================================
+            WORKSPACE CONTROL CARD
+            ============================================================ */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame}>
@@ -148,7 +377,7 @@ export default function SettingsPage() {
             <div>
               <h2 className={styles.cardTitle}>Your Workspaces</h2>
               <p className={styles.cardContextExplanation}>
-                Rename the workspace you are using right now, or completely delete other workspaces you do not need anymore.
+                Rename the current workspace, or clear out old workspaces you no longer need.
               </p>
             </div>
           </div>
@@ -166,9 +395,9 @@ export default function SettingsPage() {
                     required
                     className={styles.primaryTextInputElement}
                   />
-                  <button type="submit" className={styles.saveActionSubmitBtn}>
-                    {isSuccessFeedbackVisible ? <FiCheck size={15} /> : <FiEdit2 size={13} />}
-                    <span>{isSuccessFeedbackVisible ? "Saved!" : "Save Name"}</span>
+                  <button type="submit" className={styles.saveActionSubmitBtn} disabled={isWorkspaceSaving}>
+                    {isWorkspaceSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiEdit2 size={14} />}
+                    <span>{isWorkspaceSaving ? "Saving..." : "Save Name"}</span>
                   </button>
                 </div>
               </div>
@@ -181,32 +410,25 @@ export default function SettingsPage() {
               <div className={styles.entriesGridList}>
                 {workspaces.map((ws) => {
                   const isActive = ws.id === activeWorkspaceId;
-                  const isCurrentTargetDeleting = deletingId === ws.id;
-
+                  const isDeleting = deletingId === ws.id;
                   return (
                     <div
                       key={ws.id}
-                      className={`${styles.wsRowCardItem} ${isActive ? styles.wsActiveCardHighlight : ""} ${isCurrentTargetDeleting ? styles.wsRowCardDeleting : ""}`}
+                      className={`${styles.wsRowCardItem} ${isActive ? styles.wsActiveCardHighlight : ""} ${isDeleting ? styles.wsRowCardDeleting : ""}`}
                     >
                       <div className={styles.wsRowIdentityFrame}>
                         <span className={styles.wsVisualMarkerDot} />
                         <span className={styles.wsIdentityNameLabel}>{ws.name}</span>
                         {isActive && <span className={styles.activeStatusPillBadge}>Active Now</span>}
-                        {isCurrentTargetDeleting && <span className={styles.deletingStatusPillBadge}>Erasing...</span>}
+                        {isDeleting && <span className={styles.deletingStatusPillBadge}>Erasing...</span>}
                       </div>
-
                       <button
                         type="button"
                         onClick={() => handleDeleteClick(ws.id)}
                         disabled={isActive || deletingId !== null}
-                        title={isActive ? "You cannot delete the workspace you are currently using" : "Delete this workspace"}
                         className={styles.rowDeleteTriggerActionBtn}
                       >
-                        {isCurrentTargetDeleting ? (
-                          <FiLoader size={14} className={styles.loadingSpinnerAnimation} />
-                        ) : (
-                          <FiTrash2 size={14} />
-                        )}
+                        {isDeleting ? <FiLoader size={14} className={styles.loadingSpinnerAnimation} /> : <FiTrash2 size={14} />}
                       </button>
                     </div>
                   );
@@ -216,10 +438,283 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* VAULT SECURITY CARD MANAGEMENT BLOCK */}
+        {/* ============================================================
+            🚀 NEW: MODERN PROFILE SETTINGS WITH SIDEBAR TABS
+            ============================================================ */}
+        <section className={styles.settingsCardNode} style={{ padding: 0, overflow: 'hidden' }}>
+          <div className={styles.modernSettingsContainer}>
+            
+            {/* Sidebar Tabs Menu */}
+            <div className={styles.settingsSidebar}>
+              <button 
+                onClick={() => setActiveTab("general")} 
+                className={`${styles.tabButton} ${activeTab === "general" ? styles.tabButtonActive : ""}`}
+              >
+                <FiUser className={styles.tabIcon} /> 
+                <span className={styles.tabText}>Identity</span>
+              </button>
+              
+              <button 
+                onClick={() => setActiveTab("location")} 
+                className={`${styles.tabButton} ${activeTab === "location" ? styles.tabButtonActive : ""}`}
+              >
+                <FiGlobe className={styles.tabIcon} /> 
+                <span className={styles.tabText}>Localization</span>
+              </button>
+              
+              <button 
+                onClick={() => setActiveTab("vibe")} 
+                className={`${styles.tabButton} ${activeTab === "vibe" ? styles.tabButtonActive : ""}`}
+              >
+                <FiTarget className={styles.tabIcon} /> 
+                <span className={styles.tabText}>Financial Vibe</span>
+              </button>
+              
+              <button 
+                onClick={() => setActiveTab("ai")} 
+                className={`${styles.tabButton} ${activeTab === "ai" ? styles.tabButtonActive : ""}`}
+              >
+                <FiCpu className={styles.tabIcon} /> 
+                <span className={styles.tabText}>AI Persona</span>
+              </button>
+
+              <button 
+                onClick={() => setActiveTab("security")} 
+                className={`${styles.tabButton} ${activeTab === "security" ? styles.tabButtonActive : ""}`}
+              >
+                <FiLock className={styles.tabIcon} /> 
+                <span className={styles.tabText}>Password</span>
+              </button>
+            </div>
+
+            {/* Content Area for Active Tab */}
+            <div className={styles.settingsContentArea}>
+              
+              {/* TAB 1: IDENTITY */}
+              {activeTab === "general" && (
+                <div className={styles.animateFadeIn}>
+                  <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>Identity Details</h3>
+                    <p className={styles.panelDescription}>How the system addresses you.</p>
+                  </div>
+                  <div className={styles.profileFormRow}>
+                    <div className={styles.inputFieldGroup}>
+                      <label className={styles.fieldLabelText}>Full Name</label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className={styles.primaryTextInputElement}
+                        placeholder="Your name"
+                      />
+                    </div>
+                    <div className={styles.inputFieldGroup}>
+                      <label className={styles.fieldLabelText}>Email Address</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={styles.primaryTextInputElement}
+                        placeholder="your@email.com"
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.actionFooter}>
+                    <button onClick={handleSaveBasicInfo} disabled={isSaving} className={styles.saveActionSubmitBtn}>
+                      {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
+                      <span>{isSaving ? "Saving..." : "Save Identity"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: LOCALIZATION */}
+              {activeTab === "location" && (
+                <div className={styles.animateFadeIn}>
+                  <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>Localization</h3>
+                    <p className={styles.panelDescription}>Regional settings and language preferences.</p>
+                  </div>
+                  <div className={styles.profileFormRow}>
+                    <div className={styles.inputFieldGroup}>
+                      <label className={styles.fieldLabelText}>Country</label>
+                      <select value={country} onChange={(e) => setCountry(e.target.value)} className={styles.selectInput}>
+                        <option value="">Select a country...</option>
+                        {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.inputFieldGroup}>
+                      <label className={styles.fieldLabelText}>Default Currency</label>
+                      <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={styles.selectInput}>
+                        {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.inputFieldGroup} style={{ marginTop: '1.5rem' }}>
+                    <label className={styles.fieldLabelText}>Languages you speak</label>
+                    <div className={styles.tagsGrid}>
+                      {allLanguages.map((lang) => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => toggleLanguage(lang)}
+                          className={`${styles.tagBtn} ${languages.includes(lang) ? styles.tagBtnActive : ""}`}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.actionFooter}>
+                    <button onClick={handleSaveLocation} disabled={isSaving} className={styles.saveActionSubmitBtn}>
+                      {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
+                      <span>{isSaving ? "Saving..." : "Save Localization"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: FINANCIAL VIBE */}
+              {activeTab === "vibe" && (
+                <div className={styles.animateFadeIn}>
+                  <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>Financial Vibe</h3>
+                    <p className={styles.panelDescription}>Tell us about your work style and primary objectives.</p>
+                  </div>
+                  <div className={styles.inputFieldGroup} style={{ marginBottom: '1.5rem' }}>
+                    <label className={styles.fieldLabelText}>Occupation Style</label>
+                    <select value={occupation} onChange={(e) => setOccupation(e.target.value)} className={styles.selectInput}>
+                      <option value="">Select an occupation...</option>
+                      {OCCUPATIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+
+                  <div className={styles.inputFieldGroup}>
+                    <label className={styles.fieldLabelText}>Primary Financial Goal</label>
+                    <div className={styles.richCardsGrid}>
+                      {FINANCIAL_GOALS.map((g) => (
+                        <div 
+                          key={g.id} 
+                          onClick={() => setFinancialGoal(g.id)}
+                          className={`${styles.richCard} ${financialGoal === g.id ? styles.richCardActive : ""}`}
+                        >
+                          <span className={styles.richCardEmoji}>{g.emoji}</span>
+                          <div className={styles.richCardText}>
+                            <h4>{g.label}</h4>
+                            <p>{g.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.actionFooter}>
+                    <button onClick={handleSaveVibe} disabled={isSaving} className={styles.saveActionSubmitBtn}>
+                      {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
+                      <span>{isSaving ? "Saving..." : "Save Financial Profile"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: AI PERSONA */}
+              {activeTab === "ai" && (
+                <div className={styles.animateFadeIn}>
+                  <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>AI Companion</h3>
+                    <p className={styles.panelDescription}>Select the personality tone for your financial AI assistant.</p>
+                  </div>
+                  
+                  <div className={styles.richCardsGrid}>
+                    {AI_PERSONAS.map((p) => (
+                      <div 
+                        key={p.id} 
+                        onClick={() => setAiPersona(p.id)}
+                        className={`${styles.richCard} ${aiPersona === p.id ? styles.richCardActive : ""}`}
+                      >
+                        <span className={styles.richCardEmoji}>{p.emoji}</span>
+                        <div className={styles.richCardText}>
+                          <h4>{p.label}</h4>
+                          <p>{p.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className={styles.actionFooter}>
+                    <button onClick={handleSaveAIPersona} disabled={isSaving} className={styles.saveActionSubmitBtn}>
+                      {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
+                      <span>{isSaving ? "Saving..." : "Save AI Personality"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: PASSWORD */}
+              {activeTab === "security" && (
+                <div className={styles.animateFadeIn}>
+                  <div className={styles.panelHeader}>
+                    <h3 className={styles.panelTitle}>Change Password</h3>
+                    <p className={styles.panelDescription}>Update your master account credentials securely.</p>
+                  </div>
+                  <div className={styles.inputFieldGroup} style={{ marginBottom: '1rem' }}>
+                    <label className={styles.fieldLabelText}>Current Password</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className={styles.primaryTextInputElement}
+                      placeholder="Enter current password"
+                    />
+                  </div>
+                  <div className={styles.profileFormRow}>
+                    <div className={styles.inputFieldGroup}>
+                      <label className={styles.fieldLabelText}>New Password</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className={styles.primaryTextInputElement}
+                        placeholder="Min 8 characters"
+                      />
+                    </div>
+                    <div className={styles.inputFieldGroup}>
+                      <label className={styles.fieldLabelText}>Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={styles.primaryTextInputElement}
+                        placeholder="Confirm new password"
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.actionFooter}>
+                    <button 
+                      onClick={handleChangePassword} 
+                      disabled={isChangingPassword} 
+                      className={styles.saveActionSubmitBtn}
+                      style={{ backgroundColor: "var(--color-danger, #dc2626)" }}
+                    >
+                      {isChangingPassword ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiLock size={14} />}
+                      <span>{isChangingPassword ? "Changing..." : "Update Password"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================
+            VAULT SECURITY CARD (UNCHANGED)
+            ============================================================ */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
-            <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success, #16a34a)' }}>
+            <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success, #16a34a)', backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.2)' }}>
               <FiShield size={18} />
             </div>
             <div>
@@ -235,17 +730,12 @@ export default function SettingsPage() {
               <div className={styles.metaInformationLeftTextBlock}>
                 <span className={styles.rowControlHeadline}>Password Screen Lock</span>
                 <span className={styles.rowControlSecondaryExplanation}>
-                  {isSecurityLoading ? (
-                    "Analyzing secure validation state tokens..."
-                  ) : isVaultSecurityEnabled ? (
-                    "Your password lock is active. Your investments are safe and hidden behind a lock screen."
-                  ) : (
-                    "Your password lock is turned off. Anyone who opens this app can see your investments."
-                  )}
+                  {isSecurityLoading ? "Analyzing secure validation state tokens..." : 
+                   isVaultSecurityEnabled ? "Your password lock is active. Your investments are safe and hidden behind a lock screen." : 
+                   "Your password lock is turned off. Anyone who opens this app can see your investments."}
                 </span>
               </div>
 
-              {/* FIXED: Added flexShrink: 0 to prevent the button container from squishing to 0px width */}
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
                 {isVaultSecurityEnabled && !isSecurityLoading && (
                   <button
@@ -265,13 +755,7 @@ export default function SettingsPage() {
                   className={styles.saveActionSubmitBtn}
                   style={{ backgroundColor: isVaultSecurityEnabled ? 'var(--color-danger, #dc2626)' : 'var(--color-success, #16a34a)' }}
                 >
-                  {isSecurityLoading ? (
-                    <FiLoader className={styles.loadingSpinnerAnimation} />
-                  ) : isVaultSecurityEnabled ? (
-                    "Turn Off Lock"
-                  ) : (
-                    "Turn On Lock"
-                  )}
+                  {isSecurityLoading ? <FiLoader className={styles.loadingSpinnerAnimation} /> : isVaultSecurityEnabled ? "Turn Off Lock" : "Turn On Lock"}
                 </button>
               </div>
             </div>
@@ -280,7 +764,7 @@ export default function SettingsPage() {
 
       </div>
 
-      {/* FIXED: Added key prop to force remount when mode changes */}
+      {/* PIN SETUP MODAL */}
       <PinSetupModal
         key={`pin-modal-${pinModalMode}-${isPinModalOpen}`}
         isOpen={isPinModalOpen}
@@ -292,4 +776,4 @@ export default function SettingsPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

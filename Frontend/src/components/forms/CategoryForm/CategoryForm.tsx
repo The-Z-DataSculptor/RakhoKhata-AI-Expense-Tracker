@@ -29,7 +29,6 @@ interface CategoryFormProps {
 export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryFormProps) {
   const isEditMode = !!initialData;
 
-  // ✅ FIXED: Explicitly type the resolver
   const resolver = zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>;
 
   const {
@@ -40,7 +39,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     control,
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormValues>({
-    resolver, // 👈 No `as any` needed
+    resolver, 
     defaultValues: {
       name: "",
       type: "EXPENSE",
@@ -60,8 +59,9 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
         color: initialData.accentColor,
         isRecurring: initialData.isRecurring || false,
         frequency: (initialData.frequency as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY") || "MONTHLY",
-        dueDay: initialData.dueDay || 1,
-        reminderDays: initialData.reminderDays || 3,
+        dueDay: initialData.dueDay !== undefined && initialData.dueDay !== null ? initialData.dueDay : 1,
+        // 👇 FIXED: Explicit check allows 0 same-day reminder value to be loaded when editing
+        reminderDays: initialData.reminderDays !== undefined && initialData.reminderDays !== null ? initialData.reminderDays : 3,
       });
     } else {
       reset({
@@ -94,8 +94,9 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           workspaceId: initialData ? initialData.workspaceId : "active-workspace",
           isRecurring: data.isRecurring || false,
           frequency: data.frequency || "MONTHLY",
-          dueDay: data.dueDay || 1,
-          reminderDays: data.reminderDays || 3,
+          dueDay: data.dueDay !== undefined && data.dueDay !== null ? data.dueDay : 1,
+          // 👇 FIXED: Explicit check allows 0 same-day reminder value to be submitted safely
+          reminderDays: data.reminderDays !== undefined && data.reminderDays !== null ? data.reminderDays : 3,
         };
 
         onAddCategory(completeCategoryRecord);
@@ -258,4 +259,3 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     </div>
   );
 }
-/* === SECTION 4 END === */

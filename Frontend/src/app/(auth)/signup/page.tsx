@@ -4,23 +4,110 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner"; 
+import { 
+  FiUser, 
+  FiGlobe, 
+  FiTarget, 
+  FiCpu, 
+  FiChevronRight, 
+  FiChevronLeft,
+  FiCheckCircle,
+  FiPlus,
+  FiMinus
+} from "react-icons/fi";
 
-// Import centralized validation blueprint from the schema folder
-import { signupSchema, type SignupFormData } from "@/schemas/auth";
-
+import { signupSchema } from "@/schemas/auth"; 
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: GLOBAL DATA ===
    ========================================================================== */
-// No external property types needed for standalone signup page.
+const CURRENCIES = [
+  "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
+  "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
+  "RUB", "ZAR", "TRY", "BRL", "TWD", "PLN", "THB", "IDR", "HUF", "DKK",
+  "ILS", "CLP", "PHP", "COP", "MYR", "RON", "VND", "KWD",
+  "💸 Other (Dynamic Base)"
+];
+
+const COUNTRIES = [
+  "Pakistan", "United States", "United Kingdom", "Germany", "Japan", 
+  "India", "Canada", "Australia", "United Arab Emirates", "Saudi Arabia",
+  "Afghanistan", "Albania", "Algeria", "Argentina", "Austria", "Bangladesh", 
+  "Belgium", "Brazil", "Chile", "China", "Colombia", "Denmark", "Egypt", 
+  "Finland", "France", "Greece", "Hong Kong", "Indonesia", "Iran", "Iraq", 
+  "Ireland", "Israel", "Italy", "Jordan", "Kenya", "Kuwait", "Malaysia", 
+  "Mexico", "Morocco", "Netherlands", "New Zealand", "Norway", "Oman", 
+  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", 
+  "Singapore", "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", 
+  "Thailand", "Turkey", "Ukraine", "Vietnam", "Yemen", "Zimbabwe",
+  "🌍 My Country is Not Listed / Prefer Private"
+];
+
+const PRIORITY_LANGUAGES = [
+  "English", 
+  "Urdu (اُردو)", 
+  "Punjabi (پنجابی)", 
+  "Sindhi (سنڌي)", 
+  "Pashto (پښتو)", 
+  "Hindi (हिन्दी)", 
+  "Spanish (Español)", 
+  "Arabic (العربية)",
+  "French (Français)", 
+  "German (Deutsch)", 
+  "Japanese (日本語)"
+];
+
+const EXTENDED_LANGUAGES = [
+  "Bengali (বাংলা)",
+  "Tamil (தமிழ்)", 
+  "Telugu (తెలుగు)", 
+  "Marathi (मराठी)", 
+  "Italian (Italiano)",
+  "Portuguese (Português)", 
+  "Russian (Русский)", 
+  "Turkish (Türkçe)", 
+  "Mandarin (中文)",
+  "Korean (한국어)", 
+  "Vietnamese (Tiếng Việt)", 
+  "Thai (ภาษาไทย)", 
+  "Kashmiri (کٲشُر)",
+  "Saraiki (سرائیکی)", 
+  "Balochi (بلوچی)", 
+  "🤐 Standard English Only"
+];
+
+const OCCUPATIONS = [
+  { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
+  { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
+  { id: "entrepreneur", label: "Entrepreneur / Business", desc: "Focuses on business revenue" },
+  { id: "student", label: "Student", desc: "Living on a tight budget" },
+  { id: "gig_worker", label: "Gig Worker / Creator", desc: "Flexible earnings" },
+  { id: "prefer_not_to_say", label: "Prefer Not to Say", desc: "Keep it private 🔒" },
+];
+
+const FINANCIAL_GOALS = [
+  { id: "hustler", emoji: "🚀", title: "The Hustler", desc: "Managing gigs & multiple income streams." },
+  { id: "saver", emoji: "🏦", title: "The Saver", desc: "Building an emergency fund or buying a home." },
+  { id: "tight_budgeter", emoji: "🔍", title: "The Budgeter", desc: "Living paycheck-to-paycheck, finding leaks." },
+  { id: "zen_master", emoji: "🧘‍♂️", title: "The Zen Master", desc: "Just tracking cash flows with zero stress." },
+  { id: "wealth_builder", emoji: "📈", title: "The Wealth Builder", desc: "Investing, growing assets, and compound growth." },
+  { id: "debt_destroyer", emoji: "🔨", title: "The Debt Destroyer", desc: "Aggressively tackling outstanding loans & debt." },
+  { id: "nomad", emoji: "🗺️", title: "The Nomad / Expat", desc: "Working globally, handling multi-currency accounts." },
+  { id: "privacy_sentinel", emoji: "🛡️", title: "Prefer Private", desc: "Do not categorize or analyze my financial intentions." },
+];
+
+const AI_PERSONAS = [
+  { id: "savage_roaster", emoji: "🔥", title: "Savage Roaster", desc: "Tough love. Will playfully roast your spending habits." },
+  { id: "supportive_coach", emoji: "🤝", title: "Supportive Coach", desc: "Warm mentor. Celebrates wins and guides gently." },
+  { id: "forensic_detective", emoji: "🕵️‍♂️", title: "Forensic Detective", desc: "Hyper-analytical. Finds sneaky hidden spending leaks." },
+  { id: "silent_accountant", emoji: "📊", title: "Silent Accountant", desc: "Professional. No jokes, just raw mathematical logic." },
+];
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -28,204 +115,362 @@ import styles from "./page.module.css";
    ========================================================================== */
 export default function SignupPage() {
   const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAllLanguages, setShowAllLanguages] = useState(false); 
 
-  // UX Improvement: Toggles to let users double-check their typed passwords
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Initialize the form engine using the external schema
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
-    mode: "onBlur",
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    country: "",
+    currency: "USD",
+    languages: [] as string[],
+    occupation: "",
+    financialGoal: "",
+    aiPersona: "",
   });
 
-  // State to track mouse position for the ambient background glare effect
-  const [mouseX, setMouseX] = useState(0);
-  const [mouseY, setMouseY] = useState(0);
+  useEffect(() => {
+    const detectionTimer = setTimeout(() => {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz.includes("Karachi")) {
+        setFormData(prev => ({ ...prev, currency: "PKR", country: "Pakistan" }));
+      } else if (tz.includes("Europe")) {
+        setFormData(prev => ({ ...prev, currency: "EUR" }));
+      } else if (tz.includes("London")) {
+        setFormData(prev => ({ ...prev, currency: "GBP", country: "United Kingdom" }));
+      }
+    }, 0);
 
-  const handleMouseMoveGlare = (event: React.MouseEvent<HTMLDivElement>) => {
-    const componentViewport = event.currentTarget.getBoundingClientRect();
-    setMouseX(event.clientX - componentViewport.left);
-    setMouseY(event.clientY - componentViewport.top);
+    return () => clearTimeout(detectionTimer);
+  }, []);
+
+  const handleNext = () => {
+    if (step === 1) {
+      const validation = signupSchema.safeParse(formData);
+
+      if (!validation.success) {
+        // 🚀 FIX: Used .issues instead of .errors to satisfy strict TypeScript rules
+        const firstErrorMessage = validation.error.issues[0]?.message || "Please check your inputs.";
+        toast.error(firstErrorMessage);
+        return; 
+      }
+    }
+    
+    setStep(prev => Math.min(prev + 1, 4));
   };
 
-  // Upgraded Full-Stack Form Submission Engine
-  const onFormSubmit = async (data: SignupFormData) => {
-    console.log("Validated New Account Payload:", data);
-    
+  const handlePrev = () => setStep(prev => Math.max(prev - 1, 1));
+
+  const toggleLanguage = (lang: string) => {
+    setFormData(prev => {
+      const current = prev.languages;
+      if (current.includes(lang)) return { ...prev, languages: current.filter(l => l !== lang) };
+      return { ...prev, languages: [...current, lang] };
+    });
+  };
+
+  const submitForm = async () => {
+    setIsSubmitting(true);
     try {
-      // Pass the form payload directly to the server since the backend now natively handles fullName
       const response = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        // CRITICAL CROSS-ORIGIN FLAG: Mandates the browser to listen for and store 
-        // the backend server's secure HttpOnly cookie response automatically.
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
         credentials: "include",
       });
 
       const result = await response.json();
 
-      // If our backend rejected the request (e.g., email already exists or invalid data)
-      if (!response.ok) {
-        throw new Error(result.error || "An error occurred during registration.");
-      }
+      if (!response.ok) throw new Error(result.error || "Registration failed.");
 
-      // BY THE BOOK: Plaintext token scraping is deleted completely. 
-      // The browser natively captures the cookie behind the scenes.
-
-      // Trigger global notification engine to instantly confirm registration success
-      toast.success("Account created successfully! Preparing your secure ledger...");
-
-      // Simulate a brief network delay for better UX feedback, then redirect to core application
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      router.push("/dashboard");
+      toast.success("Welcome to RakhoKhata! Personalizing your ledger...");
+      setTimeout(() => router.push("/dashboard"), 1500);
 
     } catch (error: unknown) {
-      console.error("Full-Stack Connection Failure:", error);
-      
-      // Type Guard: Safely verify if the caught error is an instance of the native Error class
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "Unable to reach the server. Please verify your backend engine is running.";
-        
-      // Pass the clean error string directly to our user's notification system
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect to server.";
       toast.error(errorMessage);
+      setIsSubmitting(false);
     }
   };
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 1:
+        return (
+          <div className={styles.stepContainer} suppressHydrationWarning>
+            <div className={styles.stepHeader}>
+              <div className={styles.stepIconBox}><FiUser className={styles.stepIcon} /></div>
+              <h2>Let's start with the basics</h2>
+              <p>Create your secure account to access the vault.</p>
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Full Name / Nickname</label>
+              <input 
+                type="text" 
+                placeholder="What should AI call you?" 
+                value={formData.fullName}
+                onChange={e => setFormData({...formData, fullName: e.target.value})}
+                className={styles.textInput}
+                autoFocus
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Email Address</label>
+              <input 
+                type="email" 
+                placeholder="name@example.com" 
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                className={styles.textInput}
+              />
+            </div>
+            <div className={styles.formRow}>
+              <div className={styles.inputGroup}>
+                <label>Password</label>
+                <input 
+                  type="password" 
+                  placeholder="Secure password" 
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
+                  className={styles.textInput}
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label>Confirm</label>
+                <input 
+                  type="password" 
+                  placeholder="Confirm password" 
+                  value={formData.confirmPassword}
+                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                  className={styles.textInput}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className={styles.stepContainer} suppressHydrationWarning>
+            <div className={styles.stepHeader}>
+              <div className={styles.stepIconBox}><FiGlobe className={styles.stepIcon} /></div>
+              <h2>Localize Your Experience</h2>
+              <p>We'll adapt the charts, currency, and AI jokes to your region.</p>
+            </div>
+            
+            <div className={styles.formRow}>
+              <div className={styles.inputGroup}>
+                <label>Default Currency</label>
+                <select 
+                  value={formData.currency} 
+                  onChange={e => setFormData({...formData, currency: e.target.value})}
+                  className={styles.selectInput}
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className={styles.inputGroup}>
+                <label>Country / Region</label>
+                <select 
+                  value={formData.country} 
+                  onChange={e => setFormData({...formData, country: e.target.value})}
+                  className={styles.selectInput}
+                >
+                  <option value="">Select a country...</option>
+                  {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label>Other Languages You Speak (Optional)</label>
+              <p className={styles.helperText}>Lets your AI Buddy use local slang and idioms!</p>
+              
+              <div className={styles.tagsContainerOuter}>
+                <div className={styles.tagsGrid}>
+                  {PRIORITY_LANGUAGES.map(lang => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => toggleLanguage(lang)}
+                      className={`${styles.tagBtn} ${formData.languages.includes(lang) ? styles.tagBtnActive : ""}`}
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    onClick={() => setShowAllLanguages(!showAllLanguages)}
+                    className={`${styles.tagBtn} ${styles.moreToggleBtn} ${showAllLanguages ? styles.moreToggleActive : ""}`}
+                  >
+                    {showAllLanguages ? (
+                      <>Show Less <FiMinus style={{marginLeft: "4px"}}/></>
+                    ) : (
+                      <>+ More Languages <FiPlus style={{marginLeft: "4px"}}/></>
+                    )}
+                  </button>
+                </div>
+
+                {showAllLanguages && (
+                  <div className={styles.scrollableLanguagesContainer}>
+                    <div className={styles.tagsGrid}>
+                      {EXTENDED_LANGUAGES.map(lang => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => toggleLanguage(lang)}
+                          className={`${styles.tagBtn} ${formData.languages.includes(lang) ? styles.tagBtnActive : ""}`}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className={styles.stepContainer} suppressHydrationWarning>
+             <div className={styles.stepHeader}>
+              <div className={styles.stepIconBox}><FiTarget className={styles.stepIcon} /></div>
+              <h2>Your Financial Vibe</h2>
+              <p>How do you earn, and what's your ultimate goal?</p>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label>Primary Occupation / Income Style</label>
+              <select 
+                value={formData.occupation} 
+                onChange={e => setFormData({...formData, occupation: e.target.value})}
+                className={styles.selectInput}
+              >
+                <option value="">Select an option...</option>
+                {OCCUPATIONS.map(o => (
+                  <option key={o.id} value={o.id}>{o.label} - {o.desc}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label>Financial Focus</label>
+              <div className={styles.cardsGrid}>
+                {FINANCIAL_GOALS.map(goal => (
+                  <div 
+                    key={goal.id} 
+                    className={`${styles.selectionCard} ${formData.financialGoal === goal.id ? styles.cardActive : ""}`}
+                    onClick={() => setFormData({...formData, financialGoal: goal.id})}
+                  >
+                    <span className={styles.cardEmoji}>{goal.emoji}</span>
+                    <div className={styles.cardText}>
+                      <h4>{goal.title}</h4>
+                      <p>{goal.desc}</p>
+                    </div>
+                    {formData.financialGoal === goal.id && <FiCheckCircle className={styles.checkIcon} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className={styles.stepContainer} suppressHydrationWarning>
+             <div className={styles.stepHeader}>
+              <div className={styles.stepIconBox}><FiCpu className={styles.stepIcon} /></div>
+              <h2>Tune Your AI Companion</h2>
+              <p>Choose the personality for your personal financial assistant.</p>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <div className={styles.cardsGridVertical}>
+                {AI_PERSONAS.map(persona => (
+                  <div 
+                    key={persona.id} 
+                    className={`${styles.selectionCard} ${styles.aiCard} ${formData.aiPersona === persona.id ? styles.aiCardActive : ""}`}
+                    onClick={() => setFormData({...formData, aiPersona: persona.id})}
+                  >
+                    <span className={styles.cardEmoji}>{persona.emoji}</span>
+                    <div className={styles.cardText}>
+                      <h4>{persona.title}</h4>
+                      <p>{persona.desc}</p>
+                    </div>
+                    {formData.aiPersona === persona.id && <FiCheckCircle className={styles.checkIcon} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
 /* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: RENDER (JSX) ===
    ========================================================================== */
   return (
-    <div 
-      className={styles.fullScreenMasterLayout}
-      onMouseMove={handleMouseMoveGlare}
-      suppressHydrationWarning
-      style={{ "--mouse-x": `${mouseX}px`, "--mouse-y": `${mouseY}px` } as React.CSSProperties}
-    >
-      <div className={styles.mouseGlareLayer} />
+    <div className={styles.wizardMasterLayout} suppressHydrationWarning>
+      <div className={styles.ambientGlow} />
 
-      <section className={styles.leftFormColumn}>
-        <Link href="/" className={styles.escapeHomeButton}>← Back to Home</Link>
-
-        <div className={styles.formContainerContent}>
-          <div className={styles.formHeader}>
-            <h1 className={styles.mainTitle}>Create Account</h1>
-            <p className={styles.subtext}>Join RakhoKhata to easily manage your budget, track expenses, and grow your wealth.</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm} noValidate>
+      <div className={styles.wizardContainer}>
+        {/* Progress Sidebar */}
+        <div className={styles.progressSidebar}>
+          <Link href="/" className={styles.backHomeBtn}>← Cancel</Link>
+          <div className={styles.sidebarContent}>
+            <h1 className={styles.brandTitle}>RakhoKhata.</h1>
+            <p className={styles.brandSubtitle}>Personalized financial intelligence.</p>
             
-            <div className={styles.inputControlGroup}>
-              <label htmlFor="fullName" className={styles.fieldLabel}>Full Name</label>
-              <input 
-                id="fullName" 
-                type="text"
-                placeholder="e.g. Zain Hassan"
-                {...register("fullName")} 
-                className={`${styles.primaryInputField} ${errors.fullName ? styles.inputErrorState : ""}`}
-                autoFocus
-                aria-invalid={errors.fullName ? "true" : "false"}
-              />
-              {errors.fullName && <span className={styles.fieldErrorText} role="alert">{errors.fullName.message}</span>}
-            </div>
-
-            <div className={styles.inputControlGroup}>
-              <label htmlFor="email" className={styles.fieldLabel}>Email Address</label>
-              <input 
-                id="email" 
-                type="email"
-                placeholder="name@example.com"
-                {...register("email")} 
-                className={`${styles.primaryInputField} ${errors.email ? styles.inputErrorState : ""}`} 
-                aria-invalid={errors.email ? "true" : "false"}
-              />
-              {errors.email && <span className={styles.fieldErrorText} role="alert">{errors.email.message}</span>}
-            </div>
-
-            <div className={styles.inputControlGroup}>
-              <label htmlFor="password" className={styles.fieldLabel}>Password</label>
-              <div className={styles.passwordInputWrapper}>
-                <input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="Create a strong password"
-                  {...register("password")} 
-                  className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.password ? styles.inputErrorState : ""}`} 
-                  aria-invalid={errors.password ? "true" : "false"}
-                />
-                <button 
-                  type="button" 
-                  className={styles.showPasswordToggle}
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
-              </div>
-              {errors.password && <span className={styles.fieldErrorText} role="alert">{errors.password.message}</span>}
-            </div>
-
-            <div className={styles.inputControlGroup}>
-              <label htmlFor="confirmPassword" className={styles.fieldLabel}>Confirm Password</label>
-              <div className={styles.passwordInputWrapper}>
-                <input 
-                  id="confirmPassword" 
-                  type={showConfirmPassword ? "text" : "password"} 
-                  placeholder="Type your password again"
-                  {...register("confirmPassword")} 
-                  className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.confirmPassword ? styles.inputErrorState : ""}`} 
-                  aria-invalid={errors.confirmPassword ? "true" : "false"}
-                />
-                <button 
-                  type="button" 
-                  className={styles.showPasswordToggle}
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                >
-                  {showConfirmPassword ? "Hide" : "Show"}
-                </button>
-              </div>
-              {errors.confirmPassword && <span className={styles.fieldErrorText} role="alert">{errors.confirmPassword.message}</span>}
-            </div>
-
-            <button type="submit" className={styles.submitPrimaryButton} disabled={isSubmitting}>
-              {isSubmitting ? "Creating Account..." : "Create Account"}
-            </button>
-          </form>
-
-          <div className={styles.footerRedirectArea}>
-            <p>Already have an account? <Link href="/login" className={styles.hyperlinkInline}>Log in here</Link></p>
-          </div>
-        </div>
-      </section>
-
-      <aside className={styles.rightGraphicsColumn}>
-        <div className={styles.biometricScannerFullscreenWrapper}>
-          <div className={styles.laserScanningBeam} />
-          <div className={styles.targetScannerRing}>
-            <div className={styles.crosshairX} /><div className={styles.crosshairY} />
-            <div className={styles.securePadlockCoreIcon}>
-              <div className={styles.padlockShackleMock} /><div className={styles.padlockBodyMock} />
-            </div>
-          </div>
-          <div className={styles.statusTelemetryReadout}>
-            <p className={styles.telemetryStaticLabel}>Security Status</p>
-            <h4 className={styles.telemetryLiveValueText}>SYSTEM READY</h4>
-            <div className={styles.terminalNetworkSubtextRow}>
-              <span>ENCRYPTION_ACTIVE</span><span className={styles.blinkingTerminalDot}>● SECURE</span>
+            <div className={styles.stepperTracker}>
+              {[1, 2, 3, 4].map(num => (
+                <div key={num} className={`${styles.stepIndicator} ${step >= num ? styles.stepIndicatorActive : ""}`}>
+                  <div className={styles.stepNumber}>{num < step ? <FiCheckCircle /> : num}</div>
+                  <div className={styles.stepLabels}>
+                    <span className={styles.stepLabelTitle}>
+                      {num === 1 ? "Identity" : num === 2 ? "Region" : num === 3 ? "Goals" : "AI Buddy"}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </aside>
+
+        {/* Form Body */}
+        <div className={styles.formBody}>
+          <div className={styles.formContentArea}>
+            {renderStepContent()}
+          </div>
+
+          <div className={styles.wizardFooter}>
+            {step > 1 ? (
+              <button onClick={handlePrev} className={styles.btnSecondary} disabled={isSubmitting}>
+                <FiChevronLeft /> Back
+              </button>
+            ) : (
+              <div /> 
+            )}
+            
+            {step < 4 ? (
+              <button onClick={handleNext} className={styles.btnPrimary}>
+                Continue <FiChevronRight />
+              </button>
+            ) : (
+              <button onClick={submitForm} className={styles.btnFinish} disabled={isSubmitting || !formData.aiPersona}>
+                {isSubmitting ? "Initializing..." : "Complete Setup"} <FiCheckCircle style={{marginLeft: "8px"}}/>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

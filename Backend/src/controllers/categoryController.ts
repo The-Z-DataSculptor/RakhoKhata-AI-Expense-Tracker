@@ -1,10 +1,10 @@
-// src/controllers/categoryController.ts
+// Backend/src/controllers/categoryController.ts
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import { Response } from "express";
-import { prisma } from "../db";                                       // Core database client link
+import { prisma } from "../db";                                   // Core database client link
 import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure session tracker layout
 /* === SECTION 1 END === */
 
@@ -41,9 +41,6 @@ export const getWorkspaceCategories = async (req: AuthenticatedRequest, res: Res
       orderBy: { name: "asc" }
     });
 
-    // FIXED: No extra mapping needed – Prisma automatically returns all fields including:
-    // isFixed, isRecurring, frequency, dueDay, reminderDays
-
     res.status(200).json({ categories });
   } catch (error) {
     console.error("Fetch Categories Controller Error:", error);
@@ -63,7 +60,6 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
       type, 
       color, 
       workspaceId,
-      // 👇 NEW: Recurrence fields
       isRecurring,
       frequency,
       dueDay,
@@ -81,7 +77,7 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Type Check: Ensure the mapping is strictly INCOME, EXPENSE, or BOTH matching your database rules
+    // Type Check: Ensure the mapping is strictly INCOME, EXPENSE, or BOTH
     if (type !== "INCOME" && type !== "EXPENSE" && type !== "BOTH") {
       res.status(400).json({ error: "Allocation mapping must be strictly INCOME, EXPENSE, or BOTH." });
       return;
@@ -99,14 +95,12 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
       data: {
         name: name.trim(),
         type,
-        color: color || "#7E7A9C", // Fallback hex color if they leave the picker blank
+        color: color || "#7E7A9C", 
         workspaceId,
-        // 👇 NEW: Save recurrence fields with defaults
-        isRecurring: isRecurring || false,
+        isRecurring: !!isRecurring, 
         frequency: frequency || null,
-        dueDay: dueDay || null,
-        reminderDays: reminderDays || null,
-        // 👇 isFixed is NOT set here – it's managed separately
+        dueDay: (dueDay !== undefined && dueDay !== null) ? Number(dueDay) : null,
+        reminderDays: (reminderDays !== undefined && reminderDays !== null) ? Number(reminderDays) : null,
       }
     });
 
@@ -122,7 +116,67 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: DELETE CATEGORY ===
+   === SECTION 4: UPDATE / RE-SAVE CATEGORY CONTROLLER ===
+   ========================================================================== */
+export const updateCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const targetId = req.params.id ? String(req.params.id) : undefined;
+    const { name, type, color, isRecurring, frequency, dueDay, reminderDays } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized data modification attempt." });
+      return;
+    }
+
+    if (!targetId) {
+      res.status(400).json({ error: "Target modification category id path reference parameter is required." });
+      return;
+    }
+
+    // Security Scan: Verify folder exists and matches caller authorization keys
+    const targetCategory = await prisma.category.findUnique({
+      where: { id: targetId },
+      include: { workspace: true }
+    });
+
+    if (!targetCategory) {
+      res.status(404).json({ error: "Category targeted for synchronization routines was not found." });
+      return;
+    }
+
+    if (targetCategory.workspace.userId !== userId) {
+      res.status(403).json({ error: "Access denied. Workspace data alignment match mismatched." });
+      return;
+    }
+
+    // Execute atomic record updating
+    const updatedCategory = await prisma.category.update({
+      where: { id: targetId },
+      data: {
+        name: name !== undefined ? name.trim() : targetCategory.name,
+        type: type !== undefined ? type : targetCategory.type,
+        color: color !== undefined ? color : targetCategory.color,
+        isRecurring: isRecurring !== undefined ? !!isRecurring : targetCategory.isRecurring,
+        frequency: frequency !== undefined ? frequency : targetCategory.frequency,
+        dueDay: dueDay !== undefined ? (dueDay !== null ? Number(dueDay) : null) : targetCategory.dueDay,
+        reminderDays: reminderDays !== undefined ? (reminderDays !== null ? Number(reminderDays) : null) : targetCategory.reminderDays,
+      }
+    });
+
+    res.status(200).json({
+      message: "Data flush routines executed cleanly. Category records synchronized.",
+      category: updatedCategory
+    });
+  } catch (error) {
+    console.error("Update Category Controller Exception:", error);
+    res.status(500).json({ error: "Internal server error running data flush routines." });
+  }
+};
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: DELETE CATEGORY ===
    ========================================================================== */
 export const deleteCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -155,6 +209,11 @@ export const deleteCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
+    // 🚀 CRITICAL CASCADE SAFEGUARD FIX: Clear out any dependent transactions first to avoid constraint crashes
+    await prisma.transaction.deleteMany({
+      where: { categoryId: targetId }
+    });
+
     // Erase the row container block completely from Neon Cloud
     await prisma.category.delete({ where: { id: targetId } });
 
@@ -164,4 +223,4 @@ export const deleteCategory = async (req: AuthenticatedRequest, res: Response): 
     res.status(500).json({ error: "Internal server error running data flush routines." });
   }
 };
-/* === SECTION 4 END === */
+/* === SECTION 5 END === */

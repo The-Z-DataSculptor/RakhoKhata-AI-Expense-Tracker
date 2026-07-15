@@ -11,6 +11,7 @@ import ControlLever from "@/components/dashboard/ControlLever/ControlLever";
 import CashFlowChart from "@/components/dashboard/CashFlowChart/CashFlowChart";
 import ExpenseDonutChart from "@/components/dashboard/ExpenseDonutChart/ExpenseDonutChart";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
+import AiBuddyConsole from "@/components/dashboard/AiBuddyConsole/AiBuddyConsole"; 
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { transactionService } from "@/utils/api";
 import {
@@ -116,7 +117,6 @@ export default function DashboardPage() {
     }
 
     const filtered = filterTransactionsByPeriod(transactions, activeTimeline);
-    // 👇 Removed the third argument (allTransactions) – no longer needed
     const metrics = computeMetrics(filtered, activeTimeline);
     const categoryData = computeCategoryBreakdown(filtered);
     const cashFlowData = computeCashFlowData(filtered, activeTimeline);
@@ -138,24 +138,6 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.workspaceWrapper}>
-      <header className={styles.dashboardHeaderCardBox}>
-        <div className={styles.headingBlock}>
-          <div className={styles.titleWithBadgeRow}>
-            <h1 className={styles.welcomeHeadline}>Overview Hub</h1>
-            <span className={styles.liveAnalyticsBadgeElement}>
-              {isLoading ? "Loading..." : "Live Analytics"}
-            </span>
-          </div>
-          <p className={styles.welcomeSubtext}>Your financial health at a glance.</p>
-        </div>
-        <div className={styles.timeSwitcherActionFrame}>
-          <TimeSwitcher
-            activePeriod={activeTimeline}
-            onPeriodChange={handleTimelineChange}
-          />
-        </div>
-      </header>
-
       {isLoading ? (
         <div className={styles.loadingState}>
           <p>Loading your financial data...</p>
@@ -171,6 +153,32 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {/* 🚀 STEP 1: Hero AI Companion Console reigns supreme at the very top! */}
+          <section className={styles.metricsRowStage} aria-label="AI Guardian Companion">
+            <AiBuddyConsole 
+              metrics={metrics} 
+              activeWorkspaceId={activeWorkspaceId} 
+            />
+          </section>
+
+          {/* 🚀 STEP 2: The overview hub control bar header moved directly underneath */}
+          <header className={styles.dashboardHeaderCardBox}>
+            <div className={styles.headingBlock}>
+              <div className={styles.titleWithBadgeRow}>
+                <h1 className={styles.welcomeHeadline}>Overview Hub</h1>
+                <span className={styles.liveAnalyticsBadgeElement}>Live Analytics</span>
+              </div>
+              <p className={styles.welcomeSubtext}>Your financial health at a glance.</p>
+            </div>
+            <div className={styles.timeSwitcherActionFrame}>
+              <TimeSwitcher
+                activePeriod={activeTimeline}
+                onPeriodChange={handleTimelineChange}
+              />
+            </div>
+          </header>
+
+          {/* Metric Row Area */}
           <section className={styles.metricsRowStage} aria-label="Quick Summary">
             <MetricRow
               metrics={metrics}
@@ -205,4 +213,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-/* === SECTION 3 END === */

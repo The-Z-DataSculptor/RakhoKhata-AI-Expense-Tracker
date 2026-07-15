@@ -27,6 +27,14 @@ export const signupSchema = z
       .regex(/[a-zA-Z]/, "Master credentials must contain at least one letter."),
     
     confirmPassword: z.string(),
+
+    // 🚀 NEW: Dynamic Onboarding Validation Rules (Fully optional/nullable for flexibility)
+    country: z.string().optional(),
+    currency: z.string().default("USD"),
+    languages: z.array(z.string()).default([]),
+    occupation: z.string().optional(),
+    financialGoal: z.string().optional(),
+    aiPersona: z.string().optional()
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match. Please verify your entries.",

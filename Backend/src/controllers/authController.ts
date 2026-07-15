@@ -6,8 +6,8 @@
 import { Request, Response } from "express";
 import crypto from "crypto"; 
 import bcrypt from "bcrypt";
-import { encrypt } from "paseto-ts/v4"; // Pure TypeScript PASETO v4 local encryption engine
-import { prisma } from "../db";          // Core shared Prisma client connection instance
+import { encrypt } from "paseto-ts/v4";
+import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
@@ -29,7 +29,6 @@ const COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000 
 };
 
-// Blueprint category configurations automatically provisioned on every new user sign-up
 const PERSONAL_CATEGORIES = [
   { name: "Salary", type: "INCOME", color: "#10b981" },
   { name: "Housing", type: "EXPENSE", color: "#3b82f6" },
@@ -54,18 +53,30 @@ const BUSINESS_CATEGORIES = [
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: REGISTER USER CONTROLLER (WITH ATOMIC PROFILE SEEDING) ===
+   === SECTION 3: REGISTER USER CONTROLLER ===
    ========================================================================== */
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { fullName, email, password } = req.body;
+    const { 
+      fullName, 
+      email, 
+      password,
+      country,
+      currency,
+      languages,
+      occupation,
+      financialGoal,
+      aiPersona
+    } = req.body;
 
     if (!fullName || !email || !password) {
       res.status(400).json({ error: "Please fill in all required fields." });
       return;
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingUser) {
       res.status(400).json({ error: "A user with this email already exists." });
       return;
@@ -74,24 +85,31 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // UPGRADED: Single atomic query block deep-creates user, workspaces, and matching folder labels
+    const baseCurrency = currency || "PKR";
+
     const newUser = await prisma.user.create({
       data: { 
         name: fullName, 
-        email, 
+        email: normalizedEmail, 
         passwordHash: hashedPassword,
+        country: country || null,
+        currency: baseCurrency,
+        languages: languages || [],
+        occupation: occupation || "prefer_not_to_say",
+        financialGoal: financialGoal || "zen_master",
+        aiPersona: aiPersona || "supportive_coach",
         workspaces: {
           create: [
             { 
               name: "Personal", 
-              currency: "USD",
+              currency: baseCurrency,
               categories: {
                 create: PERSONAL_CATEGORIES
               }
             },
             { 
               name: "Business", 
-              currency: "USD",
+              currency: baseCurrency,
               categories: {
                 create: BUSINESS_CATEGORIES
               }
@@ -104,8 +122,14 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         name: true, 
         email: true, 
         uiTheme: true, 
+        country: true,
+        currency: true,
+        languages: true,
+        occupation: true,
+        financialGoal: true,
+        aiPersona: true,
         createdAt: true,
-        workspaces: true // Returns the newly minted workspaces down the pipeline
+        workspaces: true
       },
     });
 
@@ -119,15 +143,21 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(201).json({
-      message: "User registered successfully! Default Personal and Business profiles initialized.",
+      message: "User registered successfully! Default profiles initialized with personalized localization.",
       user: {
         id: newUser.id,
         name: newUser.name,
         email: newUser.email,
         uiTheme: newUser.uiTheme,
+        country: newUser.country,
+        currency: newUser.currency,
+        languages: newUser.languages,
+        occupation: newUser.occupation,
+        financialGoal: newUser.financialGoal,
+        aiPersona: newUser.aiPersona,
         createdAt: newUser.createdAt
       },
-      workspaces: newUser.workspaces // Sends both workspaces directly to frontend memory store arrays
+      workspaces: newUser.workspaces
     });
   } catch (error) {
     console.error("Signup Error:", error);
@@ -148,7 +178,9 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user) {
       res.status(401).json({ error: "Invalid email or password credentials." });
       return;
@@ -171,7 +203,18 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({
       message: "Login successful! Welcome back to RakhoKhata.",
-      user: { id: user.id, name: user.name, email: user.email, uiTheme: user.uiTheme },
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        uiTheme: user.uiTheme,
+        country: user.country,
+        currency: user.currency,
+        languages: user.languages,
+        occupation: user.occupation,
+        financialGoal: user.financialGoal,
+        aiPersona: user.aiPersona
+      },
     });
   } catch (error) {
     console.error("Login Controller Error:", error);
@@ -193,7 +236,19 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<v
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true, uiTheme: true, createdAt: true },
+      select: { 
+        id: true, 
+        name: true, 
+        email: true, 
+        uiTheme: true, 
+        country: true,
+        currency: true,
+        languages: true,
+        occupation: true,
+        financialGoal: true,
+        aiPersona: true,
+        createdAt: true 
+      },
     });
 
     if (!user) {
@@ -222,3 +277,89 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 /* === SECTION 6 END === */
+
+/* ==========================================================================
+   === SECTION 7: UPDATE PROFILE CONTROLLER (NEW) ===
+   ========================================================================== */
+export const updateProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const allowedFields = [
+      "name", "email", "country", "currency", "languages",
+      "occupation", "financialGoal", "aiPersona"
+    ];
+    const data: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        data[key] = req.body[key];
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true, name: true, email: true, uiTheme: true,
+        country: true, currency: true, languages: true,
+        occupation: true, financialGoal: true, aiPersona: true,
+        createdAt: true
+      }
+    });
+
+    res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
+  } catch (error) {
+    console.error("Update Profile Error:", error);
+    res.status(500).json({ error: "Internal server error updating profile." });
+  }
+};
+/* === SECTION 7 END === */
+
+/* ==========================================================================
+   === SECTION 8: CHANGE PASSWORD CONTROLLER (NEW) ===
+   ========================================================================== */
+export const changePassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: "Current and new password are required." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      res.status(401).json({ error: "Current password is incorrect." });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash }
+    });
+
+    res.status(200).json({ message: "Password changed successfully." });
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    res.status(500).json({ error: "Internal server error changing password." });
+  }
+};
+/* === SECTION 8 END === */

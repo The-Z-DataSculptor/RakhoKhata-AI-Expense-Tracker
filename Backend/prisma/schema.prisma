@@ -24,15 +24,26 @@ datasource db {
  * ==========================================================================
  */
 model User {
-  id           String      @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
-  email        String      @unique
+  email        String   @unique
   passwordHash String
   vaultPin     String? // Secure 4-digit PIN hash
-  uiTheme      String      @default("DARK")
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  workspaces   Workspace[]
+  uiTheme      String   @default("DARK")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // 🚀 NEW: DYNAMIC ONBOARDING AND GLOBAL AI PERSONALIZATION FIELDS
+  country       String? // e.g., "Pakistan", "United States", "Japan"
+  currency      String? // Preferred base currency code, e.g., "PKR", "USD", "EUR"
+  languages     String[] // Multi-select array of other spoken languages (e.g., ["Urdu", "Punjabi"])
+  occupation    String? // Job type: e.g., "Salaried Employee", "Freelancer", "prefer_not_to_say"
+  financialGoal String? // Vibe/Goal: e.g., "hustler", "saver", "tight_budgeter", "zen_master"
+  aiPersona     String? // Buddy Voice: e.g., "savage_roaster", "supportive_coach", "forensic_detective"
+
+  workspaces    Workspace[]
+  // 👇 Added relation to the new Notification engine
+  notifications Notification[]
 
   @@map("users")
 }
@@ -105,7 +116,7 @@ model Transaction {
   // DEPRECATED: Use originalAmount + originalCurrency + baseAmountUSD instead
   amount Decimal @db.Decimal(12, 2) // kept for compatibility; will be removed later
 
-  // 👇 NEW ENTERPRISE FIELDS
+  // NEW ENTERPRISE FIELDS
   originalAmount   Decimal @db.Decimal(12, 2) // Amount as entered by user
   originalCurrency String  @default("USD") // Currency code of the original amount
   baseAmountUSD    Decimal @db.Decimal(12, 2) // Normalized USD value (for aggregations)
@@ -137,7 +148,7 @@ model Budget {
   // DEPRECATED: limitAmount
   limitAmount Decimal @db.Decimal(12, 2) // kept for compatibility
 
-  // 👇 NEW ENTERPRISE FIELDS
+  // NEW ENTERPRISE FIELDS
   originalAmount   Decimal @db.Decimal(12, 2)
   originalCurrency String  @default("USD")
   baseAmountUSD    Decimal @db.Decimal(12, 2)
@@ -172,7 +183,7 @@ model Investment {
   totalInvested   Decimal @db.Decimal(12, 2) // kept for compatibility
   capitalCurrency String  @default("GBP") // kept for compatibility
 
-  // 👇 NEW ENTERPRISE FIELDS
+  // NEW ENTERPRISE FIELDS
   originalAmount   Decimal @db.Decimal(12, 2) // Total invested in original currency
   originalCurrency String  @default("USD")
   baseAmountUSD    Decimal @db.Decimal(12, 2) // Normalized USD value
@@ -189,4 +200,41 @@ model Investment {
 
 /**
  * === SECTION 7 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 8: ENTERPRISE NOTIFICATION ENGINE ===
+ * ==========================================================================
+ */
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String // e.g., "Rent Bill Due"
+  message String // e.g., "Your rent is due in 3 days."
+
+  // 1. POLYMORPHIC TARGET LINKING
+  sourceType String // e.g., "BILL_REMINDER", "BUDGET_ALERT", "SYSTEM"
+  sourceId   String? // The string ID of the Category, Budget, etc.
+
+  // 2. CHANNEL PREFERENCES & LIFECYCLE
+  isRead    Boolean   @default(false)
+  readAt    DateTime? // Enables soft-deleting from the UI
+  emailSent Boolean   @default(false) // Ready for future email expansion
+
+  // 3. IDEMPOTENCY KEY (ANTI-SPAM)
+  idempotencyKey String @unique // e.g., "bill_reminder_cat123_07_2026"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Indexing createdAt makes the 30-day automated cleanup queries lightning fast
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+/**
+ * === SECTION 8 END ===
  */

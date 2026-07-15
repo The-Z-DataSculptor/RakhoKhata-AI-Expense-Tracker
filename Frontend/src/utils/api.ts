@@ -11,7 +11,6 @@ export interface Category {
   type: string;
   color: string;
   workspaceId: string;
-  // 👇 Recurrence & enterprise fields (for completeness)
   isFixed: boolean;
   isRecurring: boolean;
   frequency: string | null;
@@ -21,14 +20,13 @@ export interface Category {
 
 export interface Transaction {
   id: string;
-  amount: number; // deprecated, kept for backward compatibility
+  amount: number; 
   type: string;
   description: string;
   date: string;
   workspaceId: string;
   categoryId: string;
   category?: Category;
-  // 👇 ENTERPRISE FIELDS
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
@@ -36,13 +34,12 @@ export interface Transaction {
 
 export interface Budget {
   id: string;
-  limitAmount: number; // deprecated, kept for backward compatibility
+  limitAmount: number; 
   startDate: string;
   endDate: string;
   categoryId: string;
   workspaceId: string;
   category?: Category;
-  // 👇 ENTERPRISE FIELDS
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
@@ -53,15 +50,53 @@ export interface InvestmentAsset {
   assetSymbol: string;
   categoryClass: string;
   isCustomProfile: boolean;
-  totalInvested: number; // deprecated, kept for backward compatibility
-  capitalCurrency: string; // deprecated, kept for backward compatibility
+  totalInvested: number; 
+  capitalCurrency: string; 
   quantity: number;
   strategyNote: string;
   workspaceId: string;
-  // 👇 ENTERPRISE FIELDS
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  sourceType: string;
+  sourceId: string | null;
+  isRead: boolean;
+  readAt: string | null;
+  emailSent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 🚀 NEW: User Profile Type
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  uiTheme: string;
+  country: string | null;
+  currency: string | null;
+  languages: string[];
+  occupation: string | null;
+  financialGoal: string | null;
+  aiPersona: string | null;
+  createdAt: string;
+}
+
+// 🚀 NEW: Workspace Type (for rename)
+export interface Workspace {
+  id: string;
+  name: string;
+  currency: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 /* === SECTION 1 END === */
 
@@ -85,7 +120,7 @@ export const apiFetch = async <T = unknown>(endpoint: string, options: RequestIn
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Network response error: ${response.status}`);
+      throw new Error(errorData.error || `Access denied. Status: ${response.status}`);
     }
 
     return response.json() as Promise<T>;
@@ -193,16 +228,7 @@ export const vaultAuthService = {
     }),
 };
 
-// 6. AI Insights Service
-// Handles communication with the Gemini AI backend for financial advice
 export const aiService = {
-  /**
-   * Send a question to the AI with financial data and get a personalized response
-   * @param question - The user's question (e.g., "Where am I wasting money?")
-   * @param persona - The AI personality: "auditor", "coach", or "minimalist"
-   * @param data - Financial data including income, expenses, top category, and budgets
-   * @returns Promise with the AI's response text
-   */
   ask: (question: string, persona: "auditor" | "coach" | "minimalist", data: {
     income: number;
     expenses: number;
@@ -212,6 +238,52 @@ export const aiService = {
     apiFetch<{ response: string }>("/ai/ask", {
       method: "POST",
       body: JSON.stringify({ question, persona, data }),
+    }),
+};
+
+export const notificationService = {
+  getAll: () =>
+    apiFetch<{ notifications: Notification[] }>("/notifications", { method: "GET" }),
+
+  markAsRead: (id: string) =>
+    apiFetch<{ message: string; notification: Notification }>(`/notifications/${id}/read`, {
+      method: "PATCH",
+    }),
+
+  markAllAsRead: () =>
+    apiFetch<{ message: string; count: number }>("/notifications/read-all", {
+      method: "PATCH",
+    }),
+};
+
+// 🚀 NEW: User Profile Service
+export const userService = {
+  // Get the current user's profile
+  getProfile: () =>
+    apiFetch<{ user: UserProfile }>("/auth/me", { method: "GET" }),
+
+  // Update user profile fields
+  updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
+    apiFetch<{ message: string; user: UserProfile }>("/auth/update-profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // Change password
+  changePassword: (currentPassword: string, newPassword: string) =>
+    apiFetch<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+};
+
+// 🚀 NEW: Workspace Service (for rename)
+export const workspaceService = {
+  // Update workspace (rename, change currency, etc.)
+  update: (id: string, data: Partial<{ name: string; currency: string }>) =>
+    apiFetch<{ message: string; workspace: Workspace }>(`/workspaces/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
     }),
 };
 /* === SECTION 3 END === */

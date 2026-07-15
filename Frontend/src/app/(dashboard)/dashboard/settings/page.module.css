@@ -8,12 +8,11 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  max-width: 900px;
+  max-width: 950px; /* Slightly wider for the new sidebar layout */
   margin: 0 auto;
   box-sizing: border-box;
   letter-spacing: -0.02em;
-  padding-bottom: 1.5rem; 
-  /* FIXED: Declared explicit fallback variables directly in local scope */
+  padding-bottom: 2rem; 
   --color-success: #16a34a;
   --color-danger: #dc2626;
 }
@@ -28,7 +27,7 @@
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 12px);
   padding: 1.5rem;
-  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
+  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.02);
   box-sizing: border-box;
 }
 
@@ -52,7 +51,6 @@
   color: var(--text-muted, #7e7a9c);
   margin: 0;
   line-height: 1.45;
-  padding-left: 0.05rem;
 }
 
 /* ==========================================================================
@@ -61,7 +59,7 @@
 .cardsStackDeck {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.75rem;
 }
 
 .settingsCardNode {
@@ -69,7 +67,7 @@
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 12px);
   padding: 1.75rem;
-  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
+  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.02);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -82,8 +80,8 @@
 }
 
 .iconIndicatorFrame {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   background-color: var(--surface-outline, #f1eefc);
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 8px);
@@ -102,7 +100,7 @@
 }
 
 .cardContextExplanation {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: var(--text-secondary, #4e4a6b);
   margin: 0;
   font-weight: 500;
@@ -116,9 +114,7 @@
 /* ==========================================================================
    === SECTION 3: FORM FIELDS & ACTION CONFIGS ===
    ========================================================================== */
-.renameFormBlock {
-  width: 100%;
-}
+.renameFormBlock { width: 100%; }
 
 .inputFieldGroup {
   display: flex;
@@ -127,11 +123,11 @@
 }
 
 .fieldLabelText {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--text-primary, #10043f);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
 .inputActionCluster {
@@ -140,9 +136,10 @@
   width: 100%;
 }
 
-.primaryTextInputElement {
+.primaryTextInputElement, .selectInput {
   flex: 1;
-  padding: 0.65rem 1rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
   background-color: var(--surface-muted, #f9f8ff);
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 8px);
@@ -150,43 +147,234 @@
   font-size: 0.9rem;
   font-weight: 600;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
-.primaryTextInputElement:focus {
+.primaryTextInputElement:focus, .selectInput:focus {
   border-color: var(--color-primary, #613bbf);
   background-color: var(--bg-surface, #ffffff);
+  box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.1);
 }
 
 .saveActionSubmitBtn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1.25rem;
+  padding: 0.75rem 1.25rem;
   background-color: var(--color-primary, #613bbf);
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md, 8px);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
-.saveActionSubmitBtn:hover {
+.saveActionSubmitBtn:hover:not(:disabled) {
   opacity: 0.9;
+  transform: translateY(-1px);
 }
 
-.dividerSplitLine {
-  height: 1px;
-  background-color: var(--border-color, #e5e1f4);
-  margin: 1.75rem 0;
-  width: 100%;
+.saveActionSubmitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.actionFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color, #e5e1f4);
 }
 
 /* ==========================================================================
-   === SECTION 4: DIRECTORY INDEX LAYOUT LISTS ===
+   === SECTION 4: MODERN SIDEBAR TABS UI ===
+   ========================================================================== */
+.modernSettingsContainer {
+  display: flex;
+  flex-direction: row;
+  min-height: 400px;
+}
+
+.settingsSidebar {
+  width: 220px;
+  background-color: var(--surface-muted, #f9f8ff);
+  border-right: 1px solid var(--border-color, #e5e1f4);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0;
+  flex-shrink: 0;
+}
+
+.tabButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-secondary, #4e4a6b);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.tabButton:hover {
+  background-color: rgba(97, 59, 191, 0.05);
+  color: var(--text-primary, #10043f);
+}
+
+.tabButtonActive {
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--color-primary, #613bbf);
+  font-weight: 700;
+}
+
+/* The active indicator line on the left of the tab */
+.tabButtonActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--color-primary, #613bbf);
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.tabIcon {
+  font-size: 1.1rem;
+}
+
+.settingsContentArea {
+  flex: 1;
+  padding: 2rem;
+  background-color: var(--bg-surface, #ffffff);
+}
+
+.panelHeader {
+  margin-bottom: 2rem;
+}
+
+.panelTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.35rem 0;
+}
+
+.panelDescription {
+  font-size: 0.85rem;
+  color: var(--text-muted, #7e7a9c);
+  margin: 0;
+}
+
+.animateFadeIn {
+  animation: slideUpFade 0.3s ease-out forwards;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profileFormRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+/* ==========================================================================
+   === SECTION 5: RICH CARDS & TAGS (Vibe & AI Persona) ===
+   ========================================================================== */
+.richCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.richCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background-color: var(--bg-surface, #ffffff);
+  border: 2px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.richCard:hover {
+  border-color: #c4b5fd;
+  background-color: var(--surface-muted, #f9f8ff);
+  transform: translateY(-2px);
+}
+
+.richCardActive {
+  border-color: var(--color-primary, #613bbf);
+  background-color: rgba(97, 59, 191, 0.04);
+  box-shadow: 0 4px 15px rgba(97, 59, 191, 0.1);
+}
+
+.richCardEmoji {
+  font-size: 1.75rem;
+}
+
+.richCardText h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+}
+
+.richCardText p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #4e4a6b);
+  line-height: 1.4;
+}
+
+.tagsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.tagBtn {
+  padding: 0.5rem 1rem;
+  background-color: var(--surface-muted, #f9f8ff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: 30px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4e4a6b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tagBtn:hover {
+  background-color: var(--border-color, #e5e1f4);
+}
+
+.tagBtnActive {
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 2px 8px rgba(97, 59, 191, 0.25);
+}
+
+/* ==========================================================================
+   === SECTION 6: WORKSPACE DIRECTORY LIST ===
    ========================================================================== */
 .directoryEntriesListWrapper {
   display: flex;
@@ -211,11 +399,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.65rem 1rem;
+  padding: 0.75rem 1rem;
   background-color: var(--surface-muted, #f9f8ff);
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 8px);
-  transition: background-color 0.15s ease, opacity 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .wsRowCardItem:hover {
@@ -250,32 +438,30 @@
   background-color: var(--color-primary, #613bbf);
 }
 
-.wsRowCardDeleting .wsVisualMarkerDot {
-  background-color: var(--color-danger, #dc2626);
-}
-
 .wsIdentityNameLabel {
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary, #10043f);
 }
 
 .activeStatusPillBadge {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 800;
+  text-transform: uppercase;
   color: var(--color-primary, #613bbf);
-  background-color: rgba(97, 59, 191, 0.06);
-  padding: 0.1rem 0.5rem;
-  border-radius: 10px;
+  background-color: rgba(97, 59, 191, 0.08);
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
 }
 
 .deletingStatusPillBadge {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 800;
+  text-transform: uppercase;
   color: var(--color-danger, #dc2626);
-  background-color: rgba(220, 38, 38, 0.06);
-  padding: 0.1rem 0.5rem;
-  border-radius: 10px;
+  background-color: rgba(220, 38, 38, 0.08);
+  padding: 0.15rem 0.6rem;
+  border-radius: 12px;
 }
 
 .rowDeleteTriggerActionBtn {
@@ -283,7 +469,7 @@
   border: none;
   color: var(--text-muted, #7e7a9c);
   cursor: pointer;
-  padding: 0.35rem;
+  padding: 0.4rem;
   border-radius: var(--radius-md, 8px);
   display: flex;
   align-items: center;
@@ -293,27 +479,16 @@
 
 .rowDeleteTriggerActionBtn:hover:not(:disabled) {
   color: var(--color-danger, #dc2626);
-  background-color: rgba(220, 38, 38, 0.04);
+  background-color: rgba(220, 38, 38, 0.06);
 }
 
-.rowDeleteTriggerActionBtn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.dividerSplitLine {
+  height: 1px;
+  background-color: var(--border-color, #e5e1f4);
+  margin: 1.75rem 0;
+  width: 100%;
 }
 
-.loadingSpinnerAnimation {
-  animation: rotateSpinner 1s linear infinite;
-  color: var(--color-danger, #dc2626);
-}
-
-@keyframes rotateSpinner {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* ==========================================================================
-   === SECTION 5: PLACEHOLDER FALLBACK BLOCK STRUCTURES ===
-   ========================================================================== */
 .placeholderControlRowFlexDeck {
   display: flex;
   align-items: center;
@@ -329,32 +504,94 @@
 }
 
 .rowControlHeadline {
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 800;
   color: var(--text-primary, #10043f);
 }
 
 .rowControlSecondaryExplanation {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--text-muted, #7e7a9c);
   line-height: 1.4;
 }
 
-.disabledActionStatusButtonBadge {
-  padding: 0.5rem 0.85rem;
-  background-color: var(--surface-outline, #f1eefc);
-  border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-md, 8px);
-  font-size: 0.78rem;
-  font-weight: 700;
+.loadingSpinnerAnimation {
+  animation: rotateSpinner 1s linear infinite;
+}
+
+@keyframes rotateSpinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 1rem;
   color: var(--text-muted, #7e7a9c);
-  cursor: not-allowed;
-  white-space: nowrap;
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE SCREEN BREAKPOINTS ===
+   === SECTION 7: RESPONSIVE SCREEN BREAKPOINTS ===
    ========================================================================== */
+@media (max-width: 768px) {
+  .modernSettingsContainer {
+    flex-direction: column;
+  }
+  
+  .settingsSidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color, #e5e1f4);
+    /* Hide scrollbar for cleaner look */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .settingsSidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabButton {
+    padding: 1rem;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    justify-content: center;
+  }
+
+  /* Move the active line to the bottom on mobile */
+  .tabButtonActive::before {
+    display: none;
+  }
+  
+  .tabButtonActive {
+    border-bottom-color: var(--color-primary, #613bbf);
+  }
+
+  .settingsContentArea {
+    padding: 1.5rem;
+  }
+  
+  .profileFormRow {
+    grid-template-columns: 1fr;
+  }
+
+  .actionFooter {
+    flex-direction: column;
+  }
+  
+  .saveActionSubmitBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 640px) {
   .dashboardHeaderCardBox {
     flex-direction: column;
@@ -366,20 +603,11 @@
     flex-direction: column;
     gap: 0.5rem;
   }
-  
-  .saveActionSubmitBtn {
-    width: 100%;
-    justify-content: center;
-  }
 
   .placeholderControlRowFlexDeck {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-
-  .disabledActionStatusButtonBadge {
-    width: 100%;
-    text-align: center;
-  }
 }
+/* === SECTION 7 END === */

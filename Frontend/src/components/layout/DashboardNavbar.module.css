@@ -60,7 +60,7 @@
 
 .metaRow {
   display: flex;
-  align-items: flex-start; /* FIXED: Align items to top so wrapped text looks neat */
+  align-items: flex-start;
   gap: 0.6rem;
   margin-top: 0.25rem;
 }
@@ -109,19 +109,8 @@
   transform: scale(0.95);
 }
 
-.notificationPulseBadge {
-  position: absolute;
-  top: 9px;
-  right: 10px;
-  width: 6px;
-  height: 6px;
-  background-color: var(--color-danger);
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--bg-surface);
-}
-
 /* ==========================================================================
-   === SECTION 4: CURRENCY TRIGGERS AND DROPDOWNS ===
+   === SECTION 4: CURRENCY & THEME TRIGGERS AND DROPDOWNS ===
    ========================================================================== */
 .currencyToggleTrigger {
   display: flex;
@@ -306,7 +295,209 @@
 }
 
 /* ==========================================================================
-   === SECTION 5: NEW GREETING & FACT STYLES ===
+   === SECTION 5: NEW NOTIFICATION ENGINE STYLES ===
+   ========================================================================== */
+.notificationBadgeCount {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: var(--color-danger);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px var(--bg-surface);
+  animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.notificationDropdownMenuFrame {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 380px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.12), 0 8px 16px -4px rgba(0, 0, 0, 0.06);
+  z-index: 850;
+  animation: dropdownSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top right;
+  overflow: hidden;
+}
+
+.notificationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--surface-muted);
+}
+
+.notificationTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dropdownMenuHeaderTitle {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+
+.unreadPill {
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+.markAllReadBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.markAllReadBtn:hover {
+  color: var(--color-primary);
+}
+
+.notificationScrollableContainer {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+}
+
+.emptyNotificationState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+  gap: 0.75rem;
+}
+
+.emptyIcon {
+  color: var(--border-color);
+  opacity: 0.8;
+}
+
+.emptyNotificationState p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.notificationCard {
+  display: flex;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.notificationCard:hover {
+  background-color: var(--surface-muted);
+}
+
+.notificationCardUnread {
+  background-color: rgba(97, 59, 191, 0.03);
+}
+
+.notificationIconWrapper {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+}
+
+.iconBill { color: var(--color-primary); }
+.iconAlert { color: var(--color-danger); }
+.iconSystem { color: var(--text-muted); }
+
+.notificationContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notificationTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.notificationCardTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.notificationTime {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.notificationCardMessage {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.unreadIndicatorDot {
+  position: absolute;
+  top: 1.4rem;
+  right: 1.25rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  box-shadow: 0 0 8px var(--primary-soft);
+}
+
+/* ==========================================================================
+   === SECTION 6: GREETING & FACT STYLES ===
    ========================================================================== */
 .greetingIcon {
   margin-right: 0.3rem;
@@ -331,21 +522,20 @@
   color: var(--text-muted);
   margin: 0;
   display: flex;
-  align-items: flex-start; /* FIXED: Keeps the star icon at the top line */
+  align-items: flex-start;
   gap: 0.35rem;
-  line-height: 1.4; /* Better readability for multiple lines */
+  line-height: 1.4;
   max-width: 450px;
-  /* Removed nowrap, overflow hidden, and ellipsis! Text will wrap beautifully now. */
 }
 
 .factIcon {
   color: var(--color-warning);
   flex-shrink: 0;
-  margin-top: 0.15rem; /* Pushes the star slightly down to align with the first line of text */
+  margin-top: 0.15rem;
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE & MOBILE RULES ===
+   === SECTION 7: RESPONSIVE & MOBILE RULES ===
    ========================================================================== */
 .hamburgerMenuIconToggle,
 .mobileNavigationDrawerTray,
@@ -355,7 +545,7 @@
 
 @media (max-width: 1024px) {
   .factSubtext {
-    max-width: 280px; /* Allows it to wrap slightly tighter on iPads/Laptops */
+    max-width: 280px;
   }
 }
 
@@ -367,6 +557,11 @@
   .currencyToggleTrigger,
   .dropdownMenuContainer {
     display: none;
+  }
+
+  /* Force display notifications dropdown trigger even in mobile deck */
+  .actionControlDeck .dropdownMenuContainer:nth-child(2) {
+    display: block !important;
   }
 
   .metaRow {
@@ -494,5 +689,14 @@
     background-color: var(--surface-muted);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
+  }
+
+  .notificationDropdownMenuFrame {
+    position: fixed;
+    top: 72px;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    max-width: none;
   }
 }

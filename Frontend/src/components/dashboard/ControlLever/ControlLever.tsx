@@ -11,7 +11,8 @@ interface ControlLeverProps {
   totalIncome: number;
   fixedExpenses: number;     
   flexibleExpenses: number;  
-  activePeriod: TimePeriod;  
+  activePeriod: TimePeriod;
+  sourceCurrency: string;   // <-- NEW: workspace currency for formatting
 }
 
 export default function ControlLever({
@@ -19,6 +20,7 @@ export default function ControlLever({
   fixedExpenses,
   flexibleExpenses,
   activePeriod,
+  sourceCurrency,
 }: ControlLeverProps) {
   
   const { formatAmount } = useCurrency();
@@ -83,7 +85,7 @@ export default function ControlLever({
             </div>
           </div>
           <div className={styles.rightValueSide}>
-            <span className={styles.amountValue}>{formatAmount(fixedExpenses, "USD")}</span>
+            <span className={styles.amountValue}>{formatAmount(fixedExpenses, sourceCurrency)}</span>
             <span className={styles.percentageValue}>{fixedWidth.toFixed(0)}% of income</span>
           </div>
         </div>
@@ -98,7 +100,7 @@ export default function ControlLever({
             </div>
           </div>
           <div className={styles.rightValueSide}>
-            <span className={styles.amountValue}>{formatAmount(flexibleExpenses, "USD")}</span>
+            <span className={styles.amountValue}>{formatAmount(flexibleExpenses, sourceCurrency)}</span>
             <span className={styles.percentageValue}>{flexibleWidth.toFixed(0)}% of income</span>
           </div>
         </div>
@@ -114,7 +116,7 @@ export default function ControlLever({
         <div className={styles.rewardMessageText}>
           <FiSmile size={16} className={styles.rewardIconJump} />
           <span>
-            <strong>If you pause spending now</strong>, you'll keep <strong>{formatAmount(leftOverSavings, "USD")}</strong> {periodLabel}!
+            <strong>If you pause spending now</strong>, you'll keep <strong>{formatAmount(leftOverSavings, sourceCurrency)}</strong> {periodLabel}!
           </span>
         </div>
       </div>

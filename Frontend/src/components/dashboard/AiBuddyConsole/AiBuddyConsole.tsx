@@ -5,37 +5,29 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState, useEffect } from "react";
-import { 
-  FiZap, 
-  FiLock, 
-  FiLoader, 
-  FiStar, 
-  FiSmile, 
-  FiCalendar, 
-  FiTrendingUp 
+import {
+  FiZap,
+  FiLock,
+  FiLoader,
+  FiStar,
+  FiSmile,
+  FiCalendar,
+  FiTrendingUp
 } from "react-icons/fi";
-import { 
-  FaFire, 
-  FaUserSecret, 
-  FaCalculator 
+import {
+  FaFire,
+  FaUserSecret,
+  FaCalculator
 } from "react-icons/fa6";
 import { toast } from "sonner";
+import { UserProfile } from "@/utils/api";
 import styles from "./AiBuddyConsole.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-interface MetricsType {
-  totalIncome: number;
-  totalExpenses: number;
-  fixedExpenses: number;
-  flexibleExpenses: number;
-  safeToSpend: number;
-}
-
 interface AiBuddyConsoleProps {
-  metrics: MetricsType;
   activeWorkspaceId: string | null;
 }
 
@@ -45,8 +37,8 @@ type TimelineScope = "today" | "week" | "month";
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyConsoleProps) {
-  const [userProfile, setUserProfile] = useState<any>(null);
+export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProps) {
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [displayedText, setDisplayedText] = useState("");
   const [fullTargetText, setFullTargetText] = useState("");
   const [isLoadingGreeting, setIsLoadingGreeting] = useState(true);
@@ -58,7 +50,6 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
     month: false,
   });
 
-  // AUTOMATIC TITLE CASE HELPER: Forces lowercase database initials to become big capitalized words automatically
   const formatTitleCase = (inputNameString: string): string => {
     if (!inputNameString) return "";
     return inputNameString
@@ -67,26 +58,26 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
       .join(" ");
   };
 
-  // Typewriter loop with string quote sanitization guards
+  // Typewriter effect resetting safely without state cascading warnings
   useEffect(() => {
     if (!fullTargetText) return;
 
-    // 🚀 ULTRA-CLEAN CORRECTION REGEX PATCH: 
-    // Strips out any loose leading/trailing spaces, raw newlines, or duplicate opening/closing quote markers 
-    // delivered by the LLM container so it never collides with our hardcoded layout UI elements.
     const cleanedText = fullTargetText
       .trim()
-      .replace(/^["'“‘’”]+/g, "") // Drops any duplicate starting quotations
-      .replace(/["'“‘’”]+$/g, ""); // Drops any duplicate trailing quotations
-      
-    let characterIndex = 0;
-    setDisplayedText("");
+      .replace(/^["'“‘’”]+/g, "")
+      .replace(/["'“‘’”]+$/g, "");
 
+    let characterIndex = 0;
+    
     const typewriterInterval = setInterval(() => {
-      setDisplayedText((previousString) => previousString + cleanedText.charAt(characterIndex));
-      characterIndex++;
-      
-      if (characterIndex >= cleanedText.length) {
+      if (characterIndex === 0) {
+        setDisplayedText("");
+      }
+
+      if (characterIndex < cleanedText.length) {
+        setDisplayedText((prev) => (characterIndex === 0 ? cleanedText.charAt(0) : prev + cleanedText.charAt(characterIndex)));
+        characterIndex++;
+      } else {
         clearInterval(typewriterInterval);
       }
     }, 18);
@@ -94,14 +85,17 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
     return () => clearInterval(typewriterInterval);
   }, [fullTargetText]);
 
+  // Fetch greeting on mount or workspace swap only — completely driven by backend calculations
   useEffect(() => {
     const fetchDailyGreeting = async () => {
+      if (!activeWorkspaceId) return;
       setIsLoadingGreeting(true);
       try {
         const response = await fetch("http://localhost:5000/api/ai/greeting", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ currentMetrics: metrics }),
+          // 🚀 FIXED: Only ship the active workspace ID. Let backend fetch transactions/categories/budgets
+          body: JSON.stringify({ workspaceId: activeWorkspaceId }),
           credentials: "include",
         });
 
@@ -111,9 +105,11 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
         setUserProfile(result.user);
         setFullTargetText(result.greeting);
         setCooldowns(result.cooldowns || { today: false, week: false, month: false });
-      } catch (err: any) {
-        console.error("Failed to generate contextual AI greeting:", err);
-        setFullTargetText("Secure network link functional. Live workspace analytics engine is standing by. Choose a report scope below to process current ledger data rows.");
+      } catch (error: unknown) {
+        console.error("Failed to generate contextual AI greeting:", error);
+        setFullTargetText(
+          "Secure network link functional. I'm looking over your logs. Click a report scope below to process your ledger grids."
+        );
       } finally {
         setIsLoadingGreeting(false);
       }
@@ -126,17 +122,18 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
     if (cooldowns[scope] || isProcessingAnalysis) return;
 
     setIsProcessingAnalysis(true);
-    setDisplayedText("");
-    setFullTargetText("Synchronizing data nodes... extracting current transaction ledger logs... querying analytical variables...");
+    setFullTargetText(
+      "Querying the database... pulling your category rules... checking budgets..."
+    );
 
     try {
       const response = await fetch("http://localhost:5000/api/ai/execute-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // 🚀 FIXED: Simple clean context delivery
         body: JSON.stringify({
           scope,
-          workspaceMetrics: metrics,
-          workspaceId: activeWorkspaceId,
+          workspaceId: activeWorkspaceId
         }),
         credentials: "include",
       });
@@ -145,11 +142,14 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
       if (!response.ok) throw new Error(result.error);
 
       setFullTargetText(result.analysisReport);
-      setCooldowns((prevCooldowns) => ({ ...prevCooldowns, [scope]: true }));
-      toast.success(`Dynamic ${scope} statement processed and active.`);
-    } catch (error: any) {
-      toast.error("Network sync timeout occurred during analytical sweep.");
-      setFullTargetText("Failed to safely stream financial analysis data rows. Check standard server console.");
+      setCooldowns((prev) => ({ ...prev, [scope]: true }));
+      toast.success(`Dynamic ${scope} analysis compiled.`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Network sync timeout during AI compilation.";
+      toast.error(message);
+      setFullTargetText(
+        "Could not load analysis. Please check if your backend server is online."
+      );
     } finally {
       setIsProcessingAnalysis(false);
     }
@@ -198,21 +198,26 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
           <div className={styles.companionBadge}>
             <div
               className={styles.avatarBlob}
-              style={{ borderColor: getPersonaColor(), boxShadow: `0 0 20px ${getPersonaColor()}33` }}
+              style={{
+                borderColor: getPersonaColor(),
+                boxShadow: `0 0 20px ${getPersonaColor()}33`,
+              }}
             >
               {renderPersonaIcon()}
             </div>
             <div className={styles.identityMeta}>
               <h4>
                 <FiStar className={styles.sparkleIcon} />
-                {userProfile?.name ? `${formatTitleCase(userProfile.name)}'s Companion` : "AI Companion Node"}
+                {userProfile?.name
+                  ? `${formatTitleCase(userProfile.name)}'s Companion`
+                  : "AI Companion Node"}
               </h4>
               <p>
                 Persona: <span className={styles.highlightText}>{personaKey.replace("_", " ")}</span>
               </p>
             </div>
           </div>
-          
+
           <div className={styles.livePulseIndicator}>
             <span className={styles.greenPulseDot} />
             <span className={styles.pulseLabel}>SYSTEM ALIVE</span>
@@ -228,7 +233,7 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
           {isLoadingGreeting ? (
             <div className={styles.loaderState}>
               <FiLoader className={styles.spinnerIcon} />
-              <p>Reticulating matrix lines... consulting companion brain...</p>
+              <p>Looking over your ledger sheets...</p>
             </div>
           ) : (
             <p className={styles.streamedNarrationText}>
@@ -251,7 +256,13 @@ export default function AiBuddyConsole({ metrics, activeWorkspaceId }: AiBuddyCo
                 onClick={() => handleTriggerAnalysis(scope)}
                 disabled={isLocked || isProcessingAnalysis || isLoadingGreeting}
                 className={`${styles.timelineActionButton} ${isLocked ? styles.buttonLockedState : ""} ${
-                  scope === "today" ? styles.scopeToday : scope === "week" ? styles.scopeWeek : scope === "month" ? styles.scopeMonth : ""
+                  scope === "today"
+                    ? styles.scopeToday
+                    : scope === "week"
+                    ? styles.scopeWeek
+                    : scope === "month"
+                    ? styles.scopeMonth
+                    : ""
                 }`}
               >
                 <div className={styles.btnInnerFlex}>

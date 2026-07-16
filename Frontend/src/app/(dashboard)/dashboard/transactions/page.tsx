@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { useState, useEffect, useCallback } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext"; // NEW
 import { transactionService, categoryService, Transaction, Category } from "@/utils/api";
 import { toast } from "sonner";
 
@@ -37,7 +38,9 @@ type FormPayload = {
 /* === SECTION 2 END === */
 
 export default function TransactionsPage() {
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const workspaceCurrency = activeWorkspace?.currency || "PKR";
+  const { convertAmount } = useCurrency(); // NEW
 
   /* --- STATE --- */
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -198,18 +201,21 @@ export default function TransactionsPage() {
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  // 👇 Use baseAmountUSD for totals (consistent across currencies)
-  let calculatedIncomeTotal = 0;
-  let calculatedExpenseTotal = 0;
+  // Compute totals in base USD, then convert to workspace currency
+  let totalIncomeUSD = 0;
+  let totalExpenseUSD = 0;
 
   processedFilteredRecords.forEach((recordItem) => {
     const value = Number(recordItem.baseAmountUSD ?? recordItem.amount ?? 0);
     if (recordItem.type.toUpperCase() === "INCOME") {
-      calculatedIncomeTotal += value;
+      totalIncomeUSD += value;
     } else if (recordItem.type.toUpperCase() === "EXPENSE") {
-      calculatedExpenseTotal += value;
+      totalExpenseUSD += value;
     }
   });
+
+  const calculatedIncomeTotal = convertAmount(totalIncomeUSD, "USD", workspaceCurrency);
+  const calculatedExpenseTotal = convertAmount(totalExpenseUSD, "USD", workspaceCurrency);
 
   /* --- PAGINATION --- */
   const indexPositionOfLastRowItem = currentPage * itemsPerPage;
@@ -296,6 +302,7 @@ export default function TransactionsPage() {
       <TransactionFooter 
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
+        sourceCurrency={workspaceCurrency}        // Pass workspace currency for formatting
       />
 
       {isModalOpen && (

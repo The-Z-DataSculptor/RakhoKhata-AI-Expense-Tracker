@@ -14,15 +14,16 @@ import styles from "./TransactionFooter.module.css";
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
 interface TransactionFooterProps {
-  totalIncome: number;   // in base USD
-  totalExpenses: number; // in base USD
+  totalIncome: number;   // now in workspace currency
+  totalExpenses: number; // now in workspace currency
+  sourceCurrency: string; // NEW: workspace currency
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export default function TransactionFooter({ totalIncome, totalExpenses }: TransactionFooterProps) {
+export default function TransactionFooter({ totalIncome, totalExpenses, sourceCurrency }: TransactionFooterProps) {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const { formatAmount } = useCurrency();
 
@@ -47,8 +48,7 @@ export default function TransactionFooter({ totalIncome, totalExpenses }: Transa
         <div>
           <p className={styles.statLabel}>Total Income</p>
           <p className={`${styles.statValue} ${styles.incomeColor}`}>
-            {/* Convert base USD to the user's active currency */}
-            +{formatAmount(totalIncome, "USD")}
+            +{formatAmount(totalIncome, sourceCurrency)}
           </p>
         </div>
       </div>
@@ -60,7 +60,7 @@ export default function TransactionFooter({ totalIncome, totalExpenses }: Transa
         <div>
           <p className={styles.statLabel}>Total Expenses</p>
           <p className={`${styles.statValue} ${styles.expenseColor}`}>
-            -{formatAmount(totalExpenses, "USD")}
+            -{formatAmount(totalExpenses, sourceCurrency)}
           </p>
         </div>
       </div>

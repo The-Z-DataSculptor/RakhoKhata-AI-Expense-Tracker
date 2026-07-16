@@ -20,7 +20,7 @@ export interface Category {
 
 export interface Transaction {
   id: string;
-  amount: number; 
+  amount?: number; // legacy field – may still be present in old data
   type: string;
   description: string;
   date: string;
@@ -34,15 +34,27 @@ export interface Transaction {
 
 export interface Budget {
   id: string;
-  limitAmount: number; 
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmountUSD: number;
   startDate: string;
   endDate: string;
   categoryId: string;
   workspaceId: string;
   category?: Category;
-  originalAmount: number;
-  originalCurrency: string;
-  baseAmountUSD: number;
+  spentAmount?: number; // computed by backend
+}
+
+export interface InvestmentHistoryNode {
+  id: string;
+  date: string;
+  title: string;
+  note: string;
+  amountAtTime: string;
+  investedAtTime: number;
+  valueAtTime: number;
+  roiAtTime: string;
+  isProfitAtTime: boolean;
 }
 
 export interface InvestmentAsset {
@@ -50,14 +62,19 @@ export interface InvestmentAsset {
   assetSymbol: string;
   categoryClass: string;
   isCustomProfile: boolean;
-  totalInvested: number; 
-  capitalCurrency: string; 
   quantity: number;
   strategyNote: string;
   workspaceId: string;
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
+  // 🚀 EXTENDED STRONGLY-TYPED CONTRACTS (Zero-mutation tracking values)
+  name?: string;
+  icon?: string;
+  userNote?: string;
+  history?: InvestmentHistoryNode[]; 
+  totalInvested?: number;   // legacy compatibility
+  capitalCurrency?: string; // legacy compatibility
 }
 
 export interface Notification {
@@ -74,7 +91,6 @@ export interface Notification {
   updatedAt: string;
 }
 
-// 🚀 NEW: User Profile Type
 export interface UserProfile {
   id: string;
   name: string;
@@ -89,7 +105,6 @@ export interface UserProfile {
   createdAt: string;
 }
 
-// 🚀 NEW: Workspace Type (for rename)
 export interface Workspace {
   id: string;
   name: string;
@@ -170,13 +185,13 @@ export const budgetService = {
   getByWorkspace: (workspaceId: string) =>
     apiFetch<{ budgets: Budget[] }>(`/budgets?workspaceId=${workspaceId}`, { method: "GET" }),
 
-  create: (data: Omit<Budget, "id" | "category">) =>
+  create: (data: Omit<Budget, "id" | "category" | "spentAmount">) =>
     apiFetch<{ message: string; budget: Budget }>("/budgets", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<Omit<Budget, "id" | "category">>) =>
+  update: (id: string, data: Partial<Omit<Budget, "id" | "category" | "spentAmount">>) =>
     apiFetch<{ message: string; budget: Budget }>(`/budgets/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -190,13 +205,13 @@ export const investmentService = {
   getByWorkspace: (workspaceId: string) =>
     apiFetch<{ investments: InvestmentAsset[] }>(`/investments?workspaceId=${workspaceId}`, { method: "GET" }),
 
-  create: (data: Omit<InvestmentAsset, "id">) =>
+  create: (data: Partial<InvestmentAsset> & Record<string, unknown>) =>
     apiFetch<{ message: string; asset: InvestmentAsset }>("/investments", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Omit<InvestmentAsset, "id">) =>
+  update: (id: string, data: Partial<InvestmentAsset> & Record<string, unknown>) =>
     apiFetch<{ message: string; asset: InvestmentAsset }>(`/investments/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -229,15 +244,11 @@ export const vaultAuthService = {
 };
 
 export const aiService = {
-  ask: (question: string, persona: "auditor" | "coach" | "minimalist", data: {
-    income: number;
-    expenses: number;
-    topCategory: string;
-    budgets: Array<{ categoryName: string; limitAmount: number; spentAmount: number }>;
-  }) =>
+  // 🚀 FIXED: Simplified parameters targeting direct database calculations on backend
+  ask: (question: string, persona: "auditor" | "coach" | "minimalist", workspaceId: string) =>
     apiFetch<{ response: string }>("/ai/ask", {
       method: "POST",
-      body: JSON.stringify({ question, persona, data }),
+      body: JSON.stringify({ question, persona, workspaceId }),
     }),
 };
 
@@ -256,20 +267,16 @@ export const notificationService = {
     }),
 };
 
-// 🚀 NEW: User Profile Service
 export const userService = {
-  // Get the current user's profile
   getProfile: () =>
     apiFetch<{ user: UserProfile }>("/auth/me", { method: "GET" }),
 
-  // Update user profile fields
   updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
     apiFetch<{ message: string; user: UserProfile }>("/auth/update-profile", {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
-  // Change password
   changePassword: (currentPassword: string, newPassword: string) =>
     apiFetch<{ message: string }>("/auth/change-password", {
       method: "POST",
@@ -277,9 +284,7 @@ export const userService = {
     }),
 };
 
-// 🚀 NEW: Workspace Service (for rename)
 export const workspaceService = {
-  // Update workspace (rename, change currency, etc.)
   update: (id: string, data: Partial<{ name: string; currency: string }>) =>
     apiFetch<{ message: string; workspace: Workspace }>(`/workspaces/${id}`, {
       method: "PUT",

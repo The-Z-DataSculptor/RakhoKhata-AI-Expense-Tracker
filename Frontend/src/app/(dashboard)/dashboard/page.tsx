@@ -30,7 +30,9 @@ import styles from "./page.module.css";
    === SECTION 2: COMPONENT LOGIC ===
    ========================================================================== */
 export default function DashboardPage() {
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace(); // also pull activeWorkspace
+  const workspaceCurrency = activeWorkspace?.currency || "PKR"; // default fallback
+
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -184,6 +186,7 @@ export default function DashboardPage() {
               metrics={metrics}
               periodLabel={periodLabel}
               activePeriod={activeTimeline}
+              sourceCurrency={workspaceCurrency}    // 🔥 new
             />
           </section>
 
@@ -193,15 +196,16 @@ export default function DashboardPage() {
               fixedExpenses={metrics.fixedExpenses}
               flexibleExpenses={metrics.flexibleExpenses}
               activePeriod={activeTimeline}
+              sourceCurrency={workspaceCurrency}    // 🔥 new
             />
           </section>
 
           <main className={styles.isolatedStage}>
             <div className={styles.chartWrapperNode}>
-              <CashFlowChart data={cashFlowData} />
+              <CashFlowChart data={cashFlowData} sourceCurrency={workspaceCurrency} />
             </div>
             <div className={styles.chartWrapperNode}>
-              <ExpenseDonutChart data={categoryData} />
+              <ExpenseDonutChart data={categoryData} sourceCurrency={workspaceCurrency} />
             </div>
           </main>
         </>

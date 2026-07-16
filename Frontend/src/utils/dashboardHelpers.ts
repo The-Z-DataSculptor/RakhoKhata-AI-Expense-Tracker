@@ -6,7 +6,7 @@ export interface Transaction {
   id: string;
   originalAmount: number;
   originalCurrency: string;
-  baseAmountUSD: number;
+  baseAmountUSD: number; // kept for cross‑workspace use, not used in metrics
   amount?: number;
   type: "INCOME" | "EXPENSE";
   description: string;
@@ -43,20 +43,21 @@ export interface DashboardMetrics {
 
 export interface CategoryBreakdownItem {
   name: string;
-  value: number; // in base USD
+  value: number; // in original currency (now not base USD)
   color: string;
   isFixed: boolean;
 }
 
 export interface CashFlowDataPoint {
   label: string;
-  Income: number; // in base USD
-  Expenses: number; // in base USD
+  Income: number;  // in original currency
+  Expenses: number; // in original currency
 }
 
-/**
- * Returns the first and last day of the current month.
- */
+/* ==========================================================================
+   DATE HELPERS
+   ========================================================================== */
+
 function getCurrentMonthRange(): { start: Date; end: Date } {
   const now = new Date();
   const year = now.getFullYear();
@@ -66,10 +67,6 @@ function getCurrentMonthRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
-/**
- * Returns the start and end dates for the selected period (first N days of current month).
- * For "all", returns null.
- */
 function getPeriodDateRange(period: TimePeriod): { start: Date; end: Date } | null {
   if (period === "all") return null;
   const now = new Date();
@@ -89,9 +86,6 @@ function getPeriodDateRange(period: TimePeriod): { start: Date; end: Date } | nu
   return { start, end };
 }
 
-/**
- * Returns the number of days in the selected period, and the total days in the current month.
- */
 function getPeriodDaysAndMonthDays(period: TimePeriod): { periodDays: number; monthDays: number } {
   const { start, end } = getCurrentMonthRange();
   const monthDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -105,9 +99,6 @@ function getPeriodDaysAndMonthDays(period: TimePeriod): { periodDays: number; mo
   }
 }
 
-/**
- * Human‑readable label for the selected period.
- */
 export function getPeriodLabel(period: TimePeriod): string {
   switch (period) {
     case "7d": return "this week";
@@ -118,9 +109,10 @@ export function getPeriodLabel(period: TimePeriod): string {
   }
 }
 
-/**
- * Filters transactions by a date range.
- */
+/* ==========================================================================
+   FILTERING HELPERS
+   ========================================================================== */
+
 export function filterTransactionsByDateRange(
   transactions: Transaction[],
   start: Date,
@@ -132,23 +124,19 @@ export function filterTransactionsByDateRange(
   });
 }
 
-/**
- * Filters transactions based on the selected period (first N days of current month).
- * For "all", returns all transactions.
- */
 export function filterTransactionsByPeriod(
   transactions: Transaction[],
   period: TimePeriod
 ): Transaction[] {
   const range = getPeriodDateRange(period);
   if (!range) return transactions;
-  const { start, end } = range;
-  return filterTransactionsByDateRange(transactions, start, end);
+  return filterTransactionsByDateRange(transactions, range.start, range.end);
 }
 
-/**
- * Computes dashboard metrics using the budget planning approach with dynamic month length.
- */
+/* ==========================================================================
+   METRICS COMPUTATION (using originalAmount)
+   ========================================================================== */
+
 export function computeMetrics(
   transactions: Transaction[],
   period: TimePeriod
@@ -162,7 +150,7 @@ export function computeMetrics(
   let monthFlexible = 0;
 
   monthTxs.forEach((tx) => {
-    const base = Number(tx.baseAmountUSD);
+    const base = Number(tx.originalAmount);   // <-- FIXED: use originalAmount
     if (tx.type === "INCOME") {
       monthIncome += base;
     } else if (tx.type === "EXPENSE") {
@@ -183,7 +171,7 @@ export function computeMetrics(
   if (period === "all") {
     let totalIncome = 0, totalExpenses = 0, totalFixed = 0, totalFlexible = 0;
     transactions.forEach((tx) => {
-      const base = Number(tx.baseAmountUSD);
+      const base = Number(tx.originalAmount);   // <-- FIXED
       if (tx.type === "INCOME") {
         totalIncome += base;
       } else if (tx.type === "EXPENSE") {
@@ -238,7 +226,7 @@ export function computeMetrics(
 }
 
 /* ==========================================================================
-   === CATEGORY BREAKDOWN ===
+   CATEGORY BREAKDOWN (using originalAmount)
    ========================================================================== */
 
 export function computeCategoryBreakdown(
@@ -251,7 +239,7 @@ export function computeCategoryBreakdown(
     const categoryName = tx.category?.name || "Uncategorized";
     const color = tx.category?.color || "var(--text-muted)";
     const isFixed = tx.category?.isFixed || false;
-    const amount = Number(tx.baseAmountUSD);
+    const amount = Number(tx.originalAmount);   // <-- FIXED
 
     if (categoryMap.has(categoryName)) {
       const existing = categoryMap.get(categoryName)!;
@@ -270,7 +258,7 @@ export function computeCategoryBreakdown(
 }
 
 /* ==========================================================================
-   === CASH FLOW TIME‑SERIES DATA ===
+   CASH FLOW TIME‑SERIES (using originalAmount)
    ========================================================================== */
 
 function getWeekNumber(date: Date): number {
@@ -323,7 +311,7 @@ export function computeCashFlowData(
       const key = date.toLocaleString('default', { month: 'short', year: 'numeric' });
       if (!groups.has(key)) groups.set(key, { income: 0, expenses: 0 });
       const group = groups.get(key)!;
-      const amount = Number(tx.baseAmountUSD);
+      const amount = Number(tx.originalAmount);   // <-- FIXED
       if (tx.type === "INCOME") group.income += amount;
       else group.expenses += amount;
     });
@@ -370,7 +358,7 @@ export function computeCashFlowData(
     }
     if (!groups.has(key)) groups.set(key, { income: 0, expenses: 0 });
     const group = groups.get(key)!;
-    const amount = Number(tx.baseAmountUSD);
+    const amount = Number(tx.originalAmount);   // <-- FIXED
     if (tx.type === "INCOME") group.income += amount;
     else group.expenses += amount;
   });

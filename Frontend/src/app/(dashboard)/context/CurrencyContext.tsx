@@ -4,7 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getExchangeRates } from "@/utils/exchangeRate";
 /* === SECTION 1 END === */
 
@@ -29,7 +29,6 @@ type RateMap = Record<string, number>;
 /* ==========================================================================
    === SECTION 3: FALLBACK RATES & CACHE HELPERS ===
    ========================================================================== */
-// Hardcoded fallback rates (approximate, used only if API and cache fail)
 const FALLBACK_RATES: RateMap = {
   USD: 1,
   PKR: 278,
@@ -47,9 +46,6 @@ const FALLBACK_RATES: RateMap = {
 const CACHE_KEY = "exchangeRates";
 const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
-/**
- * Load cached rates from localStorage if they are still valid.
- */
 function loadCachedRates(): RateMap | null {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
@@ -67,9 +63,6 @@ function loadCachedRates(): RateMap | null {
   return null;
 }
 
-/**
- * Save rates to localStorage with a timestamp.
- */
 function saveCachedRates(rates: RateMap): void {
   try {
     localStorage.setItem(
@@ -88,7 +81,6 @@ function saveCachedRates(rates: RateMap): void {
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: CurrencyProviderProps) {
-  // Load currency preference from localStorage (optional)
   const [currency, setCurrency] = useState<string>(() => {
     try {
       return localStorage.getItem("preferredCurrency") || "USD";
@@ -97,12 +89,11 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     }
   });
 
-  // Initialize rates from cache or fallback
-  const cachedRates = loadCachedRates();
-  const [rates, setRates] = useState<RateMap>(cachedRates || FALLBACK_RATES);
-  const [isLoadingRates, setIsLoadingRates] = useState<boolean>(!cachedRates);
+  // Start with fallback rates; a later effect will load cached/live ones.
+  const [rates, setRates] = useState<RateMap>(FALLBACK_RATES);
+  const [isLoadingRates, setIsLoadingRates] = useState<boolean>(true);
 
-  // Save currency preference
+  // Save currency preference when it changes
   useEffect(() => {
     try {
       localStorage.setItem("preferredCurrency", currency);
@@ -111,47 +102,64 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     }
   }, [currency]);
 
-  // Fetch live exchange rates
+  // Load rates on mount: try cache first, then fetch fresh.
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
 
-    const fetchRates = async () => {
+    const initRates = async () => {
+      // 1. Try to load from valid cache
+      const cached = loadCachedRates();
+      if (cached) {
+        if (!cancelled) {
+          setRates(cached);
+          setIsLoadingRates(false);
+        }
+        return; // no need to fetch
+      }
+
+      // 2. No cache, fetch live
       try {
         const exchangeRates = await getExchangeRates();
-        if (isMounted) {
+        if (!cancelled) {
           setRates(exchangeRates);
           saveCachedRates(exchangeRates);
           setIsLoadingRates(false);
         }
       } catch (error) {
         console.warn("Failed to fetch exchange rates:", error);
-        // If we have cached rates, keep them; otherwise fallback
-        if (isMounted) {
-          const cached = loadCachedRates();
-          if (cached) {
-            setRates(cached);
-          } else {
-            setRates(FALLBACK_RATES);
-          }
+        if (!cancelled) {
+          // keep fallback rates
           setIsLoadingRates(false);
         }
       }
     };
 
-    fetchRates();
-
-    // Refresh rates every hour
-    const interval = setInterval(fetchRates, CACHE_EXPIRY_MS);
+    initRates();
 
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      cancelled = true;
     };
+  }, []); // runs once on mount
+
+  /**
+   * When the user changes currency, fetch fresh rates to ensure accurate conversion.
+   */
+  const changeCurrency = useCallback(async (newCurrency: string) => {
+    setCurrency(newCurrency);
+    setIsLoadingRates(true);
+    try {
+      const exchangeRates = await getExchangeRates();
+      setRates(exchangeRates);
+      saveCachedRates(exchangeRates);
+    } catch (error) {
+      console.warn("Failed to fetch fresh rates on currency change:", error);
+    } finally {
+      setIsLoadingRates(false);
+    }
   }, []);
 
   /**
    * Convert an amount from one currency to another.
-   * Always uses the latest available rates (cached, fallback, or live).
    */
   const convertAmount = (amount: number, from: string, to: string): number => {
     if (amount === 0 || from === to) return amount;
@@ -162,7 +170,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     const rateFrom = rates[fromUpper];
     const rateTo = rates[toUpper];
 
-    // If either rate is missing, try to use fallback rates as a last resort
     if (!rateFrom || !rateTo) {
       console.warn(`Missing exchange rate for ${fromUpper} or ${toUpper}, using fallback.`);
       const fallbackFrom = FALLBACK_RATES[fromUpper];
@@ -170,7 +177,6 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
       if (fallbackFrom && fallbackTo) {
         return Math.round((amount / fallbackFrom) * fallbackTo * 100) / 100;
       }
-      // If still missing, return the original amount (no conversion)
       return amount;
     }
 
@@ -180,13 +186,15 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 
   /**
    * Format an amount with the current currency symbol.
+   * 🔥 FIX: When sourceCurrency equals display currency, NO conversion is done.
    */
   const formatAmount = (amount: number, sourceCurrency?: string): string => {
     const finalAmount = sourceCurrency
-      ? convertAmount(amount, sourceCurrency, currency)
+      ? sourceCurrency.toUpperCase() === currency.toUpperCase()
+        ? amount   // ← no conversion when displaying in the same currency
+        : convertAmount(amount, sourceCurrency, currency)
       : amount;
 
-    // If the final amount is NaN or Infinity, show 0
     if (!isFinite(finalAmount)) {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -202,7 +210,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
 
   const value = {
     currency,
-    setCurrency,
+    setCurrency: changeCurrency,
     formatAmount,
     convertAmount,
     isLoadingRates,
@@ -222,4 +230,3 @@ export function useCurrency(): CurrencyContextType {
   }
   return context;
 }
-/* === SECTION 4 END === */

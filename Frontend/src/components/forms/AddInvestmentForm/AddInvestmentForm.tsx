@@ -1,16 +1,13 @@
 // src/components/forms/AddInvestmentForm/AddInvestmentForm.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { FaArrowRight, FaHeart } from "react-icons/fa6";
 import { BsToggleOff, BsToggleOn } from "react-icons/bs";
 import { toast } from "sonner";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import styles from "./AddInvestmentForm.module.css";
-/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
@@ -29,8 +26,8 @@ export interface InvestmentHistoryNode {
   title: string;
   note: string;
   amountAtTime: string;
-  investedAtTime: number; // in USD normalized
-  valueAtTime: number;    // in USD normalized
+  investedAtTime: number;
+  valueAtTime: number;
   roiAtTime: string;
   isProfitAtTime: boolean;
 }
@@ -41,12 +38,11 @@ export interface InvestmentAssetPayload {
   icon: string;
   categoryClass: string;
   userNote: string;
-  currentPrice: number;     // in USD normalized
+  currentPrice: number;
   quantityOwned: number;
-  // 👇 NEW enterprise fields
-  originalAmount: number;   // total invested in original currency
+  originalAmount: number;
   originalCurrency: string;
-  baseAmountUSD: number;    // total invested normalized to USD
+  baseAmountUSD: number;
   history: InvestmentHistoryNode[];
 }
 
@@ -57,9 +53,9 @@ export interface InitialInvestmentData {
   icon?: string;
   categoryClass?: string;
   userNote?: string;
-  currentPrice?: number; // in USD
+  currentPrice?: number;
   quantityOwned?: number;
-  totalInvested?: number; // in USD
+  totalInvested?: number;
   history?: InvestmentHistoryNode[];
 }
 
@@ -91,56 +87,45 @@ const INVESTMENT_TYPES: InvestmentTypeOption[] = [
 ];
 
 export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmentFormProps) {
-  const { currency, convertAmount } = useCurrency();
-  const [formStep, setFormStep] = useState<number>(1);
+  const { convertAmount } = useCurrency();
+  const { activeWorkspace } = useWorkspace();
+  const workspaceCurrency = activeWorkspace?.currency || "PKR";
+
+  const initialName = initialData?.name || "";
+  const initialSymbol = initialData?.symbol || "";
+  const initialQty = initialData?.quantityOwned?.toString() || "";
+  const initialNote = initialData?.userNote || "";
 
   const matchedTypeOnMount = initialData
     ? INVESTMENT_TYPES.find(item => item.iconString === initialData.icon)
     : null;
 
-  const [assetName, setAssetName] = useState<string>(initialData?.name || "");
-  const [assetSymbol, setAssetSymbol] = useState<string>(initialData?.symbol || (matchedTypeOnMount ? matchedTypeOnMount.symbolDefault : INVESTMENT_TYPES[0].symbolDefault));
-  const [selectedType, setSelectedType] = useState<string>(matchedTypeOnMount ? matchedTypeOnMount.id : INVESTMENT_TYPES[0].id);
-  const [customType, setCustomType] = useState<string>(initialData && !matchedTypeOnMount ? (initialData.categoryClass || "Custom Item") : "");
-  const [isCustomMode, setIsCustomMode] = useState<boolean>(initialData && !matchedTypeOnMount ? true : false);
+  const initialSelectedType = matchedTypeOnMount ? matchedTypeOnMount.id : INVESTMENT_TYPES[0].id;
+  const initialIsCustomMode = !!(initialData && !matchedTypeOnMount);
+  const initialCustomType = initialIsCustomMode ? (initialData?.categoryClass || "Custom Item") : "";
 
-  const [totalMoneySpent, setTotalMoneySpent] = useState<string>("");
-  const [amountReceived, setAmountReceived] = useState<string>(initialData?.quantityOwned?.toString() || "");
-  const [userNote, setUserNote] = useState<string>(initialData?.userNote || "");
+  // 🚀 FIXED: We no longer convert an already converted string. We display the exact raw amount.
+  const rawTotalInvested = initialData?.totalInvested || 0;
+  const initialMoneyStr = initialData ? rawTotalInvested.toString() : "";
 
-  const [prevId, setPrevId] = useState<string | undefined>(initialData?.id);
+  const [formStep, setFormStep] = useState<number>(1);
+  const [assetName, setAssetName] = useState<string>(initialName);
+  const [assetSymbol, setAssetSymbol] = useState<string>(initialSymbol || INVESTMENT_TYPES[0].symbolDefault);
+  const [selectedType, setSelectedType] = useState<string>(initialSelectedType);
+  const [customType, setCustomType] = useState<string>(initialCustomType);
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(initialIsCustomMode);
+  
+  const [totalMoneySpent, setTotalMoneySpent] = useState<string>(initialMoneyStr);
+  const [amountReceived, setAmountReceived] = useState<string>(initialQty);
+  const [userNote, setUserNote] = useState<string>(initialNote);
 
-  if (initialData?.id !== prevId) {
-    setPrevId(initialData?.id);
-    setAssetName(initialData?.name || "");
-    setAssetSymbol(initialData?.symbol || "");
-
-    // Convert USD to user's currency for display
-    const displayMoneySpent = convertAmount(initialData?.totalInvested || 0, "USD", currency);
-    setTotalMoneySpent(displayMoneySpent ? displayMoneySpent.toFixed(2) : "");
-
-    setAmountReceived(initialData?.quantityOwned?.toString() || "");
-    setUserNote(initialData?.userNote || "");
-
-    const match = INVESTMENT_TYPES.find(item => item.iconString === initialData?.icon);
-    if (match) {
-      setSelectedType(match.id);
-      setIsCustomMode(false);
-    } else {
-      setIsCustomMode(initialData ? true : false);
-      setCustomType(initialData?.categoryClass || "Custom Item");
-    }
-  }
-
-  const handleTypeSelect = useCallback((typeId: string) => {
+  const handleTypeSelect = (typeId: string) => {
     setSelectedType(typeId);
     const matched = INVESTMENT_TYPES.find(item => item.id === typeId);
-    if (matched) {
-      setAssetSymbol(matched.symbolDefault);
-    }
-  }, []);
+    if (matched) setAssetSymbol(matched.symbolDefault);
+  };
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formStep === 1) {
@@ -155,29 +140,21 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
     try {
       const activeTypeObj = INVESTMENT_TYPES.find(item => item.id === selectedType);
       const finalIconChar = isCustomMode ? "📦" : (activeTypeObj?.iconString || "💰");
-      const finalCategoryClass = isCustomMode
-        ? (customType.trim() || "Custom Position")
-        : (activeTypeObj?.category || "Traditional");
+      const finalCategoryClass = isCustomMode ? (customType.trim() || "Custom Position") : (activeTypeObj?.category || "Traditional");
 
       const rawMoneySpent = parseFloat(totalMoneySpent) || 0;
       const finalQuantityOwned = parseFloat(amountReceived) || 0;
 
-      // Normalize to USD for database
-      const normalizedTotalInvested = convertAmount(rawMoneySpent, currency, "USD");
-      const calculatedUnitPrice = finalQuantityOwned > 0 ? (normalizedTotalInvested / finalQuantityOwned) : 0;
+      // Ensure base amounts are captured cleanly at time of form save
+      const normalizedTotalInvested = convertAmount(rawMoneySpent, workspaceCurrency, "USD");
+      const calculatedUnitPrice = finalQuantityOwned > 0 ? (rawMoneySpent / finalQuantityOwned) : 0;
 
       let updatedHistory: InvestmentHistoryNode[] = [];
-      const activeCurrencyLabel = currency.toUpperCase();
       const localizedDateString = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
       if (initialData) {
         const existingHistory = initialData.history ? [...initialData.history] : [];
-
-        if (initialData.totalInvested !== normalizedTotalInvested || initialData.quantityOwned !== finalQuantityOwned) {
-          const oldTotalValue = (initialData.quantityOwned || 0) * (initialData.currentPrice || 0);
-          const oldProfitLoss = oldTotalValue - (initialData.totalInvested || 0);
-          const oldRoi = (initialData.totalInvested || 0) > 0 ? (oldProfitLoss / (initialData.totalInvested || 0)) * 100 : 0;
-
+        if (Math.abs((initialData.totalInvested || 0) - rawMoneySpent) > 0.001 || initialData.quantityOwned !== finalQuantityOwned) {
           const historySnapshot: InvestmentHistoryNode = {
             id: `node-${Date.now()}-update`,
             date: localizedDateString,
@@ -185,73 +162,49 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             note: userNote.trim() || "Asset balances adjusted via secure profile manager.",
             amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
             investedAtTime: normalizedTotalInvested,
-            valueAtTime: oldTotalValue,
-            roiAtTime: `${oldRoi >= 0 ? "+" : ""}${oldRoi.toFixed(1)}% ROI`,
-            isProfitAtTime: oldProfitLoss >= 0
+            valueAtTime: normalizedTotalInvested,
+            roiAtTime: "0.0% ROI",
+            isProfitAtTime: true
           };
-
           updatedHistory = [historySnapshot, ...existingHistory];
         } else {
           updatedHistory = existingHistory;
         }
       } else {
-        updatedHistory = [
-          {
-            id: `node-${Date.now()}-initial`,
-            date: localizedDateString,
-            title: "Initial Log",
-            note: userNote.trim() || "Asset profile successfully logged in safe vault.",
-            amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
-            investedAtTime: normalizedTotalInvested,
-            valueAtTime: normalizedTotalInvested,
-            roiAtTime: "0.0% ROI",
-            isProfitAtTime: true
-          }
-        ];
+        updatedHistory = [{
+          id: `node-${Date.now()}-initial`,
+          date: localizedDateString,
+          title: "Initial Log",
+          note: userNote.trim() || "Asset profile successfully logged in safe vault.",
+          amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
+          investedAtTime: normalizedTotalInvested,
+          valueAtTime: normalizedTotalInvested,
+          roiAtTime: "0.0% ROI",
+          isProfitAtTime: true
+        }];
       }
 
-      // Build payload with enterprise fields
       const builtAssetPayload: InvestmentAssetPayload = {
         name: assetName.trim(),
         symbol: assetSymbol.trim().toUpperCase() || "ITEM",
         icon: finalIconChar,
         categoryClass: finalCategoryClass,
         userNote: userNote.trim(),
-        currentPrice: calculatedUnitPrice, // in USD
+        currentPrice: calculatedUnitPrice,
         quantityOwned: finalQuantityOwned,
-        // 👇 NEW enterprise fields
         originalAmount: rawMoneySpent,
-        originalCurrency: activeCurrencyLabel,
+        originalCurrency: workspaceCurrency,
         baseAmountUSD: normalizedTotalInvested,
         history: updatedHistory
       };
 
       onSave(builtAssetPayload);
 
-      if (initialData) {
-        toast.success("Investment asset modifications saved successfully!");
-      } else {
-        toast.success("Asset securely pinned to investment vault.");
-      }
     } catch (error) {
       console.error("Investment allocation error:", error);
       toast.error("Could not secure investment entry records. Verify numeric inputs.");
     }
-  }, [
-    formStep,
-    assetName,
-    assetSymbol,
-    selectedType,
-    isCustomMode,
-    customType,
-    totalMoneySpent,
-    amountReceived,
-    userNote,
-    currency,
-    convertAmount,
-    initialData,
-    onSave
-  ]);
+  };
 
   /* ==========================================================================
      === SECTION 4: RENDER (JSX) ===
@@ -272,14 +225,14 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         <div className={styles.stepWrapper}>
           <div className={styles.promptSpeechBubble}>
             <h3 className={styles.speechTitle}>Establish Asset Identity</h3>
-            <p className={styles.speechText}>Define your asset name and shorthand symbol. This ensures your progress ledger aggregates historical tracking updates accurately.</p>
+            <p className={styles.speechText}>Define your asset name and shorthand symbol.</p>
           </div>
 
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel}>Asset Name</label>
             <input
               type="text"
-              placeholder="e.g., S&P 500 Index, Ethereum Wallet, Real Estate Fund"
+              placeholder="e.g., S&P 500 Index, Ethereum Wallet"
               value={assetName}
               onChange={(e) => setAssetName(e.target.value)}
               required
@@ -302,7 +255,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
           <div className={styles.customToggleBox}>
             <div className={styles.toggleContext}>
               <span className={styles.toggleMainTitle}>Is this a unique custom profile?</span>
-              <p className={styles.toggleSubtitle}>Enable manual override to record specific collectible variants or off-market items safely.</p>
+              <p className={styles.toggleSubtitle}>Enable manual override to record specific collectible variants or off‑market items.</p>
             </div>
             <button
               type="button"
@@ -339,7 +292,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
               <label className={styles.fieldLabel}>Custom Asset Classification</label>
               <input
                 type="text"
-                placeholder="e.g., Vintage Sports Memorabilia, Private Equity Allocation"
+                placeholder="e.g., Vintage Sports Memorabilia"
                 value={customType}
                 onChange={(e) => setCustomType(e.target.value)}
                 required={isCustomMode}
@@ -361,13 +314,13 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         <div className={styles.stepWrapper}>
           <div className={styles.promptSpeechBubble}>
             <h3 className={styles.speechTitle}>Calculate Investment Metrics</h3>
-            <p className={styles.speechText}>Provide the values below. Your live performance yield, progress totals, and percentage parameters will initialize automatically.</p>
+            <p className={styles.speechText}>Provide the values below. Your performance yield and progress totals will initialize automatically.</p>
           </div>
 
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel}>Total Invested (Capital Spent)</label>
             <div className={styles.currencyInputWrapper}>
-              <span className={styles.currencyPrefixTag}>{currency}</span>
+              <span className={styles.currencyPrefixTag}>{workspaceCurrency}</span>
               <input
                 type="number"
                 step="any"
@@ -403,7 +356,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
               <span className={styles.noteTitleLine}><FaHeart /> Asset Strategy & Progress Note</span>
             </label>
             <textarea
-              placeholder="e.g., Initial entry cost basis locked. Tracking long-term growth trajectory..."
+              placeholder="e.g., Initial entry cost basis locked."
               value={userNote}
               onChange={(e) => setUserNote(e.target.value)}
               className={styles.textareaFieldElement}
@@ -422,4 +375,3 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
     </form>
   );
 }
-/* === SECTION 4 END === */

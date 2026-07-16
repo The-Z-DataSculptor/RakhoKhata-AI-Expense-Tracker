@@ -28,16 +28,13 @@ interface BackendInvestmentItem {
   assetSymbol: string;
   categoryClass: string;
   isCustomProfile: boolean;
-  totalInvested: string | number;      // legacy field
   quantity: string | number;
-  capitalCurrency: string;             // legacy field
   strategyNote: string;
   workspaceId: string;
   name?: string;
   icon?: string;
   userNote?: string;
   history?: InvestmentHistoryNode[];
-  // Enterprise fields (if available from the API)
   originalAmount?: string | number;
   originalCurrency?: string;
   baseAmountUSD?: string | number;
@@ -52,12 +49,11 @@ export interface HydratedAsset {
   userNote: string;
   currentPrice: number;
   quantityOwned: number;
-  totalInvested: number;        // in the user's active currency (for display)
+  totalInvested: number; 
   categoryClass: string;
   isCustomProfile: boolean;
-  capitalCurrency: string;      // original currency of the asset
+  capitalCurrency: string;
   history: InvestmentHistoryNode[];
-  // Enterprise fields for editing
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
@@ -84,7 +80,7 @@ export default function InvestmentVaultPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
-  
+
   const [editingAsset, setEditingAsset] = useState<HydratedAsset | null>(null);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState<boolean>(false);
 
@@ -104,9 +100,7 @@ export default function InvestmentVaultPage() {
       }
     };
     verifySecurityStatus();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [refreshKey]);
 
   useEffect(() => {
@@ -146,18 +140,21 @@ export default function InvestmentVaultPage() {
                 parsedDetails.changeLog = (safeData.changeLog as InvestmentHistoryNode[]) || [];
               }
             } catch (jsonError) {
-              console.error("Failed to parse custom strategy metadata details object:", jsonError);
+              console.error("Failed to parse strategy note:", jsonError);
             }
 
             const rawQuantity = Number(item.quantity) || 0;
-            
-            // Use enterprise fields if available, otherwise fallback to legacy
-            const baseAmount = Number(item.baseAmountUSD ?? item.totalInvested ?? 0);
-            const originalAmount = Number(item.originalAmount ?? item.totalInvested ?? 0);
-            const originalCurrency = item.originalCurrency ?? item.capitalCurrency ?? "USD";
+            const originalAmount = Number(item.originalAmount || 0);
+            const originalCurrency = item.originalCurrency || "USD";
+            const baseAmountUSD = Number(item.baseAmountUSD || 0);
 
-            // Convert the base amount (USD) to the user's active currency for display
-            const localizedTotalInvested = convertAmount(baseAmount, "USD", currency);
+            let localizedTotalInvested: number;
+            if (originalCurrency === currency) {
+              localizedTotalInvested = originalAmount;
+            } else {
+              localizedTotalInvested = convertAmount(baseAmountUSD, "USD", currency);
+            }
+
             const localizedUnitPrice = rawQuantity > 0 ? (localizedTotalInvested / rawQuantity) : 0;
 
             return {
@@ -166,67 +163,69 @@ export default function InvestmentVaultPage() {
               symbol: item.assetSymbol,
               categoryClass: item.categoryClass,
               isCustomProfile: item.isCustomProfile,
-              totalInvested: localizedTotalInvested,      // in user's currency
+              totalInvested: localizedTotalInvested,
               quantityOwned: rawQuantity,
-              currentPrice: localizedUnitPrice,          // in user's currency
-              capitalCurrency: originalCurrency,         // store the original currency
+              currentPrice: localizedUnitPrice,
+              capitalCurrency: originalCurrency,
               name: parsedDetails.displayName || item.name || `${item.assetSymbol} Position`,
               icon: parsedDetails.displayIcon || item.icon || "💰",
               userNote: parsedDetails.rawNote || "",
               history: parsedDetails.changeLog || [],
-              // Enterprise fields (unchanged)
               originalAmount,
               originalCurrency,
-              baseAmountUSD: baseAmount,
+              baseAmountUSD,
             };
           });
 
           setAssets(fetchedAssets);
         }
-      } catch (error: unknown) {
+      } catch (error) {
+        console.error("Fetch holdings error:", error);
         if (isMounted) {
-          const msg = error instanceof Error ? error.message : "Vault data link sync failure.";
-          toast.error(msg);
+          toast.error("Vault data link sync failure.");
         }
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchVaultHoldings();
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [activeWorkspaceId, refreshKey, isVaultUnlocked, hasDatabasePin, currency, convertAmount]);
 
   const handleEditClick = (asset: HydratedAsset) => {
-    setEditingAsset(asset);        
-    setIsModalOpen(true);          
+    setEditingAsset(asset);
+    setIsModalOpen(true);
   };
 
   const handleSaveInvestment = async (payload: InvestmentAssetPayload) => {
     try {
+      if (!activeWorkspaceId) {
+        toast.error("No active ledger workspace context found.");
+        return;
+      }
+
+      // 🚀 FIXED: Enforce absolute naming integrity & lock data format structures
       const apiPayload = {
-        assetSymbol: payload.symbol,
-        categoryClass: payload.categoryClass,
-        isCustomProfile: payload.name.toLowerCase().includes("custom"),
-        totalInvested: payload.originalAmount,
-        capitalCurrency: payload.originalCurrency,
-        quantity: payload.quantityOwned,
-        strategyNote: JSON.stringify({
-          displayName: payload.name,
-          displayIcon: payload.icon,
-          rawNote: payload.userNote,
-          changeLog: payload.history
-        }),
         workspaceId: activeWorkspaceId,
-        // Enterprise fields
-        originalAmount: payload.originalAmount,
-        originalCurrency: payload.originalCurrency,
-        baseAmountUSD: payload.baseAmountUSD,
+        isCustomProfile: payload.icon === "📦",
+        categoryClass: String(payload.categoryClass),
+        assetSymbol: String(payload.symbol).trim().toUpperCase(),
+        quantity: Number(payload.quantityOwned) || 0,
+        originalAmount: Number(payload.originalAmount) || 0,
+        originalCurrency: String(payload.originalCurrency || currency),
+        baseAmountUSD: Number(payload.baseAmountUSD) || 0,
+        name: String(payload.name).trim(),
+        icon: String(payload.icon),
+        userNote: String(payload.userNote).trim(),
+        history: payload.history || [],
+        strategyNote: JSON.stringify({
+          displayName: String(payload.name).trim(),
+          displayIcon: String(payload.icon),
+          rawNote: String(payload.userNote).trim(),
+          changeLog: payload.history || []
+        })
       };
 
       if (editingAsset) {
@@ -234,15 +233,15 @@ export default function InvestmentVaultPage() {
         toast.success("Asset profile updated successfully!");
       } else {
         await investmentService.create(apiPayload);
-        toast.success("New asset profile securely appended to storage trackers.");
+        toast.success("New asset securely pinned to investment vault.");
       }
 
       setIsModalOpen(false);
-      setEditingAsset(null);        
+      setEditingAsset(null);
       setRefreshKey((prev) => prev + 1);
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Database ingestion processing crash.";
-      toast.error(msg);
+    } catch (error) {
+      console.error("Save investment error:", error);
+      toast.error("Database ingestion processing crash.");
     }
   };
 
@@ -252,9 +251,9 @@ export default function InvestmentVaultPage() {
       await investmentService.delete(id);
       toast.success("Asset row profile cleanly purged out of records.");
       setRefreshKey((prev) => prev + 1);
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Teardown routine sequence error.";
-      toast.error(msg);
+    } catch (error) {
+      console.error("Delete investment error:", error);
+      toast.error("Teardown routine sequence error.");
     }
   };
 
@@ -282,15 +281,30 @@ export default function InvestmentVaultPage() {
     );
   }
 
+  const formInitialData = editingAsset
+    ? {
+        id: editingAsset.id,
+        name: editingAsset.name,
+        symbol: editingAsset.symbol,
+        icon: editingAsset.icon,
+        categoryClass: editingAsset.categoryClass,
+        userNote: editingAsset.userNote,
+        currentPrice: editingAsset.currentPrice,
+        quantityOwned: editingAsset.quantityOwned,
+        totalInvested: editingAsset.originalAmount,
+        history: editingAsset.history,
+      }
+    : null;
+
   return (
     <div className={styles.vaultMainPageWrapper}>
 
-      <VaultHeader 
+      <VaultHeader
         hasPinEnabled={hasDatabasePin}
         onAddAssetClick={() => {
-          setEditingAsset(null);  
+          setEditingAsset(null);
           setIsModalOpen(true);
-        }} 
+        }}
         onSetupPinClick={() => setIsSecurityModalOpen(true)}
       />
 
@@ -298,6 +312,7 @@ export default function InvestmentVaultPage() {
         currency={currency}
         positionsCount={totalPositionsCount}
         totalInvested={globalTotalInvested}
+        sourceCurrency={currency}
       />
 
       <main className={styles.mainContentLayoutBlock}>
@@ -305,37 +320,39 @@ export default function InvestmentVaultPage() {
           assets={assets}
           currency={currency}
           onDeleteAsset={handleDeleteAsset}
-          onEditClick={handleEditClick}  
+          onEditClick={handleEditClick}
+          sourceCurrency={currency}
         />
       </main>
 
       {isModalOpen && (
         <div className={styles.modalOverlay} onClick={() => {
           setIsModalOpen(false);
-          setEditingAsset(null);  
+          setEditingAsset(null);
         }}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <AddInvestmentForm
+              key={editingAsset ? editingAsset.id : 'new'}
               onClose={() => {
                 setIsModalOpen(false);
-                setEditingAsset(null);  
+                setEditingAsset(null);
               }}
               onSave={handleSaveInvestment}
-              initialData={editingAsset}  
+              initialData={formInitialData}
             />
           </div>
         </div>
       )}
 
-      <PinSetupModal 
+      <PinSetupModal
         isOpen={isSecurityModalOpen}
         mode="SETUP"
         onClose={() => setIsSecurityModalOpen(false)}
         onSuccess={() => {
           setIsSecurityModalOpen(false);
-          setIsVaultUnlocked(false); 
-          setRefreshKey((prev) => prev + 1); 
-        }} 
+          setIsVaultUnlocked(false);
+          setRefreshKey((prev) => prev + 1);
+        }}
       />
 
       <footer className={styles.footerContainerBlock}>

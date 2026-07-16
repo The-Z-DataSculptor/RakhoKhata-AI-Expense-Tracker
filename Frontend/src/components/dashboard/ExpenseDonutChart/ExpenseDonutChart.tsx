@@ -21,13 +21,14 @@ import styles from './ExpenseDonutChart.module.css';
    ========================================================================== */
 interface ExpenseDonutChartProps {
   data: CategoryBreakdownItem[];
+  sourceCurrency: string;   // <-- NEW
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: MAIN COMPONENT RENDER ===
    ========================================================================== */
-export default React.memo(function ExpenseDonutChart({ data }: ExpenseDonutChartProps) {
+export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: ExpenseDonutChartProps) {
   const { formatAmount } = useCurrency();
 
   const [activeHoverIndex, setActiveHoverIndex] = useState<number | null>(null);
@@ -112,8 +113,7 @@ export default React.memo(function ExpenseDonutChart({ data }: ExpenseDonutChart
           <div className={styles.centerHoleMetricsDisplay}>
             <span className={styles.centerMetaLabel}>{dynamicDisplayLabel}</span>
             <span className={styles.centerMainValue}>
-              {/* 👇 FIXED: Explicitly tell formatAmount the value is in USD */}
-              {formatAmount(dynamicDisplayValue, "USD")}
+              {formatAmount(dynamicDisplayValue, sourceCurrency)}
             </span>
             <span className={styles.centerPercentageIndicator}>
               {dynamicDisplayPercentage}%
@@ -145,8 +145,7 @@ export default React.memo(function ExpenseDonutChart({ data }: ExpenseDonutChart
                   </div>
                   <div className={styles.legendRightContent}>
                     <span className={styles.absoluteCurrencyText}>
-                      {/* 👇 FIXED: Explicitly tell formatAmount the value is in USD */}
-                      {formatAmount(category.value, "USD")}
+                      {formatAmount(category.value, sourceCurrency)}
                     </span>
                     <span className={styles.percentageSplitText}>{percentage}%</span>
                   </div>

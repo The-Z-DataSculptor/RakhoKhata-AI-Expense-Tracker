@@ -16,8 +16,8 @@ import styles from "./BudgetDonutGrid.module.css";
 export interface BudgetItem {
   id: string;
   categoryName: string;
-  spentAmount: number; // in base USD
-  limitAmount: number; // in base USD
+  spentAmount: number; // in workspace's original currency
+  limitAmount: number; // in workspace's original currency
   startDate: string;
   endDate: string;
 }
@@ -27,6 +27,7 @@ interface BudgetDonutGridProps {
   onEditClick?: (id: string) => void;
   onDeleteClick?: (id: string) => void;
   isLoading?: boolean;
+  sourceCurrency: string;   // <-- NEW
 }
 /* === SECTION 2 END === */
 
@@ -37,7 +38,8 @@ export function BudgetDonutGrid({
   items = [], 
   onEditClick, 
   onDeleteClick,
-  isLoading = false 
+  isLoading = false,
+  sourceCurrency,
 }: BudgetDonutGridProps) {
   const { formatAmount } = useCurrency();
 
@@ -167,14 +169,14 @@ export function BudgetDonutGrid({
                 <div className={styles.spentGroup}>
                   <span className={styles.metaLabelHeader}>Total Spent</span>
                   <p className={styles.bigBoldAmount}>
-                    {formatAmount(budget.spentAmount, "USD")}
+                    {formatAmount(budget.spentAmount, sourceCurrency)}
                   </p>
                 </div>
 
                 <div className={styles.limitGroup}>
                   <span className={styles.metaLabelHeader}>Budget Limit</span>
                   <p className={styles.subAmountLabel}>
-                    {formatAmount(budget.limitAmount, "USD")}
+                    {formatAmount(budget.limitAmount, sourceCurrency)}
                   </p>
                 </div>
               </div>
@@ -186,11 +188,11 @@ export function BudgetDonutGrid({
               <span className={styles.remainingContextLabel}>Available funds</span>
               {isOverBudget ? (
                 <span className={styles.dangerNoticeText}>
-                  -{formatAmount(Math.abs(remainingCash), "USD")}
+                  -{formatAmount(Math.abs(remainingCash), sourceCurrency)}
                 </span>
               ) : (
                 <span className={styles.successNoticeText}>
-                  +{formatAmount(remainingCash, "USD")}
+                  +{formatAmount(remainingCash, sourceCurrency)}
                 </span>
               )}
             </div>

@@ -7,10 +7,10 @@
 import React, { useState, useEffect } from "react";
 import { BudgetDonutGrid, type BudgetItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
 import { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
-// 👇 FIXED: Import the modal as named (it's a named export)
 import { CreateBudgetModal } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
 import type { NewBudgetFormData } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { budgetService, categoryService } from "@/utils/api";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { FiPlus } from "react-icons/fi";
@@ -29,7 +29,9 @@ interface ExtendedBudget extends ApiBudget {
 /* === SECTION 2 END === */
 
 export default function BudgetsPage() {
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const workspaceCurrency = activeWorkspace?.currency || "PKR";
+  const { convertAmount } = useCurrency();
 
   // --- STATE MATRIX ---
   const [activeRange, setActiveRange] = useState<TimePeriod>("30d");
@@ -96,8 +98,8 @@ export default function BudgetsPage() {
         return;
       }
 
+      // Only send enterprise fields – no deprecated limitAmount
       const basePayload = {
-        limitAmount: formData.baseAmountUSD,
         originalAmount: formData.originalAmount,
         originalCurrency: formData.originalCurrency,
         baseAmountUSD: formData.baseAmountUSD,
@@ -107,9 +109,7 @@ export default function BudgetsPage() {
       };
 
       if (editingBudget) {
-        await budgetService.update(editingBudget.id, {
-          ...basePayload,
-        });
+        await budgetService.update(editingBudget.id, basePayload);
         toast.success("Budget tracking rule updated successfully!");
       } else {
         await budgetService.create({
@@ -160,13 +160,23 @@ export default function BudgetsPage() {
     }
   };
 
+  // 🔥 FIXED: Use originalAmount instead of the deleted limitAmount
   const computedBudgetItems: BudgetItem[] = budgets.map((budget) => {
-    const limit = Number(budget.limitAmount);
-    const spent = Number(budget.spentAmount || 0);
+    const originalLimit = Number(budget.originalAmount);
+    const limitCurrency = budget.originalCurrency || "USD";
+
+    // Use the original amount directly if the display currency matches, else convert from base USD
+    const limitInWorkspaceCurrency =
+      limitCurrency === workspaceCurrency
+        ? originalLimit
+        : convertAmount(Number(budget.baseAmountUSD), "USD", workspaceCurrency);
+
+    const spentInWorkspaceCurrency = Number(budget.spentAmount || 0);
+
     const scale = getScalingFactor(activeRange);
 
-    const scaledLimit = Math.round(limit * scale * 100) / 100;
-    const scaledSpent = Math.round(spent * scale * 100) / 100;
+    const scaledLimit = Math.round(limitInWorkspaceCurrency * scale * 100) / 100;
+    const scaledSpent = Math.round(spentInWorkspaceCurrency * scale * 100) / 100;
 
     return {
       id: budget.id,
@@ -233,6 +243,7 @@ export default function BudgetsPage() {
         {computedBudgetItems.length > 0 ? (
           <BudgetDonutGrid
             items={computedBudgetItems}
+            sourceCurrency={workspaceCurrency}
             onEditClick={(id) => {
               const targetBudget = budgets.find((b) => b.id === id);
               if (targetBudget) {
@@ -266,7 +277,8 @@ export default function BudgetsPage() {
             ? {
                 id: editingBudget.id,
                 categoryName: editingBudget.category?.name || "",
-                limitAmount: Number(editingBudget.limitAmount),
+                // Pass the original amount so the form shows the correct value
+                limitAmount: Number(editingBudget.originalAmount),
                 startDate: editingBudget.startDate,
                 endDate: editingBudget.endDate,
               }

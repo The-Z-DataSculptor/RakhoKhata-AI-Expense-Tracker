@@ -14,21 +14,22 @@ import styles from "./MetricCard.module.css";
    ========================================================================== */
 export interface MetricItem {
   title: string;
-  value: number; // Actual value
+  value: number; // Actual value (in workspace's original currency)
   subtext: string;
   iconType: "bill" | "inflow" | "outflow" | "safe";
-  projectedValue?: number; // 👈 NEW: Optional projected monthly value
+  projectedValue?: number; // Optional projected monthly value (in same currency)
 }
 
 export interface MetricCardProps {
   metrics: MetricItem[];
+  sourceCurrency: string; // <-- NEW: the workspace currency for formatting
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: MAIN COMPONENT ===
    ========================================================================== */
-export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
+export default React.memo(function MetricCard({ metrics, sourceCurrency }: MetricCardProps) {
   const { formatAmount } = useCurrency();
 
   if (!metrics || metrics.length === 0) {
@@ -65,7 +66,7 @@ export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
         // 👇 Build subtext with projected value if available
         let displaySubtext = item.subtext;
         if (item.projectedValue !== undefined && item.projectedValue !== null) {
-          displaySubtext = `${item.subtext} · Projected monthly: ${formatAmount(item.projectedValue, "USD")}`;
+          displaySubtext = `${item.subtext} · Projected monthly: ${formatAmount(item.projectedValue, sourceCurrency)}`;
         }
 
         return (
@@ -85,7 +86,7 @@ export default React.memo(function MetricCard({ metrics }: MetricCardProps) {
 
             <div className={styles.cardBodyContent}>
               <h2 className={styles.metricValueDisplay}>
-                {formatAmount(item.value, "USD")}
+                {formatAmount(item.value, sourceCurrency)}   {/* <-- FIXED: now uses sourceCurrency */}
               </h2>
             </div>
 

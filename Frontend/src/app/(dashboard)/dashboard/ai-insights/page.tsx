@@ -42,7 +42,7 @@ export default function AiInsightsPage() {
   const [isCardVisible, setIsCardVisible] = useState<boolean>(false);
   const [aiResponse, setAiResponse] = useState<string>("");
 
-  // --- REAL DATA STATES ---
+  // --- LOCAL DATA STATES (Used strictly for visual Warnings list) ---
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
@@ -70,18 +70,17 @@ export default function AiInsightsPage() {
     fetchData();
   }, [activeWorkspaceId]);
 
-  // --- COMPUTE WARNINGS FROM REAL DATA (FIXED) ---
+  // --- COMPUTE WARNINGS FROM REAL DATA (Client UI decoration only) ---
   const warnings = useMemo<WarningItem[]>(() => {
     if (!transactions.length || !budgets.length) return [];
 
-    // Group expenses by category using original amounts converted to active currency
     const categorySpent: Record<string, number> = {};
     transactions.forEach((tx) => {
       if (tx.type !== "EXPENSE") return;
       const catName = tx.category?.name || "Uncategorized";
       const amount = convertAmount(
         Number(tx.originalAmount),
-        tx.originalCurrency || currency,
+        tx.originalCurrency || "USD",
         currency
       );
       categorySpent[catName] = (categorySpent[catName] || 0) + amount;
@@ -94,10 +93,10 @@ export default function AiInsightsPage() {
       if (!catName) return;
       const spent = categorySpent[catName] || 0;
 
-      // Convert budget limit to active currency using originalCurrency (fallback to currency)
+      // 🚀 FIXED: Replaced budget.limitAmount with budget.originalAmount to match API definitions
       const limit = convertAmount(
-        Number(budget.originalAmount || budget.limitAmount),
-        budget.originalCurrency || currency,
+        Number(budget.originalAmount),
+        budget.originalCurrency || "USD",
         currency
       );
       if (limit === 0) return;
@@ -106,7 +105,6 @@ export default function AiInsightsPage() {
       if (overspend <= 0) return;
 
       const severity = overspend > limit * 0.3 ? "high" : "medium";
-      // ✅ FIXED: Don't pass "USD" – overspend is already in the active currency
       const overspendFormatted = formatAmount(overspend);
 
       warningList.push({
@@ -124,59 +122,15 @@ export default function AiInsightsPage() {
     return warningList;
   }, [transactions, budgets, convertAmount, currency, formatAmount]);
 
-  // --- BUILD DATA PAYLOAD FOR AI ---
-  const buildAIData = () => {
-    const activeCurrency = currency;
-
-    const totalIncome = transactions
-      .filter((tx) => tx.type === "INCOME")
-      .reduce((sum, tx) => sum + convertAmount(Number(tx.originalAmount), tx.originalCurrency || activeCurrency, activeCurrency), 0);
-
-    const totalExpenses = transactions
-      .filter((tx) => tx.type === "EXPENSE")
-      .reduce((sum, tx) => sum + convertAmount(Number(tx.originalAmount), tx.originalCurrency || activeCurrency, activeCurrency), 0);
-
-    const categoryMap: Record<string, number> = {};
-    transactions
-      .filter((tx) => tx.type === "EXPENSE")
-      .forEach((tx) => {
-        const name = tx.category?.name || "Uncategorized";
-        const amount = convertAmount(Number(tx.originalAmount), tx.originalCurrency || activeCurrency, activeCurrency);
-        categoryMap[name] = (categoryMap[name] || 0) + amount;
-      });
-
-    const topEntry = Object.entries(categoryMap).sort((a, b) => b[1] - a[1])[0];
-    const topCategory = topEntry ? topEntry[0] : "None";
-
-    const budgetData = budgets.map((budget) => {
-      const catName = budget.category?.name || "Unknown";
-      const spent = categoryMap[catName] || 0;
-      const limit = convertAmount(Number(budget.originalAmount || budget.limitAmount), budget.originalCurrency || activeCurrency, activeCurrency);
-      return {
-        categoryName: catName,
-        limitAmount: Math.round(limit * 100) / 100,
-        spentAmount: Math.round(spent * 100) / 100,
-      };
-    });
-
-    return {
-      income: Math.round(totalIncome * 100) / 100,
-      expenses: Math.round(totalExpenses * 100) / 100,
-      topCategory,
-      budgets: budgetData,
-      currency: activeCurrency,
-    };
-  };
-
-  // --- HANDLE USER QUESTION ---
+  // --- HANDLE USER QUESTION (100% backend driven!) ---
   const handleQuerySubmit = async (question: string) => {
+    if (!activeWorkspaceId) return;
     setIsCardVisible(true);
     setIsLoading(true);
     setAiResponse("");
 
     try {
-      const data = buildAIData();
-      const response = await aiService.ask(question, activePersona, data);
+      const response = await aiService.ask(question, activePersona, activeWorkspaceId);
       setAiResponse(response.response);
     } catch (error: unknown) {
       console.error("AI Request Error:", error);
@@ -237,7 +191,7 @@ export default function AiInsightsPage() {
         activePersona={activePersona}
         onQueryStart={handleQuerySubmit}
         isExternalLoading={isLoading}
-        isDataReady={!isDataLoading && transactions.length > 0}
+        isDataReady={!!activeWorkspaceId && !isDataLoading}
       />
 
       <AiResponseCard

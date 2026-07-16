@@ -21,9 +21,10 @@ interface MetricRowProps {
   };
   periodLabel: string;
   activePeriod: TimePeriod;
+  sourceCurrency: string;   // <-- NEW: workspace currency
 }
 
-export default function MetricRow({ metrics, periodLabel, activePeriod }: MetricRowProps) {
+export default function MetricRow({ metrics, periodLabel, activePeriod, sourceCurrency }: MetricRowProps) {
   
   const getBillsTitle = () => {
     switch (activePeriod) {
@@ -94,7 +95,7 @@ export default function MetricRow({ metrics, periodLabel, activePeriod }: Metric
 
   return (
     <div className={styles.rowGridContainer}>
-      <MetricCard metrics={financialMetricsCollection} />
+      <MetricCard metrics={financialMetricsCollection} sourceCurrency={sourceCurrency} />
     </div>
   );
 }

@@ -4,99 +4,123 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import { Response } from "express";
-import { prisma } from "../db";                                       // Core database client link
-import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure session tracker layout
+import { prisma } from "../db";
+import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: LOG NEW ASSET HOLDING (WITH METADATA SERIALIZATION) ===
+   === SECTION 2: CREATE INVESTMENT ASSET (NO LEGACY COLUMNS) ===
    ========================================================================== */
 export const createInvestmentAsset = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    
-    // Extracting fields, supporting both direct database keys and the frontend wizard payload formats
-    const { 
+
+    const {
       workspaceId,
       isCustomProfile,
       categoryClass,
       selectedType,
       customType,
-      // Core numeric values
-      totalInvested,
+      originalAmount,
+      originalCurrency,
+      baseAmountUSD,
+      totalInvested,      // accepted but ignored in DB
+      capitalCurrency,    // accepted but ignored in DB
       quantity,
       quantityOwned,
-      // Metadata payload elements
       name,
       symbol,
       assetSymbol,
       icon,
-      currency,
-      capitalCurrency,
       userNote,
       strategyNote,
-      history
+      history,
     } = req.body;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Session token missing." });
+      res.status(401).json({ error: "Unauthorized access." });
       return;
     }
 
-    // Adapt variables to catch fallback pairings from the multi-step form payload
-    const finalSymbol = (assetSymbol || symbol || "ASSET").trim().toUpperCase();
-    const finalQuantity = parseFloat(quantity || quantityOwned || "0");
-    const finalTotalInvested = parseFloat(totalInvested || "0");
-    const finalWorkspaceId = workspaceId;
-    
-    const finalCategoryClass = (categoryClass || customType || selectedType || "Traditional").trim();
-    const finalCurrency = (capitalCurrency || currency || "USD").trim().toUpperCase();
+    const finalSymbol = String(assetSymbol || symbol || "ASSET").trim().toUpperCase();
+    const finalWorkspaceId = String(workspaceId);
+    const finalCategoryClass = String(categoryClass || customType || selectedType || "Traditional").trim();
 
-    // Validation Check
-    if (!finalSymbol || !finalWorkspaceId || isNaN(finalQuantity) || isNaN(finalTotalInvested)) {
-      res.status(400).json({ error: "Missing or invalid required investment tracking parameters." });
+    // Parse amounts safely
+    const rawAmount = originalAmount ?? totalInvested ?? 0;
+    const parsedOriginalAmount = typeof rawAmount === "number" ? rawAmount : parseFloat(String(rawAmount)) || 0;
+
+    const rawUSD = baseAmountUSD ?? totalInvested ?? 0;
+    const parsedBaseAmountUSD = typeof rawUSD === "number" ? rawUSD : parseFloat(String(rawUSD)) || 0;
+
+    const rawQty = quantity || quantityOwned || 0;
+    const finalQuantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty)) || 0;
+
+    const finalOriginalCurrency = String(originalCurrency || capitalCurrency || "USD").trim().toUpperCase();
+
+    if (!finalSymbol || !finalWorkspaceId || isNaN(finalQuantity) || isNaN(parsedOriginalAmount)) {
+      res.status(400).json({ error: "Missing or invalid parameters." });
       return;
     }
 
-    // Security Verification: Confirm that the logged-in user owns the target workspace
     const workspaceCheck = await prisma.workspace.findUnique({ where: { id: finalWorkspaceId } });
     if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied. Action verification signature invalid." });
+      res.status(403).json({ error: "Access denied." });
       return;
     }
 
-    // ENHANCED: Bundle name, icon, and timeline nodes into a JSON payload safely inside the database note string
+    // Build metadata (name, note, icon, history)
+    let finalDisplayName = name ? String(name) : "";
+    let finalRawNote = "";
+    let finalHistory = history || [];
+
+    if (strategyNote) {
+      try {
+        const parsedNode = typeof strategyNote === "string" ? JSON.parse(strategyNote) : strategyNote;
+        if (parsedNode && typeof parsedNode === "object") {
+          if (parsedNode.displayName) finalDisplayName = String(parsedNode.displayName);
+          if (parsedNode.rawNote) finalRawNote = String(parsedNode.rawNote);
+          if (parsedNode.changeLog) finalHistory = parsedNode.changeLog;
+        }
+      } catch {
+        finalRawNote = String(strategyNote);
+      }
+    } else if (userNote) {
+      finalRawNote = String(userNote);
+    }
+
     const metadataBundle = {
-      displayName: name || `${finalSymbol} Holding`,
-      displayIcon: icon || "💰",
-      rawNote: (strategyNote || userNote || "").trim(),
-      changeLog: history || []
+      displayName: finalDisplayName,
+      displayIcon: icon || "📦",
+      rawNote: finalRawNote,
+      changeLog: finalHistory,
     };
 
-    // Write the row directly to Neon Cloud
+    // CREATE – only permanent columns
     const asset = await prisma.investment.create({
       data: {
         assetSymbol: finalSymbol,
         categoryClass: finalCategoryClass,
         isCustomProfile: isCustomProfile ?? false,
-        totalInvested: finalTotalInvested,
+        originalAmount: parsedOriginalAmount,
+        originalCurrency: finalOriginalCurrency,
+        baseAmountUSD: parsedBaseAmountUSD,
         quantity: finalQuantity,
-        capitalCurrency: finalCurrency,
-        strategyNote: JSON.stringify(metadataBundle), // Serialized JSON string storage
-        workspaceId: finalWorkspaceId
-      }
+        strategyNote: JSON.stringify(metadataBundle),
+        workspaceId: finalWorkspaceId,
+        // NO totalInvested or capitalCurrency
+      },
     });
 
     res.status(201).json({
       message: "Asset logged into investment vault ledger successfully!",
       asset: {
         ...asset,
-        // Send back cleanly parsed keys so the frontend state can read them instantly
         name: metadataBundle.displayName,
         icon: metadataBundle.displayIcon,
         userNote: metadataBundle.rawNote,
-        history: metadataBundle.changeLog
-      }
+        history: metadataBundle.changeLog,
+      },
     });
   } catch (error) {
     console.error("Create Investment Controller Exception:", error);
@@ -106,7 +130,7 @@ export const createInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: FETCH WORKSPACE PORTFOLIO ASSETS (WITH AUTO-UNPACK MECHANIC) ===
+   === SECTION 3: FETCH WORKSPACE PORTFOLIO ASSETS ===
    ========================================================================== */
 export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -114,46 +138,43 @@ export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Re
     const targetWorkspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Session footprint missing." });
+      res.status(401).json({ error: "Unauthorized access." });
       return;
     }
 
     if (!targetWorkspaceId) {
-      res.status(400).json({ error: "Workspace query track identifier parameter is required." });
+      res.status(400).json({ error: "Workspace ID required." });
       return;
     }
 
-    // Security Verification: Confirm workspace ownership before extracting financial details
     const workspaceCheck = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
     if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied. Verification credentials invalid for this profile." });
+      res.status(403).json({ error: "Access denied." });
       return;
     }
 
     const investments = await prisma.investment.findMany({
       where: { workspaceId: targetWorkspaceId },
-      orderBy: { assetSymbol: "asc" }
+      orderBy: { assetSymbol: "asc" },
     });
 
-    // ENHANCED: Unpack the JSON metadata columns automatically on the fly before returning the response
     const hydratedInvestments = investments.map((asset) => {
       try {
         const parsed = JSON.parse(asset.strategyNote || "{}");
         return {
           ...asset,
-          name: parsed.displayName || `${asset.assetSymbol} Holding`,
-          icon: parsed.displayIcon || "💰",
+          name: parsed.displayName || `${asset.assetSymbol} Position`,
+          icon: parsed.displayIcon || "📦",
           userNote: parsed.rawNote || "",
-          history: parsed.changeLog || []
+          history: parsed.changeLog || [],
         };
       } catch {
-        // Safe Fallback: If the text isn't serialized JSON structure (e.g. legacy plain strings), read it as a standard note description
         return {
           ...asset,
-          name: `${asset.assetSymbol} Asset`,
-          icon: "💰",
+          name: `${asset.assetSymbol} Position`,
+          icon: "📦",
           userNote: asset.strategyNote || "",
-          history: []
+          history: [],
         };
       }
     });
@@ -161,13 +182,13 @@ export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Re
     res.status(200).json({ investments: hydratedInvestments });
   } catch (error) {
     console.error("Fetch Investments Controller Error:", error);
-    res.status(500).json({ error: "Internal server error while extracting vault asset registries." });
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: UPDATE EXISTING INVESTMENT ASSET (NEW) ===
+   === SECTION 4: UPDATE INVESTMENT ASSET (EXACT REPLACEMENT OF METADATA) ===
    ========================================================================== */
 export const updateInvestmentAsset = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -175,31 +196,31 @@ export const updateInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
     const assetId = req.params.id ? String(req.params.id) : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Session token missing." });
+      res.status(401).json({ error: "Unauthorized access." });
       return;
     }
 
     if (!assetId) {
-      res.status(400).json({ error: "Asset ID parameter is required." });
+      res.status(400).json({ error: "Asset ID is required." });
       return;
     }
 
-    // Extract updated fields from the request body
     const {
       assetSymbol,
       categoryClass,
       isCustomProfile,
-      totalInvested,
+      originalAmount,
+      originalCurrency,
+      baseAmountUSD,
+      totalInvested,      // accepted but ignored
+      capitalCurrency,    // accepted but ignored
       quantity,
-      capitalCurrency,
-      strategyNote,
-      workspaceId
+      strategyNote,       // the full JSON string from the form
     } = req.body;
 
-    // Verify the asset exists and belongs to a workspace owned by this user
     const existingAsset = await prisma.investment.findUnique({
       where: { id: assetId },
-      include: { workspace: true }
+      include: { workspace: true },
     });
 
     if (!existingAsset) {
@@ -208,44 +229,68 @@ export const updateInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
     }
 
     if (existingAsset.workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied. You do not own this asset." });
+      res.status(403).json({ error: "Access denied." });
       return;
     }
 
-    // Prepare update data - only include fields that are provided
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (assetSymbol !== undefined) updateData.assetSymbol = assetSymbol.trim().toUpperCase();
     if (categoryClass !== undefined) updateData.categoryClass = categoryClass.trim();
     if (isCustomProfile !== undefined) updateData.isCustomProfile = isCustomProfile;
-    if (totalInvested !== undefined) updateData.totalInvested = parseFloat(totalInvested);
-    if (quantity !== undefined) updateData.quantity = parseFloat(quantity);
-    if (capitalCurrency !== undefined) updateData.capitalCurrency = capitalCurrency.trim().toUpperCase();
-    if (strategyNote !== undefined) updateData.strategyNote = strategyNote;
 
-    // Execute the update
+    if (quantity !== undefined) {
+      updateData.quantity = typeof quantity === "number" ? quantity : parseFloat(String(quantity)) || 0;
+    }
+
+    // Amounts – only update if provided
+    const rawAmount = originalAmount !== undefined ? originalAmount : totalInvested;
+    if (rawAmount !== undefined) {
+      const finalOriginal = typeof rawAmount === "number" ? rawAmount : parseFloat(String(rawAmount)) || 0;
+      updateData.originalAmount = finalOriginal;
+    }
+
+    const finalCurrency = originalCurrency ?? capitalCurrency;
+    if (finalCurrency !== undefined) {
+      updateData.originalCurrency = finalCurrency.trim().toUpperCase();
+    }
+
+    if (baseAmountUSD !== undefined) {
+      updateData.baseAmountUSD = typeof baseAmountUSD === "number" ? baseAmountUSD : parseFloat(String(baseAmountUSD)) || 0;
+    }
+
+    // ✅ CRITICAL FIX: If strategyNote is provided, store it EXACTLY as received.
+    // The frontend sends a complete JSON string – no merging with old data.
+    if (strategyNote !== undefined) {
+      updateData.strategyNote = typeof strategyNote === "string" ? strategyNote : JSON.stringify(strategyNote);
+    }
+
     const updatedAsset = await prisma.investment.update({
       where: { id: assetId },
-      data: updateData
+      data: updateData,
     });
 
     // Parse the strategyNote for the response
-    let parsedNote = {};
+    let responseMeta = { name: updatedAsset.assetSymbol, icon: "📦", userNote: "", history: [] };
     try {
-      parsedNote = JSON.parse(updatedAsset.strategyNote || "{}");
-    } catch {
-      parsedNote = {};
-    }
+      const parsed = JSON.parse(updatedAsset.strategyNote || "{}");
+      responseMeta = {
+        name: parsed.displayName || updatedAsset.assetSymbol,
+        icon: parsed.displayIcon || "📦",
+        userNote: parsed.rawNote || "",
+        history: parsed.changeLog || [],
+      };
+    } catch {}
 
     res.status(200).json({
       message: "Asset updated successfully!",
       asset: {
         ...updatedAsset,
-        name: (parsedNote as any).displayName || `${updatedAsset.assetSymbol} Holding`,
-        icon: (parsedNote as any).displayIcon || "💰",
-        userNote: (parsedNote as any).rawNote || "",
-        history: (parsedNote as any).changeLog || []
-      }
+        name: responseMeta.name,
+        icon: responseMeta.icon,
+        userNote: responseMeta.userNote,
+        history: responseMeta.history,
+      },
     });
   } catch (error) {
     console.error("Update Investment Controller Error:", error);
@@ -255,7 +300,7 @@ export const updateInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
 /* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 5: REMOVE PORTFOLIO HOLDING ROW ===
+   === SECTION 5: DELETE INVESTMENT ASSET ===
    ========================================================================== */
 export const deleteInvestmentAsset = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -263,38 +308,31 @@ export const deleteInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
     const targetId = req.params.id ? String(req.params.id) : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access parameter matrix." });
+      res.status(401).json({ error: "Unauthorized access." });
       return;
     }
 
     if (!targetId) {
-      res.status(400).json({ error: "Asset line row parameter item identifier is missing." });
+      res.status(400).json({ error: "Asset ID is missing." });
       return;
     }
 
-    // Verification Step: Confirm asset exists and lives within a workspace owned by this specific caller
     const assetTarget = await prisma.investment.findUnique({
       where: { id: targetId },
-      include: { workspace: true }
+      include: { workspace: true },
     });
 
-    if (!assetTarget) {
-      res.status(404).json({ error: "The targeted investment asset record could not be found." });
+    if (!assetTarget || assetTarget.workspace.userId !== userId) {
+      res.status(403).json({ error: "Access denied." });
       return;
     }
 
-    if (assetTarget.workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied. Asset ownership permissions validation failed." });
-      return;
-    }
-
-    // Delete the row permanently from the database table instance
     await prisma.investment.delete({ where: { id: targetId } });
 
-    res.status(200).json({ message: "Asset removed safely from vault balance calculations." });
+    res.status(200).json({ message: "Asset removed successfully." });
   } catch (error) {
-    console.error("Delete Investment Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error running vault teardown asset routines." });
+    console.error("Delete Investment Controller Error:", error);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 /* === SECTION 5 END === */

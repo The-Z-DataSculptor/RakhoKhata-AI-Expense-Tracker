@@ -15,10 +15,10 @@ import styles from "./CategoryStats.module.css";
    ========================================================================== */
 export interface CategoryStatData {
   topExpenseName: string;
-  topExpenseAmount: number; // in base USD
+  topExpenseAmount: number; // in workspace's original currency
   topExpensePercentage: number;
   topIncomeName: string;
-  topIncomeAmount: number; // in base USD
+  topIncomeAmount: number; // in workspace's original currency
   topIncomePercentage: number;
   fastClimberName: string;
   fastClimberGrowthPercentage: number;
@@ -28,13 +28,14 @@ export interface CategoryStatData {
 
 interface CategoryStatsProps {
   statsData: CategoryStatData;
+  sourceCurrency: string;   // <-- NEW
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-export default function CategoryStats({ statsData }: CategoryStatsProps) {
+export default function CategoryStats({ statsData, sourceCurrency }: CategoryStatsProps) {
   const { formatAmount } = useCurrency();
 
   const data = statsData || {
@@ -101,8 +102,7 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
             </h4>
             <p className={styles.railValueSubtext}>
               Spent: <span className={styles.brightAccentHighlight}>
-                {/* ✅ FIXED: source is USD */}
-                {formatAmount(data.topExpenseAmount, "USD")}
+                {formatAmount(data.topExpenseAmount, sourceCurrency)}
               </span>
             </p>
           </div>
@@ -142,7 +142,7 @@ export default function CategoryStats({ statsData }: CategoryStatsProps) {
             </h4>
             <p className={styles.railValueSubtext}>
               Inflow: <span className={styles.brightAccentHighlight}>
-                {formatAmount(data.topIncomeAmount, "USD")}
+                {formatAmount(data.topIncomeAmount, sourceCurrency)}
               </span>
             </p>
           </div>

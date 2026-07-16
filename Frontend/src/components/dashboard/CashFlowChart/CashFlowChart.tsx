@@ -25,6 +25,7 @@ import styles from './CashFlowChart.module.css';
    ========================================================================== */
 interface CashFlowChartProps {
   data: CashFlowDataPoint[];
+  sourceCurrency: string;   // <-- NEW
 }
 
 interface CustomTooltipProps {
@@ -36,13 +37,14 @@ interface CustomTooltipProps {
   }>;
   label?: string;
   formatAmount: (amount: number, sourceCurrency?: string) => string;
+  sourceCurrency: string;   // <-- NEW
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-const CustomChartTooltip = ({ active, payload, label, formatAmount }: CustomTooltipProps) => {
+const CustomChartTooltip = ({ active, payload, label, formatAmount, sourceCurrency }: CustomTooltipProps) => {
   if (!active || !payload || payload.length < 2) {
     return null;
   }
@@ -58,14 +60,12 @@ const CustomChartTooltip = ({ active, payload, label, formatAmount }: CustomTool
 
       <div className={styles.tooltipItem} style={{ color: 'var(--color-success)' }}>
         <span>Income:</span>
-        {/* 👇 FIXED: Explicitly tell formatAmount the value is in USD */}
-        <strong>{formatAmount(incomeValue, "USD")}</strong>
+        <strong>{formatAmount(incomeValue, sourceCurrency)}</strong>
       </div>
 
       <div className={styles.tooltipItem} style={{ color: 'var(--color-danger)' }}>
         <span>Expenses:</span>
-        {/* 👇 FIXED: Explicitly tell formatAmount the value is in USD */}
-        <strong>{formatAmount(expenseValue, "USD")}</strong>
+        <strong>{formatAmount(expenseValue, sourceCurrency)}</strong>
       </div>
 
       <div
@@ -73,8 +73,7 @@ const CustomChartTooltip = ({ active, payload, label, formatAmount }: CustomTool
         style={{ color: isProfitable ? 'var(--color-info)' : 'var(--color-warning)' }}
       >
         <span>Net Result:</span>
-        {/* 👇 FIXED: Explicitly tell formatAmount the value is in USD */}
-        <strong>{formatAmount(netSavings, "USD")}</strong>
+        <strong>{formatAmount(netSavings, sourceCurrency)}</strong>
       </div>
     </div>
   );
@@ -84,8 +83,8 @@ const CustomChartTooltip = ({ active, payload, label, formatAmount }: CustomTool
 /* ==========================================================================
    === SECTION 4: RENDER (JSX) ===
    ========================================================================== */
-export default function CashFlowChart({ data }: CashFlowChartProps) {
-  const { formatAmount } = useCurrency(); 
+export default function CashFlowChart({ data, sourceCurrency }: CashFlowChartProps) {
+  const { formatAmount } = useCurrency();
 
   if (!data || data.length === 0) {
     return (
@@ -150,12 +149,11 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
               dx={-5}
               width={85}
               style={{ fontSize: '12px', fontFamily: 'var(--font-navbar)' }}
-              // 👇 FIXED: Explicitly tell formatAmount the value is in USD
-              tickFormatter={(value) => formatAmount(value, "USD")}
+              tickFormatter={(value) => formatAmount(value, sourceCurrency)}
             />
 
             <Tooltip
-              content={<CustomChartTooltip formatAmount={formatAmount} />}
+              content={<CustomChartTooltip formatAmount={formatAmount} sourceCurrency={sourceCurrency} />}
               cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }}
             />
 

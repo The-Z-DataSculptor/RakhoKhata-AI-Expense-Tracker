@@ -9,21 +9,20 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CREATE NEW TRANSACTION (ENTERPRISE STANDARD) ===
+   === SECTION 2: CREATE NEW TRANSACTION ===
    ========================================================================== */
 export const createTransaction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    // 👇 Expect new fields from frontend
-    const { 
+    const {
       originalAmount,      // amount as entered by user
       originalCurrency,    // e.g., "PKR"
       baseAmountUSD,       // converted to USD (calculated by frontend)
-      type, 
-      description, 
-      date, 
-      workspaceId, 
-      categoryId 
+      type,
+      description,
+      date,
+      workspaceId,
+      categoryId
     } = req.body;
 
     if (!userId) {
@@ -49,15 +48,13 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
       return;
     }
 
-    // 👇 Create with enterprise fields
+    // Create transaction – include `amount` for backward compatibility with current Prisma client
     const transaction = await prisma.transaction.create({
       data: {
-        // Deprecated field (kept for compatibility)
-        amount: parseFloat(originalAmount),
-        // New fields
         originalAmount: parseFloat(originalAmount),
         originalCurrency: originalCurrency.toUpperCase(),
         baseAmountUSD: parseFloat(baseAmountUSD),
+        amount: parseFloat(originalAmount),   // <-- needed until schema is migrated and client regenerated
         type,
         description: description || "",
         date: new Date(date),
@@ -79,7 +76,7 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: FETCH WORKSPACE TRANSACTIONS (RETURNS ENTERPRISE FIELDS) ===
+   === SECTION 3: FETCH WORKSPACE TRANSACTIONS ===
    ========================================================================== */
 export const getWorkspaceTransactions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -102,7 +99,6 @@ export const getWorkspaceTransactions = async (req: AuthenticatedRequest, res: R
       return;
     }
 
-    // 👇 Now fetching all fields including the new ones
     const transactions = await prisma.transaction.findMany({
       where: { workspaceId: targetWorkspaceId },
       include: {

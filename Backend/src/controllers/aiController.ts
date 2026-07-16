@@ -2,7 +2,7 @@
 
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
-import { prisma } from "../db"; // CONNECTED: Hooks straight into your Neon Cloud database instance
+import { prisma } from "../db";
 
 /* ==========================================================================
    === SECTION 1: GLOBAL CONSTANTS, TYPES & API SETTINGS ===================
@@ -11,8 +11,6 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/
 
 type TimelineScope = "today" | "week" | "month";
 
-// Companion Personas mapped precisely to onboarding properties
-// FIX APPLIED: Injected absolute restrictions against generating accidental dollar signs ($) or western labels before metrics.
 const COMPANION_PERSONAS = {
   savage_roaster: {
     title: "Savage Roaster",
@@ -46,29 +44,189 @@ function getApiKey(): string {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: HELPER UTILITIES ===
+   === SECTION 2: REUSABLE BACKEND DATA ENGINE (THE 5 PILLARS) ===
    ========================================================================== */
+
+/**
+ * Calculates calendar start and end date boundaries
+ * based on a system anchor date (2026-07-17 for precision timeline testing)
+ */
+function getDateRangeForScope(scope: TimelineScope): { startDate: Date; endDate: Date } {
+  const currentAnchor = new Date("2026-07-17T12:00:00Z");
+
+  const startDate = new Date(currentAnchor);
+  const endDate = new Date(currentAnchor);
+
+  if (scope === "today") {
+    startDate.setUTCHours(0, 0, 0, 0);
+    endDate.setUTCHours(23, 59, 59, 999);
+  } else if (scope === "week") {
+    // Last 7 days including today
+    startDate.setUTCDate(currentAnchor.getUTCDate() - 6);
+    startDate.setUTCHours(0, 0, 0, 0);
+    endDate.setUTCHours(23, 59, 59, 999);
+  } else if (scope === "month") {
+    // Current Calendar Month (First day of month to Last day of month)
+    startDate.setUTCDate(1);
+    startDate.setUTCHours(0, 0, 0, 0);
+    
+    const nextMonth = new Date(currentAnchor);
+    nextMonth.setUTCMonth(currentAnchor.getUTCMonth() + 1, 1);
+    nextMonth.setUTCHours(0, 0, 0, 0);
+    endDate.setTime(nextMonth.getTime() - 1);
+  }
+
+  return { startDate, endDate };
+}
+
+async function fetchAndCalculateWorkspaceMetrics(workspaceId: string, userId: string, scope: TimelineScope) {
+  const { startDate, endDate } = getDateRangeForScope(scope);
+
+  // Query Database Pillars simultaneously using accurate database transaction date-range scopes
+  const [workspace, user, transactions, categories, budgets] = await Promise.all([
+    prisma.workspace.findUnique({ where: { id: workspaceId } }),
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.transaction.findMany({ 
+      where: { 
+        workspaceId,
+        date: {
+          gte: startDate.toISOString(),
+          lte: endDate.toISOString()
+        }
+      }, 
+      include: { category: true },
+      orderBy: { date: "desc" }
+    }),
+    prisma.category.findMany({ where: { workspaceId } }),
+    prisma.budget.findMany({ where: { workspaceId }, include: { category: true } })
+  ]);
+
+  if (!workspace || workspace.userId !== userId) {
+    throw new Error("Unauthorized or invalid workspace context access.");
+  }
+
+  const workspaceCurrency = workspace.currency || "PKR";
+
+  // Calculate transaction totals directly
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  let fixedExpenses = 0;
+  let flexibleExpenses = 0;
+
+  const categorySpent: Record<string, number> = {};
+
+  // Formats itemized records for prompt builder payload
+  const rawTransactionsList = transactions.map((tx) => {
+    const amount = Number(tx.originalAmount || 0);
+    const catName = tx.category?.name || "Uncategorized";
+    const dateFormatted = tx.date ? new Date(tx.date).toISOString().split('T')[0] : "N/A";
+
+    if (tx.type === "INCOME") {
+      totalIncome += amount;
+    } else if (tx.type === "EXPENSE") {
+      totalExpenses += amount;
+      categorySpent[catName] = (categorySpent[catName] || 0) + amount;
+
+      // Group Fixed/Recurring vs Flexible
+      if (tx.category?.isFixed || tx.category?.isRecurring) {
+        fixedExpenses += amount;
+      } else {
+        flexibleExpenses += amount;
+      }
+    }
+
+    return {
+      date: dateFormatted,
+      description: tx.description || "No description",
+      type: tx.type,
+      category: catName,
+      amount: amount
+    };
+  });
+
+  const safeToSpend = totalIncome - totalExpenses;
+
+  // Find top spending category
+  const sortedExpenses = Object.entries(categorySpent).sort((a, b) => b[1] - a[1]);
+  const topCategory = sortedExpenses.length > 0 ? sortedExpenses[0][0] : "None";
+
+  // Build budget lists with status updates
+  const parsedBudgets = budgets.map((b) => {
+    const catName = b.category?.name || "Unknown";
+    const limit = Number(b.originalAmount || 0);
+    const spent = categorySpent[catName] || 0;
+    return {
+      categoryName: catName,
+      limitAmount: limit,
+      spentAmount: spent,
+    };
+  });
+
+  return {
+    user,
+    workspace,
+    metrics: {
+      totalIncome,
+      totalExpenses,
+      fixedExpenses,
+      flexibleExpenses,
+      safeToSpend,
+      topCategory,
+      budgets: parsedBudgets,
+      currency: workspaceCurrency,
+      rawTransactions: rawTransactionsList,
+      dateRangeText: `${startDate.getUTCDate()}/${startDate.getUTCMonth() + 1} to ${endDate.getUTCDate()}/${endDate.getUTCMonth() + 1}`
+    }
+  };
+}
+
+/**
+ * Builds an exceptionally clean, detailed, and itemized ledger context
+ * so the AI has 100% visibility into where every single PKR was earned or spent.
+ */
 function buildPrompt(question: string, data: any): string {
-  const { income, expenses, topCategory, budgets, currency = "PKR" } = data;
+  const { income, expenses, topCategory, budgets, currency = "PKR", rawTransactions, workspaceName, userName } = data;
   const savings = income - expenses;
 
   const budgetText = Array.isArray(budgets) && budgets.length > 0
     ? budgets.map((b: any) => 
-        `- ${b.categoryName}: Budget ${b.limitAmount} ${currency} | Spent ${b.spentAmount} ${currency} | ${b.spentAmount > b.limitAmount ? `Overspent by ${(b.spentAmount - b.limitAmount).toFixed(0)} ${currency}` : "On track"}`
+        `- ${b.categoryName}: Budget ${Number(b.limitAmount).toFixed(2)} ${currency} | Spent ${Number(b.spentAmount).toFixed(2)} ${currency} | ${b.spentAmount > b.limitAmount ? `Overspent by ${(b.spentAmount - b.limitAmount).toFixed(2)} ${currency}` : "On track"}`
       ).join("\n")
-    : "No active budgets.";
+    : "No active budgets registered in this workspace.";
+
+  // Render raw itemized transactions in a highly structured textual table
+  const ledgerTable = Array.isArray(rawTransactions) && rawTransactions.length > 0
+    ? rawTransactions.map((tx: any) => 
+        `  [${tx.date}] | ${tx.type.padEnd(7)} | ${tx.description.padEnd(20)} | ${tx.category.padEnd(15)} | ${Number(tx.amount).toFixed(2)} ${currency}`
+      ).join("\n")
+    : "  No recorded transactions inside this timeframe scope.";
 
   return `
-Here is the user's financial data for this month (all amounts in ${currency}):
+--- FINANCIAL CONTEXT SHEET FOR: ${userName.toUpperCase()} ---
+Workspace: "${workspaceName}"
+System Current Date: July 17, 2026
+
+METRICS SUMMARY:
 - Total Income: ${Number(income || 0).toFixed(2)} ${currency}
 - Total Expenses: ${Number(expenses || 0).toFixed(2)} ${currency}
-- Savings: ${Number(savings || 0).toFixed(2)} ${currency} (${income > 0 ? ((savings / income) * 100).toFixed(1) : 0}% of income)
+- Net Savings: ${Number(savings || 0).toFixed(2)} ${currency} (${income > 0 ? ((savings / income) * 100).toFixed(1) : 0}% of income)
 - Top Expense Category: ${topCategory || "None"}
 
-Budgets:
+BUDGET SETTINGS:
 ${budgetText}
 
-The user asks: "${question}"
+ITEMIZED TRANSACTION LEDGER:
+Date       | Type    | Description          | Category        | Amount
+----------------------------------------------------------------------------------
+${ledgerTable}
+
+USER QUERY:
+The user has asked: "${question}"
+
+STIPULATIONS:
+1. Rely exclusively on the itemized ledger above to list or audit raw transactions.
+2. Under absolutely no circumstances should you ever output a dollar sign ($). All currencies must be displayed in PKR.
+3. Be incredibly thorough and call out specific dates and transaction descriptions in your answer.
 `;
 }
 
@@ -85,24 +243,38 @@ function isSameCalendarDay(date1: Date, date2: Date): boolean {
    === SECTION 3: EXPRESS ROUTE CONTROLLERS ===
    ========================================================================== */
 
-// 1. Ask AI Controller
+// 1. Ask AI Controller (Now automatically loads state on backend!)
 export const askAI = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { question, persona, data } = req.body;
+    const { question, persona, workspaceId } = req.body;
 
     if (!userId) {
        res.status(401).json({ error: "Unauthorized access token missing." });
        return;
     }
 
-    if (!question || !persona || !data || !PERSONA_INSTRUCTIONS[persona as keyof typeof PERSONA_INSTRUCTIONS]) {
-       res.status(400).json({ error: "Invalid or missing required fields." });
+    if (!workspaceId) {
+       res.status(400).json({ error: "Invalid or missing required workspace properties." });
        return;
     }
 
-    const prompt = buildPrompt(question, data);
-    const systemInstruction = PERSONA_INSTRUCTIONS[persona as keyof typeof PERSONA_INSTRUCTIONS];
+    // 🚀 STEP 1: For open-ended questions, fetch the full "month" context data including itemized listings
+    const { workspace, user, metrics } = await fetchAndCalculateWorkspaceMetrics(workspaceId, userId, "month");
+
+    const dataPayload = {
+      userName: user?.name || "User",
+      workspaceName: workspace?.name || "Workspace",
+      income: metrics.totalIncome,
+      expenses: metrics.totalExpenses,
+      topCategory: metrics.topCategory,
+      budgets: metrics.budgets,
+      currency: metrics.currency,
+      rawTransactions: metrics.rawTransactions // 🚀 FIXED: Itemized array passed cleanly into Prompt Generator
+    };
+
+    const prompt = buildPrompt(question, dataPayload);
+    const systemInstruction = PERSONA_INSTRUCTIONS[persona as keyof typeof PERSONA_INSTRUCTIONS] || PERSONA_INSTRUCTIONS.coach;
     const apiKey = getApiKey();
 
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -127,26 +299,29 @@ export const askAI = async (req: AuthenticatedRequest, res: Response): Promise<v
     const aiResponse = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
 
     res.status(200).json({ response: aiResponse });
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Controller Error:", error);
-    res.status(500).json({ error: "Internal server error connecting to AI." });
+    res.status(500).json({ error: error.message || "Internal server error connecting to AI." });
   }
 };
 
-// 2. Companion Greeting Controller (Saves/Reads real state logs!)
+// 2. Companion Greeting Controller (Queries database directly)
 export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { currentMetrics } = req.body;
+    const { workspaceId } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: "Access denied. Active session token missing." });
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    if (!workspaceId) {
+      res.status(400).json({ error: "Active workspace ID context is required." });
+      return;
+    }
+
+    const { user, metrics } = await fetchAndCalculateWorkspaceMetrics(workspaceId, userId, "today");
 
     if (!user) {
       res.status(404).json({ error: "User profile not registered." });
@@ -167,10 +342,10 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
     const apiKey = getApiKey();
 
     const statsPrompt = `
-      You are addressing the user ${user.name}. Here is their live balance context right now:
-      - Safe to Spend: PKR ${Number(currentMetrics?.safeToSpend || 0).toFixed(2)}
-      - Income: PKR ${Number(currentMetrics?.totalIncome || 0).toFixed(2)}
-      - Expenses: PKR ${Number(currentMetrics?.totalExpenses || 0).toFixed(2)}
+      You are addressing the user ${user.name}. Here is their live balance context for TODAY (${metrics.dateRangeText}):
+      - Safe to Spend: PKR ${Number(metrics.safeToSpend).toFixed(2)}
+      - Income: PKR ${Number(metrics.totalIncome).toFixed(2)}
+      - Expenses: PKR ${Number(metrics.totalExpenses).toFixed(2)}
       Please create a 2 to 3 sentence maximum greeting matching your persona instructions. Be punchy, conversational, and direct! CRITICAL: Absolutely never output a dollar sign ($) anywhere in your response text.
     `;
 
@@ -205,26 +380,29 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
       cooldowns: locksState
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Companion Greeting Error:", error);
-    res.status(500).json({ error: "Internal server processing AI greeting context." });
+    res.status(500).json({ error: error.message || "Internal server processing AI greeting context." });
   }
 };
 
-// 3. Execution & Cooldown Button Lock Controller
+// 3. Execution & Cooldown Button Lock Controller (Queries database directly)
 export const executeAiCompanionAnalysis = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { scope, workspaceMetrics, workspaceId } = req.body;
+    const { scope, workspaceId } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: "Access denied. Active session token missing." });
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    if (!workspaceId) {
+      res.status(400).json({ error: "Active workspace ID context is required." });
+      return;
+    }
+
+    const { user, metrics } = await fetchAndCalculateWorkspaceMetrics(workspaceId, userId, scope as TimelineScope);
 
     if (!user) {
       res.status(404).json({ error: "User profile not registered." });
@@ -237,14 +415,14 @@ export const executeAiCompanionAnalysis = async (req: AuthenticatedRequest, res:
 
     const analysisPrompt = `
       Give ${user.name} a brief, actionable, and persona-aligned analysis report of their workspace data.
-      You are checking their metrics over a '${scope}' timeframe block.
+      You are checking their metrics over a '${scope}' timeframe block (${metrics.dateRangeText}).
       
-      Live Metric Ledger Values:
-      - Safe To Spend Amount: PKR ${Number(workspaceMetrics?.safeToSpend || 0).toFixed(2)}
-      - Income: PKR ${Number(workspaceMetrics?.totalIncome || 0).toFixed(2)}
-      - Total Workspace Expenses: PKR ${Number(workspaceMetrics?.totalExpenses || 0).toFixed(2)}
-      - Flexible Spending Rows: PKR ${Number(workspaceMetrics?.flexibleExpenses || 0).toFixed(2)}
-      - Constant Fixed Costs: PKR ${Number(workspaceMetrics?.fixedExpenses || 0).toFixed(2)}
+      Live Metric Ledger Values inside this duration:
+      - Safe To Spend Amount: PKR ${Number(metrics.safeToSpend).toFixed(2)}
+      - Income: PKR ${Number(metrics.totalIncome).toFixed(2)}
+      - Total Workspace Expenses: PKR ${Number(metrics.totalExpenses).toFixed(2)}
+      - Flexible Spending Rows: PKR ${Number(metrics.flexibleExpenses).toFixed(2)}
+      - Constant Fixed Costs: PKR ${Number(metrics.fixedExpenses).toFixed(2)}
 
       Please write 3 tight sentences analyzing this specifically for their '${scope}' performance. If 'savage_roaster', tease them about where their PKR went. If 'coach', tell them how to safe-keep their safe-to-spend!
       CRITICAL: Keep your output entirely clear of dollar signs ($). Use 'PKR' or simple plain quotation formatting blocks.
@@ -295,9 +473,9 @@ export const executeAiCompanionAnalysis = async (req: AuthenticatedRequest, res:
       analysisReport: generatedReport.trim()
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Execute Analysis Companion failure:", error);
-    res.status(500).json({ error: "Internal server analysis error." });
+    res.status(500).json({ error: error.message || "Internal server analysis error." });
   }
 };
 /* === SECTION 3 END === */

@@ -45,7 +45,7 @@ export function AiChatConsole({
   };
 
   const getPlaceholder = () => {
-    if (!isDataReady) return "Loading your data...";
+    if (!isDataReady) return "Loading database connection...";
     if (activePersona === "auditor") return "Ask the Auditor: 'Where did I overspend?'";
     if (activePersona === "coach") return "Ask the Coach: 'How can I save more?'";
     return "Ask the Minimalist: 'What bills can I cancel?'";

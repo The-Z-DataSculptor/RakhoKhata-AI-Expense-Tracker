@@ -1,767 +1,430 @@
 /* src/components/investments/VaultAssetTable/VaultAssetTable.module.css */
 
-
-
 .container {
-
   width: 100%;
-
   display: flex;
-
   flex-direction: column;
-
   gap: 0.5rem;
-
   margin-top: 1rem;
-
   letter-spacing: -0.02em;
-
 }
-
-
 
 /* 4-COLUMN STRUCTURAL GRID */
-
 .tableHeader {
-
   display: grid;
-
   grid-template-columns: 1.3fr 1.2fr 1.5fr 1.2fr 0.8fr;
-
   padding: 0.75rem 1.25rem;
-
   font-size: 0.8rem;
-
   font-weight: 800;
-
   color: var(--text-muted);
-
   text-transform: uppercase;
-
   letter-spacing: 0.04em;
-
 }
-
-
 
 .alignRight {
-
   text-align: right;
-
   justify-content: flex-end;
-
 }
-
-
 
 .assetList {
-
   display: flex;
-
   flex-direction: column;
-
   gap: 0.75rem;
-
 }
-
-
 
 .assetCard {
-
   background-color: var(--bg-surface);
-
   border: 1px solid var(--border-color);
-
   border-radius: var(--radius-lg);
-
   overflow: hidden;
-
-  box-shadow: var(--shadow-soft);
-
-  transition: var(--transition-fast), border-color 0.2s ease, box-shadow 0.2s ease;
-
+  box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
+  transition: all 0.2s ease;
 }
-
-
-
-/* CARDS LEADING EDGE VISUAL ACCENTS */
-
-.profitCardTheme { border-left: 4px solid var(--color-success); }
-
-.lossCardTheme { border-left: 4px solid var(--color-danger); }
-
-
 
 .activeCard {
-
   border-color: var(--color-primary);
-
+  box-shadow: 0 4px 20px rgba(97, 59, 191, 0.08);
 }
-
-
 
 .rowGrid {
-
   display: grid;
-
   grid-template-columns: 1.3fr 1.2fr 1.5fr 1.2fr 0.8fr;
-
   padding: 1.25rem 1.25rem;
-
   align-items: center;
-
   cursor: pointer;
-
 }
-
-
 
 .rowGrid:hover {
-
-  background-color: var(--primary-soft-faint);
-
+  background-color: var(--surface-muted);
 }
-
-
 
 .cell {
-
   display: flex;
-
   align-items: center;
-
 }
 
-
-
-/* 1. ASSET NAME STYLING */
-
+/* ASSET NAME STYLING */
 .assetIdentity {
-
   display: flex;
-
   align-items: center;
-
   gap: 0.85rem;
-
 }
-
-
 
 .avatar {
-
-  width: 40px;
-
-  height: 40px;
-
+  width: 42px;
+  height: 42px;
   background-color: var(--surface-outline);
-
   border: 1px solid var(--border-color);
-
   border-radius: var(--radius-md);
-
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
   font-size: 1.2rem;
-
-  font-weight: 800;
-
   color: var(--text-primary);
-
 }
-
-
 
 .identityTextStack {
-
   display: flex;
-
   flex-direction: column;
-
   gap: 0.2rem;
-
 }
-
-
 
 .assetName {
-
   font-size: 0.95rem;
-
   font-weight: 800;
-
   color: var(--text-primary);
-
   margin: 0;
-
 }
-
-
 
 .ticker {
-
   font-size: 0.72rem;
-
   font-weight: 800;
-
   color: var(--text-muted);
-
   text-transform: uppercase;
-
 }
 
-
-
-/* 2 & 3. DATA TEXT STACKS */
-
+/* DATA TEXT STACKS */
 .dataStack {
-
   display: flex;
-
   flex-direction: column;
-
   gap: 0.15rem;
-
 }
 
-
-
-.primaryNumber {
-
+.primaryNumber, .primaryValueNumber {
   font-size: 0.95rem;
-
   font-weight: 800;
-
   color: var(--text-primary);
-
 }
-
-
 
 .inlineTickerSymbol {
-
   font-size: 0.8rem;
-
   color: var(--text-secondary);
-
   font-weight: 700;
-
 }
 
-
-
-.secondaryLabel {
-
+.secondaryLabel, .secondarySpentLabel {
   font-size: 0.75rem;
-
   font-weight: 700;
-
   color: var(--text-muted);
-
 }
-
-
-
-.primaryValueNumber {
-
-  font-size: 0.95rem;
-
-  font-weight: 800;
-
-  color: var(--text-primary);
-
-}
-
-
-
-.inlineValueContext {
-
-  font-size: 0.72rem;
-
-  font-weight: 700;
-
-  color: var(--text-muted);
-
-  text-transform: uppercase;
-
-  letter-spacing: 0.02em;
-
-}
-
-
-
-.secondarySpentLabel {
-
-  font-size: 0.75rem;
-
-  font-weight: 700;
-
-  color: var(--text-muted);
-
-}
-
-
-
-/* 4. PROGRESS STACKS */
-
-.cleanProgressStack {
-
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 0.15rem;
-
-}
-
-
-
-.progressAmount {
-
-  font-size: 0.95rem;
-
-  font-weight: 800;
-
-}
-
-
-
-.progressPercentage {
-
-  font-size: 0.75rem;
-
-  font-weight: 800;
-
-}
-
-
-
-.profitText { color: var(--color-success); }
-
-.lossText { color: var(--color-danger); }
-
-
 
 /* CONTROLS BUTTON CLUSTERS */
-
 .actionsGroup {
-
   display: flex;
-
   align-items: center;
-
   gap: 0.5rem;
-
 }
-
-
 
 .iconBtn {
-
   border: 1px solid var(--border-color);
-
   background-color: var(--bg-surface);
-
   color: var(--text-secondary);
-
   width: 32px;
-
   height: 32px;
-
   border-radius: var(--radius-md);
-
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
-  transition: var(--transition-fast);
-
+  transition: all 0.15s ease;
+  cursor: pointer;
 }
-
-
 
 .iconBtn:hover {
-
   background-color: var(--text-primary);
-
   color: var(--bg-surface);
-
   border-color: var(--text-primary);
-
 }
-
-
 
 .accordionIndicatorArrow {
-
   color: var(--text-muted);
-
   display: flex;
-
   align-items: center;
-
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-left: 0.25rem;
-
 }
-
-
 
 .arrowRotated {
-
   transform: rotate(180deg);
-
   color: var(--color-primary);
-
 }
 
-
-
-/* EXPANDABLE LOG RECORDS BOXES */
-
+/* ==========================================================================
+   === EXPANDED DRAWER & NEW TIMELINE UI ===
+   ========================================================================== */
 .drawerContent {
-
   background-color: var(--surface-muted);
-
   border-top: 1px solid var(--border-color);
-
-  padding: 1.5rem;
-
+  padding: 1.75rem;
   display: flex;
-
   flex-direction: column;
-
-  gap: 1.5rem;
-
+  gap: 2rem;
 }
 
-
-
+/* STRATEGY NOTE */
 .journalMemoBox {
-
-  background-color: var(--surface-highlight);
-
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-
   border-radius: var(--radius-md);
-
   display: flex;
-
   overflow: hidden;
-
+  box-shadow: 0 2px 10px rgba(16, 4, 63, 0.02);
 }
-
-
 
 .journalLeftBorder {
-
-  width: 4px;
-
-  background-color: var(--color-accent-light);
-
+  width: 5px;
+  background-color: var(--color-primary);
 }
-
-
 
 .journalBody {
-
-  padding: 1rem 1.25rem;
-
+  padding: 1.25rem;
   display: flex;
-
   flex-direction: column;
-
-  gap: 0.35rem;
-
+  gap: 0.5rem;
 }
-
-
 
 .journalTitleBadge {
-
   display: flex;
-
   align-items: center;
-
   gap: 0.4rem;
-
   font-size: 0.75rem;
-
   font-weight: 800;
-
-  color: var(--color-primary);
-
+  color: var(--text-secondary);
   letter-spacing: 0.04em;
-
   text-transform: uppercase;
-
 }
-
-
 
 .journalQuote {
-
   margin: 0;
-
-  font-size: 0.92rem;
-
-  font-weight: 700;
-
-  color: var(--text-secondary);
-
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1.5;
-
+  font-style: italic;
 }
 
-
-
+/* HISTORY HEADER */
 .historySection {
-
   display: flex;
-
   flex-direction: column;
-
-  gap: 0.75rem;
-
+  gap: 1.25rem;
 }
-
-
 
 .historySectionTitleLine {
-
   display: flex;
-
   align-items: center;
-
-  gap: 0.5rem;
-
+  gap: 0.6rem;
   color: var(--text-primary);
-
 }
-
-
 
 .historySectionTitle {
-
-  font-size: 0.8rem;
-
+  font-size: 0.85rem;
   font-weight: 800;
-
   margin: 0;
-
   text-transform: uppercase;
-
   letter-spacing: 0.04em;
-
 }
 
-
-
-.timelineList {
-
+/* THE MODERN VERTICAL TIMELINE */
+.modernTimelineContainer {
+  position: relative;
   display: flex;
-
   flex-direction: column;
-
-  gap: 0.6rem;
-
+  gap: 1.5rem;
+  padding-left: 1.5rem;
 }
 
-
-
-.timelineStepCard {
-
-  background-color: var(--bg-surface);
-
-  border: 1px solid var(--border-color);
-
-  border-radius: var(--radius-md);
-
-  padding: 1rem 1.25rem;
-
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 0.6rem;
-
+.timelineTrack {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 28px; /* Centers under the dots */
+  width: 2px;
+  background: linear-gradient(to bottom, var(--color-primary) 0%, var(--border-color) 20%);
+  z-index: 0;
 }
 
-
-
-.stepHeader {
-
+.timelineNode {
+  position: relative;
   display: flex;
+  gap: 1.25rem;
+  z-index: 1;
+}
 
-  justify-content: space-between;
-
+.timelineDot {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
-
+  justify-content: center;
+  box-shadow: 0 0 0 4px var(--surface-muted); /* Cuts out track behind it */
+  color: #fff;
 }
 
-
-
-.stepTitle {
-
-  font-size: 0.9rem;
-
-  font-weight: 800;
-
-  color: var(--text-primary);
-
+.dotInitial {
+  background-color: var(--color-primary);
 }
 
-
-
-.stepDate {
-
-  font-size: 0.75rem;
-
-  font-weight: 800;
-
-  color: var(--text-muted);
-
+.dotUpdate {
+  background-color: var(--text-primary);
 }
 
+.dotEmpty {
+  background-color: var(--border-color);
+  width: 14px;
+  height: 14px;
+  margin-left: 7px;
+  margin-top: 7px;
+}
 
-
-.stepMetricsGrid {
-
-  display: grid;
-
-  grid-template-columns: repeat(3, 1fr);
-
-  gap: 1rem;
-
-  background-color: var(--surface-muted);
-
+/* TIMELINE CONTENT CARDS */
+.timelineContentCard {
+  flex-grow: 1;
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-
-  padding: 0.6rem 0.85rem;
-
   border-radius: var(--radius-md);
-
-}
-
-
-
-.miniDataCell {
-
+  padding: 1.25rem;
   display: flex;
-
   flex-direction: column;
-
-  gap: 0.15rem;
-
+  gap: 1rem;
+  box-shadow: 0 2px 8px rgba(16, 4, 63, 0.02);
 }
 
-
-
-.stepMetaLabel {
-
-  font-size: 0.65rem;
-
-  color: var(--text-muted);
-
-  text-transform: uppercase;
-
-  font-weight: 800;
-
-  letter-spacing: 0.02em;
-
+.nodeHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
+.nodeTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 
-
-.stepMetaValue {
-
-  font-size: 0.85rem;
-
+.nodeTitle {
+  font-size: 0.95rem;
   font-weight: 800;
-
   color: var(--text-primary);
-
 }
 
-
-
-.profitTextLabel { color: var(--color-success); }
-
-.lossTextLabel { color: var(--color-danger); }
-
-
-
-.stepNoteParagraph {
-
-  margin: 0;
-
-  font-size: 0.85rem;
-
+.nodeHashTag {
+  font-size: 0.65rem;
   font-weight: 700;
-
-  color: var(--text-secondary);
-
-  line-height: 1.45;
-
-}
-
-
-
-.stepMemoInlineTag {
-
-  font-size: 0.68rem;
-
-  font-weight: 800;
-
-  color: var(--text-secondary);
-
-  text-transform: uppercase;
-
-  margin-right: 0.25rem;
-
-  background-color: var(--surface-outline);
-
-  padding: 0.1rem 0.35rem;
-
+  color: var(--color-primary);
+  background-color: rgba(97, 59, 191, 0.08);
+  padding: 0.15rem 0.4rem;
   border-radius: 4px;
-
+  font-family: monospace;
 }
 
+.nodeDateBadge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
 
+.nodeNoteBox {
+  background-color: var(--surface-muted);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.memoLabel {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.memoText {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* RECEIPT METRICS GRID */
+.receiptMetricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.receiptCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.receiptLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.receiptValue {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.emptyTimelineText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
 
 /* RESPONSIVE MEDIA BREAKPOINTS */
-
 @media (max-width: 960px) {
-
   .tableHeader, .rowGrid {
-
     grid-template-columns: 1.5fr 1fr 1.2fr 100px;
-
   }
-
   .tableHeader div:nth-child(3), .rowGrid div:nth-child(3) {
-
     display: none;
-
   }
-
 }
 
-
-
 @media (max-width: 640px) {
-
   .tableHeader { display: none; }
-
   .rowGrid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-
   .rowGrid div:nth-child(3), .rowGrid div:nth-child(4) { display: none; }
-
+  
+  .receiptMetricsGrid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+  
+  .nodeHeaderRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }

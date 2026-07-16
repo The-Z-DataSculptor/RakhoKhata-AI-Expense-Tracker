@@ -1,112 +1,84 @@
 // src/components/investments/VaultSummaryCards/VaultSummaryCards.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
 import React from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./VaultSummaryCards.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
 interface VaultSummaryCardsProps {
-  /** The currently selected global currency string (e.g., "PKR", "USD") */
   currency: string;
-  /** The aggregated total amount of money invested across all assets (in the user's active currency) */
   totalInvested: number;
-  /** The total count of individual assets currently in the vault */
   positionsCount: number;
+  sourceCurrency: string;
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC & RENDER (JSX) ===
-   ========================================================================== */
 export function VaultSummaryCards({
   currency,
   totalInvested,
   positionsCount,
+  sourceCurrency,
 }: VaultSummaryCardsProps) {
   const { formatAmount } = useCurrency();
 
-  // totalInvested is already in the user's active currency (converted in the parent)
-  const displayInvestedCapital = formatAmount(totalInvested);
-
   return (
     <section className={styles.summaryGridWrapper}>
-
-      {/* CARD 1: NET ALLOCATION COST */}
+      {/* CARD 1: TOTAL INVESTED */}
       <div className={styles.splitLevelPremiumCard}>
         <div className={styles.upperMetricsCanvas}>
-          <span className={styles.cardSectionLabel}>Net Allocation Cost</span>
-          <h2 className={styles.hugePrimaryMetricsText}>{displayInvestedCapital}</h2>
+          <span className={styles.cardSectionLabel}>Total Money Invested</span>
+          <h2 className={styles.hugePrimaryMetricsText}>
+            {formatAmount(totalInvested, sourceCurrency)}
+          </h2>
         </div>
-        
         <div className={styles.lowerInsightsPocket}>
           <div className={styles.pocketDataColumn}>
             <span className={styles.pocketSublabel}>Status</span>
-            <span className={styles.pocketPrimaryValue}>Fully Allocated</span>
+            <span className={styles.pocketPrimaryValue}>Active</span>
           </div>
           <div className={styles.pocketDataColumn}>
-            <span className={styles.pocketSublabel}>Active Assets</span>
-            <span className={styles.pocketPrimaryValue}>🪙 {positionsCount} Types</span>
+            <span className={styles.pocketSublabel}>Positions</span>
+            <span className={styles.pocketPrimaryValue}>🪙 {positionsCount}</span>
           </div>
         </div>
       </div>
 
-      {/* CARD 2: ACTIVE TRACKERS */}
+      {/* CARD 2: PORTFOLIO CURRENCY */}
       <div className={styles.splitLevelPremiumCard}>
         <div className={styles.upperMetricsCanvas}>
-          <div className={styles.labelFlexRow}>
-            <span className={styles.cardSectionLabel}>Active Trackers</span>
-            <span className={`${styles.roiPerformanceBadge} ${styles.profitBadgeColor}`}>
-              Live
-            </span>
-          </div>
+          <span className={styles.cardSectionLabel}>Portfolio Currency</span>
           <h2 className={`${styles.hugePrimaryMetricsText} ${styles.gainTextColor}`}>
-            {positionsCount} Positions
+            {currency}
           </h2>
         </div>
-        
         <div className={styles.lowerInsightsPocket}>
           <div className={styles.pocketDataColumn}>
-            <span className={styles.pocketSublabel}>Sync Engine</span>
-            <span className={`${styles.pocketPrimaryValue} ${styles.highlightedRunnerText}`}>
-              ⚡ Real-time
-            </span>
-          </div>
-          <div className={styles.pocketDataColumn}>
-            <span className={styles.pocketSublabel}>Security</span>
-            <span className={`${styles.pocketPrimaryValue} ${styles.gainValueLabel}`}>
-              Encrypted
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* CARD 3: BASE VALUE REFERENCE */}
-      <div className={styles.splitLevelPremiumCard}>
-        <div className={styles.upperMetricsCanvas}>
-          <span className={styles.cardSectionLabel}>Base Value Reference</span>
-          <h2 className={styles.hugePrimaryMetricsText}>{currency}</h2>
-        </div>
-        
-        <div className={styles.lowerInsightsPocket}>
-          <div className={styles.pocketDataColumn}>
-            <span className={styles.pocketSublabel}>Workspace Standard</span>
-            <span className={styles.pocketPrimaryValue}>Uniform Baseline</span>
+            <span className={styles.pocketSublabel}>Stable</span>
+            <span className={styles.pocketPrimaryValue}>Yes</span>
           </div>
           <div className={styles.pocketDataColumn}>
             <span className={styles.pocketSublabel}>Conversion</span>
-            <span className={styles.pocketPrimaryValue}>Stable</span>
+            <span className={styles.pocketPrimaryValue}>Manual</span>
           </div>
         </div>
       </div>
 
+      {/* CARD 3: QUICK GLANCE */}
+      <div className={styles.splitLevelPremiumCard}>
+        <div className={styles.upperMetricsCanvas}>
+          <span className={styles.cardSectionLabel}>Asset Types</span>
+          <h2 className={styles.hugePrimaryMetricsText}>{positionsCount}</h2>
+        </div>
+        <div className={styles.lowerInsightsPocket}>
+          <div className={styles.pocketDataColumn}>
+            <span className={styles.pocketSublabel}>Tracked</span>
+            <span className={styles.pocketPrimaryValue}>On-chain</span>
+          </div>
+          <div className={styles.pocketDataColumn}>
+            <span className={styles.pocketSublabel}>Security</span>
+            <span className={styles.pocketPrimaryValue}>Encrypted</span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
-/* === SECTION 3 END === */

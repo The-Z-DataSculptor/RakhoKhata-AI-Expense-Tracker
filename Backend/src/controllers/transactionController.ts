@@ -48,13 +48,12 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
       return;
     }
 
-    // Create transaction – include `amount` for backward compatibility with current Prisma client
+    // ✅ Create transaction – only permanent columns (amount column removed)
     const transaction = await prisma.transaction.create({
       data: {
         originalAmount: parseFloat(originalAmount),
         originalCurrency: originalCurrency.toUpperCase(),
         baseAmountUSD: parseFloat(baseAmountUSD),
-        amount: parseFloat(originalAmount),   // <-- needed until schema is migrated and client regenerated
         type,
         description: description || "",
         date: new Date(date),

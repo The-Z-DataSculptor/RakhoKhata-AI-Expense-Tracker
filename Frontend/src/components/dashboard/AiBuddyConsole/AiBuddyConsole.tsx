@@ -4,7 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FiZap,
   FiLock,
@@ -32,6 +32,13 @@ interface AiBuddyConsoleProps {
 }
 
 type TimelineScope = "today" | "week" | "month";
+
+interface LocalCachePayload {
+  dateStamp: string;
+  greetingText: string;
+  userProfile: UserProfile;
+  cooldownStates: Record<TimelineScope, boolean>;
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -43,6 +50,9 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
   const [fullTargetText, setFullTargetText] = useState("");
   const [isLoadingGreeting, setIsLoadingGreeting] = useState(true);
   const [isProcessingAnalysis, setIsProcessingAnalysis] = useState(false);
+  
+  // Track remaining daily calls for visual notifications
+  const [callsUsedToday, setCallsUsedToday] = useState<number>(0);
 
   const [cooldowns, setCooldowns] = useState<Record<TimelineScope, boolean>>({
     today: false,
@@ -58,7 +68,40 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       .join(" ");
   };
 
-  // Typewriter effect resetting safely without state cascading warnings
+  // Safe Date Marker string helper (e.g., "2026-07-17")
+  const getTodayDateString = useCallback((): string => {
+    return new Date().toISOString().split("T")[0];
+  }, []);
+
+  /* ==========================================
+     === LOCAL STORAGE TRACKING SHIELDS ===
+     ========================================== */
+
+  // Helper: Reads and cleans call limits to reset on date changes
+  const getDailyCallCount = useCallback((): number => {
+    if (typeof window === "undefined") return 0;
+    const todayStr = getTodayDateString();
+    const storedDate = localStorage.getItem("rakhokhata_call_date");
+    
+    if (storedDate !== todayStr) {
+      localStorage.setItem("rakhokhata_call_date", todayStr);
+      localStorage.setItem("rakhokhata_daily_calls", "0");
+      return 0;
+    }
+    
+    return parseInt(localStorage.getItem("rakhokhata_daily_calls") || "0", 10);
+  }, [getTodayDateString]);
+
+  // Helper: Increments call usage safely
+  const incrementDailyCallCount = useCallback((): number => {
+    const updatedCount = getDailyCallCount() + 1;
+    localStorage.setItem("rakhokhata_daily_calls", updatedCount.toString());
+    setCallsUsedToday(updatedCount);
+    return updatedCount;
+  }, [getDailyCallCount]);
+
+  // 🚀 FIXED: No cascading synchronous renders. 
+  // We reset the display dynamically inside the async callback so React processes it beautifully.
   useEffect(() => {
     if (!fullTargetText) return;
 
@@ -71,11 +114,11 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     
     const typewriterInterval = setInterval(() => {
       if (characterIndex === 0) {
-        setDisplayedText("");
+        setDisplayedText(""); // Clear previous text asynchronously inside the interval tick
       }
 
       if (characterIndex < cleanedText.length) {
-        setDisplayedText((prev) => (characterIndex === 0 ? cleanedText.charAt(0) : prev + cleanedText.charAt(characterIndex)));
+        setDisplayedText(cleanedText.slice(0, characterIndex + 1));
         characterIndex++;
       } else {
         clearInterval(typewriterInterval);
@@ -85,16 +128,41 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     return () => clearInterval(typewriterInterval);
   }, [fullTargetText]);
 
-  // Fetch greeting on mount or workspace swap only — completely driven by backend calculations
+  // Fetch or Load Cached Greeting
   useEffect(() => {
     const fetchDailyGreeting = async () => {
       if (!activeWorkspaceId) return;
       setIsLoadingGreeting(true);
+
+      const todayStr = getTodayDateString();
+      const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
+      const cachedPayload = localStorage.getItem(cacheKey);
+
+      // Initialize Call Limits for state readouts
+      setCallsUsedToday(getDailyCallCount());
+
+      if (cachedPayload) {
+        try {
+          const parsed: LocalCachePayload = JSON.parse(cachedPayload);
+          // If greeting matches today's date, serve from cache immediately
+          if (parsed.dateStamp === todayStr) {
+            setUserProfile(parsed.userProfile);
+            setFullTargetText(parsed.greetingText);
+            setCooldowns(parsed.cooldownStates);
+            setIsLoadingGreeting(false);
+            return;
+          }
+        } catch {
+          console.warn("Clearing corrupt local cache object.");
+          localStorage.removeItem(cacheKey);
+        }
+      }
+
+      // Cache miss: execute secure database-driven greeting fetch
       try {
         const response = await fetch("http://localhost:5000/api/ai/greeting", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // 🚀 FIXED: Only ship the active workspace ID. Let backend fetch transactions/categories/budgets
           body: JSON.stringify({ workspaceId: activeWorkspaceId }),
           credentials: "include",
         });
@@ -105,6 +173,16 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
         setUserProfile(result.user);
         setFullTargetText(result.greeting);
         setCooldowns(result.cooldowns || { today: false, week: false, month: false });
+
+        // Save result payload to prevent refresh loops
+        const cacheData: LocalCachePayload = {
+          dateStamp: todayStr,
+          greetingText: result.greeting,
+          userProfile: result.user,
+          cooldownStates: result.cooldowns || { today: false, week: false, month: false }
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+
       } catch (error: unknown) {
         console.error("Failed to generate contextual AI greeting:", error);
         setFullTargetText(
@@ -116,10 +194,17 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     };
 
     fetchDailyGreeting();
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, getDailyCallCount, getTodayDateString]);
 
   const handleTriggerAnalysis = async (scope: TimelineScope) => {
     if (cooldowns[scope] || isProcessingAnalysis) return;
+
+    // Check Daily Shield
+    const currentCalls = getDailyCallCount();
+    if (currentCalls >= 4) {
+      toast.error("You have reached your limit of 4 AI reports today. Please try again tomorrow!");
+      return;
+    }
 
     setIsProcessingAnalysis(true);
     setFullTargetText(
@@ -130,7 +215,6 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       const response = await fetch("http://localhost:5000/api/ai/execute-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 🚀 FIXED: Simple clean context delivery
         body: JSON.stringify({
           scope,
           workspaceId: activeWorkspaceId
@@ -142,8 +226,28 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       if (!response.ok) throw new Error(result.error);
 
       setFullTargetText(result.analysisReport);
-      setCooldowns((prev) => ({ ...prev, [scope]: true }));
-      toast.success(`Dynamic ${scope} analysis compiled.`);
+      
+      // Update Cooldown State
+      const updatedCooldowns = { ...cooldowns, [scope]: true };
+      setCooldowns(updatedCooldowns);
+
+      // Cache updated cooldown configurations immediately
+      const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
+      const cachedPayload = localStorage.getItem(cacheKey);
+      if (cachedPayload) {
+        try {
+          const parsed: LocalCachePayload = JSON.parse(cachedPayload);
+          parsed.cooldownStates = updatedCooldowns;
+          localStorage.setItem(cacheKey, JSON.stringify(parsed));
+        } catch {
+          // Fail silently on cache write issue
+        }
+      }
+
+      // Secure Daily Limit count increment
+      const newCount = incrementDailyCallCount();
+      toast.success(`Analysis loaded successfully. (Daily Usage: ${newCount}/4)`);
+
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Network sync timeout during AI compilation.";
       toast.error(message);
@@ -220,7 +324,9 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
 
           <div className={styles.livePulseIndicator}>
             <span className={styles.greenPulseDot} />
-            <span className={styles.pulseLabel}>SYSTEM ALIVE</span>
+            <span className={styles.pulseLabel}>
+              {callsUsedToday >= 4 ? "DAILY LIMIT REACHED" : `LIMIT: ${callsUsedToday}/4`}
+            </span>
             <span className={styles.pulseBars}>
               <span className={styles.bar}></span>
               <span className={styles.bar}></span>
@@ -247,7 +353,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
 
         <footer className={styles.actionGridFooter}>
           {(["today", "week", "month"] as TimelineScope[]).map((scope) => {
-            const isLocked = cooldowns[scope];
+            const isLocked = cooldowns[scope] || (callsUsedToday >= 4);
             const activeScope = scopeConfig[scope];
 
             return (
@@ -269,7 +375,9 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
                   {isLocked ? (
                     <>
                       <FiLock className={styles.btnIcon} />
-                      <span className={styles.btnLabelCapital}>Locked</span>
+                      <span className={styles.btnLabelCapital}>
+                        {callsUsedToday >= 4 ? "Max Limit" : "Locked"}
+                      </span>
                     </>
                   ) : (
                     <>

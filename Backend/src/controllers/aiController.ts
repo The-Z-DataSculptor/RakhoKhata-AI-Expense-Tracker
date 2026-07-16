@@ -321,7 +321,8 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
       return;
     }
 
-    const { user, metrics } = await fetchAndCalculateWorkspaceMetrics(workspaceId, userId, "today");
+    // Get User profile directly to resolve identity and active persona
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
       res.status(404).json({ error: "User profile not registered." });
@@ -339,14 +340,29 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
       month: (user as any).lastMonthAnalysisRun ? isSameCalendarDay(new Date((user as any).lastMonthAnalysisRun), systemDateToday) : false
     };
 
+    // Calculate timezone details to make the greeting highly personal and context-aware
+    const currentHour = new Date().getHours();
+    const timeOfDay = currentHour < 12 ? "morning" : currentHour < 17 ? "afternoon" : "evening";
+
     const apiKey = getApiKey();
 
-    const statsPrompt = `
-      You are addressing the user ${user.name}. Here is their live balance context for TODAY (${metrics.dateRangeText}):
-      - Safe to Spend: PKR ${Number(metrics.safeToSpend).toFixed(2)}
-      - Income: PKR ${Number(metrics.totalIncome).toFixed(2)}
-      - Expenses: PKR ${Number(metrics.totalExpenses).toFixed(2)}
-      Please create a 2 to 3 sentence maximum greeting matching your persona instructions. Be punchy, conversational, and direct! CRITICAL: Absolutely never output a dollar sign ($) anywhere in your response text.
+    // 🚀 NEW: Re-engineered Creative Prompt focused strictly on emotional energy, persona, and lighting up the user's day
+    const creativeGreetingPrompt = `
+      You are the personal AI companion for ${user.name}.
+      Current time of day is: ${timeOfDay}.
+      
+      Persona: ${selectedPersona.title}
+      
+      TASK: Write a highly creative, unique, warm, and deeply impressive greeting for ${user.name} that is guaranteed to light up their day and bring a smile to their face.
+      
+      STIPULATIONS:
+      1. Under absolutely no circumstances should you ever mention account balances, income, expenses, transactions, or financial figures (e.g., do NOT mention PKR 0.00, spending habits, budgets, or ledgers).
+      2. If you are the 'Savage Roaster', be witty, incredibly funny, and affectionately tease them about their energy or life today.
+      3. If you are the 'Supportive Coach', be highly motivating, inspirational, and tell them why they are amazing.
+      4. If you are the 'Forensic Detective', state a playful, dramatic "observation" about their morning or day.
+      5. If you are the 'Silent Accountant', be elegantly calm, encouraging, and highly practical.
+      6. Write a maximum of 2 sentences.
+      7. CRITICAL: Absolutely never output a dollar sign ($) anywhere in your response text.
     `;
 
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -357,7 +373,7 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
           parts: [{ text: selectedPersona.instruction }] 
         },
         contents: [
-          { parts: [{ text: statsPrompt }] }
+          { parts: [{ text: creativeGreetingPrompt }] }
         ],
       }),
     });
@@ -372,7 +388,7 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
     }
 
     const result = await response.json();
-    const generatedGreeting = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Welcome back! Ready to analyze your records today?";
+    const generatedGreeting = result?.candidates?.[0]?.content?.parts?.[0]?.text || `Assalam-o-Alaikum ${user.name}! Ready to take control of your goals today?`;
 
     res.status(200).json({
       user: { name: user.name, aiPersona: userPersonaKey },

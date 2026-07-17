@@ -390,3 +390,123 @@
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
 }
 /* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: DYNAMIC LIGHTWEIGHT MODAL WINDOW ARRAYS ===
+   ========================================================================== */
+.forgotPassLinkButton {
+  background: transparent;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #7e7a9c);
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition-fast, all 0.2s ease);
+  font-family: inherit;
+}
+
+.forgotPassLinkButton:hover {
+  color: var(--color-primary, #613bbf);
+}
+
+.modalScreenDimmer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(10, 6, 27, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: modalDimmerFadeIn 0.25s ease-out;
+}
+
+.modalCardSurface {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
+  padding: 2.25rem;
+  box-shadow: 0 20px 50px rgba(16, 4, 63, 0.25);
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHeader {
+  margin-bottom: 1.5rem;
+}
+
+.modalTitle {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.modalSubtext {
+  font-size: 0.875rem;
+  color: var(--text-muted, #7e7a9c);
+  line-height: 1.5;
+}
+
+.modalActionButtonsRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.modalCancelButton {
+  padding: 0.75rem 1.25rem;
+  background: transparent;
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4e4a6b);
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.modalCancelButton:hover:not(:disabled) {
+  background-color: var(--surface-highlight, #f8f7fd);
+  color: var(--text-primary, #10043f);
+}
+
+.modalSubmitButton {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary, #613bbf);
+  color: var(--text-on-primary, #ffffff);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast, all 0.2s ease);
+}
+
+.modalSubmitButton:hover:not(:disabled) {
+  background-color: var(--color-primary-dark, #4a2d96);
+}
+
+.modalSubmitButton:disabled,
+.modalCancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes modalDimmerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(15px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* === SECTION 6 END === */

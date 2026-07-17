@@ -114,10 +114,16 @@ export default function TransactionsPage() {
 
   const handleUpsertTransaction = async (payload: FormPayload) => {
     try {
+      if (!activeWorkspaceId) {
+        toast.error("No active workspace detected.");
+        return;
+      }
+
       if (payload.id) {
         await transactionService.delete(payload.id);
       }
       
+      // 🚀 FIXED: Inject the secure activeWorkspaceId context instead of relying on empty form mappings
       await transactionService.create({
         originalAmount: payload.originalAmount,
         originalCurrency: payload.originalCurrency,
@@ -299,10 +305,12 @@ export default function TransactionsPage() {
         />
       </div>
 
+      {/* 🚀 FIXED: Now passing activeWorkspaceId directly into the download control block */}
       <TransactionFooter 
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
-        sourceCurrency={workspaceCurrency}        // Pass workspace currency for formatting
+        sourceCurrency={workspaceCurrency}
+        activeWorkspaceId={activeWorkspaceId}
       />
 
       {isModalOpen && (

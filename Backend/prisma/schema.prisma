@@ -11,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // 🚀 FIXED: Removed direct 'url' property for Prisma 7 compliance
 }
 
 /**
@@ -29,13 +29,22 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // 🚀 NEW: DYNAMIC ONBOARDING AND GLOBAL AI PERSONALIZATION FIELDS
+  // 🚀 DYNAMIC ONBOARDING AND GLOBAL AI PERSONALIZATION FIELDS
   country       String?
   currency      String?
   languages     String[]
   occupation    String?
   financialGoal String?
   aiPersona     String?
+
+  // 🚀 FUTURE-PROOF MAILING EXTENSIONS (Email Verification & Security States)
+  isEmailVerified     Boolean   @default(false)
+  emailVerifiedAt     DateTime?
+  emailDeliveryStatus String    @default("DELIVERED") // Handles bounce protection flags
+
+  // 🚀 FUTURISTIC NOTIFICATION PREFERENCE OPT-IN TOGGLES (Cron Engine Anchors)
+  weeklyDigestEnabled  Boolean @default(true)
+  monthlyReportEnabled Boolean @default(true)
 
   workspaces    Workspace[]
   notifications Notification[]
@@ -193,4 +202,21 @@ model Notification {
 
   @@index([createdAt])
   @@map("notifications")
+}
+
+/**
+ * ==========================================================================
+ * === SECTION 9: GENERAL PURPOSE VERIFICATION TOKENS (POLYMORPHIC ARCH) ===
+ * ==========================================================================
+ */
+model VerificationToken {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique // Secure SHA-256 hash representation of the secret token/PIN string
+  type       String // "PASSWORD_RESET" | "EMAIL_VERIFICATION" | "TWO_FACTOR" | "MAGIC_LINK"
+  identifier String // Targets the specific identity record context (e.g., recipient email address)
+  expiresAt  DateTime // Enforces token invalidation parameters
+  createdAt  DateTime @default(now())
+
+  @@index([tokenHash])
+  @@map("verification_tokens")
 }

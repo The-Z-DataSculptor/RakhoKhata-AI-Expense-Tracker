@@ -1,4 +1,3 @@
-// src/app/(auth)/signup/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -67,7 +66,7 @@ const EXTENDED_LANGUAGES = [
   "Bengali (বাংলা)",
   "Tamil (தமிழ்)", 
   "Telugu (తెలుగు)", 
-  "Marathi (मराठी)", 
+  "Marathi (مراठी)", 
   "Italian (Italiano)",
   "Portuguese (Português)", 
   "Russian (Русский)", 
@@ -152,7 +151,6 @@ export default function SignupPage() {
       const validation = signupSchema.safeParse(formData);
 
       if (!validation.success) {
-        // 🚀 FIX: Used .issues instead of .errors to satisfy strict TypeScript rules
         const firstErrorMessage = validation.error.issues[0]?.message || "Please check your inputs.";
         toast.error(firstErrorMessage);
         return; 
@@ -186,11 +184,12 @@ export default function SignupPage() {
 
       if (!response.ok) throw new Error(result.error || "Registration failed.");
 
-      toast.success("Welcome to RakhoKhata! Personalizing your ledger...");
-      setTimeout(() => router.push("/dashboard"), 1500);
+      toast.success("Account created! Please check your email to activate your account.");
+      
+      setTimeout(() => router.push("/login"), 2500);
 
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to connect to server.";
+      const errorMessage = error instanceof Error ? error.message : "Could not connect to the server.";
       toast.error(errorMessage);
       setIsSubmitting(false);
     }
@@ -203,19 +202,19 @@ export default function SignupPage() {
           <div className={styles.stepContainer} suppressHydrationWarning>
             <div className={styles.stepHeader}>
               <div className={styles.stepIconBox}><FiUser className={styles.stepIcon} /></div>
-              <h2>Let's start with the basics</h2>
-              <p>Create your secure account to access the vault.</p>
+              <h2>Create Your Account</h2>
+              <p>Please fill in your basic details below.</p>
             </div>
             <div className={styles.inputGroup}>
-              <label>Full Name / Nickname</label>
+              <label>Full Name</label>
               <input 
                 type="text" 
-                placeholder="What should AI call you?" 
+                placeholder="Enter your name" 
                 value={formData.fullName}
                 onChange={e => setFormData({...formData, fullName: e.target.value})}
                 className={styles.textInput}
                 autoFocus
-              />
+                />
             </div>
             <div className={styles.inputGroup}>
               <label>Email Address</label>
@@ -232,17 +231,17 @@ export default function SignupPage() {
                 <label>Password</label>
                 <input 
                   type="password" 
-                  placeholder="Secure password" 
+                  placeholder="Choose a password" 
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
                   className={styles.textInput}
                 />
               </div>
               <div className={styles.inputGroup}>
-                <label>Confirm</label>
+                <label>Confirm Password</label>
                 <input 
                   type="password" 
-                  placeholder="Confirm password" 
+                  placeholder="Repeat your password" 
                   value={formData.confirmPassword}
                   onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
                   className={styles.textInput}
@@ -256,8 +255,8 @@ export default function SignupPage() {
           <div className={styles.stepContainer} suppressHydrationWarning>
             <div className={styles.stepHeader}>
               <div className={styles.stepIconBox}><FiGlobe className={styles.stepIcon} /></div>
-              <h2>Localize Your Experience</h2>
-              <p>We'll adapt the charts, currency, and AI jokes to your region.</p>
+              <h2>Region & Currency</h2>
+              <p>Choose your default currency and home country.</p>
             </div>
             
             <div className={styles.formRow}>
@@ -272,13 +271,13 @@ export default function SignupPage() {
                 </select>
               </div>
               <div className={styles.inputGroup}>
-                <label>Country / Region</label>
+                <label>Country</label>
                 <select 
                   value={formData.country} 
                   onChange={e => setFormData({...formData, country: e.target.value})}
                   className={styles.selectInput}
                 >
-                  <option value="">Select a country...</option>
+                  <option value="">Choose your country...</option>
                   {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -286,7 +285,7 @@ export default function SignupPage() {
 
             <div className={styles.inputGroup}>
               <label>Other Languages You Speak (Optional)</label>
-              <p className={styles.helperText}>Lets your AI Buddy use local slang and idioms!</p>
+              <p className={styles.helperText}>This helps your AI assistant use comfortable wording!</p>
               
               <div className={styles.tagsContainerOuter}>
                 <div className={styles.tagsGrid}>
@@ -339,18 +338,18 @@ export default function SignupPage() {
           <div className={styles.stepContainer} suppressHydrationWarning>
              <div className={styles.stepHeader}>
               <div className={styles.stepIconBox}><FiTarget className={styles.stepIcon} /></div>
-              <h2>Your Financial Vibe</h2>
-              <p>How do you earn, and what's your ultimate goal?</p>
+              <h2>Your Financial Goals</h2>
+              <p>How do you earn money, and what are you tracking?</p>
             </div>
 
             <div className={styles.inputGroup}>
-              <label>Primary Occupation / Income Style</label>
+              <label>Job / Income Style</label>
               <select 
                 value={formData.occupation} 
                 onChange={e => setFormData({...formData, occupation: e.target.value})}
                 className={styles.selectInput}
               >
-                <option value="">Select an option...</option>
+                <option value="">Choose an option...</option>
                 {OCCUPATIONS.map(o => (
                   <option key={o.id} value={o.id}>{o.label} - {o.desc}</option>
                 ))}
@@ -358,7 +357,7 @@ export default function SignupPage() {
             </div>
 
             <div className={styles.inputGroup}>
-              <label>Financial Focus</label>
+              <label>Main Financial Goal</label>
               <div className={styles.cardsGrid}>
                 {FINANCIAL_GOALS.map(goal => (
                   <div 
@@ -383,8 +382,8 @@ export default function SignupPage() {
           <div className={styles.stepContainer} suppressHydrationWarning>
              <div className={styles.stepHeader}>
               <div className={styles.stepIconBox}><FiCpu className={styles.stepIcon} /></div>
-              <h2>Tune Your AI Companion</h2>
-              <p>Choose the personality for your personal financial assistant.</p>
+              <h2>Choose Your AI Assistant</h2>
+              <p>Pick a personality style for your personal money coach.</p>
             </div>
 
             <div className={styles.inputGroup}>
@@ -412,11 +411,11 @@ export default function SignupPage() {
     }
   };
 
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.wizardMasterLayout} suppressHydrationWarning>
       <div className={styles.ambientGlow} />
@@ -427,7 +426,7 @@ export default function SignupPage() {
           <Link href="/" className={styles.backHomeBtn}>← Cancel</Link>
           <div className={styles.sidebarContent}>
             <h1 className={styles.brandTitle}>RakhoKhata.</h1>
-            <p className={styles.brandSubtitle}>Personalized financial intelligence.</p>
+            <p className={styles.brandSubtitle}>Simple financial intelligence.</p>
             
             <div className={styles.stepperTracker}>
               {[1, 2, 3, 4].map(num => (
@@ -435,7 +434,7 @@ export default function SignupPage() {
                   <div className={styles.stepNumber}>{num < step ? <FiCheckCircle /> : num}</div>
                   <div className={styles.stepLabels}>
                     <span className={styles.stepLabelTitle}>
-                      {num === 1 ? "Identity" : num === 2 ? "Region" : num === 3 ? "Goals" : "AI Buddy"}
+                      {num === 1 ? "Account" : num === 2 ? "Region" : num === 3 ? "Goals" : "AI Assistant"}
                     </span>
                   </div>
                 </div>
@@ -465,7 +464,7 @@ export default function SignupPage() {
               </button>
             ) : (
               <button onClick={submitForm} className={styles.btnFinish} disabled={isSubmitting || !formData.aiPersona}>
-                {isSubmitting ? "Initializing..." : "Complete Setup"} <FiCheckCircle style={{marginLeft: "8px"}}/>
+                {isSubmitting ? "Creating..." : "Finish Registration"} <FiCheckCircle style={{marginLeft: "8px"}}/>
               </button>
             )}
           </div>

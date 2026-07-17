@@ -4,18 +4,18 @@
    === SECTION 1: MASTER BOTTOM FOOTER CONTAINER ===
    ========================================================================== */
 .footerDeckContainer {
-  margin-top: 0.75rem; /* FIXED: Decreased gap to bring it right below the pagination */
+  margin-top: 0.75rem; 
   width: 100%;
-  background-color: transparent; /* FIXED: Removed background container look */
-  border: none; /* FIXED: Removed border box outlines */
+  background-color: transparent; 
+  border: none; 
   border-radius: 0;
-  padding: 0.5rem 0; /* FIXED: Trimmed padding down to sit flush with dashboard edges */
+  padding: 0.5rem 0; 
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  box-shadow: none; /* FIXED: Removed shadows for a completely clean, unboxed look */
+  box-shadow: none; 
 }
 
 /* ==========================================================================
@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  flex-grow: 0; /* Prevent over-stretching without container frames */
+  flex-grow: 0; 
 }
 
 .iconBadgeTrack {
@@ -73,53 +73,136 @@
 }
 
 /* ==========================================================================
-   === SECTION 3: CENTER AUDIT NOTE ===
-   ========================================================================== */
-/* Section omitted to leave middle completely clear for aggregated numbers */
-
-/* ==========================================================================
-   === SECTION 4: PDF DOWNLOAD ACTION DECK ===
+   === SECTION 4: EXPORT ACTION DECK BUTTONS WITH SPLIT CONTROLS ===
    ========================================================================== */
 .actionButtonBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   flex-shrink: 0;
 }
 
-.pdfDownloadButton {
+.splitButtonWrapper {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background-color: var(--color-primary, #6366f1);
-  color: #ffffff;
-  border: 1px solid transparent;
+  align-items: stretch;
   border-radius: var(--radius-lg, 12px);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.15);
-  transition: opacity var(--transition-fast, 0.15s), transform var(--transition-fast, 0.15s);
+  overflow: visible;
+  --btn-bg: var(--color-primary, #6366f1);
+  --btn-glow: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 2px 4px var(--btn-glow);
+  transition: transform var(--transition-fast, 0.15s);
 }
 
-.pdfDownloadButton:hover:not(:disabled) {
-  opacity: 0.92;
+.excelThemeOverride {
+  --btn-bg: #107c41; /* Microsoft Excel Brand Green */
+  --btn-glow: rgba(16, 124, 65, 0.15);
+  box-shadow: 0 2px 4px var(--btn-glow);
+}
+
+.splitButtonWrapper:hover:not(:has(button:disabled)) {
   transform: translateY(-1px);
 }
 
-.pdfDownloadButton:active:not(:disabled) {
+.mainActionBtn,
+.dropdownArrowTrigger {
+  background-color: var(--btn-bg);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: opacity var(--transition-fast, 0.15s);
+}
+
+.mainActionBtn {
+  gap: 0.5rem;
+  border-top-left-radius: var(--radius-lg, 12px);
+  border-bottom-left-radius: var(--radius-lg, 12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dropdownArrowTrigger {
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  border-top-right-radius: var(--radius-lg, 12px);
+  border-bottom-right-radius: var(--radius-lg, 12px);
+}
+
+.mainActionBtn:hover:not(:disabled),
+.dropdownArrowTrigger:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.splitButtonWrapper:active:not(:has(button:disabled)) {
   transform: translateY(0);
 }
 
-.pdfDownloadButton:disabled {
+.mainActionBtn:disabled,
+.dropdownArrowTrigger:disabled {
   background-color: var(--border-color, #e5e1f4);
   color: var(--text-muted, #7e7a9c);
   cursor: not-allowed;
-  box-shadow: none;
+  opacity: 1;
+}
+
+.rotateArrowUp {
+  transform: rotate(180deg);
 }
 
 /* ==========================================================================
-   === SECTION 5: RESPONSIVE FLEX LAYOUT COMPACT RULES ===
+   === SECTION 5: FLOATING CONTEXT MENU DROPDOWN LIST ===
    ========================================================================== */
-@media (max-width: 768px) {
+.floatingRangeMenu {
+  position: absolute;
+  bottom: 125%; /* Opens upwards to avoid cutting off screen edge bounds */
+  right: 0;
+  width: 170px;
+  background-color: var(--background-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 10px);
+  padding: 0.4rem;
+  margin: 0;
+  list-style: none;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.floatingRangeMenu li button {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-main, #2e2a47);
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.floatingRangeMenu li button:hover {
+  background-color: var(--background-hover, #f5f3ff);
+}
+
+.floatingRangeMenu li .activeScopeItem {
+  background-color: var(--background-active, #eeebff);
+  color: var(--color-primary, #6366f1);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   === SECTION 6: RESPONSIVE FLEX LAYOUT COMPACT RULES ===
+   ========================================================================== */
+@media (max-width: 960px) {
   .footerDeckContainer {
     flex-direction: column;
     align-items: stretch;
@@ -133,8 +216,24 @@
     padding-bottom: 0.75rem;
   }
 
-  .pdfDownloadButton {
+  .actionButtonBlock {
+    flex-direction: column;
     width: 100%;
+    gap: 0.65rem;
+  }
+
+  .splitButtonWrapper {
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .mainActionBtn {
+    flex-grow: 1;
     justify-content: center;
+    padding: 0.85rem;
+  }
+  
+  .dropdownArrowTrigger {
+    padding: 0.85rem;
   }
 }

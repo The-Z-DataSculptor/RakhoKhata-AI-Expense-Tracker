@@ -8,14 +8,14 @@ import cors from "cors";
 import cookieParser from "cookie-parser";  // Handles parsing incoming cookie payloads onto req.cookies
 import { prisma } from "./db";            // Core database client connected to Neon Cloud
 import authRoutes from "./routes/authRoutes"; 
-import workspaceRoutes from "./routes/workspaceRoutes";   // FIXED: Added workspace routing subsystem to control multi-tenancy partitions
-import transactionRoutes from "./routes/transactionRoutes"; // FIXED: Added transaction accounting routing matrix to handle ledger logs
-import categoryRoutes from "./routes/categoryRoutes";       // FIXED: Added category budget sorting routes to manage ledger folder structures
-import budgetRoutes from "./routes/budgetRoutes";           // FIXED: Added budget ceiling limit routes to establish spending guardrails
-import investmentRoutes from "./routes/investmentRoutes";   // FIXED: Added investment vault asset routes to manage financial portfolios
-import aiRoutes from "./routes/aiRoutes";                   // NEW: AI insights route for Gemini integration
-import notificationRoutes from "./routes/notificationRoutes"; // NEW: Notification routing subsystem
-import { globalApiLimiter } from "./middleware/rateLimitMiddleware"; // FIXED: Centralized global rate limit controller import
+import workspaceRoutes from "./routes/workspaceRoutes";   // Workspace routing subsystem to control multi-tenancy partitions
+import transactionRoutes from "./routes/transactionRoutes"; // Transaction accounting routing matrix to handle ledger logs
+import categoryRoutes from "./routes/categoryRoutes";       // Category budget sorting routes to manage ledger folder structures
+import budgetRoutes from "./routes/budgetRoutes";           // Budget ceiling limit routes to establish spending guardrails
+import investmentRoutes from "./routes/investmentRoutes";   // Investment vault asset routes to manage financial portfolios
+import aiRoutes from "./routes/aiRoutes";                   // AI insights route for Gemini integration
+import notificationRoutes from "./routes/notificationRoutes"; // Notification routing subsystem
+import { globalApiLimiter } from "./middleware/rateLimitMiddleware"; // Centralized global rate limit controller import
 /* === SECTION 1 END === */
 
 const app = express();

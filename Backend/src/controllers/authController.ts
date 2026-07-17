@@ -9,6 +9,11 @@ import bcrypt from "bcrypt";
 import { encrypt } from "paseto-ts/v4";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
+import { 
+  sendPasswordResetEmail, 
+  sendVerificationEmail, 
+  sendSecurityAlertEmail 
+} from "../services/emailService"; // 🚀 All services cleanly linked
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -133,6 +138,28 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       },
     });
 
+    // 🚀 NEW: Create an automatic verification token during user signup workflow
+    const rawVerifyToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawVerifyToken).digest("hex");
+    const validationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000); // Generous 24 hour window
+
+    await prisma.verificationToken.create({
+      data: {
+        tokenHash,
+        type: "EMAIL_VERIFICATION",
+        identifier: newUser.email,
+        expiresAt: validationDeadline,
+      },
+    });
+
+    // Build user-facing verification URL pathway string
+    const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerifyToken}`;
+    
+    // Send out welcome onboarding package instantly without blocking server operations thread
+    sendVerificationEmail(newUser.email, newUser.name, verificationUrl).catch(err => {
+      console.error("Async Verification Dispatch Error:", err);
+    });
+
     const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
     const token = await encrypt(getPasetoKey(), { 
       userId: newUser.id, 
@@ -143,7 +170,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(201).json({
-      message: "User registered successfully! Default profiles initialized with personalized localization.",
+      message: "User registered successfully! Please check your email to verify your account profile.",
       user: {
         id: newUser.id,
         name: newUser.name,
@@ -356,6 +383,11 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response): 
       data: { passwordHash: newHash }
     });
 
+    // 🚀 NEW: Transmit an instant, clear safety security alert upon password adjustment loop
+    sendSecurityAlertEmail(user.email, user.name, "Account Password").catch(err => {
+      console.error("Async Security Warning Failure Trigger:", err);
+    });
+
     res.status(200).json({ message: "Password changed successfully." });
   } catch (error) {
     console.error("Change Password Error:", error);
@@ -363,3 +395,174 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response): 
   }
 };
 /* === SECTION 8 END === */
+
+/* ==========================================================================
+   === SECTION 8A: FORGOT PASSWORD RECOVERY MANAGEMENT SYSTEM (NEW) ===
+   ========================================================================== */
+
+/**
+ * PHASE 1: Receives an email from form input, generates a recovery link token, saves hash to db, and sends it.
+ */
+export const requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      res.status(400).json({ error: "Email address parameter is required." });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    
+    // 🛡️ SECURITY OBFUSCATION: Send the same response code even if the target account doesn't exist
+    if (!user) {
+      res.status(200).json({ message: "If that account exists in our system, a recovery link has been dispatched." });
+      return;
+    }
+
+    // Generate a secure 64-character token string
+    const rawResetToken = crypto.randomBytes(32).toString("hex");
+
+    // Compute a safe SHA-256 string signature hash for index tracking checks
+    const tokenHash = crypto.createHash("sha256").update(rawResetToken).digest("hex");
+    const expirationDeadline = new Date(Date.now() + 15 * 60 * 1000); // Strict 15 min window
+
+    // Save token data details directly to the generic verification tracking table
+    await prisma.verificationToken.create({
+      data: {
+        tokenHash,
+        type: "PASSWORD_RESET",
+        identifier: user.email,
+        expiresAt: expirationDeadline,
+      },
+    });
+
+    // Build the query destination string tracking link pointing to your client browser routing app view
+    const recoveryLink = `http://localhost:3000/reset-password?token=${rawResetToken}`;
+
+    // Pass configuration variables straight down to the Resend sandbox engine layer
+    await sendPasswordResetEmail(user.email, user.name, recoveryLink);
+
+    res.status(200).json({ message: "If that account exists in our system, a recovery link has been dispatched." });
+  } catch (error) {
+    console.error("Request Password Reset System Failure:", error);
+    res.status(500).json({ error: "Internal server error processing identity token details request." });
+  }
+};
+
+/**
+ * PHASE 2: Verifies raw token from incoming url link query, validates lifecycle bounds, updates target row password hash
+ */
+export const resetForgottenPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      res.status(400).json({ error: "Missing required token string parameters or new password string details." });
+      return;
+    }
+
+    // Recompute the incoming SHA-256 payload signature to find our index column
+    const computedHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    // Check verification tracking log table record
+    const tokenRecord = await prisma.verificationToken.findUnique({
+      where: { tokenHash: computedHash }
+    });
+
+    if (!tokenRecord || tokenRecord.type !== "PASSWORD_RESET") {
+      res.status(400).json({ error: "Invalid or corrupt recovery link signature metadata." });
+      return;
+    }
+
+    // Confirm lifecycle timeframe context
+    if (new Date() > tokenRecord.expiresAt) {
+      // Clean up the stale expired row block tracking parameters dynamically
+      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+      res.status(400).json({ error: "Recovery link has expired. Please request a new token identifier." });
+      return;
+    }
+
+    // Fetch account user targeting the identifier email parameter record
+    const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
+    if (!user) {
+      res.status(404).json({ error: "Target user profile account details no longer exist in our tables." });
+      return;
+    }
+
+    // Build fresh password hash maps
+    const salt = await bcrypt.genSalt(10);
+    const updatedHashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update operational rows within an atomic transaction execution lifecycle loop
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: updatedHashedPassword }
+      }),
+      prisma.verificationToken.delete({
+        where: { id: tokenRecord.id }
+      })
+    ]);
+
+    res.status(200).json({ message: "Password updated successfully! You can now log into your account." });
+  } catch (error) {
+    console.error("Execute Password Update Controller Exception:", error);
+    res.status(500).json({ error: "Internal server error applying account credentials updates." });
+  }
+};
+
+/**
+ * 🚀 NEW: Processes incoming account verification hashes to activate profile permission tiers
+ */
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      res.status(400).json({ error: "Missing account verification signature parameter tokens." });
+      return;
+    }
+
+    const computedHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const tokenRecord = await prisma.verificationToken.findUnique({
+      where: { tokenHash: computedHash }
+    });
+
+    if (!tokenRecord || tokenRecord.type !== "EMAIL_VERIFICATION") {
+      res.status(400).json({ error: "Invalid or corrupt email verification link parameters." });
+      return;
+    }
+
+    if (new Date() > tokenRecord.expiresAt) {
+      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+      res.status(400).json({ error: "Verification window has expired. Please log in to request a fresh token link." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
+    if (!user) {
+      res.status(404).json({ error: "Target user profile account record no longer exists." });
+      return;
+    }
+
+    // Perform an atomic update setting verification fields active while removing lifecycle code
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { 
+          isEmailVerified: true,
+          emailVerifiedAt: new Date()
+        }
+      }),
+      prisma.verificationToken.delete({
+        where: { id: tokenRecord.id }
+      })
+    ]);
+
+    res.status(200).json({ message: "Email verification successful! Your profile workspace layers are fully unfurled." });
+  } catch (error) {
+    console.error("Process Email Verification Exception Error:", error);
+    res.status(500).json({ error: "Internal server error handling account verification requirements." });
+  }
+};
+/* === SECTION 8A END === */

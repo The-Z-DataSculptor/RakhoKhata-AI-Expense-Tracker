@@ -1,4 +1,3 @@
-// src/app/(auth)/login/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -35,6 +34,11 @@ export default function LoginPage() {
   // UX Improvement: Add a toggle to let users double-check their typed password
   const [showPassword, setShowPassword] = useState(false);
 
+  // 🚀 RECOVERY CONTROLS: Manages the modal overlay state and submission feedback
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
+
   // Directly hooks into the rendering timeline to figure out if it is a server or browser environment
   const isClient = useSyncExternalStore(
     emptySubscribe,
@@ -68,44 +72,68 @@ export default function LoginPage() {
     console.log("Validated Payload:", data);
     
     try {
-      // RESTORED: Reverted route back to unified localhost path mapping for cleaner cookie parity
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-        // CRITICAL CROSS-ORIGIN FLAG: Tells the browser it is explicitly allowed 
-        // to capture and process the backend's secure HttpOnly 'Set-Cookie' header stream.
         credentials: "include", 
       });
 
       const result = await response.json();
 
-      // Catch custom backend rejections (incorrect passwords, un-registered emails)
       if (!response.ok) {
         throw new Error(result.error || "Authentication failed. Please verify credentials.");
       }
 
-      // BY THE BOOK: Client-side storage is bypassed completely. 
-      // The browser automatically locked the cookie into secure storage.
-
-      // Trigger the micro-feedback layout alert instantly upon validation check pass
       toast.success("Welcome back! Loading your dashboard securely...");
 
-      // Simulate a brief network delay for better UX feedback, then redirect
       await new Promise(resolve => setTimeout(resolve, 800));
       router.push("/dashboard");
 
     } catch (error: unknown) {
       console.error("Full-Stack Login Error Encountered:", error);
-      
-      // Strict type guard resolution to display native clean error logs safely
       const errorMessage = error instanceof Error 
         ? error.message 
         : "An unexpected error occurred. Please verify your backend engine is running.";
         
       toast.error(errorMessage);
+    }
+  };
+
+  // 🚀 RECOVERY SUBMIT HIGHWAY: Sends request to your new backend endpoint
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      toast.error("Please provide a valid account email address.");
+      return;
+    }
+
+    setIsForgotSubmitting(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to process recovery transmission.");
+      }
+
+      // Handle server message response gracefully
+      toast.success(result.message || "Recovery transmission dispatched safely.");
+      setShowForgotModal(false);
+      setForgotEmail("");
+    } catch (error: unknown) {
+      console.error("Forgot Password UI Error:", error);
+      const msg = error instanceof Error ? error.message : "Network failure communicating with recovery cluster.";
+      toast.error(msg);
+    } finally {
+      setIsForgotSubmitting(false);
     }
   };
 
@@ -143,7 +171,6 @@ export default function LoginPage() {
     let lastStateUpdateTime = 0;
 
     const renderWaveframeLoop = () => {
-      // Pause animation if the user switches browser tabs to save computer memory
       if (document.hidden) {
         animationFrameId = requestAnimationFrame(renderWaveframeLoop);
         return;
@@ -166,7 +193,6 @@ export default function LoginPage() {
 
       const calculatedSpikeIntensity = Math.round(currentAmplitude.current);
       
-      // Throttling state calls to occur at most once every 100ms prevents React from lagging
       const now = Date.now();
       if (now - lastStateUpdateTime > 100) {
         setMarketVolatility(calculatedSpikeIntensity);
@@ -229,7 +255,6 @@ export default function LoginPage() {
     const currentTime = Date.now();
     const timeDelta = currentTime - lastMouseTime.current;
 
-    // Only calculate speed if enough time has passed to avoid math errors
     if (timeDelta > 16) {
       const distanceX = event.clientX - lastMousePos.current.x;
       const distanceY = event.clientY - lastMousePos.current.y;
@@ -282,7 +307,14 @@ export default function LoginPage() {
               <div className={styles.inputControlGroup}>
                 <div className={styles.labelForgotRow}>
                   <label htmlFor="password" className={styles.fieldLabel}>Password</label>
-                  <Link href="/forgot-password" className={styles.forgotPassLink}>Forgot password?</Link>
+                  {/* 🚀 FIXED: Transformed from raw link to dynamic overlay state anchor toggle */}
+                  <button 
+                    type="button" 
+                    onClick={() => setShowForgotModal(true)} 
+                    className={styles.forgotPassLinkButton}
+                  >
+                    Forgot password?
+                  </button>
                 </div>
                 
                 <div className={styles.passwordInputWrapper}>
@@ -348,6 +380,48 @@ export default function LoginPage() {
           </div>
         )}
       </aside>
+
+      {/* 🚀 MODAL OVERLAY PORTAL VIEW LAYER (Forgot Password execution view block) */}
+      {showForgotModal && (
+        <div className={styles.modalScreenDimmer}>
+          <div className={styles.modalCardSurface}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Recover Account Credentials</h2>
+              <p className={styles.modalSubtext}>Provide your verified account registration email. We will process a secure 15-minute recovery bridge link.</p>
+            </div>
+            <form onSubmit={handleForgotPasswordSubmit} className={styles.registrationForm}>
+              <div className={styles.inputControlGroup}>
+                <label className={styles.fieldLabel}>Email Address</label>
+                <input 
+                  type="email"
+                  required
+                  placeholder="yourname@domain.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className={styles.primaryInputField}
+                />
+              </div>
+              <div className={styles.modalActionButtonsRow}>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowForgotModal(false); setForgotEmail(""); }} 
+                  className={styles.modalCancelButton}
+                  disabled={isForgotSubmitting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className={styles.modalSubmitButton}
+                  disabled={isForgotSubmitting}
+                >
+                  {isForgotSubmitting ? "Processing Link..." : "Send Reset Link"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

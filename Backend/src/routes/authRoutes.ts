@@ -9,8 +9,11 @@ import {
   loginUser,
   getMe,
   logoutUser,
-  updateProfile,    // NEW
-  changePassword    // NEW
+  updateProfile,
+  changePassword,
+  requestPasswordReset,   // 🚀 Added
+  resetForgottenPassword, // 🚀 Added
+  verifyEmail             // 🚀 NEW: Import your email verification handler
 } from "../controllers/authController";
 import { checkVaultPinStatus, setupVaultPin, verifyVaultPin, disableVaultPin } from "../controllers/vaultAuthController";
 import { verifyTokenGuard } from "../middleware/authMiddleware";
@@ -43,9 +46,16 @@ router.post("/login", strictAuthLimiter, loginUser);
 router.post("/logout", logoutUser);
 router.get("/me", verifyTokenGuard, getMe);
 
-// NEW: Profile update and password change
+// Profile update and password change
 router.put("/update-profile", verifyTokenGuard, updateProfile);
 router.post("/change-password", verifyTokenGuard, changePassword);
+
+// 🚀 RECOVERY SECURE API CHANNELS: Completely exposed publicly outside token authentication perimeters
+router.post("/forgot-password", strictAuthLimiter, requestPasswordReset);
+router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
+
+// 🚀 NEW ONBOARDING LINK CHANNELS: Expose public activation link route mapping
+router.post("/verify-email", strictAuthLimiter, verifyEmail);
 
 /* ==========================================================================
    === SECTION 4: VAULT PIN SECURITY SUB-ROUTES ===

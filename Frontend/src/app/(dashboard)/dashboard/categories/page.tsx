@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/categories/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -165,10 +164,6 @@ export default function CategoriesPage() {
 
   const handleUpsertCategory = async (savedCategory: CategoryRecord) => {
     try {
-      if (editingCategory && savedCategory.id && !savedCategory.id.startsWith("cat-")) {
-        await categoryService.delete(savedCategory.id);
-      }
-
       const payload = {
         name: savedCategory.name,
         type: savedCategory.type.toUpperCase(),
@@ -181,9 +176,15 @@ export default function CategoriesPage() {
         reminderDays: savedCategory.reminderDays ?? 3,
       };
 
-      await categoryService.create(payload);
+      // 🚀 FIX: Handle pure updates separate from creation routines to retain historical links
+      if (editingCategory && savedCategory.id && !savedCategory.id.startsWith("cat-")) {
+        await categoryService.update(savedCategory.id, payload);
+        toast.success("Category tracking rule updated successfully.");
+      } else {
+        await categoryService.create(payload);
+        toast.success("Custom spending category added successfully.");
+      }
 
-      toast.success("Category saved to database.");
       await refreshCategoryData();
       handleClosePopupModal();
     } catch (error: unknown) {
@@ -220,7 +221,6 @@ export default function CategoriesPage() {
     name: cat.name
   }));
 
-  // 🔥 FIXED: Compute stats directly in workspace currency to avoid rounding errors
   const calculateLiveStats = (): CategoryStatData => {
     let topExp = { name: "N/A", amountWorkspace: 0 };
     let topInc = { name: "N/A", amountWorkspace: 0 };
@@ -234,13 +234,10 @@ export default function CategoriesPage() {
       const cat = categories.find(c => c.id === tx.categoryId);
       const catName = cat?.name || "Unknown";
 
-      // Determine the transaction's amount in the workspace currency
       let txAmountWorkspace: number;
       if (tx.originalCurrency === workspaceCurrency) {
-        // Exact amount – no conversion needed
         txAmountWorkspace = Number(tx.originalAmount);
       } else {
-        // Convert from base USD to workspace currency (only for foreign-currency transactions)
         txAmountWorkspace = convertAmount(Number(tx.baseAmountUSD), "USD", workspaceCurrency);
       }
 

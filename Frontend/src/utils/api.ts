@@ -177,6 +177,13 @@ export const categoryService = {
       body: JSON.stringify(data),
     }),
 
+  // 🚀 NEW: Integrated the missing Category update pipeline mapped to your RESTful routing framework
+  update: (id: string, data: Partial<Omit<Category, "id">>) =>
+    apiFetch<{ message: string; category: Category }>(`/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   delete: (id: string) =>
     apiFetch<{ message: string }>(`/categories/${id}`, { method: "DELETE" }),
 };
@@ -244,7 +251,6 @@ export const vaultAuthService = {
 };
 
 export const aiService = {
-  // 🚀 FIXED: Simplified parameters targeting direct database calculations on backend
   ask: (question: string, persona: "auditor" | "coach" | "minimalist", workspaceId: string) =>
     apiFetch<{ response: string }>("/ai/ask", {
       method: "POST",

@@ -24,28 +24,22 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { notificationService, Notification } from "@/utils/api"; 
+import { WORLD_CURRENCIES } from "@/constants/geoData"; // 🚀 CONNECTED GLOBAL ENGINE LAYER
 import styles from "./DashboardNavbar.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-type CurrencyType = "PKR" | "USD" | "EUR" | "GBP" | "INR" | "AED" | "SAR" | "KWD" | "OMR" | "QAR" | "BHD";
-
-interface CurrencyOption {
-  code: CurrencyType;
-  symbol: string;
-  label: string;
-  flag: string;
-}
-
 interface DashboardNavbarProps {
   user?: {
     id: string;
     name: string;
     email: string;
     uiTheme?: string;
+    currency?: string; 
   } | null;
+  currentWorkspaceId?: string; // LINK LAYER: Passes active database container context references down
 }
 /* === SECTION 2 END === */
 
@@ -79,20 +73,6 @@ function getNotificationIcon(sourceType: string) {
 /* ==========================================================================
    === SECTION 4: COMPONENT LOGIC ===
    ========================================================================== */
-const CURRENCY_OPTIONS: CurrencyOption[] = [
-  { code: "PKR", symbol: "₨", label: "Pakistani Rupee", flag: "🇵🇰" },
-  { code: "USD", symbol: "$", label: "US Dollar", flag: "🇺🇸" },
-  { code: "EUR", symbol: "€", label: "Euro", flag: "🇪🇺" },
-  { code: "GBP", symbol: "£", label: "British Pound", flag: "🇬🇧" },
-  { code: "INR", symbol: "₹", label: "Indian Rupee", flag: "🇮🇳" },
-  { code: "AED", symbol: "د.إ", label: "UAE Dirham", flag: "🇦🇪" },
-  { code: "SAR", symbol: "ر.س", label: "Saudi Riyal", flag: "🇸🇦" },
-  { code: "KWD", symbol: "د.ك", label: "Kuwaiti Dinar", flag: "🇰🇼" },
-  { code: "OMR", symbol: "ر.ع.", label: "Omani Rial", flag: "🇴🇲" },
-  { code: "QAR", symbol: "ر.ق", label: "Qatari Riyal", flag: "🇶🇦" },
-  { code: "BHD", symbol: "د.ب", label: "Bahraini Dinar", flag: "🇧🇭" },
-];
-
 const emptySubscribe = () => () => {};
 
 const timeGreetings = [
@@ -120,9 +100,11 @@ const financeFacts = [
   "The global average savings rate is around 20% of income.",
 ];
 
-export default function DashboardNavbar({ user }: DashboardNavbarProps) {
+export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardNavbarProps) {
   const { activeTheme, changeTheme } = useTheme();
-  const { currency, setCurrency } = useCurrency();
+  
+  // 🚀 CLEANED: Removed initializeWorkspaceCurrency since the root layout provider handles this on render frame one
+  const { currency, setCurrencyWithWorkspace } = useCurrency();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isMounted = useSyncExternalStore(
@@ -213,7 +195,8 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
     return <FiMonitor size={16} />;
   };
 
-  const activeCurrencyDetails = CURRENCY_OPTIONS.find((c) => c.code === currency);
+  // Maps active selected state straight to the extended global registry pool safely
+  const activeCurrencyDetails = WORLD_CURRENCIES.find((c) => c.code.toUpperCase() === currency?.toUpperCase());
 
   const displayGreetingName = user?.name ? user.name.split(" ")[0] : "User";
   const formattedDate = isMounted
@@ -275,9 +258,14 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
             aria-label="Change currency"
             aria-expanded={isCurrencyOpen}
           >
-            <span className={styles.utilityFlagInline}>{activeCurrencyDetails?.flag}</span>
+            <span className={styles.utilityFlagInline}>
+              {activeCurrencyDetails?.flag || "💸"}
+            </span>
             <span className={styles.currencyCodeLabel}>
-              {activeCurrencyDetails?.code} <span className={styles.currencyMutedSymbol}>({activeCurrencyDetails?.symbol})</span>
+              {activeCurrencyDetails?.code || currency || "Custom"}{" "}
+              <span className={styles.currencyMutedSymbol}>
+                ({activeCurrencyDetails?.symbol || ""})
+              </span>
             </span>
           </button>
 
@@ -285,20 +273,20 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
             <div className={styles.dropdownMenuFrame}>
               <div className={styles.dropdownMenuHeader}>Dashboard Currency</div>
               <ul className={styles.dropdownScrollableContainer}>
-                {CURRENCY_OPTIONS.map((option) => (
+                {WORLD_CURRENCIES.map((option) => (
                   <li key={option.code}>
                     <button
                       onClick={() => {
-                        setCurrency(option.code);
+                        setCurrencyWithWorkspace(option.code, currentWorkspaceId || "");
                         setIsCurrencyOpen(false);
                       }}
-                      className={option.code === currency ? styles.activeMenuOption : ""}
+                      className={option.code.toUpperCase() === currency?.toUpperCase() ? styles.activeMenuOption : ""}
                     >
                       <span className={styles.currencyMenuFlag}>{option.flag}</span>
                       <span className={styles.currencyMenuCode}>{option.code}</span>
                       <span className={styles.currencyMenuLabel}>{option.label}</span>
                       <span className={styles.currencyMenuSymbolBadge}>{option.symbol}</span>
-                      {option.code === currency && <FiCheck className={styles.checkMarkerIcon} size={14} />}
+                      {option.code.toUpperCase() === currency?.toUpperCase() && <FiCheck className={styles.checkMarkerIcon} size={14} />}
                     </button>
                   </li>
                 ))}
@@ -460,12 +448,12 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
               <div className={styles.mobileDrawerGroupItem}>
                 <p className={styles.mobileLabelHeader}>Global System Currency</p>
                 <div className={styles.mobileButtonLayoutGridRow}>
-                  {CURRENCY_OPTIONS.map((cur) => (
+                  {WORLD_CURRENCIES.map((cur) => (
                     <button
                       key={cur.code}
-                      className={cur.code === currency ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
+                      className={cur.code.toUpperCase() === currency?.toUpperCase() ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
                       onClick={() => {
-                        setCurrency(cur.code);
+                        setCurrencyWithWorkspace(cur.code, currentWorkspaceId || "");
                         setIsMobileMenuOpen(false);
                       }}
                     >

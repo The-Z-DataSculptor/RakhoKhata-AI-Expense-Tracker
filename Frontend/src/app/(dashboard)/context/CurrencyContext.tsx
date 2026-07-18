@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getExchangeRates } from "@/utils/exchangeRate";
+import { toast } from "sonner";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -13,7 +14,8 @@ import { getExchangeRates } from "@/utils/exchangeRate";
    ========================================================================== */
 interface CurrencyContextType {
   currency: string;
-  setCurrency: (currency: string) => void;
+  setCurrencyWithWorkspace: (newCurrency: string, workspaceId: string) => Promise<void>;
+  initializeWorkspaceCurrency: (initialCurrency: string) => void;
   formatAmount: (amount: number, sourceCurrency?: string) => string;
   convertAmount: (amount: number, from: string, to: string) => number;
   isLoadingRates: boolean;
@@ -21,209 +23,144 @@ interface CurrencyContextType {
 
 interface CurrencyProviderProps {
   children: React.ReactNode;
+  initialCurrency?: string; // 🚀 FIXED: Prop addition receives true database workspace state from the server layout
 }
 
 type RateMap = Record<string, number>;
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: FALLBACK RATES & CACHE HELPERS ===
+   === SECTION 3: FALLBACK RATES ===
    ========================================================================== */
 const FALLBACK_RATES: RateMap = {
-  USD: 1,
-  PKR: 278,
-  EUR: 0.92,
-  GBP: 0.78,
-  INR: 83,
-  AED: 3.67,
-  SAR: 3.75,
-  KWD: 0.31,
-  OMR: 0.38,
-  QAR: 3.64,
-  BHD: 0.38,
+  USD: 1, PKR: 278, EUR: 0.92, GBP: 0.78, INR: 83,
+  AED: 3.67, SAR: 3.75, KWD: 0.31, OMR: 0.38, QAR: 3.64, BHD: 0.38,
+  // 🚀 FIXED: Added mathematical fallback baselines for advanced currencies added during registration
+  JPY: 155.5, CAD: 1.37, AUD: 1.51, SGD: 1.35, CHF: 0.90, CNY: 7.25,
+  HKD: 7.80, NZD: 1.65, SEK: 10.60, KRW: 1380, NOK: 10.70, MXN: 18.20,
+  RUB: 88.0, ZAR: 18.10, TRY: 32.80, BRL: 5.40, TWD: 32.40, PLN: 4.02,
+  THB: 36.7, IDR: 16400, HUF: 368, DKK: 6.95, ILS: 3.72, CLP: 930,
+  PHP: 58.7, COP: 4150, MYR: 4.71, RON: 4.60, VND: 25400
 };
-
-const CACHE_KEY = "exchangeRates";
-const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
-
-function loadCachedRates(): RateMap | null {
-  try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (!cached) return null;
-    const parsed = JSON.parse(cached);
-    if (parsed && parsed.timestamp && parsed.rates) {
-      const age = Date.now() - parsed.timestamp;
-      if (age < CACHE_EXPIRY_MS) {
-        return parsed.rates;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-function saveCachedRates(rates: RateMap): void {
-  try {
-    localStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({ timestamp: Date.now(), rates })
-    );
-  } catch {
-    // ignore
-  }
-}
 /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: CONTEXT ===
-   ========================================================================== */
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
-export function CurrencyProvider({ children }: CurrencyProviderProps) {
-  const [currency, setCurrency] = useState<string>(() => {
-    try {
-      return localStorage.getItem("preferredCurrency") || "USD";
-    } catch {
-      return "USD";
-    }
-  });
-
-  // Start with fallback rates; a later effect will load cached/live ones.
+export function CurrencyProvider({ children, initialCurrency = "USD" }: CurrencyProviderProps) {
+  // 🚀 FIXED: Initializes state with the true server configuration instantly, avoiding the client-side flash of USD
+  const [currency, setCurrency] = useState<string>(initialCurrency.toUpperCase());
   const [rates, setRates] = useState<RateMap>(FALLBACK_RATES);
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(true);
 
-  // Save currency preference when it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem("preferredCurrency", currency);
-    } catch {
-      // ignore
-    }
-  }, [currency]);
-
-  // Load rates on mount: try cache first, then fetch fresh.
+  // Load global conversion rates on mount
   useEffect(() => {
     let cancelled = false;
-
     const initRates = async () => {
-      // 1. Try to load from valid cache
-      const cached = loadCachedRates();
-      if (cached) {
-        if (!cancelled) {
-          setRates(cached);
-          setIsLoadingRates(false);
-        }
-        return; // no need to fetch
-      }
-
-      // 2. No cache, fetch live
       try {
         const exchangeRates = await getExchangeRates();
         if (!cancelled) {
           setRates(exchangeRates);
-          saveCachedRates(exchangeRates);
           setIsLoadingRates(false);
         }
       } catch (error) {
-        console.warn("Failed to fetch exchange rates:", error);
-        if (!cancelled) {
-          // keep fallback rates
-          setIsLoadingRates(false);
-        }
+        console.warn("Failed to fetch fresh live rates, using fallback system rates.", error);
+        if (!cancelled) setIsLoadingRates(false);
       }
     };
-
     initRates();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []); // runs once on mount
+    return () => { cancelled = true; };
+  }, []);
 
   /**
-   * When the user changes currency, fetch fresh rates to ensure accurate conversion.
+   * Seeds the context with a dynamic preference structure if called post-hydration
    */
-  const changeCurrency = useCallback(async (newCurrency: string) => {
-    setCurrency(newCurrency);
+  const initializeWorkspaceCurrency = useCallback((incomingCurrency: string) => {
+    if (incomingCurrency) {
+      setCurrency(incomingCurrency.toUpperCase());
+    }
+  }, []);
+
+  /**
+   * Saves choice to cross-origin server layers securely with token authentication parameters
+   */
+  const setCurrencyWithWorkspace = useCallback(async (newCurrency: string, workspaceId: string) => {
+    const formattedCurrency = newCurrency.toUpperCase();
+    
+    // 1. Instantly update UI text so charts and balance logs transform instantly
+    setCurrency(formattedCurrency);
     setIsLoadingRates(true);
+
+    if (!workspaceId) {
+      console.warn("Workspace ID context missing. Skipping remote database sync.");
+      setIsLoadingRates(false);
+      return;
+    }
+
     try {
+      // 2. Fetch fresh exchange configurations in the background
       const exchangeRates = await getExchangeRates();
       setRates(exchangeRates);
-      saveCachedRates(exchangeRates);
+
+      // 3. Dispatch persistent PUT route transaction straight across your backend framework layout
+      const response = await fetch(`http://localhost:5000/api/workspaces/${workspaceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Forces token authorization verification tracks to parse on cross-origin pipelines
+        body: JSON.stringify({ currency: formattedCurrency }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Database update transaction failed.");
+      }
+
+      toast.success(`Currency switched to ${formattedCurrency} and saved!`);
+
     } catch (error) {
-      console.warn("Failed to fetch fresh rates on currency change:", error);
+      console.error("Currency synchronization error:", error);
+      toast.error("Could not save currency selection to database.");
     } finally {
       setIsLoadingRates(false);
     }
   }, []);
 
-  /**
-   * Convert an amount from one currency to another.
-   */
   const convertAmount = (amount: number, from: string, to: string): number => {
     if (amount === 0 || from === to) return amount;
-
     const fromUpper = from.toUpperCase();
     const toUpper = to.toUpperCase();
+    const rateFrom = rates[fromUpper] || FALLBACK_RATES[fromUpper] || 1;
+    const rateTo = rates[toUpper] || FALLBACK_RATES[toUpper] || 1;
 
-    const rateFrom = rates[fromUpper];
-    const rateTo = rates[toUpper];
-
-    if (!rateFrom || !rateTo) {
-      console.warn(`Missing exchange rate for ${fromUpper} or ${toUpper}, using fallback.`);
-      const fallbackFrom = FALLBACK_RATES[fromUpper];
-      const fallbackTo = FALLBACK_RATES[toUpper];
-      if (fallbackFrom && fallbackTo) {
-        return Math.round((amount / fallbackFrom) * fallbackTo * 100) / 100;
-      }
-      return amount;
-    }
-
-    const converted = (amount / rateFrom) * rateTo;
-    return Math.round(converted * 100) / 100;
+    return Math.round(((amount / rateFrom) * rateTo) * 100) / 100;
   };
 
-  /**
-   * Format an amount with the current currency symbol.
-   * 🔥 FIX: When sourceCurrency equals display currency, NO conversion is done.
-   */
   const formatAmount = (amount: number, sourceCurrency?: string): string => {
     const finalAmount = sourceCurrency
       ? sourceCurrency.toUpperCase() === currency.toUpperCase()
-        ? amount   // ← no conversion when displaying in the same currency
+        ? amount
         : convertAmount(amount, sourceCurrency, currency)
       : amount;
-
-    if (!isFinite(finalAmount)) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: currency,
-      }).format(0);
-    }
 
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currency,
-    }).format(finalAmount);
-  };
-
-  const value = {
-    currency,
-    setCurrency: changeCurrency,
-    formatAmount,
-    convertAmount,
-    isLoadingRates,
+    }).format(isFinite(finalAmount) ? finalAmount : 0);
   };
 
   return (
-    <CurrencyContext.Provider value={value}>
+    <CurrencyContext.Provider value={{
+      currency,
+      setCurrencyWithWorkspace,
+      initializeWorkspaceCurrency,
+      formatAmount,
+      convertAmount,
+      isLoadingRates
+    }}>
       {children}
     </CurrencyContext.Provider>
   );
 }
 
-export function useCurrency(): CurrencyContextType {
+export function useCurrency() {
   const context = useContext(CurrencyContext);
   if (context === undefined) {
     throw new Error("useCurrency must be used within a CurrencyProvider");

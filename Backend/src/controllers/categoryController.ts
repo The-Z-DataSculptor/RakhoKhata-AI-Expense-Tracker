@@ -1,11 +1,14 @@
 // Backend/src/controllers/categoryController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS AND CONFIGURATION ===
    ========================================================================== */
 import { Response } from "express";
-import { prisma } from "../db";                                   // Core database client link
+import { prisma } from "../db";                                      // Core database client link
 import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure session tracker layout
+
+// 🚀 PROTECTED SYSTEM CATEGORIES: Prevents front-end deep-linking and scheduler breakages
+const IMMUTABLE_SYSTEM_CATEGORIES = ["owed to me (receivable)", "my debts (payable)"];
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -14,8 +17,6 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure s
 export const getWorkspaceCategories = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    
-    // Type-Safety Guard: Forcing query parameter to a single, clean primitive string layout
     const targetWorkspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
 
     if (!userId) {
@@ -28,14 +29,14 @@ export const getWorkspaceCategories = async (req: AuthenticatedRequest, res: Res
       return;
     }
 
-    // Security Gate: Confirm the user actually owns the workspace they are trying to read folders from
     const workspaceCheck = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
+    
+    // 🚀 DEFENSIVE FIX: String cast coercion ensures type mismatches don't trigger a false 403
+    if (!workspaceCheck || String(workspaceCheck.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Verification credentials invalid for this profile." });
       return;
     }
 
-    // Pull all category cards matching this workspace, sorting them alphabetically by label name
     const categories = await prisma.category.findMany({
       where: { workspaceId: targetWorkspaceId },
       orderBy: { name: "asc" }
@@ -71,26 +72,24 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Validation: Require name, allocation type, and workspace map anchor
     if (!name || !name.trim() || !type || !workspaceId) {
       res.status(400).json({ error: "Missing required category parameters." });
       return;
     }
 
-    // Type Check: Ensure the mapping is strictly INCOME, EXPENSE, or BOTH
     if (type !== "INCOME" && type !== "EXPENSE" && type !== "BOTH") {
       res.status(400).json({ error: "Allocation mapping must be strictly INCOME, EXPENSE, or BOTH." });
       return;
     }
 
-    // Security Verification: Confirm that the user owns the workspace container shell
     const workspaceCheck = await prisma.workspace.findUnique({ where: { id: workspaceId } });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
+    
+    // 🚀 DEFENSIVE FIX: String cast coercion protection
+    if (!workspaceCheck || String(workspaceCheck.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Action signature verification failed." });
       return;
     }
 
-    // Save the brand new custom folder row directly to Neon Cloud
     const category = await prisma.category.create({
       data: {
         name: name.trim(),
@@ -121,7 +120,11 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
 export const updateCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetId = req.params.id ? String(req.params.id) : undefined;
+    
+    // 🚀 FIXED: Adaptive parameter extraction handles fallback parameter labels seamlessly
+    const parsedId = req.params.id || req.params.categoryId || req.query.id;
+    const targetId = parsedId ? String(parsedId) : undefined;
+    
     const { name, type, color, isRecurring, frequency, dueDay, reminderDays } = req.body;
 
     if (!userId) {
@@ -134,7 +137,6 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Security Scan: Verify folder exists and matches caller authorization keys
     const targetCategory = await prisma.category.findUnique({
       where: { id: targetId },
       include: { workspace: true }
@@ -145,12 +147,21 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    if (targetCategory.workspace.userId !== userId) {
+    // 🚀 DEFENSIVE FIX: String casting ensures strings vs integers check out perfectly
+    if (String(targetCategory.workspace.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Workspace data alignment match mismatched." });
       return;
     }
 
-    // Execute atomic record updating
+    // 🚀 TARGETED GUARDRAIL: Case-insensitive match locks down ONLY your 2 special system rows
+    const normalizedName = targetCategory.name.toLowerCase().trim();
+    if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedName)) {
+      res.status(400).json({ 
+        error: `The core split-ledger category "${targetCategory.name}" is locked by the system architecture and cannot be modified.` 
+      });
+      return;
+    }
+
     const updatedCategory = await prisma.category.update({
       where: { id: targetId },
       data: {
@@ -181,7 +192,10 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
 export const deleteCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetId = req.params.id ? String(req.params.id) : undefined;
+    
+    // 🚀 FIXED: Adaptive parameter extraction handles fallback parameter labels seamlessly
+    const parsedId = req.params.id || req.params.categoryId || req.query.id;
+    const targetId = parsedId ? String(parsedId) : undefined;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized access parameters." });
@@ -193,7 +207,6 @@ export const deleteCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Verification Step: Confirm category folder exists and is inside a workspace owned by this caller
     const categoryTarget = await prisma.category.findUnique({
       where: { id: targetId },
       include: { workspace: true }
@@ -204,17 +217,25 @@ export const deleteCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    if (categoryTarget.workspace.userId !== userId) {
+    // 🚀 DEFENSIVE FIX: Safe string verification
+    if (String(categoryTarget.workspace.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Workspace ownership match failed." });
       return;
     }
 
-    // 🚀 CRITICAL CASCADE SAFEGUARD FIX: Clear out any dependent transactions first to avoid constraint crashes
+    // 🚀 TARGETED GUARDRAIL: Case-insensitive protection block
+    const normalizedName = categoryTarget.name.toLowerCase().trim();
+    if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedName)) {
+      res.status(400).json({ 
+        error: `The core split-ledger category "${categoryTarget.name}" is permanent and cannot be deleted from RakhoKhata.` 
+      });
+      return;
+    }
+
     await prisma.transaction.deleteMany({
       where: { categoryId: targetId }
     });
 
-    // Erase the row container block completely from Neon Cloud
     await prisma.category.delete({ where: { id: targetId } });
 
     res.status(200).json({ message: "Category folder and its rule sets removed successfully." });

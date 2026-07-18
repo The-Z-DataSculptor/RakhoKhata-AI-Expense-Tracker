@@ -20,67 +20,13 @@ import {
 } from "react-icons/fi";
 
 import { signupSchema } from "@/schemas/auth"; 
+import { WORLD_CURRENCIES, WORLD_COUNTRIES, PRIORITY_LANGUAGES, EXTENDED_LANGUAGES } from "@/constants/geoData"; // 🚀 CENTRALISED CORE REGISTRY
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: GLOBAL DATA ===
+   === SECTION 2: ADDITIONAL STATIC CONFIG DATA ===
    ========================================================================== */
-const CURRENCIES = [
-  "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
-  "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
-  "RUB", "ZAR", "TRY", "BRL", "TWD", "PLN", "THB", "IDR", "HUF", "DKK",
-  "ILS", "CLP", "PHP", "COP", "MYR", "RON", "VND", "KWD",
-  "💸 Other (Dynamic Base)"
-];
-
-const COUNTRIES = [
-  "Pakistan", "United States", "United Kingdom", "Germany", "Japan", 
-  "India", "Canada", "Australia", "United Arab Emirates", "Saudi Arabia",
-  "Afghanistan", "Albania", "Algeria", "Argentina", "Austria", "Bangladesh", 
-  "Belgium", "Brazil", "Chile", "China", "Colombia", "Denmark", "Egypt", 
-  "Finland", "France", "Greece", "Hong Kong", "Indonesia", "Iran", "Iraq", 
-  "Ireland", "Israel", "Italy", "Jordan", "Kenya", "Kuwait", "Malaysia", 
-  "Mexico", "Morocco", "Netherlands", "New Zealand", "Norway", "Oman", 
-  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", 
-  "Singapore", "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", 
-  "Thailand", "Turkey", "Ukraine", "Vietnam", "Yemen", "Zimbabwe",
-  "🌍 My Country is Not Listed / Prefer Private"
-];
-
-const PRIORITY_LANGUAGES = [
-  "English", 
-  "Urdu (اُردو)", 
-  "Punjabi (پنجابی)", 
-  "Sindhi (سنڌي)", 
-  "Pashto (پښتو)", 
-  "Hindi (हिन्दी)", 
-  "Spanish (Español)", 
-  "Arabic (العربية)",
-  "French (Français)", 
-  "German (Deutsch)", 
-  "Japanese (日本語)"
-];
-
-const EXTENDED_LANGUAGES = [
-  "Bengali (বাংলা)",
-  "Tamil (தமிழ்)", 
-  "Telugu (తెలుగు)", 
-  "Marathi (مراठी)", 
-  "Italian (Italiano)",
-  "Portuguese (Português)", 
-  "Russian (Русский)", 
-  "Turkish (Türkçe)", 
-  "Mandarin (中文)",
-  "Korean (한국어)", 
-  "Vietnamese (Tiếng Việt)", 
-  "Thai (ภาษาไทย)", 
-  "Kashmiri (کٲشُر)",
-  "Saraiki (سرائیکی)", 
-  "Balochi (بلوچی)", 
-  "🤐 Standard English Only"
-];
-
 const OCCUPATIONS = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
@@ -109,9 +55,6 @@ const AI_PERSONAS = [
 ];
 /* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
 export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -135,16 +78,39 @@ export default function SignupPage() {
     const detectionTimer = setTimeout(() => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (tz.includes("Karachi")) {
-        setFormData(prev => ({ ...prev, currency: "PKR", country: "Pakistan" }));
+        setFormData(prev => ({ ...prev, currency: "PKR", country: "Pakistan", languages: ["Urdu (اُردو)", "English"] }));
       } else if (tz.includes("Europe")) {
         setFormData(prev => ({ ...prev, currency: "EUR" }));
       } else if (tz.includes("London")) {
-        setFormData(prev => ({ ...prev, currency: "GBP", country: "United Kingdom" }));
+        setFormData(prev => ({ ...prev, currency: "GBP", country: "United Kingdom", languages: ["English"] }));
+      } else if (tz.includes("Calcutta") || tz.includes("Kolkata")) {
+        setFormData(prev => ({ ...prev, currency: "INR", country: "India", languages: ["Hindi (हिन्दी)", "English"] }));
       }
     }, 0);
 
     return () => clearTimeout(detectionTimer);
   }, []);
+
+  // 🚀 FIXED: Smart Lookahead integration. Updates local language stacks and currencies instantly on change!
+  const handleCountryChange = (selectedCountryName: string) => {
+    const targetCountryMatch = WORLD_COUNTRIES.find(c => c.name === selectedCountryName);
+    
+    if (targetCountryMatch) {
+      setFormData(prev => {
+        const languagesStack = new Set(prev.languages);
+        languagesStack.add(targetCountryMatch.defaultLanguage);
+        
+        return {
+          ...prev,
+          country: selectedCountryName,
+          currency: targetCountryMatch.defaultCurrency,
+          languages: Array.from(languagesStack)
+        };
+      });
+    } else {
+      setFormData(prev => ({ ...prev, country: selectedCountryName }));
+    }
+  };
 
   const handleNext = () => {
     if (step === 1) {
@@ -156,7 +122,6 @@ export default function SignupPage() {
         return; 
       }
     }
-    
     setStep(prev => Math.min(prev + 1, 4));
   };
 
@@ -181,11 +146,9 @@ export default function SignupPage() {
       });
 
       const result = await response.json();
-
       if (!response.ok) throw new Error(result.error || "Registration failed.");
 
       toast.success("Account created! Please check your email to activate your account.");
-      
       setTimeout(() => router.push("/login"), 2500);
 
     } catch (error: unknown) {
@@ -214,7 +177,7 @@ export default function SignupPage() {
                 onChange={e => setFormData({...formData, fullName: e.target.value})}
                 className={styles.textInput}
                 autoFocus
-                />
+              />
             </div>
             <div className={styles.inputGroup}>
               <label>Email Address</label>
@@ -261,24 +224,30 @@ export default function SignupPage() {
             
             <div className={styles.formRow}>
               <div className={styles.inputGroup}>
+                <label>Country</label>
+                <select 
+                  value={formData.country} 
+                  onChange={e => handleCountryChange(e.target.value)}
+                  className={styles.selectInput}
+                >
+                  <option value="">Choose your country...</option>
+                  {WORLD_COUNTRIES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  <option value="Private">🌍 My Country is Not Listed / Prefer Private</option>
+                </select>
+              </div>
+              <div className={styles.inputGroup}>
                 <label>Default Currency</label>
                 <select 
                   value={formData.currency} 
                   onChange={e => setFormData({...formData, currency: e.target.value})}
                   className={styles.selectInput}
                 >
-                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className={styles.inputGroup}>
-                <label>Country</label>
-                <select 
-                  value={formData.country} 
-                  onChange={e => setFormData({...formData, country: e.target.value})}
-                  className={styles.selectInput}
-                >
-                  <option value="">Choose your country...</option>
-                  {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {WORLD_CURRENCIES.map(c => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.code} ({c.symbol}) - {c.label}
+                    </option>
+                  ))}
+                  <option value="OTHER">💸 Other (Dynamic Base)</option>
                 </select>
               </div>
             </div>
@@ -411,11 +380,6 @@ export default function SignupPage() {
     }
   };
 
-  /* === SECTION 3 END === */
-
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
   return (
     <div className={styles.wizardMasterLayout} suppressHydrationWarning>
       <div className={styles.ambientGlow} />
@@ -473,4 +437,3 @@ export default function SignupPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

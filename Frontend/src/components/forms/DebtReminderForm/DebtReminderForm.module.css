@@ -1,0 +1,269 @@
+/* src/components/forms/DebtReminderForm/DebtReminderForm.module.css */
+
+/* ==========================================================================
+   === TEXT STYLING OVERHAUL (ANTI-GRANNY CONFIG) ===
+   ========================================================================== */
+.formCard {
+  width: 100%;
+  background: var(--bg-surface, #ffffff);
+  border-radius: 16px;
+  padding: 2rem;
+  box-sizing: border-box;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.headerArea {
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  padding-bottom: 1.25rem;
+}
+
+.headerTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.formTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary, #10043f);
+  margin: 0;
+}
+
+.formSubtitle {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #4e4a6b);
+  margin: 0.5rem 0 0 0;
+}
+
+.highlightText {
+  color: var(--color-primary, #6366f1);
+  font-weight: 700;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #4e4a6b);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.closeBtn:hover {
+  background: var(--primary-soft-hover, rgba(16, 4, 63, 0.06));
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   === FORM CONTROL INPUT ARCHITECTURE ===
+   ========================================================================== */
+.formLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary, #10043f);
+  opacity: 0.9;
+}
+
+.optionalBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--surface-outline, rgba(16, 4, 63, 0.05));
+  color: var(--text-secondary, #4e4a6b);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.35rem;
+}
+
+.inputField {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #10043f);
+  font-size: 0.92rem;
+  font-weight: 500;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.inputField:focus {
+  border-color: var(--color-primary, #6366f1);
+  box-shadow: 0 0 0 4px var(--primary-soft, rgba(99, 102, 241, 0.12));
+}
+
+/* SEGMENT SLIDER COMPONENT CONTAINER */
+.segmentedControl {
+  display: flex;
+  width: 100%;
+  background: var(--surface-outline, rgba(16, 4, 63, 0.04));
+  padding: 0.3rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e1f4);
+  box-sizing: border-box;
+}
+
+.segmentOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #4e4a6b);
+  cursor: pointer;
+  border-radius: 7px;
+  transition: all 0.2s ease-in-out;
+}
+
+.segmentActiveWhatsapp {
+  background: #128c7e !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(18, 140, 126, 0.25);
+}
+
+.segmentActiveEmail {
+  background: var(--color-primary, #6366f1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+}
+
+/* ==========================================================================
+   === PREMIUM LIVE BOX SANDBOX LAYOUT ===
+   ========================================================================== */
+.previewBoxWrapper {
+  border-radius: 12px;
+  padding: 0.5rem;
+  border: 1px dashed var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.whatsappTint {
+  background: rgba(18, 140, 126, 0.05);
+  border-color: rgba(18, 140, 126, 0.3);
+}
+
+.emailTint {
+  background: var(--primary-soft, rgba(99, 102, 241, 0.04));
+  border-color: var(--border-color);
+}
+
+.previewTextArea {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #10043f);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.helperText {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-secondary, #4e4a6b);
+  opacity: 0.75;
+  margin-top: 0.25rem;
+}
+
+/* ==========================================================================
+   === ACTION BUTTON SUITE CONTROLLERS ===
+   ========================================================================== */
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border-color, #e5e1f4);
+  padding-top: 1.5rem;
+}
+
+.cancelBtn,
+.submitBtn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cancelBtn {
+  background: transparent;
+  color: var(--text-secondary, #4e4a6b);
+  border: 1px solid var(--border-color, #e5e1f4);
+}
+
+.cancelBtn:hover {
+  background: var(--primary-soft-hover, rgba(16, 4, 63, 0.04));
+  color: var(--text-primary);
+}
+
+.submitBtn {
+  /* 🚀 FIXED: Set to primary theme token so it shifts intelligently across dark/light scales */
+  background: var(--color-primary, #6366f1);
+  color: #ffffff !important;
+}
+
+.submitBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px var(--shadow-soft);
+  filter: brightness(1.1);
+}
+
+.submitBtn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .formCard {
+    padding: 1.5rem;
+  }
+  .buttonGroup {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+  .cancelBtn,
+  .submitBtn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem;
+  }
+}

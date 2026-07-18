@@ -9,24 +9,34 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CATEGORY SEEDER HELPER ===
+   === SECTION 2: CENTRALIZED CATEGORY SEEDER CONFIGURATIONS ===
    ========================================================================== */
-const seedDefaultCategoriesForWorkspace = async (workspaceId: string, workspaceName: string): Promise<void> => {
-  let starterCategories = [];
+// Shared core debt/receivable categories present across ALL workspace types
+const CORE_DEBT_CATEGORIES = [
+  { name: "Owed to Me (Receivable)", type: "INCOME", color: "#22c55e" },
+  { name: "My Debts (Payable)", type: "EXPENSE", color: "#ef4444" }
+];
 
-  if (workspaceName.toLowerCase() === "business") {
-    starterCategories = [
-      { name: "Revenue", type: "INCOME", color: "#10b981", workspaceId },
-      { name: "Marketing", type: "EXPENSE", color: "#6366f1", workspaceId },
-      { name: "Inventory", type: "EXPENSE", color: "#d97706", workspaceId }
-    ];
-  } else {
-    starterCategories = [
-      { name: "Salary", type: "INCOME", color: "#10B981", workspaceId },
-      { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444", workspaceId },
-      { name: "Food & Groceries", type: "EXPENSE", color: "#F97316", workspaceId }
-    ];
-  }
+export const SHARED_DEFAULT_PERSONAL_CATEGORIES = [
+  { name: "Salary", type: "INCOME", color: "#10B981" },
+  { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444" },
+  ...CORE_DEBT_CATEGORIES
+];
+
+export const SHARED_DEFAULT_BUSINESS_CATEGORIES = [
+  { name: "Revenue", type: "INCOME", color: "#10b981" },
+  { name: "Payroll", type: "EXPENSE", color: "#f43f5e" },
+  ...CORE_DEBT_CATEGORIES
+];
+
+const seedDefaultCategoriesForWorkspace = async (workspaceId: string, workspaceName: string): Promise<void> => {
+  const isBusiness = workspaceName.toLowerCase() === "business";
+  const templates = isBusiness ? SHARED_DEFAULT_BUSINESS_CATEGORIES : SHARED_DEFAULT_PERSONAL_CATEGORIES;
+
+  const starterCategories = templates.map(cat => ({
+    ...cat,
+    workspaceId
+  }));
 
   await prisma.category.createMany({
     data: starterCategories
@@ -128,7 +138,7 @@ export const createWorkspace = async (req: AuthenticatedRequest, res: Response):
 export const deleteWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.params.id as string;   // FIXED: cast to string
+    const targetWorkspaceId = req.params.id as string;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized access tracking parameters." });
@@ -157,12 +167,12 @@ export const deleteWorkspace = async (req: AuthenticatedRequest, res: Response):
 /* === SECTION 5 END === */
 
 /* ==========================================================================
-   === SECTION 6: UPDATE WORKSPACE (NEW) ===
+   === SECTION 6: UPDATE WORKSPACE ===
    ========================================================================== */
 export const updateWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const workspaceId = req.params.id as string;   // FIXED: cast to string
+    const workspaceId = req.params.id as string;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });

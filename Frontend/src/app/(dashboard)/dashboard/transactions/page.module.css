@@ -58,15 +58,13 @@
   border-color: var(--color-primary);
 }
 
-/* System spacing container block matching settings structure anchors */
 .systemGlobalFooterWrapper {
   margin-top: 1.5rem;
   width: 100%;
 }
 /* === SECTION 2 END === */
-
 /* ==========================================================================
-   === SECTION 3: OVERLAY POPUP MODAL STYLES ===
+   === SECTION 3: OVERLAY POPUP MODAL STYLES (DEFENSIVE FIX) ===
    ========================================================================== */
 .modalOverlayBackdrop {
   position: fixed;
@@ -81,6 +79,8 @@
   justify-content: center;
   z-index: 9999;
   animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1.5rem; /* 🚀 Safety perimeter prevents touching hard edges */
+  box-sizing: border-box;
 }
 
 .modalContentCard {
@@ -92,6 +92,27 @@
   box-shadow: 0 20px 50px -12px rgba(16, 4, 63, 0.25);
   animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   box-sizing: border-box;
+  
+  /* 🚀 FIX: Lock max height relative to viewport and allow scrolling inside the card */
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  
+  /* Smooth scrolling feel for iOS/Safari wrappers */
+  -webkit-overflow-scrolling: touch; 
+}
+
+/* Optional: Make the scrollbar look elegant and thin in dark/light modes */
+.modalContentCard::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modalContentCard::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalContentCard::-webkit-scrollbar-thumb {
+  background: rgba(16, 4, 63, 0.15);
+  border-radius: 10px;
 }
 
 .modalContentCard :global(.TransactionForm_formCard__2mN8x),
@@ -118,8 +139,9 @@
 
 @media (max-width: 768px) {
   .modalContentCard {
-    width: calc(100% - 2rem);
-    margin: 1rem;
+    width: 100%;
+    max-height: calc(100vh - 2rem);
+    margin: 0;
   }
 }
 /* === SECTION 3 END === */

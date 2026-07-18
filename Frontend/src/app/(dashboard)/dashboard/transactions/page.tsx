@@ -1,29 +1,23 @@
 // src/app/(dashboard)/dashboard/transactions/page.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
 import React, { useState, useEffect, useCallback } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
-import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext"; // NEW
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { transactionService, categoryService, Transaction, Category } from "@/utils/api";
 import { toast } from "sonner";
 
 import TransactionHeader from "@/components/transactions/TransactionHeader/TransactionHeader";
 import TransactionFilterBar, { TransactionTypeFilter } from "@/components/transactions/TransactionFilterBar/TransactionFilterBar";
-import TransactionLedgerGrid from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
+import TransactionLedgerGrid, { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
 import TransactionPagination from "@/components/transactions/TransactionPagination/TransactionPagination";
 import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/BulkActionToolBelt";
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
+import { DebtReminderForm } from "@/components/forms/DebtReminderForm/DebtReminderForm"; // 🚀 IMPORTED NEW FORM Component
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES ===
-   ========================================================================== */
 type FormPayload = {
   originalAmount: number;
   originalCurrency: string;
@@ -35,12 +29,11 @@ type FormPayload = {
   categoryId: string;
   id?: string;
 };
-/* === SECTION 2 END === */
 
 export default function TransactionsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
-  const { convertAmount } = useCurrency(); // NEW
+  const { convertAmount } = useCurrency();
 
   /* --- STATE --- */
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -58,9 +51,9 @@ export default function TransactionsPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  /* ==========================================================================
-     === LIFECYCLE SYNC ===
-     ========================================================================== */
+  // 🚀 ACTIVE DEBT TARGET RECORD STATE
+  const [activeReminderTx, setActiveReminderTx] = useState<TransactionRecord | null>(null);
+
   const refreshLedgerData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
@@ -99,9 +92,6 @@ export default function TransactionsPage() {
     syncWorkspaceLedgerOnSwitch();
   }, [activeWorkspaceId]);
 
-  /* ==========================================================================
-     === TRANSACTION MUTATION HANDLERS ===
-     ========================================================================== */
   const handleOpenCreateModal = () => {
     setEditingTransaction(null);
     setIsModalOpen(true);
@@ -123,7 +113,6 @@ export default function TransactionsPage() {
         await transactionService.delete(payload.id);
       }
       
-      // 🚀 FIXED: Inject the secure activeWorkspaceId context instead of relying on empty form mappings
       await transactionService.create({
         originalAmount: payload.originalAmount,
         originalCurrency: payload.originalCurrency,
@@ -133,7 +122,7 @@ export default function TransactionsPage() {
         date: payload.date,
         workspaceId: activeWorkspaceId,
         categoryId: payload.categoryId,
-        amount: payload.originalAmount, // legacy field
+        amount: payload.originalAmount, 
       });
 
       await refreshLedgerData(); 
@@ -178,9 +167,6 @@ export default function TransactionsPage() {
     }
   };
 
-  /* ==========================================================================
-     === SELECTION MATRIX ===
-     ========================================================================== */
   const handleToggleSingleRowSelection = (targetId: string) => {
     setSelectedRecordIds((current) => 
       current.includes(targetId) ? current.filter(id => id !== targetId) : [...current, targetId]
@@ -196,9 +182,6 @@ export default function TransactionsPage() {
 
   const handleClearSelectionQueue = () => setSelectedRecordIds([]);
 
-  /* ==========================================================================
-     === SEARCH & FILTER ===
-     ========================================================================== */
   const processedFilteredRecords = transactions.filter((singleLog) => {
     const normalQuery = searchQuery.toLowerCase().trim();
     const matchesSearch = normalQuery === "" || singleLog.description.toLowerCase().includes(normalQuery);
@@ -207,7 +190,6 @@ export default function TransactionsPage() {
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  // Compute totals in base USD, then convert to workspace currency
   let totalIncomeUSD = 0;
   let totalExpenseUSD = 0;
 
@@ -223,7 +205,6 @@ export default function TransactionsPage() {
   const calculatedIncomeTotal = convertAmount(totalIncomeUSD, "USD", workspaceCurrency);
   const calculatedExpenseTotal = convertAmount(totalExpenseUSD, "USD", workspaceCurrency);
 
-  /* --- PAGINATION --- */
   const indexPositionOfLastRowItem = currentPage * itemsPerPage;
   const indexPositionOfFirstRowItem = indexPositionOfLastRowItem - itemsPerPage;
   
@@ -234,13 +215,10 @@ export default function TransactionsPage() {
     category: tx.category?.name || "General",
     originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
     originalCurrency: tx.originalCurrency ?? "USD",
-    amount: Number(tx.amount), // keep for backward compatibility
+    amount: Number(tx.amount), 
     type: tx.type.toLowerCase() as "income" | "expense"
   })).slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);
 
-  /* ==========================================================================
-     === RENDER ===
-     ========================================================================== */
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
@@ -276,6 +254,7 @@ export default function TransactionsPage() {
           records={adaptiveGridRows}
           onEditRecord={handleEditRecordTrigger}
           onDeleteRecord={handleDeleteRecordTrigger}
+          onSendReminder={(row) => setActiveReminderTx(row)} // 🚀 LINKED DISPATCHER PROP
           selectedIds={selectedRecordIds}
           onToggleSelectRow={handleToggleSingleRowSelection}
           onToggleSelectAllOnPage={handleToggleSelectAllOnPage}
@@ -305,7 +284,6 @@ export default function TransactionsPage() {
         />
       </div>
 
-      {/* 🚀 FIXED: Now passing activeWorkspaceId directly into the download control block */}
       <TransactionFooter 
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
@@ -313,6 +291,19 @@ export default function TransactionsPage() {
         activeWorkspaceId={activeWorkspaceId}
       />
 
+      {/* 🚀 PREMIUM REMINDER MODAL MOUNTED SAFELY UNDER MAIN PAGE OVERLAY */}
+      {activeReminderTx && (
+        <div className={styles.modalOverlayBackdrop} onClick={() => setActiveReminderTx(null)}>
+          <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
+            <DebtReminderForm 
+              transaction={activeReminderTx} 
+              onCancel={() => setActiveReminderTx(null)} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Standard Transaction Modals */}
       {isModalOpen && (
         <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>

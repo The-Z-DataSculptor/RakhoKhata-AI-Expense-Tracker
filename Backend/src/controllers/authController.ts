@@ -13,7 +13,12 @@ import {
   sendPasswordResetEmail, 
   sendVerificationEmail, 
   sendSecurityAlertEmail 
-} from "../services/emailService"; // 🚀 All services cleanly linked
+} from "../services/emailService";
+// 🚀 Centralized Source of Truth Categories Import
+import { 
+  SHARED_DEFAULT_PERSONAL_CATEGORIES, 
+  SHARED_DEFAULT_BUSINESS_CATEGORIES 
+} from "./workspaceController";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -33,28 +38,6 @@ const COOKIE_OPTIONS = {
   sameSite: "lax" as const, 
   maxAge: 7 * 24 * 60 * 60 * 1000 
 };
-
-const PERSONAL_CATEGORIES = [
-  { name: "Salary", type: "INCOME", color: "#10b981" },
-  { name: "Housing", type: "EXPENSE", color: "#3b82f6" },
-  { name: "Food", type: "EXPENSE", color: "#ef4444" },
-  { name: "Bills", type: "EXPENSE", color: "#f59e0b" },
-  { name: "Transport", type: "EXPENSE", color: "#8b5cf6" },
-  { name: "Shopping", type: "EXPENSE", color: "#ec4899" },
-  { name: "Health", type: "EXPENSE", color: "#14b8a6" },
-  { name: "Savings", type: "EXPENSE", color: "#059669" }
-];
-
-const BUSINESS_CATEGORIES = [
-  { name: "Revenue", type: "INCOME", color: "#10b981" },
-  { name: "Payroll", type: "EXPENSE", color: "#f43f5e" },
-  { name: "Marketing", type: "EXPENSE", color: "#6366f1" },
-  { name: "Software", type: "EXPENSE", color: "#0ea5e9" },
-  { name: "Inventory", type: "EXPENSE", color: "#d97706" },
-  { name: "Office", type: "EXPENSE", color: "#64748b" },
-  { name: "Travel", type: "EXPENSE", color: "#d946ef" },
-  { name: "Taxes", type: "EXPENSE", color: "#dc2626" }
-];
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -109,14 +92,14 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
               name: "Personal", 
               currency: baseCurrency,
               categories: {
-                create: PERSONAL_CATEGORIES
+                create: SHARED_DEFAULT_PERSONAL_CATEGORIES // 🚀 Linked safely
               }
             },
             { 
               name: "Business", 
               currency: baseCurrency,
               categories: {
-                create: BUSINESS_CATEGORIES
+                create: SHARED_DEFAULT_BUSINESS_CATEGORIES // 🚀 Linked safely
               }
             }
           ]
@@ -138,10 +121,9 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       },
     });
 
-    // 🚀 NEW: Create an automatic verification token during user signup workflow
     const rawVerifyToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawVerifyToken).digest("hex");
-    const validationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000); // Generous 24 hour window
+    const validationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await prisma.verificationToken.create({
       data: {
@@ -152,10 +134,8 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       },
     });
 
-    // Build user-facing verification URL pathway string
     const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerifyToken}`;
     
-    // Send out welcome onboarding package instantly without blocking server operations thread
     sendVerificationEmail(newUser.email, newUser.name, verificationUrl).catch(err => {
       console.error("Async Verification Dispatch Error:", err);
     });
@@ -306,7 +286,7 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
 /* === SECTION 6 END === */
 
 /* ==========================================================================
-   === SECTION 7: UPDATE PROFILE CONTROLLER (NEW) ===
+   === SECTION 7: UPDATE PROFILE CONTROLLER ===
    ========================================================================== */
 export const updateProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -347,7 +327,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
 /* === SECTION 7 END === */
 
 /* ==========================================================================
-   === SECTION 8: CHANGE PASSWORD CONTROLLER (NEW) ===
+   === SECTION 8: CHANGE PASSWORD CONTROLLER ===
    ========================================================================== */
 export const changePassword = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -383,7 +363,6 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response): 
       data: { passwordHash: newHash }
     });
 
-    // 🚀 NEW: Transmit an instant, clear safety security alert upon password adjustment loop
     sendSecurityAlertEmail(user.email, user.name, "Account Password").catch(err => {
       console.error("Async Security Warning Failure Trigger:", err);
     });
@@ -397,12 +376,8 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response): 
 /* === SECTION 8 END === */
 
 /* ==========================================================================
-   === SECTION 8A: FORGOT PASSWORD RECOVERY MANAGEMENT SYSTEM (NEW) ===
+   === SECTION 8A: FORGOT PASSWORD RECOVERY MANAGEMENT SYSTEM ===
    ========================================================================== */
-
-/**
- * PHASE 1: Receives an email from form input, generates a recovery link token, saves hash to db, and sends it.
- */
 export const requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
@@ -414,20 +389,15 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
     const normalizedEmail = email.trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     
-    // 🛡️ SECURITY OBFUSCATION: Send the same response code even if the target account doesn't exist
     if (!user) {
       res.status(200).json({ message: "If that account exists in our system, a recovery link has been dispatched." });
       return;
     }
 
-    // Generate a secure 64-character token string
     const rawResetToken = crypto.randomBytes(32).toString("hex");
-
-    // Compute a safe SHA-256 string signature hash for index tracking checks
     const tokenHash = crypto.createHash("sha256").update(rawResetToken).digest("hex");
-    const expirationDeadline = new Date(Date.now() + 15 * 60 * 1000); // Strict 15 min window
+    const expirationDeadline = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Save token data details directly to the generic verification tracking table
     await prisma.verificationToken.create({
       data: {
         tokenHash,
@@ -437,10 +407,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
       },
     });
 
-    // Build the query destination string tracking link pointing to your client browser routing app view
     const recoveryLink = `http://localhost:3000/reset-password?token=${rawResetToken}`;
-
-    // Pass configuration variables straight down to the Resend sandbox engine layer
     await sendPasswordResetEmail(user.email, user.name, recoveryLink);
 
     res.status(200).json({ message: "If that account exists in our system, a recovery link has been dispatched." });
@@ -450,9 +417,6 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
   }
 };
 
-/**
- * PHASE 2: Verifies raw token from incoming url link query, validates lifecycle bounds, updates target row password hash
- */
 export const resetForgottenPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { token, newPassword } = req.body;
@@ -461,10 +425,8 @@ export const resetForgottenPassword = async (req: Request, res: Response): Promi
       return;
     }
 
-    // Recompute the incoming SHA-256 payload signature to find our index column
     const computedHash = crypto.createHash("sha256").update(token).digest("hex");
 
-    // Check verification tracking log table record
     const tokenRecord = await prisma.verificationToken.findUnique({
       where: { tokenHash: computedHash }
     });
@@ -474,26 +436,21 @@ export const resetForgottenPassword = async (req: Request, res: Response): Promi
       return;
     }
 
-    // Confirm lifecycle timeframe context
     if (new Date() > tokenRecord.expiresAt) {
-      // Clean up the stale expired row block tracking parameters dynamically
       await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
       res.status(400).json({ error: "Recovery link has expired. Please request a new token identifier." });
       return;
     }
 
-    // Fetch account user targeting the identifier email parameter record
     const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
     if (!user) {
       res.status(404).json({ error: "Target user profile account details no longer exist in our tables." });
       return;
     }
 
-    // Build fresh password hash maps
     const salt = await bcrypt.genSalt(10);
     const updatedHashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update operational rows within an atomic transaction execution lifecycle loop
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
@@ -511,9 +468,6 @@ export const resetForgottenPassword = async (req: Request, res: Response): Promi
   }
 };
 
-/**
- * 🚀 NEW: Processes incoming account verification hashes to activate profile permission tiers
- */
 export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
   try {
     const { token } = req.body;
@@ -545,7 +499,6 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Perform an atomic update setting verification fields active while removing lifecycle code
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },

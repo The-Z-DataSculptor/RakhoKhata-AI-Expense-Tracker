@@ -140,20 +140,27 @@
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: UTILITY ACTION TRIGGER BUTTON NODES ===
+   === SECTION 3: UTILITY ACTION TRIGGER BUTTON NODES (ALIGNMENT FIX) ===
    ========================================================================== */
 .actionUtilitesButtonDock {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .rowUtilityIconButtonNode {
   background: none;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  padding: 0.4rem;
+  
+  /* 🚀 STRATEGIC LOCK: Guarantees absolute rigid column alignment tracks */
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  
   border-radius: 6px;
   outline: none;
   display: flex;
@@ -162,16 +169,25 @@
   transition: var(--transition-fast);
 }
 
-.rowUtilityIconButtonNode:hover {
+.rowUtilityIconButtonNode:hover:not(:disabled) {
   color: var(--color-primary);
   background-color: var(--primary-soft);
   border-color: var(--color-accent-light);
 }
 
-.rowUtilityIconButtonNode.dangerHoverPillNode:hover {
+.rowUtilityIconButtonNode.dangerHoverPillNode:hover:not(:disabled) {
   color: var(--color-danger) !important;
   background-color: var(--danger-soft) !important;
   border-color: var(--color-danger) !important;
+}
+
+/* 🚀 DESIGN FIX: Placeholder slots now map to the precise structural sizing profile */
+.invisibleLayoutSlot {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
 }
 /* === SECTION 3 END === */
 

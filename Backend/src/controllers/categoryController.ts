@@ -1,267 +1,392 @@
 // Backend/src/controllers/categoryController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND CONFIGURATION ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Response } from "express";
-import { prisma } from "../db";                                      // Core database client link
-import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure session tracker layout
+import { prisma } from "../db";
+import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
-// 🚀 FIXED: Added "unassigned" to the lowercase protection blacklist to guard it against mutations
-const IMMUTABLE_SYSTEM_CATEGORIES = ["owed to me (receivable)", "my debts (payable)", "unassigned"];
+// List of system‑defined categories that cannot be modified or deleted
+const IMMUTABLE_SYSTEM_CATEGORIES = [
+  "owed to me (receivable)",
+  "my debts (payable)",
+  "unassigned",
+];
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: FETCH WORKSPACE CATEGORIES ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-export const getWorkspaceCategories = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+
+/**
+ * Helper that returns a safe error object to prevent information leakage.
+ */
+function buildSafeError(message: string): { error: string } {
+  return { error: message };
+}
+
+/**
+ * Checks whether a given category name (case‑insensitive) is a protected system category.
+ */
+function isSystemCategory(name: string): boolean {
+  const normalized = name.toLowerCase().trim();
+  return IMMUTABLE_SYSTEM_CATEGORIES.includes(normalized);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+// ---------------------------------------------------------------------------
+// GET WORKSPACE CATEGORIES
+// ---------------------------------------------------------------------------
+export const getWorkspaceCategories = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
+    const targetWorkspaceId = req.query.workspaceId
+      ? String(req.query.workspaceId)
+      : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Session credentials invalid." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
-
     if (!targetWorkspaceId) {
-      res.status(400).json({ error: "Workspace query identifier parameter is required." });
+      res
+        .status(400)
+        .json(buildSafeError("Workspace query parameter is required."));
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
-    
-    // DEFENSIVE FIX: String cast coercion ensures type mismatches don't trigger a false 403
-    if (!workspaceCheck || String(workspaceCheck.userId) !== String(userId)) {
-      res.status(403).json({ error: "Access denied. Verification credentials invalid for this profile." });
+    // Ownership verification
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: targetWorkspaceId },
+    });
+    if (
+      !workspaceCheck ||
+      String(workspaceCheck.userId) !== String(userId)
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
       return;
     }
 
     const categories = await prisma.category.findMany({
       where: { workspaceId: targetWorkspaceId },
-      orderBy: { name: "asc" }
+      orderBy: { name: "asc" },
     });
 
     res.status(200).json({ categories });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Fetch Categories Controller Error:", error);
-    res.status(500).json({ error: "Internal server error while retrieving categories index." });
+    res
+      .status(500)
+      .json(buildSafeError("Internal server error while retrieving categories."));
   }
 };
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: CREATE CUSTOM CATEGORY ===
-   ========================================================================== */
-export const createCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// CREATE CATEGORY
+// ---------------------------------------------------------------------------
+export const createCategory = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { 
-      name, 
-      type, 
-      color, 
+    const {
+      name,
+      type,
+      color,
       workspaceId,
       isRecurring,
       frequency,
       dueDay,
-      reminderDays
-    } = req.body;
+      reminderDays,
+    } = req.body as Record<string, unknown>;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access tracking metrics." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
 
-    if (!name || !name.trim() || !type || !workspaceId) {
-      res.status(400).json({ error: "Missing required category parameters." });
+    if (!name || !String(name).trim() || !type || !workspaceId) {
+      res
+        .status(400)
+        .json(buildSafeError("Missing required category parameters."));
       return;
     }
 
-    if (type !== "INCOME" && type !== "EXPENSE" && type !== "BOTH") {
-      res.status(400).json({ error: "Allocation mapping must be strictly INCOME, EXPENSE, or BOTH." });
+    if (
+      type !== "INCOME" &&
+      type !== "EXPENSE" &&
+      type !== "BOTH"
+    ) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            "Allocation mapping must be strictly INCOME, EXPENSE, or BOTH."
+          )
+        );
       return;
     }
 
-    // 🛡️ SECURITY GUARD: Prevent creating a custom category that mimics a locked system category title
-    const normalizedIncomingName = name.toLowerCase().trim();
-    if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedIncomingName)) {
-      res.status(400).json({ 
-        error: `The category name "${name.trim()}" is reserved for system operations.` 
-      });
+    // Prevent creation of a category that mimics a system category
+    if (isSystemCategory(String(name))) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            `The category name "${String(name).trim()}" is reserved for system operations.`
+          )
+        );
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: workspaceId } });
-    
-    // DEFENSIVE FIX: String cast coercion protection
-    if (!workspaceCheck || String(workspaceCheck.userId) !== String(userId)) {
-      res.status(403).json({ error: "Access denied. Action signature verification failed." });
+    // Workspace ownership check
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: String(workspaceId) },
+    });
+    if (
+      !workspaceCheck ||
+      String(workspaceCheck.userId) !== String(userId)
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
       return;
     }
 
     const category = await prisma.category.create({
       data: {
-        name: name.trim(),
-        type,
-        color: color || "#7E7A9C", 
-        workspaceId,
-        isRecurring: !!isRecurring, // 🎛️ User choice driven: defaults to false if omitted or undefined
-        frequency: frequency || null,
-        dueDay: (dueDay !== undefined && dueDay !== null) ? Number(dueDay) : null,
-        reminderDays: (reminderDays !== undefined && reminderDays !== null) ? Number(reminderDays) : null,
-      }
+        name: String(name).trim(),
+        type: String(type),
+        color: color ? String(color) : "#7E7A9C",
+        workspaceId: String(workspaceId),
+        isRecurring: Boolean(isRecurring),
+        frequency: frequency ? String(frequency) : null,
+        dueDay:
+          dueDay !== undefined && dueDay !== null
+            ? Number(dueDay)
+            : null,
+        reminderDays:
+          reminderDays !== undefined && reminderDays !== null
+            ? Number(reminderDays)
+            : null,
+      },
     });
 
     res.status(201).json({
       message: "Custom financial category deployed successfully!",
-      category
+      category,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Create Category Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error establishing category row mapping." });
+    res
+      .status(500)
+      .json(
+        buildSafeError(
+          "Internal server error establishing category row mapping."
+        )
+      );
   }
 };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: UPDATE / RE-SAVE CATEGORY CONTROLLER ===
-   ========================================================================== */
-export const updateCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// UPDATE CATEGORY
+// ---------------------------------------------------------------------------
+export const updateCategory = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    
-    // Adaptive parameter extraction handles fallback parameter labels seamlessly
-    const parsedId = req.params.id || req.params.categoryId || req.query.id;
+    // Adaptive parameter extraction (id may come from params or query)
+    const parsedId =
+      req.params.id || req.params.categoryId || req.query.id;
     const targetId = parsedId ? String(parsedId) : undefined;
-    
-    const { name, type, color, isRecurring, frequency, dueDay, reminderDays } = req.body;
+
+    const { name, type, color, isRecurring, frequency, dueDay, reminderDays } =
+      req.body as Record<string, unknown>;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized data modification attempt." });
+      res.status(401).json(buildSafeError("Unauthorized data modification attempt."));
       return;
     }
-
     if (!targetId) {
-      res.status(400).json({ error: "Target modification category id path reference parameter is required." });
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            "Target modification category id path reference is required."
+          )
+        );
       return;
     }
 
     const targetCategory = await prisma.category.findUnique({
       where: { id: targetId },
-      include: { workspace: true }
+      include: { workspace: true },
     });
 
     if (!targetCategory) {
-      res.status(404).json({ error: "Category targeted for synchronization routines was not found." });
+      res
+        .status(404)
+        .json(
+          buildSafeError(
+            "Category targeted for synchronization routines was not found."
+          )
+        );
       return;
     }
 
-    // DEFENSIVE FIX: String casting ensures strings vs integers check out perfectly
     if (String(targetCategory.workspace.userId) !== String(userId)) {
-      res.status(403).json({ error: "Access denied. Workspace data alignment match mismatched." });
+      res
+        .status(403)
+        .json(buildSafeError("Access denied. Workspace ownership mismatch."));
       return;
     }
 
-    // 🚀 TARGETED GUARDRAIL: Automatically blocks modifications to locked system categories
-    const normalizedName = targetCategory.name.toLowerCase().trim();
-    if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedName)) {
-      res.status(400).json({ 
-        error: `The core system category "${targetCategory.name}" is locked by the application architecture and cannot be modified.` 
-      });
+    // Block modification of immutable system categories
+    if (isSystemCategory(targetCategory.name)) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            `The core system category "${targetCategory.name}" is locked and cannot be modified.`
+          )
+        );
       return;
     }
 
-    // 🛡️ SECURITY GUARD: Prevent renaming an otherwise normal category into a reserved system category title
-    if (name !== undefined) {
-      const normalizedIncomingName = name.toLowerCase().trim();
-      if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedIncomingName)) {
-        res.status(400).json({ 
-          error: `Cannot rename category to "${name.trim()}" because it is a reserved system title.` 
-        });
-        return;
-      }
+    // Prevent renaming to a reserved system category name
+    if (name !== undefined && isSystemCategory(String(name))) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            `Cannot rename category to "${String(name).trim()}" because it is a reserved system title.`
+          )
+        );
+      return;
     }
 
     const updatedCategory = await prisma.category.update({
       where: { id: targetId },
       data: {
-        name: name !== undefined ? name.trim() : targetCategory.name,
-        type: type !== undefined ? type : targetCategory.type,
-        color: color !== undefined ? color : targetCategory.color,
-        isRecurring: isRecurring !== undefined ? !!isRecurring : targetCategory.isRecurring, // Holds choice or existing DB state
-        frequency: frequency !== undefined ? frequency : targetCategory.frequency,
-        dueDay: dueDay !== undefined ? (dueDay !== null ? Number(dueDay) : null) : targetCategory.dueDay,
-        reminderDays: reminderDays !== undefined ? (reminderDays !== null ? Number(reminderDays) : null) : targetCategory.reminderDays,
-      }
+        name: name !== undefined ? String(name).trim() : targetCategory.name,
+        type: type !== undefined ? String(type) : targetCategory.type,
+        color: color !== undefined ? String(color) : targetCategory.color,
+        isRecurring:
+          isRecurring !== undefined
+            ? Boolean(isRecurring)
+            : targetCategory.isRecurring,
+        frequency:
+          frequency !== undefined
+            ? String(frequency)
+            : targetCategory.frequency,
+        dueDay:
+          dueDay !== undefined
+            ? dueDay !== null
+              ? Number(dueDay)
+              : null
+            : targetCategory.dueDay,
+        reminderDays:
+          reminderDays !== undefined
+            ? reminderDays !== null
+              ? Number(reminderDays)
+              : null
+            : targetCategory.reminderDays,
+      },
     });
 
     res.status(200).json({
-      message: "Data flush routines executed cleanly. Category records synchronized.",
-      category: updatedCategory
+      message: "Category records synchronized successfully.",
+      category: updatedCategory,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Update Category Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error running data flush routines." });
+    res
+      .status(500)
+      .json(buildSafeError("Internal server error running data flush routines."));
   }
 };
-/* === SECTION 4 END === */
 
-/* ==========================================================================
-   === SECTION 5: DELETE CATEGORY ===
-   ========================================================================== */
-export const deleteCategory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// DELETE CATEGORY
+// ---------------------------------------------------------------------------
+export const deleteCategory = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    
-    // Adaptive parameter extraction handles fallback parameter labels seamlessly
-    const parsedId = req.params.id || req.params.categoryId || req.query.id;
+    const parsedId =
+      req.params.id || req.params.categoryId || req.query.id;
     const targetId = parsedId ? String(parsedId) : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access parameters." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
-
     if (!targetId) {
-      res.status(400).json({ error: "Category row identifier path parameter is missing." });
+      res
+        .status(400)
+        .json(buildSafeError("Category ID is missing."));
       return;
     }
 
     const categoryTarget = await prisma.category.findUnique({
       where: { id: targetId },
-      include: { workspace: true }
+      include: { workspace: true },
     });
 
     if (!categoryTarget) {
-      res.status(404).json({ error: "The requested category layout folder could not be found." });
+      res
+        .status(404)
+        .json(
+          buildSafeError("The requested category could not be found.")
+        );
       return;
     }
 
-    // DEFENSIVE FIX: Safe string verification
     if (String(categoryTarget.workspace.userId) !== String(userId)) {
-      res.status(403).json({ error: "Access denied. Workspace ownership match failed." });
+      res
+        .status(403)
+        .json(buildSafeError("Access denied. Workspace ownership mismatch."));
       return;
     }
 
-    // 🚀 TARGETED GUARDRAIL: Safely blocks deletion of protected categories to preserve bulk import relational paths
-    const normalizedName = categoryTarget.name.toLowerCase().trim();
-    if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedName)) {
-      res.status(400).json({ 
-        error: `The core system category "${categoryTarget.name}" is permanent and cannot be deleted from RakhoKhata.` 
-      });
+    // Prevent deletion of immutable system categories
+    if (isSystemCategory(categoryTarget.name)) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            `The core system category "${categoryTarget.name}" is permanent and cannot be deleted.`
+          )
+        );
       return;
     }
 
+    // Cascade: remove all transactions assigned to this category, then delete the category
     await prisma.transaction.deleteMany({
-      where: { categoryId: targetId }
+      where: { categoryId: targetId },
     });
 
     await prisma.category.delete({ where: { id: targetId } });
 
-    res.status(200).json({ message: "Category folder and its rule sets removed successfully." });
-  } catch (error) {
+    res
+      .status(200)
+      .json({ message: "Category and its transactions removed successfully." });
+  } catch (error: unknown) {
     console.error("Delete Category Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error running data flush routines." });
+    res
+      .status(500)
+      .json(buildSafeError("Internal server error running data flush routines."));
   }
 };
-/* === SECTION 5 END === */
+/* === SECTION 3 END === */

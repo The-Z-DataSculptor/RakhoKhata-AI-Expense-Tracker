@@ -1,28 +1,38 @@
-// src/routes/budgetRoutes.ts
+// Backend/src/routes/budgetRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Router } from "express";
-import { createBudget, getWorkspaceBudgets, updateBudget, deleteBudget } from "../controllers/budgetController";
+import {
+  createBudget,
+  getWorkspaceBudgets,
+  updateBudget,
+  deleteBudget,
+} from "../controllers/budgetController";
 import { verifyTokenGuard } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: ROUTING HIGHWAY DEFINITIONS ===
+   === SECTION 2: BUDGET ROUTES ===
    ========================================================================== */
 const router = Router();
 
-// Secure Highway: Read all active budget parameters mapped to a specific workspace ID query
+// Fetch all budgets for a workspace (workspaceId query parameter required)
 router.get("/", verifyTokenGuard, getWorkspaceBudgets);
 
-// Secure Highway: Inject a new category spending ceiling rule into Neon Cloud
+// Create a new budget rule
 router.post("/", verifyTokenGuard, createBudget);
 
-// Secure Highway: Update an existing budget rule
+// Update an existing budget
 router.put("/:id", verifyTokenGuard, updateBudget);
 
-// Secure Highway: Delete an existing budget alert rule card cleanly via dynamic path URL params
+// Delete a budget
 router.delete("/:id", verifyTokenGuard, deleteBudget);
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: EXPORT ===
+   ========================================================================== */
 export default router;
+/* === SECTION 3 END === */

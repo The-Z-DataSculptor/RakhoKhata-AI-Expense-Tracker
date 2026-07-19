@@ -1,26 +1,27 @@
-// src/index.ts
+// Backend/src/index.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-import app from "./server"; // Import the fully configured Express application core
-import { initNotificationScheduler } from "./services/notificationService"; // Background notification runner
-import { initBillReminderCron } from "./workers/billReminderWorker"; // 🚀 NEW: Import your bill reminders engine
+import app from "./server";
+import { initNotificationScheduler } from "./services/notificationService";
+import { initBillReminderCron } from "./workers/billReminderWorker";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: ENGINE ACTIVATION & NETWORK LISTENER ===
+   === SECTION 2: SERVER STARTUP & BACKGROUND JOBS ===
    ========================================================================== */
-const PORT = 5000; // Network port assigned for the backend service
+const PORT = 5000;
 
-// Binding to "0.0.0.0" forces Node to listen across all internal network interfaces
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Financial secure core engine active on http://localhost:${PORT}`);
-  
-  // Fire up the background cron scheduler quietly!
+  console.log(
+    `🚀 Financial secure core engine active on http://localhost:${PORT}`
+  );
+
+  // Start background scheduler for notifications
   initNotificationScheduler();
 
-  // 🚀 NEW: Start your automated daily bills and regular payments countdown checker!
+  // Start automated daily bill reminder checker
   initBillReminderCron();
 });
 /* === SECTION 2 END === */

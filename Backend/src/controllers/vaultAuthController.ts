@@ -1,7 +1,7 @@
-// src/controllers/vaultAuthController.ts
+// Backend/src/controllers/vaultAuthController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Response } from "express";
 import bcrypt from "bcrypt";
@@ -10,52 +10,80 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CHECK IF PIN INITIALIZED ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-export const checkVaultPinStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+
+/**
+ * Builds a safe error response object that does not leak internal information.
+ */
+function safeError(message: string): { error: string } {
+  return { error: message };
+}
+
+/**
+ * Validates that the provided PIN is exactly 4 numeric digits.
+ */
+function isValidPin(pin: string): boolean {
+  return /^\d{4}$/.test(pin);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+/**
+ * GET /api/auth/vault/pin-status
+ * Checks whether the current user has a vault PIN configured.
+ */
+export const checkVaultPinStatus = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access profile tracking." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { vaultPin: true }
+      select: { vaultPin: true },
     });
 
     if (!user) {
-      res.status(404).json({ error: "User account record not found." });
+      res.status(404).json(safeError("User account not found."));
       return;
     }
 
-    const hasPinConfigured = user.vaultPin !== null && user.vaultPin !== undefined;
-
-    res.status(200).json({ hasPin: hasPinConfigured });
-  } catch (error) {
+    const hasPin = user.vaultPin !== null && user.vaultPin !== undefined;
+    res.status(200).json({ hasPin });
+  } catch (error: unknown) {
     console.error("Check Vault PIN Error:", error);
-    res.status(500).json({ error: "Internal server error reading security parameters." });
+    res.status(500).json(safeError("Unable to verify PIN status."));
   }
 };
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: INITIAL PIN CREATION ENGINE ===
-   ========================================================================== */
-export const setupVaultPin = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+/**
+ * POST /api/auth/vault/pin-setup
+ * Creates a new 4‑digit vault PIN for the user.
+ */
+export const setupVaultPin = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { pin } = req.body;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access profile tracking." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
-    if (!pin || pin.length !== 4 || isNaN(Number(pin))) {
-      res.status(400).json({ error: "PIN must be a strict 4-digit numerical combination." });
+    const { pin } = req.body as Record<string, unknown>;
+
+    if (!pin || typeof pin !== "string" || !isValidPin(pin)) {
+      res.status(400).json(safeError("PIN must be exactly 4 digits."));
       return;
     }
 
@@ -64,105 +92,104 @@ export const setupVaultPin = async (req: AuthenticatedRequest, res: Response): P
 
     await prisma.user.update({
       where: { id: userId },
-      data: {
-        vaultPin: hashedPin
-      }
+      data: { vaultPin: hashedPin },
     });
 
     res.status(201).json({
       success: true,
-      message: "Secure vault gateway PIN established successfully!"
+      message: "Vault PIN configured successfully.",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Setup Vault PIN Error:", error);
-    res.status(500).json({ error: "Internal server error deploying security parameters." });
+    res.status(500).json(safeError("Failed to set up vault PIN."));
   }
 };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: UNLOCK VERIFICATION ENGAGEMENT ===
-   ========================================================================== */
-export const verifyVaultPin = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+/**
+ * POST /api/auth/vault/pin-verify
+ * Verifies the entered 4‑digit PIN against the stored hash.
+ */
+export const verifyVaultPin = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { pin } = req.body;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access profile tracking." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
-    if (!pin || pin.length !== 4 || isNaN(Number(pin))) {
-      res.status(400).json({ error: "PIN must be a 4-digit numerical code." });
+    const { pin } = req.body as Record<string, unknown>;
+
+    if (!pin || typeof pin !== "string" || !isValidPin(pin)) {
+      res.status(400).json(safeError("PIN must be exactly 4 digits."));
       return;
     }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { vaultPin: true }
+      select: { vaultPin: true },
     });
 
     if (!user) {
-      res.status(404).json({ error: "User account record not found." });
+      res.status(404).json(safeError("User account not found."));
       return;
     }
 
     const storedHash = user.vaultPin;
-
     if (!storedHash) {
-      res.status(400).json({ error: "No security PIN code established for this account." });
+      res.status(400).json(safeError("No vault PIN has been set up."));
       return;
     }
 
-    const isMatch = await bcrypt.compare(pin, storedHash);
-
-    if (!isMatch) {
+    const isValid = await bcrypt.compare(pin, storedHash);
+    if (!isValid) {
       res.status(401).json({
         success: false,
-        error: "Access denied. Invalid security validation code."
+        error: "Incorrect PIN.",
       });
       return;
     }
 
     res.status(200).json({
       success: true,
-      message: "Vault unlocked successfully."
+      message: "Vault unlocked.",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Verify Vault PIN Error:", error);
-    res.status(500).json({ error: "Internal server error verifying PIN." });
+    res.status(500).json(safeError("PIN verification failed."));
   }
 };
-/* === SECTION 4 END === */
 
-/* ==========================================================================
-   === SECTION 5: PIN DISABLE / REMOVAL ENGINE ===
-   ========================================================================== */
-export const disableVaultPin = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+/**
+ * POST /api/auth/vault/pin-disable
+ * Removes the vault PIN, disabling the lock.
+ */
+export const disableVaultPin = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access profile tracking." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
-    // Remove the PIN by setting it to null
+    // Delete the PIN by setting it to null
     await prisma.user.update({
       where: { id: userId },
-      data: {
-        vaultPin: null
-      }
+      data: { vaultPin: null },
     });
 
     res.status(200).json({
       success: true,
-      message: "Vault lock disabled successfully."
+      message: "Vault PIN has been removed.",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Disable Vault PIN Error:", error);
-    res.status(500).json({ error: "Internal server error disabling PIN." });
+    res.status(500).json(safeError("Failed to disable vault PIN."));
   }
 };
-/* === SECTION 5 END === */
+/* === SECTION 3 END === */

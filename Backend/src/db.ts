@@ -1,32 +1,33 @@
-// src/db.ts
+// Backend/src/db.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import "dotenv/config";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-// FIXED: Adjusted import route path to point straight to the generated root index layout
-import { PrismaClient } from "../prisma/generated"; 
+import { PrismaClient } from "../prisma/generated";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: POOL AND ADAPTER LAYER ===
+   === SECTION 2: DATABASE CONNECTION POOL & ADAPTER ===
    ========================================================================== */
-// Initialize the raw PostgreSQL connection pool instance
-const pool = new pg.Pool({
+
+// Create a connection pool for PostgreSQL using the DATABASE_URL environment variable
+const connectionPool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Pass the raw connection pool into the Prisma driver adapter wrapper
-const adapter = new PrismaPg(pool);
+// Wrap the pool with the Prisma driver adapter so Prisma can use the native driver
+const prismaAdapter = new PrismaPg(connectionPool);
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CLIENT GENERATION EXPORT ===
+   === SECTION 3: PRISMA CLIENT EXPORT ===
    ========================================================================== */
-// Instantiate the global client instance passing the custom PostgreSQL driver adapter
-const prisma = new PrismaClient({ adapter });
+
+// Instantiate the Prisma client with the custom adapter and export it globally
+const prisma = new PrismaClient({ adapter: prismaAdapter });
 
 export { prisma };
 /* === SECTION 3 END === */

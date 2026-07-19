@@ -1,34 +1,38 @@
-// src/routes/categoryRoutes.ts
+// Backend/src/routes/categoryRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Router } from "express";
-import { 
-  getWorkspaceCategories, 
-  createCategory, 
-  updateCategory, // 🚀 FIXED: Added the missing controller import
-  deleteCategory 
+import {
+  getWorkspaceCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
 } from "../controllers/categoryController";
-import { verifyTokenGuard } from "../middleware/authMiddleware"; // Secure perimeter check guard
+import { verifyTokenGuard } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: ROUTING HIGHWAY DEFINITIONS ===
+   === SECTION 2: CATEGORY ROUTES ===
    ========================================================================== */
 const router = Router();
 
-// Secure Highway: Read all folders associated with an active workspace search query
+// Fetch all categories for a workspace (workspaceId query parameter required)
 router.get("/", verifyTokenGuard, getWorkspaceCategories);
 
-// Secure Highway: Add a new custom category folder line item to the platform
+// Create a new category
 router.post("/", verifyTokenGuard, createCategory);
 
-// Secure Highway: Update / Save changes to an existing category folder 
-router.put("/:id", verifyTokenGuard, updateCategory); // 🚀 FIXED: Added the missing update highway lane!
+// Update an existing category by ID
+router.put("/:id", verifyTokenGuard, updateCategory);
 
-// Secure Highway: Tear down a target folder index line item using dynamic path variables
+// Delete a category and its associated transactions
 router.delete("/:id", verifyTokenGuard, deleteCategory);
 /* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: EXPORT ===
+   ========================================================================== */
 export default router;
+/* === SECTION 3 END === */

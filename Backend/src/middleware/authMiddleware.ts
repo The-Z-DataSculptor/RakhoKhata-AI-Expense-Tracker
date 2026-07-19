@@ -1,85 +1,118 @@
 // Backend/src/middleware/authMiddleware.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Response, NextFunction, Request } from "express";
-import crypto from "crypto"; 
-import { decrypt } from "paseto-ts/v4"; 
-import { prisma } from "../db"; // 🚀 ADDED: Required to look up live profile checkpoint states
-/* === SECTION 1 END === */
+import crypto from "crypto";
+import { decrypt } from "paseto-ts/v4";
+import { prisma } from "../db";
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
+// Structure of the payload embedded inside the PASETO token
 interface TokenPayload {
   userId: string;
   email: string;
 }
 
+// Custom request type that attaches the decoded user information
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   ========================================================================== */
+
+/**
+ * Generates the symmetric key required by PASETO (v4.local) using the application secret.
+ * The key must be exactly 52 characters long starting with "k4.local.".
+ */
+function derivePasetoKey(): string {
+  const secret =
+    process.env.PASETO_SECRET ||
+    "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
+  const hash = crypto.createHash("sha256").update(secret).digest();
+  const base64url = hash.toString("base64url");
+  return `k4.local.${base64url}`;
+}
+
+/**
+ * Builds a safe error object. No internal details are ever exposed.
+ */
+function safeError(message: string): { error: string } {
+  return { error: message };
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: KEY DERIVATION UTILITIES ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-const PASETO_SECRET = process.env.PASETO_SECRET || "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
 
-const getPasetoKey = (): string => {
-  const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
-  const base64url = hash.toString("base64url");
-  return `k4.local.${base64url}`;
-};
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: VERIFICATION GUARD MIDDLEWARE (SESSION CHECK) ===
-   ========================================================================== */
+/**
+ * Middleware that verifies the PASETO session token from cookies.
+ * On success, it attaches the user id and email to the request object.
+ */
 export const verifyTokenGuard = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
+    // 1. Extract token from HTTP‑only cookie
     const token = req.cookies?.token;
 
     if (!token) {
-      res.status(401).json({ error: "Access denied. Active session token missing." });
+      res
+        .status(401)
+        .json(safeError("Access denied. Active session token missing."));
       return;
     }
 
-    const { payload } = await decrypt(getPasetoKey(), token);
+    // 2. Decrypt the token using the derived PASETO key
+    const { payload } = await decrypt(derivePasetoKey(), token);
+
+    // 3. Narrow the payload to our known TokenPayload interface
     const decoded = payload as unknown as TokenPayload;
 
+    // 4. Attach the verified user information to the request for downstream handlers
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
     };
 
+    // 5. Proceed to the next middleware or route handler
     next();
-
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("PASETO Verification Guard Exception:", error);
-    
-    const errorString = String(error);
-    if (errorString.includes("expired")) {
-      res.status(403).json({ error: "Your financial session has expired. Please log in again." });
+
+    // Check if the token has expired so we can give a more specific reason
+    const errorMessage = String(error);
+    if (errorMessage.includes("expired")) {
+      res
+        .status(403)
+        .json(
+          safeError(
+            "Your financial session has expired. Please log in again."
+          )
+        );
       return;
     }
-    
-    res.status(403).json({ error: "Session authentication failed or token has been tampered with." });
+
+    // Generic authentication failure – never reveal why exactly
+    res
+      .status(403)
+      .json(
+        safeError(
+          "Session authentication failed or token has been tampered with."
+        )
+      );
   }
 };
-/* === SECTION 4 END === */
 
-/* ==========================================================================
-   === SECTION 5: 🚀 NEW: ONBOARDING ACCESSIBILITY GUARD ===
-   ========================================================================== */
 /**
- * Security Guard that blocks users from accessing financial engines (ledger records,
- * budgets, asset vaults) if they haven't finished the onboarding questionnaire form.
+ * Middleware that blocks access if the user has not completed the onboarding process.
+ * Must be placed after `verifyTokenGuard`.
  */
 export const ensureOnboardingCompleted = async (
   req: AuthenticatedRequest,
@@ -89,30 +122,40 @@ export const ensureOnboardingCompleted = async (
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Active user session context missing." });
+      res
+        .status(401)
+        .json(
+          safeError("Unauthorized access. Active user session context missing.")
+        );
       return;
     }
 
-    // Pull the real-time onboarding milestone checkpoint from Postgres
+    // Look up the onboarding status directly from the database
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { isOnboardingCompleted: true }
+      select: { isOnboardingCompleted: true },
     });
 
-    // If account doesn't exist or hasn't finished onboarding, block the request data line
     if (!userProfile || !userProfile.isOnboardingCompleted) {
-      res.status(403).json({ 
-        error: "Access denied. Please complete your personalized profile onboarding setup first." 
-      });
+      res
+        .status(403)
+        .json(
+          safeError(
+            "Access denied. Please complete your personalized profile onboarding setup first."
+          )
+        );
       return;
     }
 
-    // User passed the gate! Continue onto the data controller safely
+    // User has completed onboarding – continue to the requested route
     next();
-
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Onboarding Validation Gate Exception:", error);
-    res.status(500).json({ error: "Internal server error confirming customization status." });
+    res
+      .status(500)
+      .json(
+        safeError("Internal server error confirming customization status.")
+      );
   }
 };
-/* === SECTION 5 END === */
+/* === SECTION 3 END === */

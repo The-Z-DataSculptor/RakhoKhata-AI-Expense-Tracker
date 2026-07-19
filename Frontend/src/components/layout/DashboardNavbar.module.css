@@ -125,6 +125,8 @@
   background-color: var(--surface-muted);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  cursor: pointer !important;
 }
 
 .profileAvatarContainer:hover {
@@ -741,4 +743,52 @@
     width: auto;
     max-width: none;
   }
+}
+
+/* ==========================================================================
+   === SECTION 8: CUSTOM INTERACTIVE PROFILE CAMERA OVERLAYS ===
+   ========================================================================== */
+.avatarCameraOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 50%;
+}
+
+.profileAvatarContainer:hover .avatarCameraOverlay {
+  opacity: 1;
+}
+
+.avatarLoadingState {
+  cursor: not-allowed !important;
+  border-color: var(--color-primary);
+  opacity: 0.8;
+}
+
+.avatarLoadingSpinner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--surface-muted);
+  color: var(--color-primary);
+}
+
+.spinningLoaderIcon {
+  animation: spinLoader 1s linear infinite;
+}
+
+@keyframes spinLoader {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

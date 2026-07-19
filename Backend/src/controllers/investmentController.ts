@@ -1,20 +1,51 @@
-// src/controllers/investmentController.ts
+// Backend/src/controllers/investmentController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Response } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
+
+// Safe error wrapper to avoid leaking internal details
+function buildSafeError(message: string): { error: string } {
+  return { error: message };
+}
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CREATE INVESTMENT ASSET (NO LEGACY COLUMNS) ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-export const createInvestmentAsset = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+
+// Expected shape of the metadata stored in strategyNote JSON
+interface InvestmentMetadata {
+  displayName?: string;
+  displayIcon?: string;
+  rawNote?: string;
+  changeLog?: unknown[];
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+// ---------------------------------------------------------------------------
+// CREATE INVESTMENT ASSET (only permanent columns)
+// ---------------------------------------------------------------------------
+export const createInvestmentAsset = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json(buildSafeError("Unauthorized access."));
+      return;
+    }
 
+    // Destructure all possible fields from the request body (both old and new)
+    const body = req.body as Record<string, unknown>;
     const {
       workspaceId,
       isCustomProfile,
@@ -24,8 +55,8 @@ export const createInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
       originalAmount,
       originalCurrency,
       baseAmountUSD,
-      totalInvested,      // accepted but ignored in DB
-      capitalCurrency,    // accepted but ignored in DB
+      totalInvested,      // legacy – accepted but not written to DB
+      capitalCurrency,    // legacy – accepted but not written
       quantity,
       quantityOwned,
       name,
@@ -35,80 +66,110 @@ export const createInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
       userNote,
       strategyNote,
       history,
-    } = req.body;
+    } = body;
 
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
-      return;
-    }
-
-    const finalSymbol = String(assetSymbol || symbol || "ASSET").trim().toUpperCase();
+    // ----- Normalize and validate inputs -----
+    const finalSymbol = String(
+      assetSymbol || symbol || "ASSET"
+    ).trim().toUpperCase();
     const finalWorkspaceId = String(workspaceId);
-    const finalCategoryClass = String(categoryClass || customType || selectedType || "Traditional").trim();
+    const finalCategoryClass = String(
+      categoryClass || customType || selectedType || "Traditional"
+    ).trim();
 
-    // Parse amounts safely
+    // Amount parsing with safe fallbacks
     const rawAmount = originalAmount ?? totalInvested ?? 0;
-    const parsedOriginalAmount = typeof rawAmount === "number" ? rawAmount : parseFloat(String(rawAmount)) || 0;
+    const parsedOriginalAmount =
+      typeof rawAmount === "number"
+        ? rawAmount
+        : parseFloat(String(rawAmount)) || 0;
 
     const rawUSD = baseAmountUSD ?? totalInvested ?? 0;
-    const parsedBaseAmountUSD = typeof rawUSD === "number" ? rawUSD : parseFloat(String(rawUSD)) || 0;
+    const parsedBaseAmountUSD =
+      typeof rawUSD === "number"
+        ? rawUSD
+        : parseFloat(String(rawUSD)) || 0;
 
     const rawQty = quantity || quantityOwned || 0;
-    const finalQuantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty)) || 0;
+    const finalQuantity =
+      typeof rawQty === "number"
+        ? rawQty
+        : parseFloat(String(rawQty)) || 0;
 
-    const finalOriginalCurrency = String(originalCurrency || capitalCurrency || "USD").trim().toUpperCase();
+    const finalOriginalCurrency = String(
+      originalCurrency || capitalCurrency || "USD"
+    ).trim().toUpperCase();
 
-    if (!finalSymbol || !finalWorkspaceId || isNaN(finalQuantity) || isNaN(parsedOriginalAmount)) {
-      res.status(400).json({ error: "Missing or invalid parameters." });
+    if (
+      !finalSymbol ||
+      !finalWorkspaceId ||
+      isNaN(finalQuantity) ||
+      isNaN(parsedOriginalAmount)
+    ) {
+      res
+        .status(400)
+        .json(buildSafeError("Missing or invalid parameters."));
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: finalWorkspaceId } });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+    // ----- Workspace ownership verification -----
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: finalWorkspaceId },
+    });
+    if (
+      !workspaceCheck ||
+      workspaceCheck.userId !== userId
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
       return;
     }
 
-    // Build metadata (name, note, icon, history)
+    // ----- Build metadata bundle -----
     let finalDisplayName = name ? String(name) : "";
     let finalRawNote = "";
-    let finalHistory = history || [];
+    let finalHistory = Array.isArray(history) ? history : [];
 
+    // If a pre-formatted strategyNote JSON is provided, extract its fields
     if (strategyNote) {
       try {
-        const parsedNode = typeof strategyNote === "string" ? JSON.parse(strategyNote) : strategyNote;
+        const parsedNode: unknown =
+          typeof strategyNote === "string"
+            ? JSON.parse(strategyNote)
+            : strategyNote;
         if (parsedNode && typeof parsedNode === "object") {
-          if (parsedNode.displayName) finalDisplayName = String(parsedNode.displayName);
-          if (parsedNode.rawNote) finalRawNote = String(parsedNode.rawNote);
-          if (parsedNode.changeLog) finalHistory = parsedNode.changeLog;
+          const meta = parsedNode as InvestmentMetadata;
+          if (meta.displayName) finalDisplayName = String(meta.displayName);
+          if (meta.rawNote) finalRawNote = String(meta.rawNote);
+          if (meta.changeLog) finalHistory = meta.changeLog;
         }
       } catch {
+        // If parsing fails, treat it as a plain note string
         finalRawNote = String(strategyNote);
       }
     } else if (userNote) {
       finalRawNote = String(userNote);
     }
 
-    const metadataBundle = {
+    const metadataBundle: InvestmentMetadata = {
       displayName: finalDisplayName,
-      displayIcon: icon || "📦",
+      displayIcon: icon ? String(icon) : "📦",
       rawNote: finalRawNote,
       changeLog: finalHistory,
     };
 
-    // CREATE – only permanent columns
+    // ----- Create the investment record -----
     const asset = await prisma.investment.create({
       data: {
         assetSymbol: finalSymbol,
         categoryClass: finalCategoryClass,
-        isCustomProfile: isCustomProfile ?? false,
+        isCustomProfile: Boolean(isCustomProfile),
         originalAmount: parsedOriginalAmount,
         originalCurrency: finalOriginalCurrency,
         baseAmountUSD: parsedBaseAmountUSD,
         quantity: finalQuantity,
         strategyNote: JSON.stringify(metadataBundle),
         workspaceId: finalWorkspaceId,
-        // NO totalInvested or capitalCurrency
+        // NO totalInvested or capitalCurrency – those columns no longer exist
       },
     });
 
@@ -122,34 +183,51 @@ export const createInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
         history: metadataBundle.changeLog,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Create Investment Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error establishing asset vault row matching." });
+    res
+      .status(500)
+      .json(
+        buildSafeError(
+          "Internal server error establishing asset vault row matching."
+        )
+      );
   }
 };
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: FETCH WORKSPACE PORTFOLIO ASSETS ===
-   ========================================================================== */
-export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// FETCH WORKSPACE PORTFOLIO ASSETS
+// ---------------------------------------------------------------------------
+export const getWorkspaceInvestments = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
+    const targetWorkspaceId = req.query.workspaceId
+      ? String(req.query.workspaceId)
+      : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
 
     if (!targetWorkspaceId) {
-      res.status(400).json({ error: "Workspace ID required." });
+      res
+        .status(400)
+        .json(buildSafeError("Workspace ID is required."));
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: targetWorkspaceId },
+    });
+    if (
+      !workspaceCheck ||
+      workspaceCheck.userId !== userId
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
       return;
     }
 
@@ -158,9 +236,12 @@ export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Re
       orderBy: { assetSymbol: "asc" },
     });
 
+    // Hydrate each asset by parsing its strategyNote JSON
     const hydratedInvestments = investments.map((asset) => {
       try {
-        const parsed = JSON.parse(asset.strategyNote || "{}");
+        const parsed: InvestmentMetadata = JSON.parse(
+          asset.strategyNote || "{}"
+        );
         return {
           ...asset,
           name: parsed.displayName || `${asset.assetSymbol} Position`,
@@ -169,6 +250,7 @@ export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Re
           history: parsed.changeLog || [],
         };
       } catch {
+        // If JSON parsing fails, treat strategyNote as a plain string
         return {
           ...asset,
           name: `${asset.assetSymbol} Position`,
@@ -180,31 +262,40 @@ export const getWorkspaceInvestments = async (req: AuthenticatedRequest, res: Re
     });
 
     res.status(200).json({ investments: hydratedInvestments });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Fetch Investments Controller Error:", error);
-    res.status(500).json({ error: "Internal server error." });
+    res
+      .status(500)
+      .json(buildSafeError("Internal server error."));
   }
 };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: UPDATE INVESTMENT ASSET (EXACT REPLACEMENT OF METADATA) ===
-   ========================================================================== */
-export const updateInvestmentAsset = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// UPDATE INVESTMENT ASSET (exact replacement of metadata)
+// ---------------------------------------------------------------------------
+export const updateInvestmentAsset = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const assetId = req.params.id ? String(req.params.id) : undefined;
+    const assetId = req.params.id
+      ? String(req.params.id)
+      : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
 
     if (!assetId) {
-      res.status(400).json({ error: "Asset ID is required." });
+      res
+        .status(400)
+        .json(buildSafeError("Asset ID is required."));
       return;
     }
 
+    const body = req.body as Record<string, unknown>;
     const {
       assetSymbol,
       categoryClass,
@@ -212,108 +303,162 @@ export const updateInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
       originalAmount,
       originalCurrency,
       baseAmountUSD,
-      totalInvested,      // accepted but ignored
-      capitalCurrency,    // accepted but ignored
+      totalInvested,      // legacy – accepted but not written
+      capitalCurrency,    // legacy – accepted but not written
       quantity,
-      strategyNote,       // the full JSON string from the form
-    } = req.body;
+      strategyNote,
+    } = body;
 
+    // ----- Verify asset ownership -----
     const existingAsset = await prisma.investment.findUnique({
       where: { id: assetId },
       include: { workspace: true },
     });
 
     if (!existingAsset) {
-      res.status(404).json({ error: "Investment asset not found." });
+      res
+        .status(404)
+        .json(buildSafeError("Investment asset not found."));
       return;
     }
 
     if (existingAsset.workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+      res.status(403).json(buildSafeError("Access denied."));
       return;
     }
 
+    // ----- Build update payload dynamically -----
     const updateData: Record<string, unknown> = {};
 
-    if (assetSymbol !== undefined) updateData.assetSymbol = assetSymbol.trim().toUpperCase();
-    if (categoryClass !== undefined) updateData.categoryClass = categoryClass.trim();
-    if (isCustomProfile !== undefined) updateData.isCustomProfile = isCustomProfile;
-
-    if (quantity !== undefined) {
-      updateData.quantity = typeof quantity === "number" ? quantity : parseFloat(String(quantity)) || 0;
+    if (assetSymbol !== undefined) {
+      updateData.assetSymbol = String(assetSymbol).trim().toUpperCase();
+    }
+    if (categoryClass !== undefined) {
+      updateData.categoryClass = String(categoryClass).trim();
+    }
+    if (isCustomProfile !== undefined) {
+      updateData.isCustomProfile = Boolean(isCustomProfile);
     }
 
-    // Amounts – only update if provided
-    const rawAmount = originalAmount !== undefined ? originalAmount : totalInvested;
+    if (quantity !== undefined) {
+      const parsedQuantity =
+        typeof quantity === "number"
+          ? quantity
+          : parseFloat(String(quantity)) || 0;
+      updateData.quantity = parsedQuantity;
+    }
+
+    // Amount fields – prefer the new enterprise names, fallback to legacy
+    const rawAmount =
+      originalAmount !== undefined ? originalAmount : totalInvested;
     if (rawAmount !== undefined) {
-      const finalOriginal = typeof rawAmount === "number" ? rawAmount : parseFloat(String(rawAmount)) || 0;
+      const finalOriginal =
+        typeof rawAmount === "number"
+          ? rawAmount
+          : parseFloat(String(rawAmount)) || 0;
       updateData.originalAmount = finalOriginal;
     }
 
     const finalCurrency = originalCurrency ?? capitalCurrency;
     if (finalCurrency !== undefined) {
-      updateData.originalCurrency = finalCurrency.trim().toUpperCase();
+      updateData.originalCurrency = String(finalCurrency)
+        .trim()
+        .toUpperCase();
     }
 
     if (baseAmountUSD !== undefined) {
-      updateData.baseAmountUSD = typeof baseAmountUSD === "number" ? baseAmountUSD : parseFloat(String(baseAmountUSD)) || 0;
+      updateData.baseAmountUSD =
+        typeof baseAmountUSD === "number"
+          ? baseAmountUSD
+          : parseFloat(String(baseAmountUSD)) || 0;
     }
 
-    // ✅ CRITICAL FIX: If strategyNote is provided, store it EXACTLY as received.
-    // The frontend sends a complete JSON string – no merging with old data.
+    // Strategy note – store it exactly as received
     if (strategyNote !== undefined) {
-      updateData.strategyNote = typeof strategyNote === "string" ? strategyNote : JSON.stringify(strategyNote);
+      updateData.strategyNote =
+        typeof strategyNote === "string"
+          ? strategyNote
+          : JSON.stringify(strategyNote);
     }
 
+    // ----- Execute update -----
     const updatedAsset = await prisma.investment.update({
       where: { id: assetId },
       data: updateData,
     });
 
-    // Parse the strategyNote for the response
-    let responseMeta = { name: updatedAsset.assetSymbol, icon: "📦", userNote: "", history: [] };
+    // Parse the strategyNote for a clean response
+    let responseMeta: InvestmentMetadata = {
+      displayName: updatedAsset.assetSymbol,
+      displayIcon: "📦",
+      rawNote: "",
+      changeLog: [],
+    };
     try {
-      const parsed = JSON.parse(updatedAsset.strategyNote || "{}");
-      responseMeta = {
-        name: parsed.displayName || updatedAsset.assetSymbol,
-        icon: parsed.displayIcon || "📦",
-        userNote: parsed.rawNote || "",
-        history: parsed.changeLog || [],
-      };
-    } catch {}
+      const parsed: unknown = JSON.parse(
+        updatedAsset.strategyNote || "{}"
+      );
+      if (parsed && typeof parsed === "object") {
+        const meta = parsed as InvestmentMetadata;
+        responseMeta = {
+          displayName:
+            meta.displayName || updatedAsset.assetSymbol,
+          displayIcon: meta.displayIcon || "📦",
+          rawNote: meta.rawNote || "",
+          changeLog: meta.changeLog || [],
+        };
+      }
+    } catch {
+      // If parsing fails, use safe defaults
+    }
 
     res.status(200).json({
       message: "Asset updated successfully!",
       asset: {
         ...updatedAsset,
-        name: responseMeta.name,
-        icon: responseMeta.icon,
-        userNote: responseMeta.userNote,
-        history: responseMeta.history,
+        name: responseMeta.displayName,
+        icon: responseMeta.displayIcon,
+        userNote: responseMeta.rawNote,
+        history: responseMeta.changeLog,
       },
     });
-  } catch (error) {
-    console.error("Update Investment Controller Error:", error);
-    res.status(500).json({ error: "Internal server error while updating asset." });
+  } catch (error: unknown) {
+    console.error(
+      "Update Investment Controller Error:",
+      error
+    );
+    res
+      .status(500)
+      .json(
+        buildSafeError(
+          "Internal server error while updating asset."
+        )
+      );
   }
 };
-/* === SECTION 4 END === */
 
-/* ==========================================================================
-   === SECTION 5: DELETE INVESTMENT ASSET ===
-   ========================================================================== */
-export const deleteInvestmentAsset = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// DELETE INVESTMENT ASSET
+// ---------------------------------------------------------------------------
+export const deleteInvestmentAsset = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetId = req.params.id ? String(req.params.id) : undefined;
+    const targetId = req.params.id
+      ? String(req.params.id)
+      : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
 
     if (!targetId) {
-      res.status(400).json({ error: "Asset ID is missing." });
+      res
+        .status(400)
+        .json(buildSafeError("Asset ID is missing."));
       return;
     }
 
@@ -322,17 +467,27 @@ export const deleteInvestmentAsset = async (req: AuthenticatedRequest, res: Resp
       include: { workspace: true },
     });
 
-    if (!assetTarget || assetTarget.workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+    if (
+      !assetTarget ||
+      assetTarget.workspace.userId !== userId
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
       return;
     }
 
     await prisma.investment.delete({ where: { id: targetId } });
 
-    res.status(200).json({ message: "Asset removed successfully." });
-  } catch (error) {
-    console.error("Delete Investment Controller Error:", error);
-    res.status(500).json({ error: "Internal server error." });
+    res
+      .status(200)
+      .json({ message: "Asset removed successfully." });
+  } catch (error: unknown) {
+    console.error(
+      "Delete Investment Controller Error:",
+      error
+    );
+    res
+      .status(500)
+      .json(buildSafeError("Internal server error."));
   }
 };
-/* === SECTION 5 END === */
+/* === SECTION 3 END === */

@@ -121,13 +121,17 @@ export interface Workspace {
 export const apiFetch = async <T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const url = `${BACKEND_BASE_URL}${endpoint}`;
 
+  // 🚀 FIXED: Dynamically abstract the headers to allow multipart boundaries for binary streams
+  const customHeaders: Record<string, string> = { ...options.headers as Record<string, string> };
+  
+  if (!(options.body instanceof FormData)) {
+    customHeaders["Content-Type"] = customHeaders["Content-Type"] || "application/json";
+  }
+
   const defaultOptions: RequestInit = {
     ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    credentials: "include", // 🔑 Keeps cookies pinned and encrypted during the upload cycle
+    headers: customHeaders,
   };
 
   try {
@@ -163,7 +167,6 @@ export const transactionService = {
       body: JSON.stringify(data),
     }),
 
-  // 🚀 NEW: Added the optimized batch network ingestion wrapper path mapping
   bulkCreate: (data: { workspaceId: string; transactions: Omit<Transaction, "id" | "category">[] }) =>
     apiFetch<{ message: string }>("/transactions/bulk", {
       method: "POST",
@@ -293,6 +296,13 @@ export const userService = {
     apiFetch<{ message: string }>("/auth/change-password", {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
+  // 🚀 NEW: Automated multi-part media upload routine mapped smoothly to central pipeline
+  uploadAvatar: (formData: FormData) =>
+    apiFetch<{ message: string; avatarUrl: string }>("/users/upload-avatar", {
+      method: "POST",
+      body: formData,
     }),
 };
 

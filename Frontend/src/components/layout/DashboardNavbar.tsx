@@ -5,7 +5,6 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState, useSyncExternalStore, useEffect, useRef } from "react";
-// 🚀 ADDED: Import Next.js optimized Image loader tool
 import Image from "next/image"; 
 import {
   FiSun,
@@ -21,11 +20,13 @@ import {
   FiCalendar,
   FiAlertCircle,
   FiInfo,
-  FiCheckCircle
+  FiCheckCircle,
+  FiCamera,
+  FiLoader
 } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { notificationService, Notification } from "@/utils/api"; 
+import { notificationService, userService, Notification } from "@/utils/api"; 
 import { WORLD_CURRENCIES } from "@/constants/geoData"; 
 import styles from "./DashboardNavbar.module.css";
 /* === SECTION 1 END === */
@@ -73,40 +74,13 @@ function getNotificationIcon(sourceType: string) {
 }
 /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: COMPONENT LOGIC ===
-   ========================================================================== */
 const emptySubscribe = () => () => {};
-
-const timeGreetings = [
-  { hourStart: 5, hourEnd: 11, icon: <FiSunrise size={18} />, text: "Good morning" },
-  { hourStart: 12, hourEnd: 17, icon: <FiSun size={18} />, text: "Good afternoon" },
-  { hourStart: 18, hourEnd: 21, icon: <FiSunset size={18} />, text: "Good evening" },
-  { hourStart: 22, hourEnd: 4, icon: <FiMoon size={18} />, text: "Good night" },
-];
-
-const financeFacts = [
-  "The average person spends about 10% of their income on coffee.",
-  "Saving just $5 a day can grow to over $1,800 in a year.",
-  "The world's first ATM was installed in 1967 in London.",
-  "About 90% of millionaires have a budget.",
-  "The word 'budget' comes from the French word 'bougette' meaning a small bag.",
-  "People who track their expenses save 15% more on average.",
-  "The most common expense in Pakistan is food, followed by transportation.",
-  "Investing $100 a month at 8% return could grow to over $150,000 in 30 years.",
-  "The first credit card was introduced in 1950 by Diners Club.",
-  "More than 60% of people don't have a budget.",
-  "The average household spends about 30% of its income on housing.",
-  "Saving 10% of your income is a good starting point for building wealth.",
-  "The concept of compound interest is called the eighth wonder of the world.",
-  "A typical smartphone costs more than the average monthly rent in many cities.",
-  "The global average savings rate is around 20% of income.",
-];
 
 export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardNavbarProps) {
   const { activeTheme, changeTheme } = useTheme();
   const { currency, setCurrencyWithWorkspace } = useCurrency();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isMounted = useSyncExternalStore(
     emptySubscribe,
@@ -118,6 +92,17 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+
+  // Performance-grade State Synchronization pattern (No cascading useEffect renders)
+  const [prevAvatarUrl, setPrevAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
+
+  if (user?.avatarUrl !== prevAvatarUrl) {
+    setPrevAvatarUrl(user?.avatarUrl || null);
+    setCurrentAvatarUrl(user?.avatarUrl || null);
+  }
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -128,7 +113,33 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   } | null>(null);
   const [dynamicFact, setDynamicFact] = useState<string>("");
 
+  // Moved data sets inside the hook scope to resolve all linter dependency array tracking exceptions cleanly
   useEffect(() => {
+    const timeGreetings = [
+      { hourStart: 5, hourEnd: 11, icon: <FiSunrise size={18} />, text: "Good morning" },
+      { hourStart: 12, hourEnd: 17, icon: <FiSun size={18} />, text: "Good afternoon" },
+      { hourStart: 18, hourEnd: 21, icon: <FiSunset size={18} />, text: "Good evening" },
+      { hourStart: 22, hourEnd: 4, icon: <FiMoon size={18} />, text: "Good night" },
+    ];
+
+    const financeFacts = [
+      "The average person spends about 10% of their income on coffee.",
+      "Saving just $5 a day can grow to over $1,800 in a year.",
+      "The world's first ATM was installed in 1967 in London.",
+      "About 90% of millionaires have a budget.",
+      "The word 'budget' comes from the French word 'bougette' meaning a small bag.",
+      "People who track their expenses save 15% more on average.",
+      "The most common expense in Pakistan is food, followed by transportation.",
+      "Investing $100 a month at 8% return could grow to over $150,000 in 30 years.",
+      "The first credit card was introduced in 1950 by Diners Club.",
+      "More than 60% of people don't have a budget.",
+      "The average household spends about 30% of its income on housing.",
+      "Saving 10% of your income is a good starting point for building wealth.",
+      "The concept of compound interest is called the eighth wonder of the world.",
+      "A typical smartphone costs more than the average monthly rent in many cities.",
+      "The global average savings rate is around 20% of income.",
+    ];
+
     const timer = setTimeout(() => {
       const hour = new Date().getHours();
       const greeting = timeGreetings.find(
@@ -171,6 +182,38 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleAvatarClick = () => {
+    if (!isAvatarUploading) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert("Image is too large. Max size allocation limit is 3MB.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+      setIsAvatarUploading(true);
+      
+      const data = await userService.uploadAvatar(formData);
+      setCurrentAvatarUrl(data.avatarUrl);
+    } catch (error: unknown) {
+      console.error("Avatar Upload Exception Loop:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to modify profile image asset.";
+      alert(errorMessage);
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  };
+
   const handleMarkAsRead = async (id: string, isRead: boolean) => {
     if (isRead) return;
     try {
@@ -197,7 +240,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   };
 
   const activeCurrencyDetails = WORLD_CURRENCIES.find((c) => c.code.toUpperCase() === currency?.toUpperCase());
-
   const displayGreetingName = user?.name ? user.name.split(" ")[0] : "User";
   const formattedDate = isMounted
     ? new Date().toLocaleDateString("en-US", {
@@ -428,20 +470,46 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           )}
         </div>
 
-        {/* 🚀 FIXED: Upgraded from standard HTML <img> to Next.js optimized <Image /> */}
-        <div className={styles.profileAvatarContainer} title={user?.email || "Account Profile"}>
-          {user?.avatarUrl ? (
-            <Image 
-              src={user.avatarUrl} 
-              alt={user.name || "User Avatar"} 
-              className={styles.profileAvatarImage} 
-              width={38}
-              height={38}
-            />
-          ) : (
-            <div className={styles.avatarFallbackCircle}>
-              {displayGreetingName.charAt(0)}
+        <input 
+          type="file"
+          ref={fileInputRef}
+          onChange={handleAvatarChange}
+          accept="image/*"
+          style={{ display: "none" }}
+        />
+
+        <div 
+          className={`${styles.profileAvatarContainer} ${isAvatarUploading ? styles.avatarLoadingState : ""}`} 
+          onClick={handleAvatarClick}
+          title="Click to upload custom picture"
+        >
+          {isAvatarUploading ? (
+            <div className={styles.avatarLoadingSpinner}>
+              <FiLoader size={16} className={styles.spinningLoaderIcon} />
             </div>
+          ) : currentAvatarUrl ? (
+            <>
+              {/* 🚀 FIXED: Swapped to a standard img tag to safely read directly from local express server ports without NextJS proxy breaks */}
+              <img 
+                src={currentAvatarUrl} 
+                alt={user?.name || "User Avatar"} 
+                className={styles.profileAvatarImage} 
+                width="38"
+                height="38"
+              />
+              <div className={styles.avatarCameraOverlay}>
+                <FiCamera size={14} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.avatarFallbackCircle}>
+                {displayGreetingName.charAt(0)}
+              </div>
+              <div className={styles.avatarCameraOverlay}>
+                <FiCamera size={14} />
+              </div>
+            </>
           )}
         </div>
 

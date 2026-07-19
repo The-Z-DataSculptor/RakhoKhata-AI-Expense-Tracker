@@ -1,78 +1,117 @@
-// src/server.ts
+// Backend/src/server.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";  
-import { prisma } from "./db";            
-import authRoutes from "./routes/authRoutes"; 
-import workspaceRoutes from "./routes/workspaceRoutes";   
-import transactionRoutes from "./routes/transactionRoutes"; 
-import categoryRoutes from "./routes/categoryRoutes";       
-import budgetRoutes from "./routes/budgetRoutes";           
-import investmentRoutes from "./routes/investmentRoutes";   
-import aiRoutes from "./routes/aiRoutes";                   
-import notificationRoutes from "./routes/notificationRoutes"; 
-import { globalApiLimiter } from "./middleware/rateLimitMiddleware"; 
+import cookieParser from "cookie-parser";
+import path from "path";
+import { prisma } from "./db";
+import authRoutes from "./routes/authRoutes";
+import workspaceRoutes from "./routes/workspaceRoutes";
+import transactionRoutes from "./routes/transactionRoutes";
+import categoryRoutes from "./routes/categoryRoutes";
+import budgetRoutes from "./routes/budgetRoutes";
+import investmentRoutes from "./routes/investmentRoutes";
+import aiRoutes from "./routes/aiRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
+import userRoutes from "./routes/userRoutes";
+import { globalApiLimiter } from "./middleware/rateLimitMiddleware";
 /* === SECTION 1 END === */
 
 const app = express();
 
 /* ==========================================================================
-   === SECTION 3: GLOBAL MIDDLEWARES (SECURITY & COOKIE HANDSHAKE) ===
+   === SECTION 2: GLOBAL MIDDLEWARE ===
    ========================================================================== */
+
+// Enable Cross-Origin Resource Sharing for the Next.js frontend
 app.use(
   cors({
-    origin: "http://localhost:3000", 
-    credentials: true,               
+    origin: "http://localhost:3000", // Adjust in production
+    credentials: true,
   })
 );
 
-app.use(express.json());   
-app.use(cookieParser());   
+// Parse incoming JSON request bodies
+app.use(express.json());
 
+// Parse cookies from HTTP requests
+app.use(cookieParser());
+
+// Serve static files (e.g., uploaded avatars) from the public directory
+// Use an absolute path to avoid directory traversal issues
+app.use(
+  "/uploads",
+  express.static(path.resolve(process.cwd(), "public", "uploads"))
+);
+
+// Apply a global rate limiter to all /api routes
 app.use("/api", globalApiLimiter);
-/* === SECTION 3 END === */
+/* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 4: API ROUTE ENDPOINTS ===
+   === SECTION 3: API ROUTES ===
    ========================================================================== */
-app.get("/api/health", async (req, res) => {
+
+// Health check endpoint
+app.get("/api/health", async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ 
-      status: "active", 
+    res.json({
+      status: "active",
       message: "Welcome to the RakhoKhata Backend Engine!",
-      database: "Connected perfectly to Neon Cloud!"
+      database: "Connected perfectly to Neon Cloud!",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Database Health Check Failed:", error);
     res.status(500).json({ status: "error", error: "Database offline" });
   }
 });
 
+// Mount individual route modules
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/investments", investmentRoutes);
 app.use("/api/ai", aiRoutes);
-app.use("/api/notifications", notificationRoutes); 
+app.use("/api/notifications", notificationRoutes);
+/* === SECTION 3 END === */
 
 /* ==========================================================================
-   === 🚀 NEW: CENTRALIZED JSON EXCEPTION SHIELD ===
+   === SECTION 4: GLOBAL ERROR HANDLER ===
    ========================================================================== */
-// This intercepts all downstream middleware or routing crashes and forces clean JSON returns
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error("Global Server Exception Caught:", err);
-  
-  res.status(err.status || 500).json({
-    error: err.message || "An unexpected core engine error occurred on the server layer."
-  });
-});
+
+interface AppError {
+  status?: number;
+  message?: string;
+}
+
+// Centralized error handler – never leaks stack traces in production
+app.use(
+  (
+    err: AppError,
+    _req: Request,
+    res: Response,
+    _next: NextFunction
+  ) => {
+    console.error("Global Server Exception Caught:", err);
+
+    // Use the error status code or default to 500
+    const statusCode = err.status || 500;
+    // In production, replace the message with a generic one
+    const message =
+      process.env.NODE_ENV === "production"
+        ? "An unexpected server error occurred."
+        : err.message || "An unexpected core engine error occurred on the server layer.";
+
+    res.status(statusCode).json({ error: message });
+  }
+);
 /* === SECTION 4 END === */
 
 export default app;

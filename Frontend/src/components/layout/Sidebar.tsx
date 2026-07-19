@@ -4,7 +4,8 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES ===
    ========================================================================== */
-import React, { useState } from "react";
+// 🚀 FIXED: Added useEffect and useRef to manage external screen click event captures
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Cookies from "js-cookie"; // Used to destroy sessions by removing the cookie from browser memory
@@ -41,7 +42,6 @@ import styles from "./Sidebar.module.css";
 /* ==========================================================================
    === SECTION 2: DATA STRUCTURES & INTERFACES ===
    ========================================================================== */
-// Blueprint for our sidebar link items
 interface NavItem {
   label: string;
   href: string;
@@ -49,7 +49,6 @@ interface NavItem {
   group: "core" | "growth" | "intelligence";
 }
 
-// Blueprint defining the structure of the logged-in user record sent from the database
 interface SidebarProps {
   user?: {
     id: string;
@@ -59,7 +58,6 @@ interface SidebarProps {
   } | null;
 }
 
-// Static configuration map for our sidebar links to avoid messy repeating HTML blocks
 const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Overview Hub", href: "/dashboard", icon: <FiGrid size={18} />, group: "core" },
   { label: "Transactions", href: "/dashboard/transactions", icon: <FiActivity size={18} />, group: "core" },
@@ -74,30 +72,28 @@ const NAVIGATION_ITEMS: NavItem[] = [
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
 export default function Sidebar({ user }: SidebarProps) {
-  // Reads the active web address URL path line so we can highlight the matching link row button
   const pathname = usePathname();
-  
-  // --- CONNECTING TO OUR DYNAMIC BACKEND CONTEXT BRAIN ---
-  // FIXED: Destructured the network status tracker flag 'isLoading' directly from our context provider
   const { workspaces, activeWorkspace, switchWorkspace, renderIcon, isLoading } = useWorkspace();
   
   // --- VISUAL UI STATE ENGINE INTERFACES ---
-  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false); // Tracks if workspace list menu is open
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);       // Tracks if create modal popup is visible
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);                   // Tracks if sidebar is minimized to small icons
-  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);                 // Tracks mobile phone sidebar sliding drawer state
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);       // Tracks settings/logout deck popup view state
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);      
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);                  
+  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);                
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);      
 
-  // Beginner-Friendly Fallbacks: Protects the application from crashing if the database takes a moment to answer
+  // 🚀 FIXED: Anchors to monitor click coordinate boundaries outside the structural layout containers
+  const workspaceDropdownRef = useRef<HTMLDivElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fallbacks
   const accountName = user?.name || "RakhoKhata User";
   const accountEmail = user?.email || "Cloud Synced";
 
-  // Filter out our static sidebar links into their respective categories
   const coreItems = NAVIGATION_ITEMS.filter(item => item.group === "core");
   const growthItems = NAVIGATION_ITEMS.filter(item => item.group === "growth");
   const intelligenceItems = NAVIGATION_ITEMS.filter(item => item.group === "intelligence");
 
-  // Combines individual layout rules into a single string for dynamic visual scaling properties
   const containerClassName = `
     ${styles.sidebarContainer} 
     ${isCollapsed ? styles.collapsedSidebar : ""} 
@@ -115,18 +111,28 @@ export default function Sidebar({ user }: SidebarProps) {
     if (isWorkspaceMenuOpen) setIsWorkspaceMenuOpen(false);
   };
 
+  // 🚀 FIXED: Global window mouse hook checks for container boundary leaks to close items on outside blur
+  useEffect(() => {
+    const handleGlobalClickAway = (event: MouseEvent) => {
+      // Close workspace list if click originates outside its wrapper
+      if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(event.target as Node)) {
+        setIsWorkspaceMenuOpen(false);
+      }
+      // Close user profile settings card if click originates outside its wrapper
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleGlobalClickAway);
+    return () => document.removeEventListener("mousedown", handleGlobalClickAway);
+  }, []);
+
   // AUTH SESSION TERMINATION ROUTINE
   const handleSignOutAction = () => {
     setIsProfileMenuOpen(false);
-    
-    // 1. Erase the secure access keycard from browser memory storage completely
     Cookies.remove("token", { path: "/" });
-    
-    // 2. Alert user of successful closure tracking status metrics
     toast.success("Logged out successfully. See you soon!");
-    
-    // 3. FIXED: Swapped out router.push for a window location assignment.
-    // This wipes Next.js background data caches clean, ensuring the next login session loads completely fresh.
     window.location.href = "/login";
   };
 /* === SECTION 3 END === */
@@ -136,7 +142,7 @@ export default function Sidebar({ user }: SidebarProps) {
    ========================================================================== */
   return (
     <>
-      {/* MOBILE HEADER BAR: Only pops up on smaller phone viewports */}
+      {/* MOBILE HEADER BAR */}
       <div className={styles.mobileTopBar}>
         <div className={styles.mobileLogo}>
           Rakho<span className={styles.logoAccent}>Khata</span>
@@ -150,7 +156,7 @@ export default function Sidebar({ user }: SidebarProps) {
         </button>
       </div>
 
-      {/* MOBILE BACKDROP DRAWER BLUR CLOSURE ELEMENT OVERLAY */}
+      {/* MOBILE BACKDROP DRAWER BLUR OVERLAY */}
       {isMobileOpen && (
         <div 
           className={styles.mobileMenuBackdropOverlay} 
@@ -158,7 +164,7 @@ export default function Sidebar({ user }: SidebarProps) {
         />
       )}
 
-      {/* DYNAMIC FORM MODAL WINDOW: Drops down over the interface screen layout */}
+      {/* DYNAMIC FORM MODAL WINDOW */}
       {isCreateModalOpen && (
         <CreateWorkspaceModal onClose={() => setIsCreateModalOpen(false)} />
       )}
@@ -180,7 +186,8 @@ export default function Sidebar({ user }: SidebarProps) {
             Rakho<span className={styles.logoAccent}>Khata</span>
           </div>
 
-          <div className={styles.workspaceWrapper}>
+          {/* 🚀 FIXED: Attached workspaceDropdownRef here to monitor workspace click bounds */}
+          <div className={styles.workspaceWrapper} ref={workspaceDropdownRef}>
             <button 
               className={styles.workspaceSelectorTrigger}
               onClick={toggleWorkspaceDropdown}
@@ -199,7 +206,6 @@ export default function Sidebar({ user }: SidebarProps) {
             {isWorkspaceMenuOpen && (
               <div className={styles.workspaceDropdownMenu}>
                 <div className={styles.workspaceScrollArea}>
-                  {/* Beginner-Friendly Safe Check: Render loading string if the database request is still in flight */}
                   {isLoading ? (
                     <div className={styles.loadingPlaceholderText}>Fetching active ledgers...</div>
                   ) : (
@@ -303,7 +309,8 @@ export default function Sidebar({ user }: SidebarProps) {
         </nav>
 
         {/* --- BLOCK C: BOTTOM USER DRAWER ACCOUNT MANAGER --- */}
-        <div className={styles.profileMasterSectionWrapper}>
+        {/* 🚀 FIXED: Attached profileDropdownRef here to monitor user deck click bounds */}
+        <div className={styles.profileMasterSectionWrapper} ref={profileDropdownRef}>
           
           {/* PROFILE CONTROL POP-UP ELEMENT DECK */}
           {isProfileMenuOpen && (

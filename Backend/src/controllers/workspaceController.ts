@@ -1,7 +1,7 @@
-// src/controllers/workspaceController.ts
+// Backend/src/controllers/workspaceController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND SETUP ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Response } from "express";
 import { prisma } from "../db";
@@ -9,201 +9,282 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CENTRALIZED CATEGORY SEEDER CONFIGURATIONS ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-// 🚀 FIXED: Applied user-friendly instruction phrasing to the fallback category block
+
+// System categories that are automatically created for every workspace
 const CORE_SYSTEM_CATEGORIES = [
   { name: "Owed to Me (Receivable)", type: "INCOME", color: "#22c55e", isFixed: true },
   { name: "My Debts (Payable)", type: "EXPENSE", color: "#ef4444", isFixed: true },
-  { name: "Unassigned (Needs Sorting)", type: "EXPENSE", color: "#6b7280", isFixed: true } // 🚀 UPDATED
+  { name: "Unassigned (Needs Sorting)", type: "EXPENSE", color: "#6b7280", isFixed: true },
 ];
 
+// Shared personal category templates
 export const SHARED_DEFAULT_PERSONAL_CATEGORIES = [
   { name: "Salary", type: "INCOME", color: "#10B981" },
   { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444" },
-  ...CORE_SYSTEM_CATEGORIES
+  ...CORE_SYSTEM_CATEGORIES,
 ];
 
+// Shared business category templates
 export const SHARED_DEFAULT_BUSINESS_CATEGORIES = [
   { name: "Revenue", type: "INCOME", color: "#10b981" },
   { name: "Payroll", type: "EXPENSE", color: "#f43f5e" },
-  ...CORE_SYSTEM_CATEGORIES
+  ...CORE_SYSTEM_CATEGORIES,
 ];
 
-const seedDefaultCategoriesForWorkspace = async (workspaceId: string, workspaceName: string): Promise<void> => {
-  const isBusiness = workspaceName.toLowerCase() === "business";
-  const templates = isBusiness ? SHARED_DEFAULT_BUSINESS_CATEGORIES : SHARED_DEFAULT_PERSONAL_CATEGORIES;
+/**
+ * Builds a safe error object that never leaks internal details.
+ */
+function safeError(message: string): { error: string } {
+  return { error: message };
+}
 
-  const starterCategories = templates.map(cat => ({
+/**
+ * Seeds a newly created workspace with the appropriate default categories.
+ */
+async function seedDefaultCategories(
+  workspaceId: string,
+  workspaceName: string
+): Promise<void> {
+  const isBusiness = workspaceName.toLowerCase() === "business";
+  const templateCategories = isBusiness
+    ? SHARED_DEFAULT_BUSINESS_CATEGORIES
+    : SHARED_DEFAULT_PERSONAL_CATEGORIES;
+
+  const categoriesWithWorkspace = templateCategories.map((cat) => ({
     ...cat,
-    workspaceId
+    workspaceId,
   }));
 
   await prisma.category.createMany({
-    data: starterCategories
+    data: categoriesWithWorkspace,
   });
-};
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: FETCH USER WORKSPACES ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-export const getUserWorkspaces = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+
+/**
+ * GET /api/workspaces
+ * Returns all workspaces owned by the authenticated user.
+ * If no workspaces exist, creates default "Personal" and "Business" workspaces.
+ */
+export const getUserWorkspaces = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Session cookie invalid." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
     let workspaces = await prisma.workspace.findMany({
       where: { userId },
-      orderBy: { createdAt: "asc" }
+      orderBy: { createdAt: "asc" },
     });
 
+    // If the user has no workspaces, create the two defaults
     if (workspaces.length === 0) {
       const userProfile = await prisma.user.findUnique({
         where: { id: userId },
-        select: { currency: true }
+        select: { currency: true },
       });
-      
       const preferredCurrency = userProfile?.currency || "PKR";
 
-      const personalSpace = await prisma.workspace.create({
-        data: { name: "Personal", currency: preferredCurrency, userId }
+      const personalWorkspace = await prisma.workspace.create({
+        data: { name: "Personal", currency: preferredCurrency, userId },
       });
-      await seedDefaultCategoriesForWorkspace(personalSpace.id, "Personal");
+      await seedDefaultCategories(
+        personalWorkspace.id,
+        "Personal"
+      );
 
-      const businessSpace = await prisma.workspace.create({
-        data: { name: "Business", currency: preferredCurrency, userId }
+      const businessWorkspace = await prisma.workspace.create({
+        data: { name: "Business", currency: preferredCurrency, userId },
       });
-      await seedDefaultCategoriesForWorkspace(businessSpace.id, "Business");
+      await seedDefaultCategories(
+        businessWorkspace.id,
+        "Business"
+      );
 
+      // Re‑fetch the list to include the new workspaces
       workspaces = await prisma.workspace.findMany({
         where: { userId },
-        orderBy: { createdAt: "asc" }
+        orderBy: { createdAt: "asc" },
       });
     }
 
     res.status(200).json({ workspaces });
-  } catch (error) {
-    console.error("Fetch Workspaces Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error while syncing workspace layers." });
+  } catch (error: unknown) {
+    console.error(
+      "Fetch Workspaces Controller Exception:",
+      error
+    );
+    res
+      .status(500)
+      .json(safeError("Unable to retrieve workspace data."));
   }
 };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: CREATE CUSTOM WORKSPACE ===
-   ========================================================================== */
-export const createWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+/**
+ * POST /api/workspaces
+ * Creates a new custom workspace for the user.
+ */
+export const createWorkspace = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { name, currency } = req.body;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access. Identity token missing." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
+    const { name, currency } = req.body as {
+      name?: string;
+      currency?: string;
+    };
+
     if (!name || !name.trim()) {
-      res.status(400).json({ error: "Workspace label text is required." });
+      res.status(400).json(safeError("Workspace name is required."));
       return;
     }
 
     const newWorkspace = await prisma.workspace.create({
       data: {
         name: name.trim(),
-        currency: currency || "PKR", 
-        userId
-      }
+        currency: currency || "PKR",
+        userId,
+      },
     });
 
-    await seedDefaultCategoriesForWorkspace(newWorkspace.id, newWorkspace.name);
+    await seedDefaultCategories(newWorkspace.id, newWorkspace.name);
 
     res.status(201).json({
       message: "Workspace created and seeded successfully!",
-      workspace: newWorkspace
+      workspace: newWorkspace,
     });
-  } catch (error) {
-    console.error("Create Workspace Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error deploying workspace matrix." });
+  } catch (error: unknown) {
+    console.error(
+      "Create Workspace Controller Exception:",
+      error
+    );
+    res
+      .status(500)
+      .json(safeError("Failed to create workspace."));
   }
 };
-/* === SECTION 4 END === */
 
-/* ==========================================================================
-   === SECTION 5: CASCADE DELETE WORKSPACE ===
-   ========================================================================== */
-export const deleteWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  try {
-    const userId = req.user?.userId;
-    const targetWorkspaceId = req.params.id as string;
-
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized access tracking parameters." });
-      return;
-    }
-
-    if (!targetWorkspaceId) {
-      res.status(400).json({ error: "Workspace target identifier query parameter missing." });
-      return;
-    }
-
-    const workspaceTarget = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
-    if (!workspaceTarget || workspaceTarget.userId !== userId) {
-      res.status(403).json({ error: "Access denied. Action signature verification failed." });
-      return;
-    }
-
-    await prisma.workspace.delete({ where: { id: targetWorkspaceId } });
-
-    res.status(200).json({ message: "Workspace tracking container cleared successfully." });
-  } catch (error) {
-    console.error("Delete Workspace Controller Exception:", error);
-    res.status(500).json({ error: "Internal server error running data flush routines." });
-  }
-};
-/* === SECTION 5 END === */
-
-/* ==========================================================================
-   === SECTION 6: UPDATE WORKSPACE ===
-   ========================================================================== */
-export const updateWorkspace = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+/**
+ * DELETE /api/workspaces/:id
+ * Permanently deletes a workspace and all its related data.
+ */
+export const deleteWorkspace = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
     const workspaceId = req.params.id as string;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
     if (!workspaceId) {
-      res.status(400).json({ error: "Workspace ID required." });
+      res.status(400).json(safeError("Workspace ID is required."));
       return;
     }
 
-    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
-    if (!workspace || workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
-      return;
-    }
-
-    const { name, currency } = req.body;
-    const data: Record<string, string> = {};
-    if (name) data.name = name.trim();
-    if (currency) data.currency = currency;
-
-    const updated = await prisma.workspace.update({
+    const workspace = await prisma.workspace.findUnique({
       where: { id: workspaceId },
-      data
+    });
+    if (!workspace || workspace.userId !== userId) {
+      res.status(403).json(safeError("Access denied."));
+      return;
+    }
+
+    // Cascade deletion is handled at the database level
+    await prisma.workspace.delete({
+      where: { id: workspaceId },
     });
 
-    res.status(200).json({ message: "Workspace updated successfully.", workspace: updated });
-  } catch (error) {
-    console.error("Update Workspace Error:", error);
-    res.status(500).json({ error: "Internal server error updating workspace." });
+    res
+      .status(200)
+      .json({ message: "Workspace deleted successfully." });
+  } catch (error: unknown) {
+    console.error(
+      "Delete Workspace Controller Exception:",
+      error
+    );
+    res
+      .status(500)
+      .json(safeError("Failed to delete workspace."));
   }
 };
-/* === SECTION 6 END === */
+
+/**
+ * PUT /api/workspaces/:id
+ * Updates the name or currency of an existing workspace.
+ */
+export const updateWorkspace = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const workspaceId = req.params.id as string;
+
+    if (!userId) {
+      res.status(401).json(safeError("Authentication required."));
+      return;
+    }
+    if (!workspaceId) {
+      res.status(400).json(safeError("Workspace ID is required."));
+      return;
+    }
+
+    // Verify ownership
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+    if (!workspace || workspace.userId !== userId) {
+      res.status(403).json(safeError("Access denied."));
+      return;
+    }
+
+    const { name, currency } = req.body as {
+      name?: string;
+      currency?: string;
+    };
+
+    const updateData: Record<string, string> = {};
+    if (name) updateData.name = name.trim();
+    if (currency) updateData.currency = currency;
+
+    const updatedWorkspace = await prisma.workspace.update({
+      where: { id: workspaceId },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      message: "Workspace updated successfully.",
+      workspace: updatedWorkspace,
+    });
+  } catch (error: unknown) {
+    console.error(
+      "Update Workspace Controller Exception:",
+      error
+    );
+    res
+      .status(500)
+      .json(safeError("Failed to update workspace."));
+  }
+};
+/* === SECTION 3 END === */

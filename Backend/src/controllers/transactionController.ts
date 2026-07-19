@@ -1,52 +1,158 @@
 // src/controllers/transactionController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Response } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
-import { GoogleGenAI } from "@google/genai"; 
+import { GoogleGenAI } from "@google/genai";
+
+// Data contracts for inbound transaction entries
+interface InboundTransactionInput {
+  originalAmount: string | number;
+  originalCurrency: string;
+  baseAmountUSD: string | number;
+  type: "INCOME" | "EXPENSE";
+  description?: string;
+  date: string;
+  categoryId: string;
+}
+
+// Shape for a single transaction creation request body
+interface CreateTransactionRequestBody {
+  originalAmount: string;
+  originalCurrency: string;
+  baseAmountUSD: string;
+  type: string;
+  description: string;
+  date: string;
+  workspaceId: string;
+  categoryId: string;
+}
+
+// Shape for the bulk import request body
+interface BulkImportRequestBody {
+  workspaceId: string;
+  transactions: InboundTransactionInput[];
+}
+
+// Minimal file interface (avoids dependency on Express.Multer namespace)
+interface MulterFile {
+  buffer: Buffer;
+  mimetype: string;
+  originalname?: string;
+  size?: number;
+}
+
+// Request with Multer file (for receipt scanning)
+interface AuthenticatedRequestWithFile extends AuthenticatedRequest {
+  file?: MulterFile;
+}
+
+// Metrics extracted from receipt by AI
+interface ExtractedReceiptMetrics {
+  merchant: string;
+  date: string;
+  totalAmount: number;
+  currency: string;
+}
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CREATE NEW TRANSACTION ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-export const createTransaction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+
+/**
+ * Build a standardised error object that never exposes internal details.
+ */
+function safeError(message: string): { error: string } {
+  return { error: message };
+}
+
+/**
+ * Check that a transaction type string is strictly "INCOME" or "EXPENSE".
+ */
+function isValidTransactionType(type: string): type is "INCOME" | "EXPENSE" {
+  return type === "INCOME" || type === "EXPENSE";
+}
+
+/**
+ * Safely parse a date string into a Date object.
+ * Returns null if the string is invalid.
+ */
+function parseDateSafely(dateStr: string): Date | null {
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+// ---------------------------------------------------------------------------
+// CREATE SINGLE TRANSACTION
+// ---------------------------------------------------------------------------
+export const createTransaction = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json(safeError("Authentication required."));
+      return;
+    }
+
+    const body = req.body as CreateTransactionRequestBody;
     const {
-      originalAmount,      
-      originalCurrency,    
-      baseAmountUSD,       
+      originalAmount,
+      originalCurrency,
+      baseAmountUSD,
       type,
       description,
       date,
       workspaceId,
-      categoryId
-    } = req.body;
+      categoryId,
+    } = body;
 
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+    // Check required fields
+    if (
+      !originalAmount ||
+      !originalCurrency ||
+      baseAmountUSD === undefined ||
+      !type ||
+      !date ||
+      !workspaceId ||
+      !categoryId
+    ) {
+      res.status(400).json(safeError("Missing required transaction parameters."));
       return;
     }
 
-    if (!originalAmount || !originalCurrency || baseAmountUSD === undefined || !type || !date || !workspaceId || !categoryId) {
-      res.status(400).json({ error: "Missing required transaction parameters (including original currency/amount)." });
+    if (!isValidTransactionType(type)) {
+      res.status(400).json(safeError("Type must be INCOME or EXPENSE."));
       return;
     }
 
-    if (type !== "INCOME" && type !== "EXPENSE") {
-      res.status(400).json({ error: "Classification must be INCOME or EXPENSE." });
+    // Validate the date
+    const parsedDate = parseDateSafely(date);
+    if (!parsedDate) {
+      res.status(400).json(safeError("Invalid date format."));
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    // Verify workspace ownership
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
     if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+      res.status(403).json(safeError("Access denied."));
       return;
     }
 
+    // Create the transaction
     const transaction = await prisma.transaction.create({
       data: {
         originalAmount: parseFloat(originalAmount),
@@ -54,7 +160,7 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
         baseAmountUSD: parseFloat(baseAmountUSD),
         type,
         description: description || "",
-        date: new Date(date),
+        date: parsedDate,
         workspaceId,
         categoryId,
       },
@@ -65,202 +171,246 @@ export const createTransaction = async (req: AuthenticatedRequest, res: Response
       message: "Transaction logged successfully!",
       transaction,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Create Transaction Error:", error);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json(safeError("Internal server error."));
   }
 };
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 2B: AUTOMATED BULK IMPORTING SYSTEM ===
-   ========================================================================== */
-export const bulkCreateTransactions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// BULK IMPORT TRANSACTIONS
+// ---------------------------------------------------------------------------
+export const bulkCreateTransactions = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { workspaceId, transactions } = req.body;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
-    if (!workspaceId || !Array.isArray(transactions) || transactions.length === 0) {
-      res.status(400).json({ error: "Missing workspace identifier context or structured batch transactions data array." });
+    const { workspaceId, transactions } = req.body as BulkImportRequestBody;
+
+    if (
+      !workspaceId ||
+      !Array.isArray(transactions) ||
+      transactions.length === 0
+    ) {
+      res.status(400).json(
+        safeError("Missing workspace ID or batch transactions array.")
+      );
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    // Verify workspace ownership
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
     if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied to target workspace grid ledger." });
+      res.status(403).json(safeError("Access denied."));
       return;
     }
 
+    // Validate each entry
     for (let i = 0; i < transactions.length; i++) {
-      const rowItem = transactions[i];
-
-      if (rowItem.originalAmount === undefined || rowItem.originalAmount === null || isNaN(Number(rowItem.originalAmount))) {
-        res.status(400).json({ error: `Import failed: Record at row index position ${i + 1} has an invalid or missing originalAmount value.` });
+      const entry = transactions[i];
+      if (
+        entry.originalAmount === undefined ||
+        entry.originalAmount === null ||
+        isNaN(Number(entry.originalAmount))
+      ) {
+        res.status(400).json(
+          safeError(`Row ${i + 1}: invalid or missing originalAmount.`)
+        );
         return;
       }
-      
-      if (!rowItem.originalCurrency || String(rowItem.originalCurrency).trim() === "") {
-        res.status(400).json({ error: `Import failed: Record at row index position ${i + 1} is missing a valid originalCurrency code layout.` });
+      if (!entry.originalCurrency || String(entry.originalCurrency).trim() === "") {
+        res.status(400).json(
+          safeError(`Row ${i + 1}: missing originalCurrency.`)
+        );
         return;
       }
-      
-      if (rowItem.baseAmountUSD === undefined || rowItem.baseAmountUSD === null || isNaN(Number(rowItem.baseAmountUSD))) {
-        res.status(400).json({ error: `Import failed: Record at row index position ${i + 1} has an uncalculated or missing baseAmountUSD value tracking key.` });
+      if (
+        entry.baseAmountUSD === undefined ||
+        entry.baseAmountUSD === null ||
+        isNaN(Number(entry.baseAmountUSD))
+      ) {
+        res.status(400).json(
+          safeError(`Row ${i + 1}: invalid or missing baseAmountUSD.`)
+        );
         return;
       }
-      
-      if (!rowItem.type || (rowItem.type !== "INCOME" && rowItem.type !== "EXPENSE")) {
-        res.status(400).json({ error: `Import failed: Record at row index position ${i + 1} contains an invalid flow type structure: values must be INCOME or EXPENSE.` });
+      if (!entry.type || (entry.type !== "INCOME" && entry.type !== "EXPENSE")) {
+        res.status(400).json(
+          safeError(`Row ${i + 1}: type must be INCOME or EXPENSE.`)
+        );
         return;
       }
-      
-      if (!rowItem.date || String(rowItem.date).trim() === "") {
-        res.status(400).json({ error: `Import failed: Record at row index position ${i + 1} is missing an operational timestamp date tracker string.` });
+      if (!entry.date || String(entry.date).trim() === "") {
+        res.status(400).json(safeError(`Row ${i + 1}: missing date.`));
         return;
       }
-      
-      if (!rowItem.categoryId || String(rowItem.categoryId).trim() === "") {
-        res.status(400).json({ error: `Import failed: Record at row index position ${i + 1} is missing a valid relational categoryId identification string.` });
+      const parsedDate = parseDateSafely(String(entry.date));
+      if (!parsedDate) {
+        res.status(400).json(safeError(`Row ${i + 1}: invalid date format.`));
+        return;
+      }
+      if (!entry.categoryId || String(entry.categoryId).trim() === "") {
+        res.status(400).json(safeError(`Row ${i + 1}: missing categoryId.`));
         return;
       }
     }
 
-    const operationsCountResult = await prisma.$transaction(async (tx) => {
-      let insertedCount = 0;
-
+    // Insert all in a single transaction
+    const insertedCount = await prisma.$transaction(async (tx) => {
+      let count = 0;
       for (const entry of transactions) {
         await tx.transaction.create({
           data: {
-            originalAmount: parseFloat(entry.originalAmount),
+            originalAmount: Number(entry.originalAmount),
             originalCurrency: entry.originalCurrency.toUpperCase(),
-            baseAmountUSD: parseFloat(entry.baseAmountUSD),
+            baseAmountUSD: Number(entry.baseAmountUSD),
             type: entry.type,
             description: entry.description || "",
-            date: new Date(entry.date),
+            date: parseDateSafely(entry.date) as Date, // already validated
             workspaceId,
             categoryId: entry.categoryId,
           },
         });
-        insertedCount++;
+        count++;
       }
-
-      return insertedCount;
+      return count;
     });
 
     res.status(201).json({
-      message: `Successfully batch processed and imported ${operationsCountResult} transactional entries!`,
+      message: `Successfully imported ${insertedCount} transactions.`,
     });
-
-  } catch (error) {
-    console.error("Bulk Ledger Data Import Pipeline Crash:", error);
-    res.status(500).json({ error: "Internal processing breakdown during sheet ingestion bulk execution tracking hooks." });
+  } catch (error: unknown) {
+    console.error("Bulk Import Pipeline Crash:", error);
+    res.status(500).json(safeError("Internal server error during bulk import."));
   }
 };
-/* === SECTION 2B END === */
 
-/* ==========================================================================
-   === SECTION 2C: 🚀 AUTOMATED AI RECEIPT SCANNER ENGINE ===
-   ========================================================================== */
-export const scanReceipt = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// AI RECEIPT SCANNER
+// ---------------------------------------------------------------------------
+export const scanReceipt = async (
+  req: AuthenticatedRequestWithFile,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access security perimeter mismatch." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
-    if (!req.file) {
-      res.status(400).json({ error: "No receipt document or image boundary stream detected." });
+    const uploadedFile = req.file;
+    if (!uploadedFile) {
+      res.status(400).json(safeError("No receipt image or document uploaded."));
       return;
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: "Server Configuration Error: Gemini API credentials token is unassigned." });
+      res.status(500).json(safeError("AI service configuration missing."));
       return;
     }
 
+    // Initialize AI client
     const aiClient = new GoogleGenAI({ apiKey });
-    
+
+    // Prepare the image payload for Gemini
     const receiptImagePart = {
       inlineData: {
-        data: req.file.buffer.toString("base64"),
-        mimeType: req.file.mimetype
-      }
+        data: uploadedFile.buffer.toString("base64"),
+        mimeType: uploadedFile.mimetype,
+      },
     };
 
-    const strictSystemPrompt = `
-      You are an elite, highly accurate financial accounting ledger parsing system.
-      Analyze this provided receipt image or document file carefully. 
-      Your task is to extract the following transaction metrics:
-      
-      1. merchant: The name of the store, business, vendor or service provider. Clean up structural noise (e.g., use "McDonald's" instead of "MCDONALDS STORE #4322").
-      2. date: The transaction date formatted string strictly as standard calendar notation (YYYY-MM-DD). If no clear year is visible, assume 2026.
-      3. totalAmount: The final consolidated total or balance due figure as a clean numerical decimal float. Avoid individual line items or running values.
-      4. currency: The three-letter ISO currency representation code. Look for regional indicators: if you see "Rs", "Rs.", "PR", or "PKR", output "PKR". If you see "$", output "USD". Default to "PKR" if uncertain.
-    `;
+    // Detailed system prompt for extraction
+    const extractionPrompt = `
+You are an elite financial receipt parser.
+Analyze the provided receipt image and extract the following JSON fields:
+- merchant: vendor name (clean up noise, e.g., "MCDONALDS STORE #4322" → "McDonald's")
+- date: transaction date in YYYY-MM-DD (assume 2026 if missing)
+- totalAmount: final total as a number (ignore individual items)
+- currency: three‑letter ISO code. If you see "Rs", "Rs.", "PR", or "PKR" output "PKR". If "$" output "USD". Default to "PKR" otherwise.
+`;
 
-    // 🚀 FIXED: Swapped out retired model name tracking parameters for Gemini 3.1 Flash-Lite
-    const aiResponseEnvelope = await aiClient.models.generateContent({
+    // Call Gemini 3.1 Flash-Lite
+    const aiResponse = await aiClient.models.generateContent({
       model: "gemini-3.1-flash-lite",
-      contents: [strictSystemPrompt, receiptImagePart],
+      contents: [extractionPrompt, receiptImagePart],
       config: {
-        responseMimeType: "application/json"
-      }
+        responseMimeType: "application/json",
+      },
     });
 
-    const outputText = aiResponseEnvelope.text;
-    if (!outputText) {
-      throw new Error("AI engine executed successfully but returned a void text stream fragment.");
+    const rawText = aiResponse.text;
+    if (!rawText) {
+      res.status(500).json(safeError("AI engine returned empty response."));
+      return;
     }
 
-    const jsonMatch = outputText.match(/{[\s\S]*}/);
+    // Extract JSON object from response
+    const jsonMatch = rawText.match(/{[\s\S]*}/);
     if (!jsonMatch) {
-      throw new Error(`Failed to isolate structural JSON brackets inside response: ${outputText}`);
+      res.status(500).json(safeError("Failed to parse AI response."));
+      return;
     }
 
-    const extractedFinancialMetrics = JSON.parse(jsonMatch[0]);
-    res.status(200).json(extractedFinancialMetrics);
+    const parsedData: unknown = JSON.parse(jsonMatch[0]);
 
+    // Verify the extracted data has required fields
+    if (
+      parsedData &&
+      typeof parsedData === "object" &&
+      "merchant" in parsedData &&
+      "totalAmount" in parsedData
+    ) {
+      res.status(200).json(parsedData as ExtractedReceiptMetrics);
+    } else {
+      res.status(500).json(safeError("AI returned incomplete receipt data."));
+    }
   } catch (error: unknown) {
-    console.error("\n❌ ============= AI SCAN ENGINE CRASH DETAILS =============");
-    console.error(error);
-    console.error("============================================================\n");
-
-    const innerMessage = error instanceof Error ? error.message : "Parsing baseline breakdown.";
-    res.status(500).json({ 
-      error: `AI Scanner Engine experienced an analytical parsing or timeout processing breakdown: ${innerMessage}` 
-    });
+    console.error("AI Scan Engine Crash:", error);
+    // Do not expose internal error details to the client
+    res.status(500).json(safeError("Receipt scanning failed. Please try again later."));
   }
 };
-/* === SECTION 2C END === */
 
-/* ==========================================================================
-   === SECTION 3: FETCH WORKSPACE TRANSACTIONS ===
-   ========================================================================== */
-export const getWorkspaceTransactions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// FETCH WORKSPACE TRANSACTIONS
+// ---------------------------------------------------------------------------
+export const getWorkspaceTransactions = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
+    const targetWorkspaceId = req.query.workspaceId
+      ? String(req.query.workspaceId)
+      : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
     if (!targetWorkspaceId) {
-      res.status(400).json({ error: "Workspace ID required." });
+      res.status(400).json(safeError("Workspace ID is required."));
       return;
     }
 
-    const workspaceCheck = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
+    // Verify workspace ownership
+    const workspaceCheck = await prisma.workspace.findUnique({
+      where: { id: targetWorkspaceId },
+    });
     if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+      res.status(403).json(safeError("Access denied."));
       return;
     }
 
@@ -285,52 +435,55 @@ export const getWorkspaceTransactions = async (req: AuthenticatedRequest, res: R
     });
 
     res.status(200).json({ transactions });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Fetch Transactions Error:", error);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json(safeError("Internal server error."));
   }
 };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: DELETE TRANSACTION ===
-   ========================================================================== */
-export const deleteTransaction = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// DELETE TRANSACTION
+// ---------------------------------------------------------------------------
+export const deleteTransaction = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
     const targetId = req.params.id ? String(req.params.id) : undefined;
 
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(safeError("Authentication required."));
       return;
     }
 
     if (!targetId) {
-      res.status(400).json({ error: "Transaction ID required." });
+      res.status(400).json(safeError("Transaction ID is required."));
       return;
     }
 
+    // Verify ownership
     const transactionTarget = await prisma.transaction.findUnique({
       where: { id: targetId },
       include: { workspace: true },
     });
 
     if (!transactionTarget) {
-      res.status(404).json({ error: "Transaction not found." });
+      res.status(404).json(safeError("Transaction not found."));
       return;
     }
 
     if (transactionTarget.workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+      res.status(403).json(safeError("Access denied."));
       return;
     }
 
     await prisma.transaction.delete({ where: { id: targetId } });
 
     res.status(200).json({ message: "Transaction deleted successfully." });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Delete Transaction Error:", error);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json(safeError("Internal server error."));
   }
 };
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

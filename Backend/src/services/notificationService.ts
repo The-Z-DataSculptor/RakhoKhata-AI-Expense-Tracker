@@ -1,21 +1,45 @@
 // Backend/src/services/notificationService.ts
+
+/* ==========================================================================
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   ========================================================================== */
 import cron from "node-cron";
-import { prisma } from "../db"; // 👈 FIXED: Reuses your global preconfigured database client
+import { prisma } from "../db";
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   ========================================================================== */
 
 /**
- * Sweeps the database for recurring bills that need reminders and creates notifications.
- * Designed to be run automatically once a day.
+ * Helper to log error details without exposing to clients.
+ */
+function logError(message: string, detail: unknown): void {
+  console.error(message, detail);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+/**
+ * Scans the database for recurring bills due for a reminder today and
+ * creates notifications for each one, using an idempotency key to
+ * prevent duplicate alerts.
  */
 export async function generateBillReminders(): Promise<void> {
   const today = new Date();
   const currentDay = today.getDate();
-  const currentMonth = today.getMonth() + 1; // 1-12
+  const currentMonth = today.getMonth() + 1; // 1‑12
   const currentYear = today.getFullYear();
 
-  console.log(`[Notification Service] Starting daily bill reminder sweep on ${today.toLocaleDateString()}...`);
+  console.log(
+    `[Notification Service] Starting daily bill reminder sweep on ${today.toLocaleDateString()}...`
+  );
 
   try {
-    // 1. Find all active categories where the user wants recurring reminders
+    // 1. Fetch all recurring categories that have reminder settings
     const recurringCategories = await prisma.category.findMany({
       where: {
         isRecurring: true,
@@ -30,29 +54,23 @@ export async function generateBillReminders(): Promise<void> {
     let notificationsCreated = 0;
 
     for (const category of recurringCategories) {
-      const dueDay = category.dueDay!;
-      const reminderDays = category.reminderDays!;
+      // TypeScript knows dueDay and reminderDays are non‑null here
+      const dueDay = category.dueDay as number;
+      const reminderDays = category.reminderDays as number;
       const userId = category.workspace.userId;
 
-      // 2. Calculate the target reminder date.
-      // Example: Rent due on 10th, notify 3 days before. Target day to notify is the 7th.
+      // 2. Calculate the target day for the reminder
       let targetNotificationDay = dueDay - reminderDays;
-
-      // Handle month roll-over edge cases gracefully (e.g., due on the 2nd, remind 3 days before)
       if (targetNotificationDay <= 0) {
-        // Fallback to simple matching if target date falls into previous month, 
-        // or let it fire on the 1st of the current month.
-        targetNotificationDay = 1;
+        targetNotificationDay = 1; // Fallback to the first day of the month
       }
 
-      // If today is the designated reminder day, prepare the alert
+      // If today matches the target, create a notification
       if (currentDay === targetNotificationDay) {
         const title = `Upcoming Bill: ${category.name}`;
         const message = `Your recurring payment for ${category.name} is due in ${reminderDays} days (on day ${dueDay} of this month).`;
-        
-        // 3. SECURE IDEMPOTENCY KEY
-        // Formulated to be globally unique: category + user + month + year
-        // This stops database duplicate writes even if the scheduler runs twice.
+
+        // 3. Build a globally unique idempotency key
         const idempotencyKey = `bill_reminder_${category.id}_${userId}_${currentMonth}_${currentYear}`;
 
         try {
@@ -69,22 +87,25 @@ export async function generateBillReminders(): Promise<void> {
             },
           });
           notificationsCreated++;
-        } catch (dbError) {
-          // Log individual record insert errors (e.g., unique constraint failures) without crashing the whole sweep
-          console.error(`[Notification Service] Failed to upsert reminder for category ${category.id}:`, dbError);
+        } catch (dbError: unknown) {
+          logError(
+            `[Notification Service] Failed to upsert reminder for category ${category.id}:`,
+            dbError
+          );
         }
       }
     }
 
-    console.log(`[Notification Service] Sweep complete. Created/Verified ${notificationsCreated} notifications.`);
-  } catch (error) {
-    console.error("[Notification Service] Error running bill reminder sweep:", error);
+    console.log(
+      `[Notification Service] Sweep complete. Created/Verified ${notificationsCreated} notifications.`
+    );
+  } catch (error: unknown) {
+    logError("[Notification Service] Error running bill reminder sweep:", error);
   }
 }
 
 /**
- * Automates the cleanup of notifications older than 30 days.
- * Keeps your database fast and lightweight.
+ * Deletes notifications older than 30 days to keep the table lean.
  */
 export async function cleanupOldNotifications(): Promise<void> {
   const thirtyDaysAgo = new Date();
@@ -98,28 +119,36 @@ export async function cleanupOldNotifications(): Promise<void> {
         },
       },
     });
+
     if (deleted.count > 0) {
-      console.log(`[Notification Service] Automated cleanup: Purged ${deleted.count} historical notifications older than 30 days.`);
+      console.log(
+        `[Notification Service] Automated cleanup: Purged ${deleted.count} historical notifications.`
+      );
     }
-  } catch (error) {
-    console.error("[Notification Service] Error running historical notification cleanup:", error);
+  } catch (error: unknown) {
+    logError("[Notification Service] Error running cleanup:", error);
   }
 }
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: SCHEDULER INITIALIZATION ===
+   ========================================================================== */
 
 /**
- * INITIALIZE THE CRON SCHEDULER
- * Sets up cron jobs to run quietly in the background of your server.
+ * Starts the background cron jobs that run daily and weekly.
  */
 export function initNotificationScheduler(): void {
-  // Job 1: Daily Bill Sweep - Runs every single day at midnight (00:00)
+  // Daily bill reminder sweep at midnight
   cron.schedule("0 0 * * *", async () => {
     await generateBillReminders();
   });
 
-  // Job 2: Weekly Database Cleanup - Runs every Sunday at 1:00 AM
+  // Weekly cleanup of old notifications every Sunday at 1:00 AM
   cron.schedule("0 1 * * 0", async () => {
     await cleanupOldNotifications();
   });
 
   console.log("[Notification Service] Background cron schedulers loaded successfully.");
 }
+/* === SECTION 4 END === */

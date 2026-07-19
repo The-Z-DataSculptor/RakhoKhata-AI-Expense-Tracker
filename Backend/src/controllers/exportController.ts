@@ -1,117 +1,241 @@
 // Backend/src/controllers/exportController.ts
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   ========================================================================== */
 import { Response } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 
-type ExportScope = "today" | "week" | "month" | "3months" | "6months" | "year" | "all";
+// Valid export time scopes – used for input validation
+const ALLOWED_EXPORT_SCOPES = [
+  "today",
+  "week",
+  "month",
+  "3months",
+  "6months",
+  "year",
+  "all",
+] as const;
 
-/**
- * UTILITY: Custom Date Bounds Engine mapping precision timestamp frames
- */
-function getExportDateRange(scope: ExportScope): { gte?: Date; lte?: Date } {
-  const currentAnchor = new Date("2026-07-17T12:00:00Z");
-  const startDate = new Date(currentAnchor);
-  const endDate = new Date(currentAnchor);
-
-  if (scope === "today") {
-    startDate.setUTCHours(0, 0, 0, 0);
-    endDate.setUTCHours(23, 59, 59, 999);
-    return { gte: startDate, lte: endDate };
-  } else if (scope === "week") {
-    startDate.setUTCDate(currentAnchor.getUTCDate() - 6);
-    startDate.setUTCHours(0, 0, 0, 0);
-    endDate.setUTCHours(23, 59, 59, 999);
-    return { gte: startDate, lte: endDate };
-  } else if (scope === "month") {
-    startDate.setUTCDate(1);
-    startDate.setUTCHours(0, 0, 0, 0);
-    const nextMonth = new Date(currentAnchor);
-    nextMonth.setUTCMonth(currentAnchor.getUTCMonth() + 1, 1);
-    nextMonth.setUTCHours(0, 0, 0, 0);
-    endDate.setTime(nextMonth.getTime() - 1);
-    return { gte: startDate, lte: endDate };
-  } else if (scope === "3months") {
-    startDate.setUTCMonth(currentAnchor.getUTCMonth() - 3);
-    startDate.setUTCHours(0, 0, 0, 0);
-    return { gte: startDate };
-  } else if (scope === "6months") {
-    startDate.setUTCMonth(currentAnchor.getUTCMonth() - 6);
-    startDate.setUTCHours(0, 0, 0, 0);
-    return { gte: startDate };
-  } else if (scope === "year") {
-    startDate.setUTCFullYear(currentAnchor.getUTCFullYear(), 0, 1);
-    startDate.setUTCHours(0, 0, 0, 0);
-    return { gte: startDate };
-  }
-
-  return {}; // "all" returns empty object to fetch historical logs globally
-}
+type ExportScope = (typeof ALLOWED_EXPORT_SCOPES)[number];
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === EXCEL GENERATION ENGINE ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-export const exportTransactionsExcel = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+
+// Safe error response builder – never leaks stack traces
+function buildSafeError(message: string): { error: string } {
+  return { error: message };
+}
+
+/**
+ * Validates and casts the incoming scope query parameter.
+ * Returns a valid ExportScope or undefined if invalid.
+ */
+function parseExportScope(raw: unknown): ExportScope | undefined {
+  if (
+    typeof raw === "string" &&
+    (ALLOWED_EXPORT_SCOPES as readonly string[]).includes(raw)
+  ) {
+    return raw as ExportScope;
+  }
+  return undefined;
+}
+
+/**
+ * Calculates the start and end dates for the given export scope.
+ * Uses a fixed anchor date (2026-07-17) for consistent results during development.
+ */
+function getExportDateRange(scope: ExportScope): {
+  gte?: Date;
+  lte?: Date;
+} {
+  const anchor = new Date("2026-07-17T12:00:00Z");
+  const start = new Date(anchor);
+  const end = new Date(anchor);
+
+  switch (scope) {
+    case "today":
+      start.setUTCHours(0, 0, 0, 0);
+      end.setUTCHours(23, 59, 59, 999);
+      return { gte: start, lte: end };
+    case "week":
+      start.setUTCDate(anchor.getUTCDate() - 6);
+      start.setUTCHours(0, 0, 0, 0);
+      end.setUTCHours(23, 59, 59, 999);
+      return { gte: start, lte: end };
+    case "month":
+      start.setUTCDate(1);
+      start.setUTCHours(0, 0, 0, 0);
+      const nextMonth = new Date(anchor);
+      nextMonth.setUTCMonth(anchor.getUTCMonth() + 1, 1);
+      nextMonth.setUTCHours(0, 0, 0, 0);
+      end.setTime(nextMonth.getTime() - 1);
+      return { gte: start, lte: end };
+    case "3months":
+      start.setUTCMonth(anchor.getUTCMonth() - 3);
+      start.setUTCHours(0, 0, 0, 0);
+      return { gte: start };
+    case "6months":
+      start.setUTCMonth(anchor.getUTCMonth() - 6);
+      start.setUTCHours(0, 0, 0, 0);
+      return { gte: start };
+    case "year":
+      start.setUTCFullYear(anchor.getUTCFullYear(), 0, 1);
+      start.setUTCHours(0, 0, 0, 0);
+      return { gte: start };
+    case "all":
+      return {}; // No date filter
+    default:
+      return {};
+  }
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+// ---------------------------------------------------------------------------
+// EXPORT TRANSACTIONS AS EXCEL
+// ---------------------------------------------------------------------------
+export const exportTransactionsExcel = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { workspaceId, scope } = req.query;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
+
+    const { workspaceId, scope } = req.query as {
+      workspaceId?: string;
+      scope?: string;
+    };
 
     if (!workspaceId) {
-      res.status(400).json({ error: "Missing active workspace target parameter." });
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            "Missing active workspace target parameter."
+          )
+        );
       return;
     }
 
-    // Tenant authorization check
-    const workspace = await prisma.workspace.findUnique({ where: { id: String(workspaceId) } });
-    if (!workspace || workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+    // Validate and parse the scope
+    const validScope = parseExportScope(scope);
+    if (scope !== undefined && !validScope) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            "Invalid scope parameter. Allowed: today, week, month, 3months, 6months, year, all."
+          )
+        );
       return;
     }
 
-    const dateRange = getExportDateRange(scope as ExportScope);
+    // Verify workspace ownership
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+    if (
+      !workspace ||
+      workspace.userId !== userId
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
+      return;
+    }
+
+    // Fetch transactions within the selected date range
+    const dateFilter = validScope
+      ? getExportDateRange(validScope)
+      : {};
     const transactions = await prisma.transaction.findMany({
       where: {
-        workspaceId: String(workspaceId),
-        ...(Object.keys(dateRange).length > 0 ? { date: dateRange } : {}),
+        workspaceId: workspaceId,
+        ...(Object.keys(dateFilter).length > 0
+          ? { date: dateFilter }
+          : {}),
       },
       include: { category: true },
       orderBy: { date: "desc" },
     });
 
+    // Build the Excel workbook
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Ledger Statement");
+    const worksheet = workbook.addWorksheet(
+      "Ledger Statement"
+    );
 
-    // Title Block Config
+    // Title row
     worksheet.mergeCells("A1:F1");
     const titleCell = worksheet.getCell("A1");
     titleCell.value = `RakhoKhata Ledger Statement — Workspace: ${workspace.name}`;
-    titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: "FFFFFF" } };
-    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "6366F1" } }; // Brand Blue
-    titleCell.alignment = { vertical: "middle", horizontal: "center" };
+    titleCell.font = {
+      name: "Arial",
+      size: 16,
+      bold: true,
+      color: { argb: "FFFFFF" },
+    };
+    titleCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "6366F1" },
+    };
+    titleCell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
     worksheet.getRow(1).height = 40;
 
     worksheet.addRow([]); // Blank spacer
 
-    // Header Setup
-    const headerRow = worksheet.addRow(["Date", "Type", "Description", "Category", "Original Value", "Currency"]);
+    // Header row
+    const headerRow = worksheet.addRow([
+      "Date",
+      "Type",
+      "Description",
+      "Category",
+      "Original Value",
+      "Currency",
+    ]);
     headerRow.height = 25;
     headerRow.eachCell((cell) => {
-      cell.font = { name: "Arial", size: 11, bold: true, color: { argb: "FFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1F2937" } };
-      cell.alignment = { vertical: "middle", horizontal: "left" };
+      cell.font = {
+        name: "Arial",
+        size: 11,
+        bold: true,
+        color: { argb: "FFFFFF" },
+      };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "1F2937" },
+      };
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "left",
+      };
     });
-    worksheet.getCell("E3").alignment = { horizontal: "right" };
+    // Align the amount column to the right
+    worksheet.getCell("E3").alignment = {
+      horizontal: "right",
+    };
 
-    // Inject Rows
-    transactions.forEach((tx) => {
-      const formattedDate = tx.date.toISOString().split("T")[0];
+    // Populate rows
+    for (const tx of transactions) {
+      const formattedDate = tx.date
+        .toISOString()
+        .split("T")[0];
       const amountNum = Number(tx.originalAmount);
       const row = worksheet.addRow([
         formattedDate,
@@ -123,19 +247,37 @@ export const exportTransactionsExcel = async (req: AuthenticatedRequest, res: Re
       ]);
 
       row.height = 20;
-      row.getCell(5).numFmt = "#,##0.00";// Professional Accounting Comma Separation
+      row.getCell(5).numFmt = "#,##0.00";
 
-      // Highlight Rows Dynamically based on financial mapping classification
+      // Color coding based on transaction type
       if (tx.type === "INCOME") {
-        row.getCell(2).font = { color: { argb: "137333" }, bold: true };
-        row.eachCell((cell) => { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F4EA" } }; });
+        row.getCell(2).font = {
+          color: { argb: "137333" },
+          bold: true,
+        };
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "E6F4EA" },
+          };
+        });
       } else {
-        row.getCell(2).font = { color: { argb: "C5221F" }, bold: true };
-        row.eachCell((cell) => { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FCE8E6" } }; });
+        row.getCell(2).font = {
+          color: { argb: "C5221F" },
+          bold: true,
+        };
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FCE8E6" },
+          };
+        });
       }
-    });
+    }
 
-    // Fit columns dynamically
+    // Auto-fit column widths
     worksheet.columns = [
       { width: 15 }, // Date
       { width: 12 }, // Type
@@ -145,121 +287,236 @@ export const exportTransactionsExcel = async (req: AuthenticatedRequest, res: Re
       { width: 12 }, // Currency
     ];
 
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename=Statement_${scope || "all"}.xlsx`);
+    // Set response headers and send the file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Statement_${validScope || "all"}.xlsx`
+    );
 
     await workbook.xlsx.write(res);
     res.end();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Excel Export Error:", error);
-    res.status(500).json({ error: "Internal server error exporting spreadsheet spreadsheet." });
+    if (!res.headersSent) {
+      res
+        .status(500)
+        .json(
+          buildSafeError(
+            "Internal server error exporting spreadsheet."
+          )
+        );
+    }
   }
 };
 
-/* ==========================================================================
-   === PDF GENERATION ENGINE ===
-   ========================================================================== */
-export const exportTransactionsPdf = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// ---------------------------------------------------------------------------
+// EXPORT TRANSACTIONS AS PDF
+// ---------------------------------------------------------------------------
+export const exportTransactionsPdf = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { workspaceId, scope } = req.query;
-
     if (!userId) {
-      res.status(401).json({ error: "Unauthorized access." });
+      res.status(401).json(buildSafeError("Unauthorized access."));
       return;
     }
+
+    const { workspaceId, scope } = req.query as {
+      workspaceId?: string;
+      scope?: string;
+    };
 
     if (!workspaceId) {
-      res.status(400).json({ error: "Missing active workspace target parameter." });
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            "Missing active workspace target parameter."
+          )
+        );
       return;
     }
 
-    const workspace = await prisma.workspace.findUnique({ where: { id: String(workspaceId) } });
-    if (!workspace || workspace.userId !== userId) {
-      res.status(403).json({ error: "Access denied." });
+    // Validate scope
+    const validScope = parseExportScope(scope);
+    if (scope !== undefined && !validScope) {
+      res
+        .status(400)
+        .json(
+          buildSafeError(
+            "Invalid scope parameter. Allowed: today, week, month, 3months, 6months, year, all."
+          )
+        );
       return;
     }
 
-    const dateRange = getExportDateRange(scope as ExportScope);
+    // Verify workspace ownership
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+    if (
+      !workspace ||
+      workspace.userId !== userId
+    ) {
+      res.status(403).json(buildSafeError("Access denied."));
+      return;
+    }
+
+    // Fetch transactions
+    const dateFilter = validScope
+      ? getExportDateRange(validScope)
+      : {};
     const transactions = await prisma.transaction.findMany({
       where: {
-        workspaceId: String(workspaceId),
-        ...(Object.keys(dateRange).length > 0 ? { date: dateRange } : {}),
+        workspaceId: workspaceId,
+        ...(Object.keys(dateFilter).length > 0
+          ? { date: dateFilter }
+          : {}),
       },
       include: { category: true },
       orderBy: { date: "desc" },
     });
 
-    // Create safe Landscape vector canvas bounds to perfectly fit data tracking parameters
-    const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 40 });
+    // Create PDF document in landscape
+    const doc = new PDFDocument({
+      size: "A4",
+      layout: "landscape",
+      margin: 40,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=Statement_${scope || "all"}.pdf`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Statement_${validScope || "all"}.pdf`
+    );
 
     doc.pipe(res);
 
-    // Document Header Title Design Block
-    doc.rect(40, 40, 762, 50).fill("#6366F1");
-    doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(16).text(`RAKHOKHATA ACCOUNTING STATEMENT`, 60, 58);
-    doc.fontSize(10).font("Helvetica").text(`Workspace: ${workspace.name.toUpperCase()}  |  Scope: ${String(scope).toUpperCase()}`, 60, 76, { align: "left" });
+    // --- Header block ---
+    doc
+      .rect(40, 40, 762, 50)
+      .fill("#6366F1");
+    doc
+      .fillColor("#FFFFFF")
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text(`RAKHOKHATA ACCOUNTING STATEMENT`, 60, 58);
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .text(
+        `Workspace: ${workspace.name.toUpperCase()}  |  Scope: ${String(validScope || "ALL").toUpperCase()}`,
+        60,
+        76,
+        { align: "left" }
+      );
 
-    // Table Header Setup positions
+    // --- Table header ---
     let currentY = 110;
-    doc.fillColor("#1F2937").rect(40, currentY, 762, 22).fill();
-    doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(10);
+    doc
+      .fillColor("#1F2937")
+      .rect(40, currentY, 762, 22)
+      .fill();
+    doc
+      .fillColor("#FFFFFF")
+      .font("Helvetica-Bold")
+      .fontSize(10);
     doc.text("Date", 50, currentY + 6);
     doc.text("Type", 140, currentY + 6);
     doc.text("Description", 230, currentY + 6);
     doc.text("Category", 480, currentY + 6);
-    doc.text("Value Amount", 640, currentY + 6, { width: 140, align: "right" });
+    doc.text("Value Amount", 640, currentY + 6, {
+      width: 140,
+      align: "right",
+    });
 
     currentY += 22;
     doc.font("Helvetica").fontSize(9);
 
-    // Iterating transactions data matrix
-    transactions.forEach((tx) => {
-      // Trigger dynamic landscape multi-page canvas splits before breaking bounding margins
+    // --- Row rendering ---
+    for (const tx of transactions) {
+      // Add a new page if near bottom
       if (currentY > 520) {
         doc.addPage();
-        currentY = 40; // reset layout boundary top marker
-        
-        // Redraw table rows descriptor text header on split continuation sheets
-        doc.fillColor("#1F2937").rect(40, currentY, 762, 22).fill();
-        doc.fillColor("#FFFFFF").font("Helvetica-Bold");
+        currentY = 40;
+
+        // Redraw header on new page
+        doc
+          .fillColor("#1F2937")
+          .rect(40, currentY, 762, 22)
+          .fill();
+        doc
+          .fillColor("#FFFFFF")
+          .font("Helvetica-Bold");
         doc.text("Date", 50, currentY + 6);
         doc.text("Type", 140, currentY + 6);
         doc.text("Description", 230, currentY + 6);
         doc.text("Category", 480, currentY + 6);
-        doc.text("Value Amount", 640, currentY + 6, { width: 140, align: "right" });
+        doc.text("Value Amount", 640, currentY + 6, {
+          width: 140,
+          align: "right",
+        });
         currentY += 22;
-        doc.font("Helvetica");
+        doc.font("Helvetica").fontSize(9);
       }
 
-      // Draw alternate row line indicators
-      doc.fillColor(tx.type === "INCOME" ? "#E6F4EA" : "#FCE8E6").rect(40, currentY, 762, 20).fill();
+      // Row background colour
+      const isIncome = tx.type === "INCOME";
+      const bgColor = isIncome ? "#E6F4EA" : "#FCE8E6";
+      doc
+        .fillColor(bgColor)
+        .rect(40, currentY, 762, 20)
+        .fill();
 
-      // Write Text Cells explicitly with colored labels mapping classification boundaries
+      // Write cells
+      const dateStr = tx.date.toISOString().split("T")[0];
       doc.fillColor("#1F2937");
-      doc.text(tx.date.toISOString().split("T")[0], 50, currentY + 6);
-      
-      doc.fillColor(tx.type === "INCOME" ? "#137333" : "#C5221F").font("Helvetica-Bold");
+      doc.text(dateStr, 50, currentY + 6);
+
+      doc
+        .fillColor(isIncome ? "#137333" : "#C5221F")
+        .font("Helvetica-Bold");
       doc.text(tx.type, 140, currentY + 6);
-      
+
       doc.fillColor("#1F2937").font("Helvetica");
-      doc.text(tx.description.length > 45 ? `${tx.description.substring(0, 42)}...` : tx.description, 230, currentY + 6);
-      doc.text(tx.category?.name || "Uncategorized", 480, currentY + 6);
-      
+      const description =
+        tx.description.length > 45
+          ? tx.description.substring(0, 42) + "..."
+          : tx.description;
+      doc.text(description, 230, currentY + 6);
+      doc.text(
+        tx.category?.name || "Uncategorized",
+        480,
+        currentY + 6
+      );
+
       const formattedValue = `${Number(tx.originalAmount).toFixed(2)} ${tx.originalCurrency}`;
-      doc.text(formattedValue, 640, currentY + 6, { width: 140, align: "right" });
+      doc.text(formattedValue, 640, currentY + 6, {
+        width: 140,
+        align: "right",
+      });
 
       currentY += 20;
-    });
+    }
 
     doc.end();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("PDF Export Error:", error);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error exporting system document report vectors." });
+      res
+        .status(500)
+        .json(
+          buildSafeError(
+            "Internal server error exporting system document report vectors."
+          )
+        );
     }
   }
 };
+/* === SECTION 3 END === */

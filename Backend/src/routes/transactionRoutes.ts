@@ -1,61 +1,71 @@
-// src/routes/transactionRoutes.ts
+// Backend/src/routes/transactionRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Router } from "express";
-import multer from "multer"; // 🚀 REQUIRED: Handles binary multi-part file payloads
-import { 
-  createTransaction, 
-  bulkCreateTransactions, 
-  scanReceipt, // 🚀 REQUIRED: Links the Gemini extraction logic
-  getWorkspaceTransactions, 
-  deleteTransaction 
+import multer from "multer";
+import {
+  createTransaction,
+  bulkCreateTransactions,
+  scanReceipt,
+  getWorkspaceTransactions,
+  deleteTransaction,
 } from "../controllers/transactionController";
-import { exportTransactionsExcel, exportTransactionsPdf } from "../controllers/exportController";
-import { verifyTokenGuard } from "../middleware/authMiddleware"; 
+import {
+  exportTransactionsExcel,
+  exportTransactionsPdf,
+} from "../controllers/exportController";
+import { verifyTokenGuard } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: MIDDLEWARE ALLOCATION ===
+   === SECTION 2: MIDDLEWARE CONFIGURATION ===
    ========================================================================== */
 const router = Router();
 
-// Set up memory buffer storage for raw image streams (keeps disk storage clean)
+// Memory‑only storage for receipt images – no files are written to disk
 const memoryUploadEngine = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB file size roof ceiling protection check
-  }
+    fileSize: 10 * 1024 * 1024, // 10 MB maximum upload size
+  },
 });
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: ROUTING HIGHWAY DEFINITIONS ===
+   === SECTION 3: TRANSACTION ROUTES ===
    ========================================================================== */
-// Secure Highway: Fetch transactions matching an active workspace parameter
+
+// Fetch all transactions for a workspace (workspaceId query parameter required)
 router.get("/", verifyTokenGuard, getWorkspaceTransactions);
 
-// Secure Highway: Insert a new income or expense log row into the database
+// Create a single new transaction
 router.post("/", verifyTokenGuard, createTransaction);
 
-// DATA BRIDGE: Mounts sheet transaction import bulk tracking maps
+// Bulk import multiple transactions
 router.post("/bulk", verifyTokenGuard, bulkCreateTransactions);
 
-// 🚀 404 FIX: Mount the multipart scanning endpoint to handle raw receipt file processing
+// Scan a receipt image using AI (accepts multipart form with field "receipt")
 router.post(
-  "/scan", 
-  verifyTokenGuard, 
-  memoryUploadEngine.single("receipt"), 
+  "/scan",
+  verifyTokenGuard,
+  memoryUploadEngine.single("receipt"),
   scanReceipt
 );
 
-// Secure Highway: Remove a specific transaction row item via a dynamic path URL parameter
+// Delete a transaction by its ID
 router.delete("/:id", verifyTokenGuard, deleteTransaction);
 
-// Export Highways: Kept under transaction data tracking routes
+// Export transactions as Excel
 router.get("/export/excel", verifyTokenGuard, exportTransactionsExcel);
+
+// Export transactions as PDF
 router.get("/export/pdf", verifyTokenGuard, exportTransactionsPdf);
 /* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: EXPORT ===
+   ========================================================================== */
 export default router;
+/* === SECTION 4 END === */

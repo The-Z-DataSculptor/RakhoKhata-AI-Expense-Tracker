@@ -1,18 +1,40 @@
 // Backend/src/workers/billReminderWorker.ts
+
+/* ==========================================================================
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   ========================================================================== */
 import cron from "node-cron";
 import { prisma } from "../db";
 import { sendBillReminderEmail } from "../services/emailService";
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   ========================================================================== */
 
 /**
- * Core scanning function that looks for categories needing a bill reminder email
+ * Helper function to log errors without exposing details to clients.
  */
-const runBillScanner = async () => {
+function logWorkerError(message: string, detail: unknown): void {
+  console.error(`[BillReminderWorker] ${message}`, detail);
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   ========================================================================== */
+
+/**
+ * Scans the database for recurring categories whose configured reminder day
+ * matches today, and sends a bill reminder email to the workspace owner.
+ */
+async function runBillScanner(): Promise<void> {
   try {
     const today = new Date();
     const currentDayOfMonth = today.getDate();
     console.log(`🕒 Scanning upcoming bill records for calendar day: ${currentDayOfMonth}`);
 
-    // Find all categories that have active reminders configured
+    // 1. Fetch all categories that have both a due day and reminder days configured
     const categoriesWithReminders = await prisma.category.findMany({
       where: {
         dueDay: { not: null },
@@ -21,55 +43,68 @@ const runBillScanner = async () => {
       include: {
         workspace: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true, // owner of the workspace
+          },
+        },
+      },
     });
 
-    // Type-safe iteration over our loaded relationships
+    // 2. Iterate through each category
     for (const category of categoriesWithReminders) {
-      // Safe check to make sure the category belongs to a workspace with an active user
-      const workspace = (category as any).workspace;
-      if (!workspace || !workspace.user) continue;
+      const workspace = category.workspace;
+      const user = workspace?.user;
 
-      const user = workspace.user;
-      if (!category.dueDay || !category.reminderDays) continue;
+      // Skip if workspace or user is missing (should not happen normally)
+      if (!workspace || !user) continue;
 
-      // Calculate how many days are left until the due date arrives
-      const daysUntilDue = category.dueDay - currentDayOfMonth;
+      // TypeScript now knows dueDay and reminderDays are non‑null
+      const dueDay = category.dueDay as number;
+      const reminderDays = category.reminderDays as number;
 
-      // Simple edge fallback if the due day already passed this month
-      if (daysUntilDue < 0) continue; 
+      // Calculate how many days remain until the due date
+      const daysUntilDue = dueDay - currentDayOfMonth;
 
-      // If the countdown matches their exact notification window, fire the email!
-      if (daysUntilDue === category.reminderDays) {
+      // If the due date has already passed this month, ignore
+      if (daysUntilDue < 0) continue;
+
+      // If the remaining days exactly match the reminder window, send an email
+      if (daysUntilDue === reminderDays) {
         await sendBillReminderEmail(
           user.email,
           user.name,
           category.name,
-          category.dueDay,
+          dueDay,
           daysUntilDue
         ).catch((err: unknown) => {
-          console.error(`Failed to send background email to user ${user.id}:`, err);
+          logWorkerError(
+            `Failed to send background email to user ${user.id}`,
+            err
+          );
         });
       }
     }
-  } catch (error) {
-    console.error("❌ Error running upcoming bill worker loop:", error);
+  } catch (error: unknown) {
+    logWorkerError("Error running upcoming bill worker loop:", error);
   }
-};
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: CRON JOB INITIALIZATION ===
+   ========================================================================== */
 
 /**
- * Initializes the automated daily background checker for bill notifications
- * Runs every single night exactly at midnight (00:00)
+ * Starts the daily cron job that triggers the bill scanner at midnight.
  */
-export const initBillReminderCron = () => {
-  console.log("[Notification Service] Bill reminder background cron scheduler loaded.");
+export function initBillReminderCron(): void {
+  console.log(
+    "[Notification Service] Bill reminder background cron scheduler loaded."
+  );
 
-  // Standard production automation routine (Midnight checker)
+  // Run the scanner every day at midnight
   cron.schedule("0 0 * * *", async () => {
     console.log("🕒 Running standard midnight upcoming bills check...");
     await runBillScanner();
   });
-};
+}
+/* === SECTION 4 END === */

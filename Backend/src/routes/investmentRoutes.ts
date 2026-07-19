@@ -1,34 +1,38 @@
-// src/routes/investmentRoutes.ts
+// Backend/src/routes/investmentRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { Router } from "express";
-import { 
-  createInvestmentAsset, 
-  getWorkspaceInvestments, 
-  updateInvestmentAsset,  // NEW: Import the update controller
-  deleteInvestmentAsset 
+import {
+  createInvestmentAsset,
+  getWorkspaceInvestments,
+  updateInvestmentAsset,
+  deleteInvestmentAsset,
 } from "../controllers/investmentController";
-import { verifyTokenGuard } from "../middleware/authMiddleware"; // Secure session validation perimeter guard
+import { verifyTokenGuard } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: ROUTING HIGHWAY DEFINITIONS ===
+   === SECTION 2: INVESTMENT VAULT ROUTES ===
    ========================================================================== */
 const router = Router();
 
-// Secure Highway: Read all investment holding records mapped to an active workspace query
+// Fetch all investments for a workspace (workspaceId query parameter required)
 router.get("/", verifyTokenGuard, getWorkspaceInvestments);
 
-// Secure Highway: Append a new stock, crypto, or commodity asset line to the active vault
+// Add a new investment asset
 router.post("/", verifyTokenGuard, createInvestmentAsset);
 
-// NEW: Secure Highway: Update an existing investment asset by ID
+// Update an existing investment asset by ID
 router.put("/:id", verifyTokenGuard, updateInvestmentAsset);
 
-// Secure Highway: Permanently erase a specific asset holding row using its unique path ID parameter
+// Delete an investment asset
 router.delete("/:id", verifyTokenGuard, deleteInvestmentAsset);
 /* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: EXPORT ===
+   ========================================================================== */
 export default router;
+/* === SECTION 3 END === */

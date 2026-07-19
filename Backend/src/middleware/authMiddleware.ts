@@ -1,11 +1,12 @@
-// src/middleware/authMiddleware.ts
+// Backend/src/middleware/authMiddleware.ts
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import { Response, NextFunction, Request } from "express";
-import crypto from "crypto";          // Used to derive the matching 52-character secret key layout
-import { decrypt } from "paseto-ts/v4"; // Pure TypeScript PASETO v4 local decrypt engine
+import crypto from "crypto"; 
+import { decrypt } from "paseto-ts/v4"; 
+import { prisma } from "../db"; // 🚀 ADDED: Required to look up live profile checkpoint states
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -16,7 +17,6 @@ interface TokenPayload {
   email: string;
 }
 
-// Custom interface extending the standard Express Request layout to attach profile data
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
 }
@@ -27,8 +27,6 @@ export interface AuthenticatedRequest extends Request {
    ========================================================================== */
 const PASETO_SECRET = process.env.PASETO_SECRET || "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
 
-// Generates the matching 52-character key footprint required by paseto-ts 
-// to mirror your authController encryption key perfectly.
 const getPasetoKey = (): string => {
   const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
   const base64url = hash.toString("base64url");
@@ -37,7 +35,7 @@ const getPasetoKey = (): string => {
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: VERIFICATION GUARD MIDDLEWARE ===
+   === SECTION 4: VERIFICATION GUARD MIDDLEWARE (SESSION CHECK) ===
    ========================================================================== */
 export const verifyTokenGuard = async (
   req: AuthenticatedRequest,
@@ -45,26 +43,21 @@ export const verifyTokenGuard = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // 1. Extract the secure token string directly from the cookie container
     const token = req.cookies?.token;
 
-    // 2. Structural Gate: If the token is missing from the cookie slot, deny access instantly
     if (!token) {
       res.status(401).json({ error: "Access denied. Active session token missing." });
       return;
     }
 
-    // 3. Cryptographic Handshake: Decrypt the envelope using the synchronized PASERK key format
     const { payload } = await decrypt(getPasetoKey(), token);
     const decoded = payload as unknown as TokenPayload;
 
-    // 4. Assignment: Attach the verified user metadata safely to the request lifecycle
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
     };
 
-    // 5. Handoff: Control passes cleanly to the next controller down the pipeline
     next();
 
   } catch (error) {
@@ -80,3 +73,46 @@ export const verifyTokenGuard = async (
   }
 };
 /* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: 🚀 NEW: ONBOARDING ACCESSIBILITY GUARD ===
+   ========================================================================== */
+/**
+ * Security Guard that blocks users from accessing financial engines (ledger records,
+ * budgets, asset vaults) if they haven't finished the onboarding questionnaire form.
+ */
+export const ensureOnboardingCompleted = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized access. Active user session context missing." });
+      return;
+    }
+
+    // Pull the real-time onboarding milestone checkpoint from Postgres
+    const userProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isOnboardingCompleted: true }
+    });
+
+    // If account doesn't exist or hasn't finished onboarding, block the request data line
+    if (!userProfile || !userProfile.isOnboardingCompleted) {
+      res.status(403).json({ 
+        error: "Access denied. Please complete your personalized profile onboarding setup first." 
+      });
+      return;
+    }
+
+    // User passed the gate! Continue onto the data controller safely
+    next();
+
+  } catch (error) {
+    console.error("Onboarding Validation Gate Exception:", error);
+    res.status(500).json({ error: "Internal server error confirming customization status." });
+  }
+};
+/* === SECTION 5 END === */

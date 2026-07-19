@@ -163,6 +163,13 @@ export const transactionService = {
       body: JSON.stringify(data),
     }),
 
+  // 🚀 NEW: Added the optimized batch network ingestion wrapper path mapping
+  bulkCreate: (data: { workspaceId: string; transactions: Omit<Transaction, "id" | "category">[] }) =>
+    apiFetch<{ message: string }>("/transactions/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   delete: (id: string) =>
     apiFetch<{ message: string }>(`/transactions/${id}`, { method: "DELETE" }),
 };
@@ -177,7 +184,6 @@ export const categoryService = {
       body: JSON.stringify(data),
     }),
 
-  // 🚀 NEW: Integrated the missing Category update pipeline mapped to your RESTful routing framework
   update: (id: string, data: Partial<Omit<Category, "id">>) =>
     apiFetch<{ message: string; category: Category }>(`/categories/${id}`, {
       method: "PUT",

@@ -7,8 +7,8 @@ import { Response } from "express";
 import { prisma } from "../db";                                      // Core database client link
 import { AuthenticatedRequest } from "../middleware/authMiddleware"; // Secure session tracker layout
 
-// 🚀 PROTECTED SYSTEM CATEGORIES: Prevents front-end deep-linking and scheduler breakages
-const IMMUTABLE_SYSTEM_CATEGORIES = ["owed to me (receivable)", "my debts (payable)"];
+// 🚀 FIXED: Added "unassigned" to the lowercase protection blacklist to guard it against mutations
+const IMMUTABLE_SYSTEM_CATEGORIES = ["owed to me (receivable)", "my debts (payable)", "unassigned"];
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -31,7 +31,7 @@ export const getWorkspaceCategories = async (req: AuthenticatedRequest, res: Res
 
     const workspaceCheck = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
     
-    // 🚀 DEFENSIVE FIX: String cast coercion ensures type mismatches don't trigger a false 403
+    // DEFENSIVE FIX: String cast coercion ensures type mismatches don't trigger a false 403
     if (!workspaceCheck || String(workspaceCheck.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Verification credentials invalid for this profile." });
       return;
@@ -82,9 +82,18 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
+    // 🛡️ SECURITY GUARD: Prevent creating a custom category that mimics a locked system category title
+    const normalizedIncomingName = name.toLowerCase().trim();
+    if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedIncomingName)) {
+      res.status(400).json({ 
+        error: `The category name "${name.trim()}" is reserved for system operations.` 
+      });
+      return;
+    }
+
     const workspaceCheck = await prisma.workspace.findUnique({ where: { id: workspaceId } });
     
-    // 🚀 DEFENSIVE FIX: String cast coercion protection
+    // DEFENSIVE FIX: String cast coercion protection
     if (!workspaceCheck || String(workspaceCheck.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Action signature verification failed." });
       return;
@@ -96,7 +105,7 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response): 
         type,
         color: color || "#7E7A9C", 
         workspaceId,
-        isRecurring: !!isRecurring, 
+        isRecurring: !!isRecurring, // 🎛️ User choice driven: defaults to false if omitted or undefined
         frequency: frequency || null,
         dueDay: (dueDay !== undefined && dueDay !== null) ? Number(dueDay) : null,
         reminderDays: (reminderDays !== undefined && reminderDays !== null) ? Number(reminderDays) : null,
@@ -121,7 +130,7 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
   try {
     const userId = req.user?.userId;
     
-    // 🚀 FIXED: Adaptive parameter extraction handles fallback parameter labels seamlessly
+    // Adaptive parameter extraction handles fallback parameter labels seamlessly
     const parsedId = req.params.id || req.params.categoryId || req.query.id;
     const targetId = parsedId ? String(parsedId) : undefined;
     
@@ -147,19 +156,30 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // 🚀 DEFENSIVE FIX: String casting ensures strings vs integers check out perfectly
+    // DEFENSIVE FIX: String casting ensures strings vs integers check out perfectly
     if (String(targetCategory.workspace.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Workspace data alignment match mismatched." });
       return;
     }
 
-    // 🚀 TARGETED GUARDRAIL: Case-insensitive match locks down ONLY your 2 special system rows
+    // 🚀 TARGETED GUARDRAIL: Automatically blocks modifications to locked system categories
     const normalizedName = targetCategory.name.toLowerCase().trim();
     if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedName)) {
       res.status(400).json({ 
-        error: `The core split-ledger category "${targetCategory.name}" is locked by the system architecture and cannot be modified.` 
+        error: `The core system category "${targetCategory.name}" is locked by the application architecture and cannot be modified.` 
       });
       return;
+    }
+
+    // 🛡️ SECURITY GUARD: Prevent renaming an otherwise normal category into a reserved system category title
+    if (name !== undefined) {
+      const normalizedIncomingName = name.toLowerCase().trim();
+      if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedIncomingName)) {
+        res.status(400).json({ 
+          error: `Cannot rename category to "${name.trim()}" because it is a reserved system title.` 
+        });
+        return;
+      }
     }
 
     const updatedCategory = await prisma.category.update({
@@ -168,7 +188,7 @@ export const updateCategory = async (req: AuthenticatedRequest, res: Response): 
         name: name !== undefined ? name.trim() : targetCategory.name,
         type: type !== undefined ? type : targetCategory.type,
         color: color !== undefined ? color : targetCategory.color,
-        isRecurring: isRecurring !== undefined ? !!isRecurring : targetCategory.isRecurring,
+        isRecurring: isRecurring !== undefined ? !!isRecurring : targetCategory.isRecurring, // Holds choice or existing DB state
         frequency: frequency !== undefined ? frequency : targetCategory.frequency,
         dueDay: dueDay !== undefined ? (dueDay !== null ? Number(dueDay) : null) : targetCategory.dueDay,
         reminderDays: reminderDays !== undefined ? (reminderDays !== null ? Number(reminderDays) : null) : targetCategory.reminderDays,
@@ -193,7 +213,7 @@ export const deleteCategory = async (req: AuthenticatedRequest, res: Response): 
   try {
     const userId = req.user?.userId;
     
-    // 🚀 FIXED: Adaptive parameter extraction handles fallback parameter labels seamlessly
+    // Adaptive parameter extraction handles fallback parameter labels seamlessly
     const parsedId = req.params.id || req.params.categoryId || req.query.id;
     const targetId = parsedId ? String(parsedId) : undefined;
 
@@ -217,17 +237,17 @@ export const deleteCategory = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // 🚀 DEFENSIVE FIX: Safe string verification
+    // DEFENSIVE FIX: Safe string verification
     if (String(categoryTarget.workspace.userId) !== String(userId)) {
       res.status(403).json({ error: "Access denied. Workspace ownership match failed." });
       return;
     }
 
-    // 🚀 TARGETED GUARDRAIL: Case-insensitive protection block
+    // 🚀 TARGETED GUARDRAIL: Safely blocks deletion of protected categories to preserve bulk import relational paths
     const normalizedName = categoryTarget.name.toLowerCase().trim();
     if (IMMUTABLE_SYSTEM_CATEGORIES.includes(normalizedName)) {
       res.status(400).json({ 
-        error: `The core split-ledger category "${categoryTarget.name}" is permanent and cannot be deleted from RakhoKhata.` 
+        error: `The core system category "${categoryTarget.name}" is permanent and cannot be deleted from RakhoKhata.` 
       });
       return;
     }

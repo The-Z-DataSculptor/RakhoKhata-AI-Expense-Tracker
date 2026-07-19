@@ -5,17 +5,17 @@
    ========================================================================== */
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";  // Handles parsing incoming cookie payloads onto req.cookies
-import { prisma } from "./db";            // Core database client connected to Neon Cloud
+import cookieParser from "cookie-parser";  
+import { prisma } from "./db";            
 import authRoutes from "./routes/authRoutes"; 
-import workspaceRoutes from "./routes/workspaceRoutes";   // Workspace routing subsystem to control multi-tenancy partitions
-import transactionRoutes from "./routes/transactionRoutes"; // Transaction accounting routing matrix to handle ledger logs
-import categoryRoutes from "./routes/categoryRoutes";       // Category budget sorting routes to manage ledger folder structures
-import budgetRoutes from "./routes/budgetRoutes";           // Budget ceiling limit routes to establish spending guardrails
-import investmentRoutes from "./routes/investmentRoutes";   // Investment vault asset routes to manage financial portfolios
-import aiRoutes from "./routes/aiRoutes";                   // AI insights route for Gemini integration
-import notificationRoutes from "./routes/notificationRoutes"; // Notification routing subsystem
-import { globalApiLimiter } from "./middleware/rateLimitMiddleware"; // Centralized global rate limit controller import
+import workspaceRoutes from "./routes/workspaceRoutes";   
+import transactionRoutes from "./routes/transactionRoutes"; 
+import categoryRoutes from "./routes/categoryRoutes";       
+import budgetRoutes from "./routes/budgetRoutes";           
+import investmentRoutes from "./routes/investmentRoutes";   
+import aiRoutes from "./routes/aiRoutes";                   
+import notificationRoutes from "./routes/notificationRoutes"; 
+import { globalApiLimiter } from "./middleware/rateLimitMiddleware"; 
 /* === SECTION 1 END === */
 
 const app = express();
@@ -25,15 +25,14 @@ const app = express();
    ========================================================================== */
 app.use(
   cors({
-    origin: "http://localhost:3000", // Your exact frontend Next.js local address
-    credentials: true,               // Essential! Allows browser headers to pass HttpOnly cookies safely
+    origin: "http://localhost:3000", 
+    credentials: true,               
   })
 );
 
-app.use(express.json());   // Body parser to extract incoming JSON payloads onto req.body
-app.use(cookieParser());   // Registers the parser to extract cookie strings into readable objects
+app.use(express.json());   
+app.use(cookieParser());   
 
-// Apply the generous centralized rate limiter globally across the API highway
 app.use("/api", globalApiLimiter);
 /* === SECTION 3 END === */
 
@@ -61,7 +60,19 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/investments", investmentRoutes);
 app.use("/api/ai", aiRoutes);
-app.use("/api/notifications", notificationRoutes); // Mounted notifications routing highway!
+app.use("/api/notifications", notificationRoutes); 
+
+/* ==========================================================================
+   === 🚀 NEW: CENTRALIZED JSON EXCEPTION SHIELD ===
+   ========================================================================== */
+// This intercepts all downstream middleware or routing crashes and forces clean JSON returns
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("Global Server Exception Caught:", err);
+  
+  res.status(err.status || 500).json({
+    error: err.message || "An unexpected core engine error occurred on the server layer."
+  });
+});
 /* === SECTION 4 END === */
 
 export default app;

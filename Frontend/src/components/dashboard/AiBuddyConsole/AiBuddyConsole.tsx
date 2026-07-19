@@ -100,8 +100,6 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     return updatedCount;
   }, [getDailyCallCount]);
 
-  // 🚀 FIXED: No cascading synchronous renders. 
-  // We reset the display dynamically inside the async callback so React processes it beautifully.
   useEffect(() => {
     if (!fullTargetText) return;
 
@@ -114,7 +112,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     
     const typewriterInterval = setInterval(() => {
       if (characterIndex === 0) {
-        setDisplayedText(""); // Clear previous text asynchronously inside the interval tick
+        setDisplayedText(""); 
       }
 
       if (characterIndex < cleanedText.length) {

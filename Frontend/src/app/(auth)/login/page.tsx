@@ -1,3 +1,5 @@
+// src/app/(auth)/login/page.tsx
+
 "use client";
 
 /* ==========================================================================
@@ -10,9 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner"; 
 
-// Import validation rules to ensure the user enters correct data
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
-
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
@@ -21,7 +21,6 @@ import styles from "./page.module.css";
    ========================================================================== */
 type MarketTrendType = "STABLE_GROWTH" | "CORRECTIVE_RECOVERY" | "HIGH_VOLATILITY_BURST";
 
-// Empty subscription setup needed for useSyncExternalStore to verify window availability safely
 const emptySubscribe = () => () => {};
 /* === SECTION 2 END === */
 
@@ -31,22 +30,17 @@ const emptySubscribe = () => () => {};
 export default function LoginPage() {
   const router = useRouter();
 
-  // UX Improvement: Add a toggle to let users double-check their typed password
   const [showPassword, setShowPassword] = useState(false);
-
-  // 🚀 RECOVERY CONTROLS: Manages the modal overlay state and submission feedback
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
 
-  // Directly hooks into the rendering timeline to figure out if it is a server or browser environment
   const isClient = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
 
-  // Wire up the externally imported login schema parameters to the form engine
   const {
     register,
     handleSubmit,
@@ -56,7 +50,6 @@ export default function LoginPage() {
     mode: "onBlur",
   });
 
-  // State elements kept for the reactive parts of the background graph UI
   const [marketVolatility, setMarketVolatility] = useState<number>(12);
   const [marketTrend, setMarketTrend] = useState<MarketTrendType>("STABLE_GROWTH");
 
@@ -67,7 +60,6 @@ export default function LoginPage() {
   const currentAmplitude = useRef<number>(20);
   const targetAmplitude = useRef<number>(20);
 
-  // Form submission handler connected directly to the Express backend API
   const onFormSubmit = async (data: LoginFormData) => {
     console.log("Validated Payload:", data);
     
@@ -102,7 +94,6 @@ export default function LoginPage() {
     }
   };
 
-  // 🚀 RECOVERY SUBMIT HIGHWAY: Sends request to your new backend endpoint
   const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail.trim()) {
@@ -124,7 +115,6 @@ export default function LoginPage() {
         throw new Error(result.error || "Failed to process recovery transmission.");
       }
 
-      // Handle server message response gracefully
       toast.success(result.message || "Recovery transmission dispatched safely.");
       setShowForgotModal(false);
       setForgotEmail("");
@@ -137,7 +127,6 @@ export default function LoginPage() {
     }
   };
 
-  // Helper to format the trend state into friendly text
   const getDisplayTrend = (trend: MarketTrendType) => {
     switch (trend) {
       case "STABLE_GROWTH": return "Stable";
@@ -288,60 +277,75 @@ export default function LoginPage() {
           </div>
 
           {isClient && (
-            <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm} noValidate>
-              
-              <div className={styles.inputControlGroup}>
-                <label htmlFor="email" className={styles.fieldLabel}>Email Address</label>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  {...register("email")}
-                  className={`${styles.primaryInputField} ${errors.email ? styles.inputErrorState : ""}`}
-                  autoFocus
-                  aria-invalid={errors.email ? "true" : "false"}
-                />
-                {errors.email && <span className={styles.fieldErrorText} role="alert">{errors.email.message}</span>}
-              </div>
-
-              <div className={styles.inputControlGroup}>
-                <div className={styles.labelForgotRow}>
-                  <label htmlFor="password" className={styles.fieldLabel}>Password</label>
-                  {/* 🚀 FIXED: Transformed from raw link to dynamic overlay state anchor toggle */}
-                  <button 
-                    type="button" 
-                    onClick={() => setShowForgotModal(true)} 
-                    className={styles.forgotPassLinkButton}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
+            <>
+              <form onSubmit={handleSubmit(onFormSubmit)} className={styles.registrationForm} noValidate>
                 
-                <div className={styles.passwordInputWrapper}>
+                <div className={styles.inputControlGroup}>
+                  <label htmlFor="email" className={styles.fieldLabel}>Email Address</label>
                   <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    {...register("password")}
-                    className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.password ? styles.inputErrorState : ""}`}
-                    aria-invalid={errors.password ? "true" : "false"}
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    {...register("email")}
+                    className={`${styles.primaryInputField} ${errors.email ? styles.inputErrorState : ""}`}
+                    autoFocus
+                    aria-invalid={errors.email ? "true" : "false"}
                   />
-                  <button 
-                    type="button" 
-                    className={styles.showPasswordToggle}
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? "Hide" : "Show"}
-                  </button>
+                  {errors.email && <span className={styles.fieldErrorText} role="alert">{errors.email.message}</span>}
                 </div>
-                {errors.password && <span className={styles.fieldErrorText} role="alert">{errors.password.message}</span>}
-              </div>
 
-              <button type="submit" className={styles.submitPrimaryButton} disabled={isSubmitting}>
-                {isSubmitting ? "Logging in..." : "Log In"}
-              </button>
-            </form>
+                <div className={styles.inputControlGroup}>
+                  <div className={styles.labelForgotRow}>
+                    <label htmlFor="password" className={styles.fieldLabel}>Password</label>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowForgotModal(true)} 
+                      className={styles.forgotPassLinkButton}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      {...register("password")}
+                      className={`${styles.primaryInputField} ${styles.passwordInput} ${errors.password ? styles.inputErrorState : ""}`}
+                      aria-invalid={errors.password ? "true" : "false"}
+                    />
+                    <button 
+                      type="button" 
+                      className={styles.showPasswordToggle}
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  {errors.password && <span className={styles.fieldErrorText} role="alert">{errors.password.message}</span>}
+                </div>
+
+                <button type="submit" className={styles.submitPrimaryButton} disabled={isSubmitting}>
+                  {isSubmitting ? "Logging in..." : "Log In"}
+                </button>
+              </form>
+
+              {/* 🚀 ADDED: Visual Design Separator Vector */}
+              <div className={styles.authSeparatorContainer}>or</div>
+
+              {/* 🚀 ADDED: Unified Google OAuth Pipeline Connection Link Box */}
+              <a href="http://localhost:5000/api/auth/google" className={styles.googleOAuthHighwayButton}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.64 9.20455C17.64 8.59091 17.5855 8.00455 17.4845 7.44545H9V10.783H13.8436C13.635 11.91 13.0009 12.8645 12.0477 13.5027V15.6695H14.9564C16.6582 14.1027 17.64 11.8705 17.64 9.20455Z" fill="#4285F4"/>
+                  <path d="M9 18C11.43 18 13.4673 17.1955 14.9591 15.6695L12.0505 13.5027C11.2445 14.0427 10.2136 14.3645 9 14.3645C6.65455 14.3645 4.66636 12.7841 3.95727 10.6555H0.949091V12.9886C2.43545 15.9409 5.48182 18 9 18Z" fill="#34A853"/>
+                  <path d="M3.95727 10.6555C3.77727 10.1155 3.67636 9.54273 3.67636 8.95455C3.67636 8.36636 3.77727 7.79364 3.95727 7.25364V4.92045H0.949091C0.340909 6.13364 0 7.50545 0 8.95455C0 10.4036 0.340909 11.7755 0.949091 12.9886L3.95727 10.6555Z" fill="#FBBC05"/>
+                  <path d="M9 3.63545C10.3227 3.63545 11.5091 4.09091 12.4418 4.98273L15.0245 2.40001C13.4645 0.946364 11.4245 0 9 0C5.48182 0 2.43545 2.05909 0.949091 5.01136L3.95727 7.34455C4.66636 5.21591 6.65455 3.63545 9 3.63545Z" fill="#EA4335"/>
+                </svg>
+                Sign in with Google
+              </a>
+            </>
           )}
 
           <div className={styles.footerRedirectArea}>
@@ -381,7 +385,7 @@ export default function LoginPage() {
         )}
       </aside>
 
-      {/* 🚀 MODAL OVERLAY PORTAL VIEW LAYER (Forgot Password execution view block) */}
+      {/* 🚀 MODAL OVERLAY PORTAL VIEW LAYER */}
       {showForgotModal && (
         <div className={styles.modalScreenDimmer}>
           <div className={styles.modalCardSurface}>
@@ -425,4 +429,3 @@ export default function LoginPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

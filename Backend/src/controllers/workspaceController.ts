@@ -11,22 +11,23 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* ==========================================================================
    === SECTION 2: CENTRALIZED CATEGORY SEEDER CONFIGURATIONS ===
    ========================================================================== */
-// Shared core debt/receivable categories present across ALL workspace types
-const CORE_DEBT_CATEGORIES = [
-  { name: "Owed to Me (Receivable)", type: "INCOME", color: "#22c55e" },
-  { name: "My Debts (Payable)", type: "EXPENSE", color: "#ef4444" }
+// 🚀 FIXED: Applied user-friendly instruction phrasing to the fallback category block
+const CORE_SYSTEM_CATEGORIES = [
+  { name: "Owed to Me (Receivable)", type: "INCOME", color: "#22c55e", isFixed: true },
+  { name: "My Debts (Payable)", type: "EXPENSE", color: "#ef4444", isFixed: true },
+  { name: "Unassigned (Needs Sorting)", type: "EXPENSE", color: "#6b7280", isFixed: true } // 🚀 UPDATED
 ];
 
 export const SHARED_DEFAULT_PERSONAL_CATEGORIES = [
   { name: "Salary", type: "INCOME", color: "#10B981" },
   { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444" },
-  ...CORE_DEBT_CATEGORIES
+  ...CORE_SYSTEM_CATEGORIES
 ];
 
 export const SHARED_DEFAULT_BUSINESS_CATEGORIES = [
   { name: "Revenue", type: "INCOME", color: "#10b981" },
   { name: "Payroll", type: "EXPENSE", color: "#f43f5e" },
-  ...CORE_DEBT_CATEGORIES
+  ...CORE_SYSTEM_CATEGORIES
 ];
 
 const seedDefaultCategoriesForWorkspace = async (workspaceId: string, workspaceName: string): Promise<void> => {

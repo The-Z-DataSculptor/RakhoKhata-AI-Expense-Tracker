@@ -83,39 +83,23 @@ function loadRatesFromCache(): Record<string, number> | null {
 }
 
 /**
- * Extracts the API access keys from current execution runtime vectors
- */
-function getApiKey(): string {
-  const key = process.env.NEXT_PUBLIC_EXCHANGE_RATE_API_KEY;
-  if (!key) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_EXCHANGE_RATE_API_KEY environment variable. " +
-      "Please map it inside your active .env.local file framework tracks."
-    );
-  }
-  return key;
-}
-
-/**
- * Fires a network trip to pull fresh conversion maps from the external marketplace endpoints
+ * Fires a network trip to pull fresh conversion maps from your backend server proxy
  */
 async function fetchFreshRates(): Promise<Record<string, number>> {
-  const apiKey = getApiKey();
-  const url = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`;
+  // 🚀 SECURED: Swapped external API keys for a safe local connection pass to your Express server!
+  const url = "http://localhost:5000/api/auth/exchange-rates";
 
-  const response = await fetch(url, {
-    next: { revalidate: 3600 } // Instructs Next.js internal data fetching mechanisms to reuse tracks for 1hr
-  });
+  const response = await fetch(url);
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Exchange Rate API connection breakdown: ${response.status} - ${errorText}`);
+    throw new Error(`Backend Exchange Rate proxy pipeline breakdown: ${response.status} - ${errorText}`);
   }
 
   const data: ExchangeRateResponse = await response.json();
 
   if (data.result !== "success") {
-    throw new Error(`Exchange Rate remote engine rejected signature parameter payload: ${data.result}`);
+    throw new Error(`Exchange Rate engine returned an unverified rate payload layout state: ${data.result}`);
   }
 
   return data.conversion_rates;
@@ -164,7 +148,6 @@ export async function getExchangeRates(): Promise<Record<string, number>> {
       return memoryCache.rates;
     }
 
-    // Re-throw if layout has no baseline to stand on; Context models catch this and route to FALLBACK_RATES matrices
     throw error;
   }
 }

@@ -6,7 +6,7 @@ export interface Transaction {
   id: string;
   originalAmount: number;
   originalCurrency: string;
-  baseAmountUSD: number; // kept for cross‑workspace use, not used in metrics
+  baseAmountUSD: number; 
   amount?: number;
   type: "INCOME" | "EXPENSE";
   description: string;
@@ -43,21 +43,20 @@ export interface DashboardMetrics {
 
 export interface CategoryBreakdownItem {
   name: string;
-  value: number; // in original currency (now not base USD)
+  value: number;   // in original currency
   color: string;
   isFixed: boolean;
 }
 
 export interface CashFlowDataPoint {
   label: string;
-  Income: number;  // in original currency
+  Income: number;   // in original currency
   Expenses: number; // in original currency
 }
 
 /* ==========================================================================
-   DATE HELPERS
+   === DATE HELPERS ===
    ========================================================================== */
-
 function getCurrentMonthRange(): { start: Date; end: Date } {
   const now = new Date();
   const year = now.getFullYear();
@@ -110,9 +109,8 @@ export function getPeriodLabel(period: TimePeriod): string {
 }
 
 /* ==========================================================================
-   FILTERING HELPERS
+   === FILTERING HELPERS ===
    ========================================================================== */
-
 export function filterTransactionsByDateRange(
   transactions: Transaction[],
   start: Date,
@@ -134,9 +132,8 @@ export function filterTransactionsByPeriod(
 }
 
 /* ==========================================================================
-   METRICS COMPUTATION (using originalAmount)
+   === METRICS COMPUTATION (using originalAmount) ===
    ========================================================================== */
-
 export function computeMetrics(
   transactions: Transaction[],
   period: TimePeriod
@@ -155,7 +152,12 @@ export function computeMetrics(
       monthIncome += base;
     } else if (tx.type === "EXPENSE") {
       monthExpenses += base;
-      if (tx.category?.isRecurring) {
+      const isFixedBill = 
+        tx.category?.isRecurring || 
+        tx.category?.isFixed || 
+        tx.category?.name?.toLowerCase().includes("bill") || 
+        tx.description?.toLowerCase().includes("bill");
+      if (isFixedBill) {
         monthFixed += base;
       } else {
         monthFlexible += base;
@@ -176,7 +178,12 @@ export function computeMetrics(
         totalIncome += base;
       } else if (tx.type === "EXPENSE") {
         totalExpenses += base;
-        if (tx.category?.isRecurring) {
+        const isFixedBill = 
+          tx.category?.isRecurring || 
+          tx.category?.isFixed || 
+          tx.category?.name?.toLowerCase().includes("bill") || 
+          tx.description?.toLowerCase().includes("bill");
+        if (isFixedBill) {
           totalFixed += base;
         } else {
           totalFlexible += base;
@@ -226,9 +233,8 @@ export function computeMetrics(
 }
 
 /* ==========================================================================
-   CATEGORY BREAKDOWN (using originalAmount)
+   === CATEGORY BREAKDOWN ===
    ========================================================================== */
-
 export function computeCategoryBreakdown(
   transactions: Transaction[]
 ): CategoryBreakdownItem[] {
@@ -238,7 +244,11 @@ export function computeCategoryBreakdown(
   expenses.forEach((tx) => {
     const categoryName = tx.category?.name || "Uncategorized";
     const color = tx.category?.color || "var(--text-muted)";
-    const isFixed = tx.category?.isFixed || false;
+    const isFixed = 
+      tx.category?.isFixed || 
+      tx.category?.isRecurring || 
+      categoryName.toLowerCase().includes("bill") ||
+      tx.description?.toLowerCase().includes("bill");
     const amount = Number(tx.originalAmount);   // <-- FIXED
 
     if (categoryMap.has(categoryName)) {
@@ -258,9 +268,8 @@ export function computeCategoryBreakdown(
 }
 
 /* ==========================================================================
-   CASH FLOW TIME‑SERIES (using originalAmount)
+   === CASH FLOW TIME-SERIES ===
    ========================================================================== */
-
 function getWeekNumber(date: Date): number {
   const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
   const days = Math.floor((date.getTime() - firstDayOfYear.getTime()) / 86400000);
@@ -295,7 +304,6 @@ export function computeCashFlowData(
 ): CashFlowDataPoint[] {
   const range = getPeriodDateRange(period);
   if (!range) {
-    // All Time – group by month
     if (transactions.length === 0) return [];
     const dates = transactions.map(tx => new Date(tx.date));
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));

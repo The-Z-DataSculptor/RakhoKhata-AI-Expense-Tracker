@@ -55,7 +55,7 @@
 }
 
 .nativeCapacitySelectDropdown:focus {
-  border-color: var(--color-primary);
+  border-color: var(--color-primary, #613bbf);
 }
 
 .systemGlobalFooterWrapper {
@@ -63,8 +63,9 @@
   width: 100%;
 }
 /* === SECTION 2 END === */
+
 /* ==========================================================================
-   === SECTION 3: OVERLAY POPUP MODAL STYLES (DEFENSIVE FIX) ===
+   === SECTION 3: OVERLAY POPUP MODAL STYLES ===
    ========================================================================== */
 .modalOverlayBackdrop {
   position: fixed;
@@ -79,7 +80,7 @@
   justify-content: center;
   z-index: 9999;
   animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  padding: 1.5rem; /* 🚀 Safety perimeter prevents touching hard edges */
+  padding: 1.5rem;
   box-sizing: border-box;
 }
 
@@ -87,55 +88,454 @@
   width: 100%;
   max-width: 460px;
   background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 14px);
   position: relative;
   box-shadow: 0 20px 50px -12px rgba(16, 4, 63, 0.25);
   animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   box-sizing: border-box;
-  
-  /* 🚀 FIX: Lock max height relative to viewport and allow scrolling inside the card */
   max-height: calc(100vh - 3rem);
   overflow-y: auto;
-  
-  /* Smooth scrolling feel for iOS/Safari wrappers */
   -webkit-overflow-scrolling: touch; 
 }
 
-/* Optional: Make the scrollbar look elegant and thin in dark/light modes */
+.wizardExpansionLarge {
+  max-width: 840px !important;
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 24px 60px -10px rgba(10, 2, 45, 0.35);
+}
+
 .modalContentCard::-webkit-scrollbar {
   width: 6px;
 }
-
 .modalContentCard::-webkit-scrollbar-track {
   background: transparent;
 }
-
 .modalContentCard::-webkit-scrollbar-thumb {
   background: rgba(16, 4, 63, 0.15);
   border-radius: 10px;
-}
-
-.modalContentCard :global(.TransactionForm_formCard__2mN8x),
-.modalContentCard > div {
-  border: none !important;
-  box-shadow: none !important;
 }
 
 @keyframes fadeInOverlay {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes scaleFormIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* ==========================================================================
+   === SECTION 4: 🚀 NEW FLOATING SCANNING ENGINE LOADING SHIELD ===
+   ========================================================================== */
+.scanningOverlayBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(16, 4, 63, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeInOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.scanningCoreCard {
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 16px);
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 24px 60px -8px rgba(16, 4, 63, 0.3);
+  box-sizing: border-box;
+  animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+}
+
+.scanningSpinnerVector {
+  font-size: 2.5rem;
+  color: var(--color-primary, #613bbf);
+  animation: rotateProcessingSpinner 1.2s linear infinite;
+  margin-bottom: 1.25rem;
+}
+
+.scanningCoreCard h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.5rem 0;
+}
+
+.scanningCoreCard p {
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-secondary, #4e4a6b);
+  margin: 0;
+}
+
+@keyframes rotateProcessingSpinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: DATA INGESTION AUTOMATED WIZARD ECOSYSTEM ===
+   ========================================================================== */
+.wizardHeaderDeck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  padding: 1.25rem 1.5rem;
+  background-color: var(--bg-surface-header, rgba(255, 255, 255, 0.5));
+}
+
+.wizardHeaderTitleBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wizardMainTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-primary, #10043f);
+  margin: 0;
+}
+
+.wizardBadgePill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background-color: var(--primary-soft, rgba(97, 59, 191, 0.06));
+  color: var(--color-primary, #613bbf);
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+}
+
+.stepperPipelineLayout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stepperNodeActive {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-primary, #613bbf);
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.1));
+  padding: 0.25rem 0.6rem;
+  border-radius: 14px;
+}
+
+.stepperNodeMuted {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #7e7a9c);
+  padding: 0.25rem 0.6rem;
+}
+
+.stepperArrowIcon {
+  color: var(--border-color, #e5e1f4);
+}
+
+.wizardFormCoreBody {
+  padding: 1.5rem;
+}
+
+.dropzoneFrameZone {
+  margin: 2rem 1.5rem;
+  padding: 3.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 12px);
+  background: linear-gradient(180deg, var(--bg-surface, #ffffff) 0%, var(--primary-soft-hover, rgba(97, 59, 191, 0.02)) 100%);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  cursor: pointer;
+}
+
+.dropzoneFrameZone:hover {
+  border-color: var(--color-primary, #613bbf);
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+  transform: translateY(-1px);
+}
+
+.dropzoneUploadIcon {
+  font-size: 2.75rem;
+  color: var(--color-primary, #613bbf);
+  opacity: 0.65;
+  margin-bottom: 1rem;
+}
+
+.dropzoneMainTitleText {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+.dropzoneSubtextMeta {
+  font-size: 0.78rem;
+  color: var(--text-muted, #7e7a9c);
+  font-weight: 500;
+  text-align: center;
+}
+
+.wizardInfoAlertBox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 1.5rem;
+}
+
+.alertInfoBlue {
+  background-color: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  color: #1d4ed8;
+}
+
+.alertWarningAmber {
+  background-color: rgba(217, 119, 6, 0.06);
+  border: 1px solid rgba(217, 119, 6, 0.15);
+  color: #b45309;
+}
+
+.mappingSelectorsGridRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.formGroupWrapperField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fieldLayoutInputLabel {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-secondary, #4e4a6b);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.premiumFieldSelectControl, .premiumFieldInputTextControl {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #10043f);
+  outline: none;
+  transition: all 0.15s ease-in-out;
+  box-sizing: border-box;
+}
+
+.premiumFieldSelectControl:focus, .premiumFieldInputTextControl:focus {
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.12);
+}
+
+.stagerFallbackSubFormBlock {
+  border-top: 1px dashed var(--border-color, #e5e1f4);
+  padding-top: 1.25rem;
+  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.02));
+  padding: 1rem;
+  border-radius: var(--radius-md, 12px);
+}
+
+.previewDataGridContainerWindow {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 12px);
+}
+
+.previewTableViewportLayout {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.8rem;
+}
+
+.previewTableHeaderStickyDeck th {
+  position: sticky;
+  top: 0;
+  background-color: var(--table-header-bg, #f8f6fc);
+  color: var(--text-secondary, #4e4a6b);
+  font-weight: 700;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  z-index: 10;
+}
+
+.previewTableBodyRowCluster tr {
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  transition: background-color 0.15s ease;
+}
+
+.previewTableBodyRowCluster tr:hover {
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.02));
+}
+
+.previewTableBodyRowCluster td {
+  padding: 0.75rem 1rem;
+  color: var(--text-primary, #10043f);
+}
+
+.tableCellTruncateText {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badgeTypeIncomePill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background-color: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.badgeTypeExpensePill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background-color: rgba(225, 29, 72, 0.1);
+  color: #be123c;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.tableCellInlineSelectControl {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #10043f);
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.tableCellInlineSelectControl:focus {
+  border-color: var(--color-primary, #613bbf);
+}
+
+.wizardActionFooterToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-color, #e5e1f4);
+  padding: 1rem 0 0 0;
+  margin-top: 1.5rem;
+}
+
+.flexButtonGroupRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wizardCounterSummaryMetaText {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #7e7a9c);
+}
+
+.wizardCancelControlBtn {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: transparent;
+  color: var(--text-secondary, #4e4a6b);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.wizardCancelControlBtn:hover {
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+  color: var(--text-primary, #10043f);
+}
+
+.wizardPrimaryConfirmBtn {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid transparent;
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -2px rgba(97, 59, 191, 0.2);
+  transition: all 0.15s ease-in-out;
+}
+
+.wizardPrimaryConfirmBtn:hover {
+  background-color: var(--color-primary-dark, #5c39bd);
+  transform: translateY(-1px);
+}
+
+.wizardCommitExecutionBtn {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid transparent;
+  background-color: #16a34a;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -2px rgba(22, 163, 74, 0.2);
+  transition: all 0.15s ease-in-out;
+}
+
+.wizardCommitExecutionBtn:hover {
+  background-color: #15803d;
+  transform: translateY(-1px);
+}
+
+.wizardCancelControlBtn:disabled, .wizardPrimaryConfirmBtn:disabled, .wizardCommitExecutionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+/* === SECTION 5 END === */
 
 @media (max-width: 768px) {
   .modalContentCard {
@@ -143,5 +543,15 @@
     max-height: calc(100vh - 2rem);
     margin: 0;
   }
+  
+  .wizardHeaderDeck {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .mappingSelectorsGridRow, .stagerFallbackSubFormBlock {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
-/* === SECTION 3 END === */

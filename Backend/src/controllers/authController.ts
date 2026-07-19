@@ -1,4 +1,4 @@
-// src/controllers/authController.ts
+// Backend/src/controllers/authController.ts
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
@@ -14,7 +14,7 @@ import {
   sendVerificationEmail, 
   sendSecurityAlertEmail 
 } from "../services/emailService";
-// 🚀 Centralized Source of Truth Categories Import
+// Centralized Source of Truth Categories Import (Now inherits Unassigned perfectly!)
 import { 
   SHARED_DEFAULT_PERSONAL_CATEGORIES, 
   SHARED_DEFAULT_BUSINESS_CATEGORIES 
@@ -25,6 +25,9 @@ import {
    === SECTION 2: STRATEGIC CONTROLLER CONFIGURATIONS & UTILITIES ===
    ========================================================================== */
 const PASETO_SECRET = process.env.PASETO_SECRET || "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback";
 
 const getPasetoKey = (): string => {
   const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
@@ -86,20 +89,21 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         occupation: occupation || "prefer_not_to_say",
         financialGoal: financialGoal || "zen_master",
         aiPersona: aiPersona || "supportive_coach",
+        isOnboardingCompleted: true, // Manual registrations fill this out on signup, bypassing onboarding
         workspaces: {
           create: [
             { 
               name: "Personal", 
               currency: baseCurrency,
               categories: {
-                create: SHARED_DEFAULT_PERSONAL_CATEGORIES // 🚀 Linked safely
+                create: SHARED_DEFAULT_PERSONAL_CATEGORIES 
               }
             },
             { 
               name: "Business", 
               currency: baseCurrency,
               categories: {
-                create: SHARED_DEFAULT_BUSINESS_CATEGORIES // 🚀 Linked safely
+                create: SHARED_DEFAULT_BUSINESS_CATEGORIES 
               }
             }
           ]
@@ -116,6 +120,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         occupation: true,
         financialGoal: true,
         aiPersona: true,
+        isOnboardingCompleted: true,
         createdAt: true,
         workspaces: true
       },
@@ -162,6 +167,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         occupation: newUser.occupation,
         financialGoal: newUser.financialGoal,
         aiPersona: newUser.aiPersona,
+        isOnboardingCompleted: newUser.isOnboardingCompleted,
         createdAt: newUser.createdAt
       },
       workspaces: newUser.workspaces
@@ -193,6 +199,14 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // 🛡️ SHIELD DEFENSE: Gracefully intercept if user profile was registered via passwordless Google Auth
+    if (!user.passwordHash) {
+      res.status(400).json({ 
+        error: "This account was registered using Google Sign-In. Please click the 'Sign in with Google' option." 
+      });
+      return;
+    }
+
     const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordMatch) {
       res.status(401).json({ error: "Invalid email or password credentials." });
@@ -220,7 +234,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         languages: user.languages,
         occupation: user.occupation,
         financialGoal: user.financialGoal,
-        aiPersona: user.aiPersona
+        aiPersona: user.aiPersona,
+        isOnboardingCompleted: user.isOnboardingCompleted
       },
     });
   } catch (error) {
@@ -254,6 +269,8 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<v
         occupation: true,
         financialGoal: true,
         aiPersona: true,
+        avatarUrl: true, 
+        isOnboardingCompleted: true, 
         createdAt: true 
       },
     });
@@ -314,7 +331,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response): P
         id: true, name: true, email: true, uiTheme: true,
         country: true, currency: true, languages: true,
         occupation: true, financialGoal: true, aiPersona: true,
-        createdAt: true
+        avatarUrl: true, isOnboardingCompleted: true, createdAt: true
       }
     });
 
@@ -346,6 +363,13 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response): 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    if (!user.passwordHash) {
+      res.status(400).json({ 
+        error: "This account uses Google Auth and does not have a local operational password. Request a password reset to establish credentials." 
+      });
       return;
     }
 
@@ -519,3 +543,262 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
   }
 };
 /* === SECTION 8A END === */
+
+/* ==========================================================================
+   === SECTION 9: UNIFIED GOOGLE OAUTH FLOW CORE SYSTEM ===
+   ========================================================================== */
+export const redirectToGoogle = (req: Request, res: Response): void => {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    res.status(500).json({ error: "Google OAuth configuration keys are missing on the host server environment." });
+    return;
+  }
+
+  const rootAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+  const queryOptions = {
+    redirect_uri: GOOGLE_CALLBACK_URL,
+    client_id: GOOGLE_CLIENT_ID,
+    access_type: "offline",
+    response_type: "code",
+    prompt: "consent",
+    scope: [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ].join(" ")
+  };
+
+  res.redirect(`${rootAuthUrl}?${new URLSearchParams(queryOptions).toString()}`);
+};
+
+export const handleGoogleCallback = async (req: Request, res: Response): Promise<void> => {
+  const codeTokenString = req.query.code as string;
+
+  if (!codeTokenString) {
+    res.status(400).send("Authorization validation callback token is missing from the Google stream.");
+    return;
+  }
+
+  try {
+    const tokenExchangeResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: codeTokenString,
+        client_id: GOOGLE_CLIENT_ID!,
+        client_secret: GOOGLE_CLIENT_SECRET!,
+        redirect_uri: GOOGLE_CALLBACK_URL,
+        grant_type: "authorization_code"
+      })
+    });
+
+    const tokenBundle = await tokenExchangeResponse.json();
+    if (!tokenExchangeResponse.ok || !tokenBundle.access_token) {
+      console.error("Google Token Exchange Crash Output Log:", tokenBundle);
+      res.status(500).send("Authentication mapping failed during Google token handshake.");
+      return;
+    }
+
+    const userProfileResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${tokenBundle.access_token}` }
+    });
+
+    const profileData = await userProfileResponse.json();
+    if (!userProfileResponse.ok || !profileData.email) {
+      res.status(500).send("Identity lookup breakdown extracting user credentials profiles from Google.");
+      return;
+    }
+
+    const { sub: googleUserIdCode, email, name, picture: profilePictureUrl } = profileData;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    let activeUserInstance = await prisma.user.findFirst({
+      where: {
+        accounts: {
+          some: {
+            provider: "GOOGLE",
+            providerAccountId: googleUserIdCode
+          }
+        }
+      }
+    });
+
+    if (!activeUserInstance) {
+      const existingEmailUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+      if (existingEmailUser) {
+        await prisma.account.create({
+          data: {
+            userId: existingEmailUser.id,
+            provider: "GOOGLE",
+            providerAccountId: googleUserIdCode
+          }
+        });
+        
+        if (!existingEmailUser.avatarUrl && profilePictureUrl) {
+          await prisma.user.update({
+            where: { id: existingEmailUser.id },
+            data: { avatarUrl: profilePictureUrl }
+          });
+        }
+        activeUserInstance = existingEmailUser;
+      } else {
+        activeUserInstance = await prisma.$transaction(async (tx) => {
+          const newUser = await tx.user.create({
+            data: {
+              name: name || "RakhoKhata User",
+              email: normalizedEmail,
+              passwordHash: null, 
+              avatarUrl: profilePictureUrl || null,
+              isEmailVerified: true, 
+              emailVerifiedAt: new Date(),
+              currency: "PKR",
+              occupation: "prefer_not_to_say",
+              financialGoal: "zen_master",
+              aiPersona: "supportive_coach",
+              isOnboardingCompleted: false, 
+              workspaces: {
+                create: [
+                  {
+                    name: "Personal",
+                    currency: "PKR",
+                    categories: {
+                      create: SHARED_DEFAULT_PERSONAL_CATEGORIES
+                    }
+                  },
+                  {
+                    name: "Business",
+                    currency: "PKR",
+                    categories: {
+                      create: SHARED_DEFAULT_BUSINESS_CATEGORIES
+                    }
+                  }
+                ]
+              }
+            }
+          });
+
+          await tx.account.create({
+            data: {
+              userId: newUser.id,
+              provider: "GOOGLE",
+              providerAccountId: googleUserIdCode
+            }
+          });
+
+          return newUser;
+        });
+      }
+    }
+
+    const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
+    const token = await encrypt(getPasetoKey(), { 
+      userId: activeUserInstance.id, 
+      email: activeUserInstance.email, 
+      exp: expirationTime 
+    });
+
+    res.cookie("token", token, COOKIE_OPTIONS);
+
+    if (!activeUserInstance.isOnboardingCompleted) {
+      res.redirect("http://localhost:3000/onboarding");
+    } else {
+      res.redirect("http://localhost:3000/dashboard");
+    }
+
+  } catch (error) {
+    console.error("Critical System Interception Failure inside Google Auth Callback Sequence Code:", error);
+    res.status(500).send("Internal authentication framework transaction server error.");
+  }
+};
+/* === SECTION 9 END === */
+
+/* ==========================================================================
+   === SECTION 9B: SUBMIT COMPLETED ONBOARDING GATE PROFILE ===
+   ========================================================================== */
+export const completeOnboarding = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized access profile indicator context missing." });
+      return;
+    }
+
+    const { country, currency, languages, occupation, financialGoal, aiPersona } = req.body;
+    const targetCurrency = currency || "PKR";
+
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: {
+          country: country || null,
+          currency: targetCurrency,
+          languages: languages || [],
+          occupation: occupation || "prefer_not_to_say",
+          financialGoal: financialGoal || "zen_master",
+          aiPersona: aiPersona || "supportive_coach",
+          isOnboardingCompleted: true 
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          uiTheme: true,
+          country: true,
+          currency: true,
+          languages: true,
+          occupation: true,
+          financialGoal: true,
+          aiPersona: true,
+          isOnboardingCompleted: true,
+          createdAt: true
+        }
+      });
+
+      await tx.workspace.updateMany({
+        where: { userId: userId },
+        data: { currency: targetCurrency }
+      });
+
+      return user;
+    });
+
+    res.status(200).json({ message: "Onboarding completed successfully!", user: updatedUser });
+  } catch (error) {
+    console.error("Complete Onboarding Controller Exception:", error);
+    res.status(500).json({ error: "Internal server error applying onboarding profile configurations." });
+  }
+};
+/* === SECTION 9B END === */
+
+/* ==========================================================================
+   === SECTION 10: LIVE EXCHANGE RATES PROXY CONTROLLER ===
+   ========================================================================== */
+/**
+ * 🚀 SECURE SERVER SIDE PROXY: Fetches real-time exchange rates securely 
+ * from the external API to hide your private key context from the public canvas.
+ */
+export const getExchangeRates = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const apiKey = process.env.EXCHANGERATE_API_KEY;
+    
+    if (!apiKey) {
+      console.error("❌ EXCHANGERATE_API_KEY environment configuration variable missing on backend server.");
+      res.status(500).json({ error: "Exchange registry credential configurations missing on the host server." });
+      return;
+    }
+
+    const response = await fetch(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`);
+    
+    if (!response.ok) {
+      res.status(response.status).json({ error: "Failed to extract fresh metric states from currency registry server." });
+      return;
+    }
+
+    const data = await response.json();
+    res.status(200).json(data);
+
+  } catch (error) {
+    console.error("Exchange Rate Proxy Controller Exception Execution Failure:", error);
+    res.status(500).json({ error: "Internal server error handling cross-border rate synchronization." });
+  }
+};
+/* === SECTION 10 END === */

@@ -13,6 +13,7 @@ import ExpenseDonutChart from "@/components/dashboard/ExpenseDonutChart/ExpenseD
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import AiBuddyConsole from "@/components/dashboard/AiBuddyConsole/AiBuddyConsole"; 
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext"; 
 import { transactionService } from "@/utils/api";
 import {
   filterTransactionsByPeriod,
@@ -30,8 +31,9 @@ import styles from "./page.module.css";
    === SECTION 2: COMPONENT LOGIC ===
    ========================================================================== */
 export default function DashboardPage() {
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace(); // also pull activeWorkspace
-  const workspaceCurrency = activeWorkspace?.currency || "PKR"; // default fallback
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace(); 
+  const workspaceCurrency = activeWorkspace?.currency || "PKR"; 
+  const { convertAmount } = useCurrency();
 
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -54,29 +56,40 @@ export default function DashboardPage() {
         const response = await transactionService.getByWorkspace(activeWorkspaceId);
         if (!isMounted) return;
 
-        const mappedTransactions: Transaction[] = (response.transactions || []).map((apiTx: ApiTransaction) => ({
-          id: apiTx.id,
-          amount: Number(apiTx.amount),
-          originalAmount: Number(apiTx.originalAmount ?? apiTx.amount),
-          originalCurrency: apiTx.originalCurrency ?? "USD",
-          baseAmountUSD: Number(apiTx.baseAmountUSD ?? apiTx.amount),
-          type: apiTx.type as "INCOME" | "EXPENSE",
-          description: apiTx.description || "",
-          date: apiTx.date,
-          workspaceId: apiTx.workspaceId,
-          categoryId: apiTx.categoryId,
-          category: {
-            id: apiTx.category?.id || "",
-            name: apiTx.category?.name || "",
-            type: apiTx.category?.type || "",
-            color: apiTx.category?.color || "",
-            isFixed: apiTx.category?.isFixed || false,
-            isRecurring: apiTx.category?.isRecurring || false,
-            frequency: apiTx.category?.frequency ?? undefined,
-            dueDay: apiTx.category?.dueDay ?? undefined,
-            reminderDays: apiTx.category?.reminderDays ?? undefined,
-          },
-        }));
+        const mappedTransactions: Transaction[] = (response.transactions || []).map((apiTx: ApiTransaction) => {
+          const origAmount = Number(apiTx.originalAmount ?? apiTx.amount ?? 0);
+          const origCurrency = apiTx.originalCurrency ?? "PKR";
+          
+          let cleanBaseUSD = Number(apiTx.baseAmountUSD);
+          if (!apiTx.baseAmountUSD || (origCurrency !== "USD" && cleanBaseUSD === origAmount)) {
+            cleanBaseUSD = convertAmount(origAmount, origCurrency, "USD");
+          }
+
+          return {
+            id: apiTx.id,
+            amount: origAmount,
+            originalAmount: origAmount,
+            originalCurrency: origCurrency,
+            baseAmountUSD: cleanBaseUSD,
+            type: apiTx.type as "INCOME" | "EXPENSE",
+            description: apiTx.description || "",
+            date: apiTx.date,
+            workspaceId: apiTx.workspaceId,
+            categoryId: apiTx.categoryId,
+            category: {
+              id: apiTx.category?.id || "",
+              name: apiTx.category?.name || "",
+              type: apiTx.category?.type || "",
+              color: apiTx.category?.color || "",
+              isFixed: apiTx.category?.isFixed || false,
+              isRecurring: apiTx.category?.isRecurring || false,
+              frequency: apiTx.category?.frequency ?? undefined,
+              dueDay: apiTx.category?.dueDay ?? undefined,
+              reminderDays: apiTx.category?.reminderDays ?? undefined,
+            },
+          };
+        });
+        
         setTransactions(mappedTransactions);
       } catch (err) {
         if (!isMounted) return;
@@ -92,7 +105,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, convertAmount]);
 
   const dashboardData = useMemo(() => {
     if (transactions.length === 0) {
@@ -155,15 +168,10 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* 🚀 STEP 1: Hero AI Companion Console reigns supreme at the very top! */}
           <section className={styles.metricsRowStage} aria-label="AI Guardian Companion">
-            <AiBuddyConsole 
-              metrics={metrics} 
-              activeWorkspaceId={activeWorkspaceId} 
-            />
+            <AiBuddyConsole activeWorkspaceId={activeWorkspaceId} />
           </section>
 
-          {/* 🚀 STEP 2: The overview hub control bar header moved directly underneath */}
           <header className={styles.dashboardHeaderCardBox}>
             <div className={styles.headingBlock}>
               <div className={styles.titleWithBadgeRow}>
@@ -180,13 +188,12 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          {/* Metric Row Area */}
           <section className={styles.metricsRowStage} aria-label="Quick Summary">
             <MetricRow
               metrics={metrics}
               periodLabel={periodLabel}
               activePeriod={activeTimeline}
-              sourceCurrency={workspaceCurrency}    // 🔥 new
+              sourceCurrency={workspaceCurrency}
             />
           </section>
 
@@ -196,7 +203,7 @@ export default function DashboardPage() {
               fixedExpenses={metrics.fixedExpenses}
               flexibleExpenses={metrics.flexibleExpenses}
               activePeriod={activeTimeline}
-              sourceCurrency={workspaceCurrency}    // 🔥 new
+              sourceCurrency={workspaceCurrency}
             />
           </section>
 

@@ -5,9 +5,8 @@
    ========================================================================== */
 .gridCanvasWrapper {
   display: grid;
-  /* Updated from repeat(3, ...) to repeat(4, ...) to place 4 items in a row */
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem; /* Slightly reduced gap to look balanced with smaller cards */
+  gap: 0.85rem; /* Tighter gap matrix for a more structured canvas footprint */
   width: 100%;
   box-sizing: border-box;
 }
@@ -18,79 +17,54 @@
 .categoryCardPlatform {
   background-color: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 14px);
-  padding: 1.25rem; /* Reduced padding from 1.5rem to fix size proportion */
+  border-radius: 12px;
+  padding: 0.85rem 1rem; /* 🚀 CUT IN HALF: Drastically reduced top/bottom padding handles vertical space */
   display: flex;
   flex-direction: column;
-  gap: 1rem; /* Balanced spacing adjustments */
+  gap: 0.65rem; /* Compressed spacing gaps between internal rows */
   box-sizing: border-box;
-  box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
-  transition: var(--transition-fast, all 0.2s ease-in-out);
+  box-shadow: 0 2px 8px -2px rgba(16, 4, 63, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 .categoryCardPlatform:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 35px -8px rgba(16, 4, 63, 0.12);
+  transform: translateY(-1px);
+  border-color: var(--c4b5fd, #c4b5fd);
+  box-shadow: 0 8px 24px -10px rgba(16, 4, 63, 0.1);
 }
 
 /* ==========================================================================
-   === SECTION 3: TOP ROW HEADER CIRCLES & BADGES ===
+   === SECTION 3: ROW 1 STYLING (FLUID FLEX LAYOUT) ===
    ========================================================================== */
 .cardHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  gap: 0.5rem;
+}
+
+.identityGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0; /* Forces text truncation engines to trigger accurately inside nested flex environments */
 }
 
 .iconCircleStage {
-  width: 40px; /* Slightly scaled down from 44px */
-  height: 40px;
-  border-radius: 10px;
+  width: 30px; /* 🚀 RE-SCALE: Compressed downward from 40px to create thin rows */
+  height: 30px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-/* General Base Type Badges */
-.typeBadge {
-  font-size: 0.68rem; /* Scaled down slightly to fit smaller card widths */
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 5px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Color palettes for the badges based on income or expense types */
-.incomeBadge {
-  background-color: var(--success-soft, rgba(22, 163, 74, 0.08));
-  color: var(--color-success, #16a34a);
-}
-
-.expenseBadge {
-  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
-  color: var(--color-danger, #dc2626);
-}
-
-.bothBadge {
-  background-color: var(--primary-soft, rgba(97, 59, 191, 0.08));
-  color: var(--color-primary, #613bbf);
-}
-
-/* ==========================================================================
-   === SECTION 4: CARD INFO CONTENT TEXT ===
-   ========================================================================== */
-.cardInfoBody {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  width: 100%;
-}
-
 .categoryLabelTitle {
-  font-size: 1.05rem; /* Adjusted down from 1.15rem to safely prevent text truncation */
+  font-size: 0.92rem; /* Crisp, readable, modern layout proportions */
   font-weight: 700;
   color: var(--text-primary, #10043f);
   margin: 0;
@@ -99,8 +73,45 @@
   text-overflow: ellipsis;
 }
 
+.typeBadge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.incomeBadge {
+  background-color: rgba(34, 197, 94, 0.08);
+  color: #22c55e;
+}
+
+.expenseBadge {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+.bothBadge {
+  background-color: rgba(139, 92, 246, 0.08);
+  color: #8b5cf6;
+}
+
+/* ==========================================================================
+   === SECTION 4: ROW 2 STYLING (INTEGRATED META ACTION TRACK) ===
+   ========================================================================== */
+.cardMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-color, #f3f1fb); /* Gives a premium notebook separator boundary */
+}
+
 .counterLogText {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-muted, #7e7a9c);
   margin: 0;
 }
@@ -110,74 +121,65 @@
   color: var(--text-secondary, #4e4a6b);
 }
 
-/* ==========================================================================
-   === SECTION 5: LOWER ROW BUTTON CONTROLS ===
-   ========================================================================== */
 .cardActionsDeck {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: auto; /* Pushes action block to the bottom boundary evenly */
-  border-top: 1px dashed var(--border-color, #e5e1f4);
-  padding-top: 0.85rem;
+  gap: 0.35rem;
 }
 
 .actionButton {
-  flex: 1;
+  width: 24px; /* 🚀 INTUITIVE: Clean square action plates reduce bulky typography buttons */
+  height: 24px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  padding: 0.45rem;
-  border-radius: var(--radius-md, 8px);
-  font-size: 0.78rem;
-  font-weight: 700;
   border: 1px solid var(--border-color, #e5e1f4);
   background-color: transparent;
-  transition: var(--transition-fast, all 0.2s ease-in-out);
-}
-
-/* Interactive hover colorings for item edit vs item deletion */
-.editButton {
-  color: var(--text-secondary, #4e4a6b);
-}
-.editButton:hover {
-  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
-  border-color: var(--color-primary, #613bbf);
-  color: var(--color-primary, #613bbf);
-}
-
-.deleteButton {
+  cursor: pointer;
   color: var(--text-muted, #7e7a9c);
+  transition: all 0.15s ease;
 }
+
+.editButton:hover {
+  background-color: rgba(139, 92, 246, 0.05);
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
 .deleteButton:hover {
-  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
-  border-color: var(--color-danger, #dc2626);
-  color: var(--color-danger, #dc2626);
+  background-color: rgba(239, 68, 68, 0.05);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.systemLockIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted, #a09cb4);
+  background-color: var(--surface-muted, #f8f7fd);
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e1f4);
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE DISPLAY LAYOUT SCALING ===
-   ========================================================================== */
+   === SECTION 5: RESPONSIVE MEDIA QUERIES ===
+   ========================================================================= */
 @media (max-width: 1200px) {
-  .gridCanvasWrapper {
-    /* Scale down to 3 columns on smaller desktops or open sidebars */
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+  .gridCanvasWrapper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
-  .gridCanvasWrapper {
-    /* Scale down to 2 columns on tablets */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .gridCanvasWrapper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 580px) {
   .gridCanvasWrapper {
-    /* Scale down to 1 column on mobile layout structures */
     grid-template-columns: repeat(1, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 0.65rem;
   }
 }

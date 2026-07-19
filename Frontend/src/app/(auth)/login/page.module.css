@@ -140,7 +140,6 @@
   font-family: inherit;
 }
 
-/* Ensure text does not disappear behind the show/hide button */
 .passwordInput {
   padding-right: 3.5rem; 
 }
@@ -203,6 +202,65 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* ==========================================================================
+   === SECTION 2B: SOCIAL OAUTH FORM ELEMENT SPLITTERS ===
+   ========================================================================== */
+.authSeparatorContainer {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1rem 0;
+  color: var(--text-muted, #7e7a9c);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.authSeparatorContainer::before,
+.authSeparatorContainer::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+}
+
+.authSeparatorContainer:not(:empty)::before {
+  margin-right: 1rem;
+}
+
+.authSeparatorContainer:not(:empty)::after {
+  margin-left: 1rem;
+}
+
+.googleOAuthHighwayButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem;
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #10043f);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: var(--transition-fast, all 0.2s ease);
+  cursor: pointer;
+}
+
+.googleOAuthHighwayButton:hover {
+  background-color: var(--surface-highlight, #f8f7fd);
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 4px 12px rgba(16, 4, 63, 0.02);
+}
+
+.googleOAuthHighwayButton svg {
+  flex-shrink: 0;
 }
 
 .footerRedirectArea {

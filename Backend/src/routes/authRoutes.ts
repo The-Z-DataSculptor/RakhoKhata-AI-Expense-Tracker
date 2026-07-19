@@ -11,9 +11,13 @@ import {
   logoutUser,
   updateProfile,
   changePassword,
-  requestPasswordReset,   // 🚀 Added
-  resetForgottenPassword, // 🚀 Added
-  verifyEmail             // 🚀 NEW: Import your email verification handler
+  requestPasswordReset,   
+  resetForgottenPassword, 
+  verifyEmail,            
+  redirectToGoogle,     
+  handleGoogleCallback, 
+  completeOnboarding,
+  getExchangeRates, // 🚀 ADDED: Imports your secure server-side rates proxy handler
 } from "../controllers/authController";
 import { checkVaultPinStatus, setupVaultPin, verifyVaultPin, disableVaultPin } from "../controllers/vaultAuthController";
 import { verifyTokenGuard } from "../middleware/authMiddleware";
@@ -50,12 +54,23 @@ router.get("/me", verifyTokenGuard, getMe);
 router.put("/update-profile", verifyTokenGuard, updateProfile);
 router.post("/change-password", verifyTokenGuard, changePassword);
 
+// 🚀 WELCOME GATE CHANNELS: Expose protected API tunnel for capturing user onboarding metrics
+router.put("/complete-onboarding", verifyTokenGuard, completeOnboarding);
+
 // 🚀 RECOVERY SECURE API CHANNELS: Completely exposed publicly outside token authentication perimeters
 router.post("/forgot-password", strictAuthLimiter, requestPasswordReset);
 router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
 
-// 🚀 NEW ONBOARDING LINK CHANNELS: Expose public activation link route mapping
+// 🚀 ONBOARDING LINK CHANNELS: Expose public activation link route mapping
 router.post("/verify-email", strictAuthLimiter, verifyEmail);
+
+// 🚀 UNIFIED GOOGLE OAUTH 2.0 ROUTE CHANNELS: Completely open public entry pipelines
+router.get("/google", redirectToGoogle);
+router.get("/google/callback", handleGoogleCallback);
+
+// 🚀 LIVE EXCHANGE RATES API PROXY: Public channel for browser-side currency context tracking layers
+router.get("/exchange-rates", getExchangeRates);
+/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: VAULT PIN SECURITY SUB-ROUTES ===

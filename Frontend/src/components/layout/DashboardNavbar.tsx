@@ -5,6 +5,8 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React, { useState, useSyncExternalStore, useEffect, useRef } from "react";
+// 🚀 ADDED: Import Next.js optimized Image loader tool
+import Image from "next/image"; 
 import {
   FiSun,
   FiMoon,
@@ -24,7 +26,7 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { notificationService, Notification } from "@/utils/api"; 
-import { WORLD_CURRENCIES } from "@/constants/geoData"; // 🚀 CONNECTED GLOBAL ENGINE LAYER
+import { WORLD_CURRENCIES } from "@/constants/geoData"; 
 import styles from "./DashboardNavbar.module.css";
 /* === SECTION 1 END === */
 
@@ -38,8 +40,9 @@ interface DashboardNavbarProps {
     email: string;
     uiTheme?: string;
     currency?: string; 
+    avatarUrl?: string | null; 
   } | null;
-  currentWorkspaceId?: string; // LINK LAYER: Passes active database container context references down
+  currentWorkspaceId?: string; 
 }
 /* === SECTION 2 END === */
 
@@ -102,8 +105,6 @@ const financeFacts = [
 
 export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardNavbarProps) {
   const { activeTheme, changeTheme } = useTheme();
-  
-  // 🚀 CLEANED: Removed initializeWorkspaceCurrency since the root layout provider handles this on render frame one
   const { currency, setCurrencyWithWorkspace } = useCurrency();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -195,7 +196,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     return <FiMonitor size={16} />;
   };
 
-  // Maps active selected state straight to the extended global registry pool safely
   const activeCurrencyDetails = WORLD_CURRENCIES.find((c) => c.code.toUpperCase() === currency?.toUpperCase());
 
   const displayGreetingName = user?.name ? user.name.split(" ")[0] : "User";
@@ -424,6 +424,23 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                   </button>
                 </li>
               </ul>
+            </div>
+          )}
+        </div>
+
+        {/* 🚀 FIXED: Upgraded from standard HTML <img> to Next.js optimized <Image /> */}
+        <div className={styles.profileAvatarContainer} title={user?.email || "Account Profile"}>
+          {user?.avatarUrl ? (
+            <Image 
+              src={user.avatarUrl} 
+              alt={user.name || "User Avatar"} 
+              className={styles.profileAvatarImage} 
+              width={38}
+              height={38}
+            />
+          ) : (
+            <div className={styles.avatarFallbackCircle}>
+              {displayGreetingName.charAt(0)}
             </div>
           )}
         </div>

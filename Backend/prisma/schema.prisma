@@ -11,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // 🚀 FIXED: Removed direct 'url' property for Prisma 7 compliance
+  provider = "postgresql" // Removed direct 'url' property for Prisma 7 compliance
 }
 
 /**
@@ -23,13 +23,14 @@ model User {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
-  passwordHash String
+  passwordHash String? // IMPROVED: Made optional (?) to fully support passwordless Google OAuth signups
+  avatarUrl    String? // ADDED: Captures dynamic Google/Social profile picture streams directly
   vaultPin     String?
   uiTheme      String   @default("DARK")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // 🚀 DYNAMIC ONBOARDING AND GLOBAL AI PERSONALIZATION FIELDS
+  // DYNAMIC ONBOARDING AND GLOBAL AI PERSONALIZATION FIELDS
   country       String?
   currency      String?
   languages     String[]
@@ -37,19 +38,45 @@ model User {
   financialGoal String?
   aiPersona     String?
 
-  // 🚀 FUTURE-PROOF MAILING EXTENSIONS (Email Verification & Security States)
+  // 🚀 WELCOME GATE SECURITY TRACKER
+  // Defaults to false so new users are directed to the setup form before accessing the app dashboard
+  isOnboardingCompleted Boolean @default(false)
+
+  // FUTURE-PROOF MAILING EXTENSIONS (Email Verification & Security States)
   isEmailVerified     Boolean   @default(false)
   emailVerifiedAt     DateTime?
   emailDeliveryStatus String    @default("DELIVERED") // Handles bounce protection flags
 
-  // 🚀 FUTURISTIC NOTIFICATION PREFERENCE OPT-IN TOGGLES (Cron Engine Anchors)
+  // FUTURISTIC NOTIFICATION PREFERENCE OPT-IN TOGGLES (Cron Engine Anchors)
   weeklyDigestEnabled  Boolean @default(true)
   monthlyReportEnabled Boolean @default(true)
 
+  // Relational Connections
   workspaces    Workspace[]
   notifications Notification[]
+  accounts      Account[] // Connects multiple safe validation strategy tracks
 
   @@map("users")
+}
+
+/**
+ * ==========================================================================
+ * === SECTION 2B: EXTERNAL SOCIAL AUTHENTICATION IDENTITY STACK ===
+ * ==========================================================================
+ */
+model Account {
+  id                String   @id @default(uuid())
+  userId            String
+  provider          String // Always sets explicitly to "GOOGLE" for this pipeline path
+  providerAccountId String // The unique identity identification string code from Google servers
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId]) // 🛡️ SECURITY SHIELD: Blocks account-linking hijacking tricks
+  @@map("accounts")
 }
 
 /**

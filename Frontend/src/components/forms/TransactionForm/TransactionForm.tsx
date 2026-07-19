@@ -44,11 +44,13 @@ export function TransactionForm({
   initialData,
   onCancel,
 }: TransactionFormProps) {
-  const isEditMode = Boolean(initialData);
+  // 🚀 FIXED: Differentiate between a real database record update and an AI receipt pre-fill scan
+  const isEditMode = Boolean(initialData && initialData.id);
+  const isAiScan = Boolean(initialData && !initialData.id);
+  
   const { currency, convertAmount } = useCurrency();
   const defaultDateString = new Date().toISOString().substring(0, 10);
 
-  // 👇 FIXED: Explicitly type the resolver
   const resolver = zodResolver(transactionFormSchema) as Resolver<TransactionFormValues>;
 
   const {
@@ -59,7 +61,7 @@ export function TransactionForm({
     control,
     formState: { errors, isSubmitting },
   } = useForm<TransactionFormValues>({
-    resolver, // 👈 Use the typed resolver
+    resolver, 
     mode: "onBlur",
     defaultValues: {
       date: defaultDateString,
@@ -78,11 +80,19 @@ export function TransactionForm({
 
   useEffect(() => {
     if (initialData) {
-      const displayAmount = convertAmount(Number(initialData.amount), "USD", currency);
+      const sourceAmount = initialData.originalAmount !== undefined && initialData.originalAmount !== null
+        ? Number(initialData.originalAmount)
+        : Number(initialData.amount ?? 0);
+
+      const sourceCurrency = initialData.originalCurrency || "USD";
+      
+      // Convert values flawlessly from receipt currency baseline to user's active workspace view currency
+      const displayAmount = convertAmount(sourceAmount, sourceCurrency, currency);
+
       reset({
         date: new Date(initialData.date).toISOString().substring(0, 10),
-        description: initialData.description,
-        category: initialData.categoryId,
+        description: initialData.description || "",
+        category: initialData.categoryId || "",
         type: (initialData.type || "EXPENSE").toUpperCase() as "EXPENSE" | "INCOME",
         amount: Number(displayAmount.toFixed(2)),
       });
@@ -119,6 +129,8 @@ export function TransactionForm({
 
         if (isEditMode) {
           toast.success("Transaction updated successfully!");
+        } else if (isAiScan) {
+          toast.success("AI Scanned receipt logged safely!");
         } else {
           toast.success("Transaction recorded successfully!");
           reset({
@@ -134,7 +146,7 @@ export function TransactionForm({
         toast.error("Could not save transaction. Please check your inputs.");
       }
     },
-    [initialData, isEditMode, onAddTransaction, reset, defaultDateString, convertAmount, currency]
+    [initialData, isEditMode, isAiScan, onAddTransaction, reset, defaultDateString, convertAmount, currency]
   );
 
   /* ==========================================================================
@@ -144,7 +156,8 @@ export function TransactionForm({
     <div className={styles.formCard}>
       <div className={styles.headerArea}>
         <h3 className={styles.formTitle}>
-          {isEditMode ? "Modify Transaction Details" : "Create Transaction Entry"}
+          {/* 🚀 FIXED: Dynamic heading titles based on context state */}
+          {isEditMode ? "Modify Transaction Details" : isAiScan ? "Verify Scanned Receipt" : "Create Transaction Entry"}
         </h3>
         <p className={styles.formSubtitle}>Log financial cash flows into your accounting ledger.</p>
       </div>
@@ -225,7 +238,7 @@ export function TransactionForm({
 
         <div className={styles.buttonGroup}>
           <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
-            {isSubmitting ? "Processing..." : isEditMode ? "Commit Changes" : "Record Entry"}
+            {isSubmitting ? "Processing..." : isEditMode ? "Commit Changes" : isAiScan ? "Verify & Save" : "Record Entry"}
           </button>
           {onCancel && (
             <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={isSubmitting}>
@@ -237,4 +250,3 @@ export function TransactionForm({
     </div>
   );
 }
-/* === SECTION 4 END === */

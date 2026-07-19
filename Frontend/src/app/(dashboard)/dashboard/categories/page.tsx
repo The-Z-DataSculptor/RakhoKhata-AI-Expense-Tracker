@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/categories/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -33,6 +34,7 @@ export interface CategoryRecord {
   frequency?: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
   dueDay?: number;
   reminderDays?: number;
+  isFixed?: boolean; // Tracks whether this is a core system-protected category
 }
 
 type UnassignedTransactionRecord = DrawerTxRecord & {
@@ -87,6 +89,7 @@ export default function CategoriesPage() {
           frequency: toFrequencyUnion(dbCat.frequency),
           dueDay: dbCat.dueDay ?? 1,
           reminderDays: dbCat.reminderDays ?? 3,
+          isFixed: dbCat.isFixed ?? false,
         };
       });
 
@@ -124,6 +127,7 @@ export default function CategoriesPage() {
             frequency: toFrequencyUnion(dbCat.frequency),
             dueDay: dbCat.dueDay ?? 1,
             reminderDays: dbCat.reminderDays ?? 3,
+            isFixed: dbCat.isFixed ?? false,
           };
         });
 
@@ -147,9 +151,37 @@ export default function CategoriesPage() {
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
   const handleApplyCategory = async (categoryId: string, transactionIds: string[]) => {
-    toast.success(`Successfully re-assigned ${transactionIds.length} transactions!`);
-    setIsBulkDrawerOpen(false);
-    await refreshCategoryData();
+    setIsLoading(true);
+    try {
+      await Promise.all(
+        transactionIds.map(async (id) => {
+          const tx = transactions.find(t => t.id === id);
+          if (!tx) return;
+
+          await transactionService.delete(id);
+          await transactionService.create({
+            originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
+            originalCurrency: tx.originalCurrency || "USD",
+            baseAmountUSD: Number(tx.baseAmountUSD || 0),
+            type: tx.type,
+            description: tx.description || "Imported Ledger Record Entry",
+            date: tx.date,
+            workspaceId: activeWorkspaceId!,
+            categoryId: categoryId,
+            amount: Number(tx.originalAmount ?? tx.amount ?? 0),
+          });
+        })
+      );
+
+      toast.success(`Successfully re-assigned ${transactionIds.length} transactions!`);
+      setIsBulkDrawerOpen(false);
+      await refreshCategoryData();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to process mass tag allocation routines.";
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOpenCreateModal = () => {
@@ -176,7 +208,6 @@ export default function CategoriesPage() {
         reminderDays: savedCategory.reminderDays ?? 3,
       };
 
-      // 🚀 FIX: Handle pure updates separate from creation routines to retain historical links
       if (editingCategory && savedCategory.id && !savedCategory.id.startsWith("cat-")) {
         await categoryService.update(savedCategory.id, payload);
         toast.success("Category tracking rule updated successfully.");
@@ -214,12 +245,29 @@ export default function CategoriesPage() {
   /* ==========================================================================
      === LIVE COMPUTED DATA MATRICES ===
      ========================================================================== */
-  const filteredUnassigned: UnassignedTransactionRecord[] = [];
+  // 🚀 IMPROVED: Swapped absolute match for fuzzy .includes() lookup matrix 
+  // to perfectly anchor the fresh "Unassigned (Needs Sorting)" text string label node.
+  const unassignedNode = categories.find(c => c.name.toLowerCase().includes("unassigned"));
+  const unassignedUUID = unassignedNode ? unassignedNode.id : "";
 
-  const categoryOptions: CategoryOption[] = categories.map((cat) => ({
-    id: cat.id,
-    name: cat.name
-  }));
+  const filteredUnassigned: UnassignedTransactionRecord[] = transactions
+    .filter(tx => tx.categoryId === unassignedUUID)
+    .map(tx => ({
+      id: tx.id,
+      date: tx.date.substring(0, 10),
+      merchant: tx.description || "Imported Statement Entry",
+      amount: Number(tx.baseAmountUSD ?? tx.amount ?? 0),
+      workspaceId: tx.workspaceId
+    }));
+
+  // 🚀 IMPROVED: Blocks the core "Unassigned (Needs Sorting)" container 
+  // from appearing as a target option inside the bulk re-assignment drawer.
+  const categoryOptions: CategoryOption[] = categories
+    .filter(cat => !cat.name.toLowerCase().includes("unassigned"))
+    .map((cat) => ({
+      id: cat.id,
+      name: cat.name
+    }));
 
   const calculateLiveStats = (): CategoryStatData => {
     let topExp = { name: "N/A", amountWorkspace: 0 };
@@ -275,6 +323,13 @@ export default function CategoriesPage() {
     };
   };
 
+  // Pin special categories to the absolute front of the line!
+  const orderedCategories = [...categories].sort((a, b) => {
+    if (a.isFixed && !b.isFixed) return -1; // Move fixed items to front
+    if (!a.isFixed && b.isFixed) return 1;  // Push custom items back
+    return 0;                               // Keep natural order otherwise
+  });
+
   /* ==========================================================================
      === RENDER UI ===
      ========================================================================== */
@@ -322,7 +377,7 @@ export default function CategoriesPage() {
 
       <main className={styles.mainContentStage}>
         <CategoryGrid
-          categoriesList={categories}
+          categoriesList={orderedCategories}
           onEditClick={handleEditCategory}
           onDeleteClick={handleDeleteCategory}
         />

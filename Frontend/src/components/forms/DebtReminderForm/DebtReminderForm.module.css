@@ -1,17 +1,21 @@
 /* src/components/forms/DebtReminderForm/DebtReminderForm.module.css */
 
 /* ==========================================================================
-   === TEXT STYLING OVERHAUL (ANTI-GRANNY CONFIG) ===
+   === SECTION 1: CONTAINER CARD & HEADERS ===
    ========================================================================== */
+/* === SECTION 1: CONTAINER CARD & HEADERS === */
 .formCard {
   width: 100%;
   background: var(--bg-surface, #ffffff);
-  border-radius: 16px;
-  padding: 2rem;
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 16px);
+  padding: 2.25rem;
   box-sizing: border-box;
   font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  overflow: hidden;
 }
 
 .headerArea {
@@ -32,6 +36,7 @@
   letter-spacing: -0.03em;
   color: var(--text-primary, #10043f);
   margin: 0;
+  line-height: 1.2;
 }
 
 .formSubtitle {
@@ -42,7 +47,7 @@
 }
 
 .highlightText {
-  color: var(--color-primary, #6366f1);
+  color: var(--color-primary, #613bbf);
   font-weight: 700;
 }
 
@@ -56,17 +61,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--transition-fast, 0.15s) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .closeBtn:hover {
-  background: var(--primary-soft-hover, rgba(16, 4, 63, 0.06));
-  color: var(--text-primary);
+  background: var(--surface-muted, #f9f8ff);
+  color: var(--text-primary, #10043f);
 }
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === FORM CONTROL INPUT ARCHITECTURE ===
+   === SECTION 2: GRID LAYOUT MECHANICS ===
    ========================================================================== */
+/* === SECTION 2: GRID LAYOUT MECHANICS === */
 .formLayout {
   display: flex;
   flex-direction: column;
@@ -77,104 +84,133 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .label {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-primary, #10043f);
-  opacity: 0.9;
+  color: var(--text-secondary, #4e4a6b);
+  display: block;
+  line-height: 1.2;
 }
 
 .optionalBadge {
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
-  background: var(--surface-outline, rgba(16, 4, 63, 0.05));
+  background: var(--surface-outline, #f1eefc);
   color: var(--text-secondary, #4e4a6b);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   margin-left: 0.35rem;
 }
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: PREMIUM INPUT FIELD ENHANCEMENTS ===
+   ========================================================================== */
+/* === SECTION 3: PREMIUM INPUT FIELD ENHANCEMENTS === */
+/* Force baseline input controls and segmented components to preserve an identical structural height contract */
+.inputField,
+.segmentedControl {
+  height: 44px;
+  box-sizing: border-box;
+}
 
 .inputField {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
+  padding: 0 1rem;
+  border-radius: var(--radius-md, 10px);
   border: 1px solid var(--border-color, #e5e1f4);
-  background-color: var(--bg-surface, #ffffff);
+  background-color: var(--background, #ffffff);
   color: var(--text-primary, #10043f);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 500;
   outline: none;
-  box-sizing: border-box;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  line-height: 1.4;
+  transition: border-color var(--transition-fast, 0.15s), box-shadow var(--transition-fast, 0.15s);
 }
 
 .inputField:focus {
-  border-color: var(--color-primary, #6366f1);
-  box-shadow: 0 0 0 4px var(--primary-soft, rgba(99, 102, 241, 0.12));
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 4px var(--primary-soft, rgba(97, 59, 191, 0.12));
 }
 
-/* SEGMENT SLIDER COMPONENT CONTAINER */
+/* Segmented control wrapper track box grid */
 .segmentedControl {
   display: flex;
   width: 100%;
-  background: var(--surface-outline, rgba(16, 4, 63, 0.04));
-  padding: 0.3rem;
-  border-radius: 10px;
+  background: var(--surface-muted, #f9f8ff);
+  padding: 3px;
+  border-radius: var(--radius-md, 10px);
   border: 1px solid var(--border-color, #e5e1f4);
-  box-sizing: border-box;
+  align-items: stretch;
+  transition: border-color var(--transition-fast, 0.15s), box-shadow var(--transition-fast, 0.15s);
 }
 
+/* Highlight outer frame box when tab selection flows inside the options indexes */
+.segmentedControl:focus-within {
+  border-color: var(--color-primary, #613bbf);
+  box-shadow: 0 0 0 4px var(--primary-soft, rgba(97, 59, 191, 0.12));
+}
+
+/* Individual choice label card button */
 .segmentOption {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.65rem;
   font-size: 0.88rem;
   font-weight: 700;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary, #4e4a6b);
+  color: var(--text-muted, #7e7a9c);
   cursor: pointer;
-  border-radius: 7px;
-  transition: all 0.2s ease-in-out;
+  border-radius: calc(var(--radius-md, 10px) - 3px);
+  position: relative;
+  user-select: none;
+  transition: all var(--transition-fast, 0.15s) ease-in-out;
+}
+
+/* 🚀 FIXED: Cleans out default un-stylable round native checkbox bubbles from DOM grids */
+.hiddenRadioControl {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
 }
 
 .segmentActiveWhatsapp {
   background: #128c7e !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(18, 140, 126, 0.25);
+  box-shadow: 0 4px 12px rgba(18, 140, 126, 0.2);
 }
 
 .segmentActiveEmail {
-  background: var(--color-primary, #6366f1) !important;
+  background: var(--color-primary, #613bbf) !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.2);
 }
 
-/* ==========================================================================
-   === PREMIUM LIVE BOX SANDBOX LAYOUT ===
-   ========================================================================== */
+/* PREMIUM LIVE PREVIEW SANDBOX COMPONENT PANELS */
 .previewBoxWrapper {
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   padding: 0.5rem;
-  border: 1px dashed var(--border-color);
-  transition: all 0.3s ease;
+  border: 1px dashed var(--border-color, #e5e1f4);
+  transition: all var(--transition-fast, 0.15s) ease;
 }
 
 .whatsappTint {
-  background: rgba(18, 140, 126, 0.05);
+  background: rgba(18, 140, 126, 0.03);
   border-color: rgba(18, 140, 126, 0.3);
 }
 
 .emailTint {
-  background: var(--primary-soft, rgba(99, 102, 241, 0.04));
-  border-color: var(--border-color);
+  background: var(--surface-muted, #f9f8ff);
+  border-color: var(--border-color, #e5e1f4);
 }
 
 .previewTextArea {
@@ -184,7 +220,7 @@
   background: transparent;
   color: var(--text-primary, #10043f);
   font-family: inherit;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.6;
   outline: none;
@@ -195,14 +231,15 @@
 .helperText {
   font-size: 0.78rem;
   line-height: 1.4;
-  color: var(--text-secondary, #4e4a6b);
-  opacity: 0.75;
+  color: var(--text-muted, #7e7a9c);
   margin-top: 0.25rem;
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
-   === ACTION BUTTON SUITE CONTROLLERS ===
+   === SECTION 4: ACTIONS & BUTTONS ===
    ========================================================================== */
+/* === SECTION 4: ACTIONS & BUTTONS === */
 .buttonGroup {
   display: flex;
   justify-content: flex-end;
@@ -214,38 +251,42 @@
 
 .cancelBtn,
 .submitBtn {
-  padding: 0.75rem 1.5rem;
-  font-size: 0.92rem;
+  width: 160px;
+  height: 44px; /* Balanced layout height perfectly mirroring form input frames */
+  font-size: 0.88rem;
   font-weight: 700;
-  border-radius: 10px;
-  border: none;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  justify-content: center;
+  box-sizing: border-box;
+  transition: all var(--transition-fast, 0.15s) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cancelBtn {
   background: transparent;
   color: var(--text-secondary, #4e4a6b);
-  border: 1px solid var(--border-color, #e5e1f4);
+  border-color: var(--border-color, #e5e1f4);
 }
 
 .cancelBtn:hover {
-  background: var(--primary-soft-hover, rgba(16, 4, 63, 0.04));
-  color: var(--text-primary);
+  background: var(--surface-muted, #f9f8ff);
+  color: var(--color-primary, #613bbf);
+  border-color: var(--color-primary, #613bbf);
 }
 
 .submitBtn {
-  /* 🚀 FIXED: Set to primary theme token so it shifts intelligently across dark/light scales */
-  background: var(--color-primary, #6366f1);
+  background: var(--color-primary, #613bbf);
   color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(97, 59, 191, 0.08);
 }
 
 .submitBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px var(--shadow-soft);
-  filter: brightness(1.1);
+  background-color: var(--color-primary-dark, #4e2ea3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(97, 59, 191, 0.18);
 }
 
 .submitBtn:active {
@@ -263,7 +304,7 @@
   .cancelBtn,
   .submitBtn {
     width: 100%;
-    justify-content: center;
-    padding: 0.85rem;
+    max-width: none;
   }
 }
+/* === SECTION 4 END === */

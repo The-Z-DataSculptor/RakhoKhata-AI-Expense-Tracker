@@ -1,7 +1,7 @@
 // src/schemas/transactions.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import * as z from "zod";
 /* === SECTION 1 END === */
@@ -9,30 +9,42 @@ import * as z from "zod";
 /* ==========================================================================
    === SECTION 2: ZOD VALIDATION SCHEMA ===
    ========================================================================== */
+/**
+ * Schema for transaction form validation.
+ * Ensures the incoming data is complete and correctly typed before submission.
+ */
 export const transactionFormSchema = z.object({
-  date: z.string().min(1, { message: "Please pick a valid booking date" }),
-  
+  date: z
+    .string()
+    .min(1, { message: "Please pick a valid booking date" }),
+
   description: z
     .string()
-    .min(3, { message: "Description details must span at least 3 characters" })
-    .max(80),
-  
-  category: z.string().min(1, { message: "Please select a valid target category" }),
-  
-  type: z.enum(["EXPENSE", "INCOME"], { message: "Direction must be specified" }),
-  
-  // FIX: Using simple { message } inside coerce.number() prevents the 'invalid_type_error' TS issue.
-  // This guarantees the output will be typed strictly as 'number'.
+    .min(3, { message: "Description must be at least 3 characters" })
+    .max(80, { message: "Description must be under 80 characters" }),
+
+  category: z
+    .string()
+    .min(1, { message: "Please select a target category" }),
+
+  type: z.enum(["EXPENSE", "INCOME"], {
+    message: "Type must be either EXPENSE or INCOME",
+  }),
+
   amount: z.coerce
     .number({ message: "Amount must be a valid number" })
-    .positive({ message: "Financial amounts must be strictly above 0" }),
+    .positive({ message: "Amount must be strictly above 0" }),
 });
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: TYPES EXPORT ===
+   === SECTION 3: EXPORTED TYPE ===
    ========================================================================== */
-// This automatically generates the exact TypeScript interface based on our schema above.
-// By exporting this, React Hook Form uses the exact same shape as Zod.
-export type TransactionFormValues = z.infer<typeof transactionFormSchema>;
+/**
+ * Inferred TypeScript type from the Zod schema.
+ * Used by React Hook Form and other components.
+ */
+export type TransactionFormValues = z.infer<
+  typeof transactionFormSchema
+>;
 /* === SECTION 3 END === */

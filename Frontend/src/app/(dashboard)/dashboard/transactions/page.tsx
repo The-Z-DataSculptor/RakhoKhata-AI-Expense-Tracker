@@ -2,7 +2,7 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
@@ -10,14 +10,14 @@ import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { transactionService, categoryService, Transaction, Category } from "@/utils/api";
 import { toast } from "sonner";
 
-// Spreadsheet Ingestion Engine Libs & Safe Typings
+// Spreadsheet Ingestion Engine Libs
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { FiUploadCloud, FiChevronRight, FiFileText, FiAlertCircle, FiLoader } from "react-icons/fi";
 
 import TransactionHeader from "@/components/transactions/TransactionHeader/TransactionHeader";
 import TransactionFilterBar, { TransactionTypeFilter } from "@/components/transactions/TransactionFilterBar/TransactionFilterBar";
-import TransactionLedgerGrid, { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid"; // 🚀 FIXED: Absolute Naming Alignment
+import TransactionLedgerGrid, { TransactionRecord } from "@/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid";
 import TransactionPagination from "@/components/transactions/TransactionPagination/TransactionPagination";
 import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/BulkActionToolBelt";
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
@@ -25,8 +25,12 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFoo
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
 import { DebtReminderForm } from "@/components/forms/DebtReminderForm/DebtReminderForm"; 
 import styles from "./page.module.css";
+/* === SECTION 1 END === */
 
-type FormPayload = {
+/* ==========================================================================
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   ========================================================================== */
+interface FormPayload {
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
@@ -36,7 +40,7 @@ type FormPayload = {
   workspaceId: string;
   categoryId: string;
   id?: string;
-};
+}
 
 interface ImportRowPreview {
   index: number;
@@ -50,20 +54,71 @@ interface ImportRowPreview {
 
 type ParsedRowData = Record<string, string>;
 
+/**
+ * 🚀 RESILIENT HELPER: PARSES EXCEL SERIALS AND REGIONAL STRINGS SAFELY
+ * Extracts dates from messy spreadsheet formats without crashing the engine.
+ */
+const safeParseSpreadsheetDate = (rawVal: unknown): string => {
+  const fallbackToday = new Date().toISOString().substring(0, 10);
+  if (!rawVal) return fallbackToday;
+
+  if (rawVal instanceof Date) {
+    return !isNaN(rawVal.getTime()) ? rawVal.toISOString().substring(0, 10) : fallbackToday;
+  }
+
+  const strVal = String(rawVal).trim();
+  const numericSerial = Number(strVal);
+  
+  // Handle proprietary Excel numeric serial date formats safely
+  if (!isNaN(numericSerial) && numericSerial > 30000 && numericSerial < 60000) {
+    const computedExcelDate = new Date((numericSerial - 25569) * 86400 * 1000);
+    if (!isNaN(computedExcelDate.getTime())) {
+      return computedExcelDate.toISOString().substring(0, 10);
+    }
+  }
+
+  let parsed = new Date(strVal);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().substring(0, 10);
+  }
+
+  // Handle standard manual user string layouts (DD-MM-YYYY or similar)
+  const stringParts = strVal.split(/[-/.]/);
+  if (stringParts.length === 3) {
+    const firstPart = parseInt(stringParts[0], 10);
+    const secondPart = parseInt(stringParts[1], 10) - 1; 
+    const thirdPart = parseInt(stringParts[2], 10);
+
+    if (thirdPart > 1000 && secondPart >= 0 && secondPart < 12 && firstPart > 0 && firstPart <= 31) {
+      parsed = new Date(thirdPart, secondPart, firstPart);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().substring(0, 10);
+      }
+    }
+  }
+
+  return fallbackToday;
+};
+
+// Dynamic Environment Routing to prevent hardcoded Localhost leaks in production
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+/* === SECTION 2 END === */
+
 /* ==========================================================================
-   === SECTION 2: COMPONENT CORE ENGINE ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 export default function TransactionsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
 
-  /* --- STATE --- */
+  /* --- DATA STATES --- */
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isScanning, setIsScanning] = useState<boolean>(false); 
 
+  /* --- VIEW & FILTER STATES --- */
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedType, setSelectedType] = useState<TransactionTypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -72,18 +127,19 @@ export default function TransactionsPage() {
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
 
+  /* --- MODAL STATES --- */
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeReminderTx, setActiveReminderTx] = useState<TransactionRecord | null>(null);
 
-  /* ENGINE STATES: AUTOMATED INGESTION WIZARD SYSTEM */
+  /* --- AUTOMATED INGESTION WIZARD STATES --- */
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [importStep, setImportStep] = useState<number>(1);
   const [rawFileHeaders, setRawFileHeaders] = useState<string[]>([]);
   const [rawParsedRows, setRawParsedRows] = useState<ParsedRowData[]>([]);
   const [isSubmittingImport, setIsSubmittingImport] = useState<boolean>(false);
 
-  // DOM References hooks anchoring hidden document file and camera triggers
+  // DOM References anchoring hidden document file and camera triggers safely
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,57 +155,19 @@ export default function TransactionsPage() {
   const [fallbackType, setFallbackType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [stagedPreviewRows, setStagedPreviewRows] = useState<ImportRowPreview[]>([]);
 
-  /* RESILIENT HELPER: PARSES EXCEL SERIALS AND REGIONAL STRINGS SAFELY */
-  const safeParseSpreadsheetDate = (rawVal: unknown): string => {
-    const fallbackToday = new Date().toISOString().substring(0, 10);
-    if (!rawVal) return fallbackToday;
-
-    if (rawVal instanceof Date) {
-      return !isNaN(rawVal.getTime()) ? rawVal.toISOString().substring(0, 10) : fallbackToday;
-    }
-
-    const strVal = String(rawVal).trim();
-    const numericSerial = Number(strVal);
-    if (!isNaN(numericSerial) && numericSerial > 30000 && numericSerial < 60000) {
-      const computedExcelDate = new Date((numericSerial - 25569) * 86400 * 1000);
-      if (!isNaN(computedExcelDate.getTime())) {
-        return computedExcelDate.toISOString().substring(0, 10);
-      }
-    }
-
-    let parsed = new Date(strVal);
-    if (!isNaN(parsed.getTime())) {
-      return parsed.toISOString().substring(0, 10);
-    }
-
-    const stringParts = strVal.split(/[-/.]/);
-    if (stringParts.length === 3) {
-      const firstPart = parseInt(stringParts[0], 10);
-      const secondPart = parseInt(stringParts[1], 10) - 1; 
-      const thirdPart = parseInt(stringParts[2], 10);
-
-      if (thirdPart > 1000 && secondPart >= 0 && secondPart < 12 && firstPart > 0 && firstPart <= 31) {
-        parsed = new Date(thirdPart, secondPart, firstPart);
-        if (!isNaN(parsed.getTime())) {
-          return parsed.toISOString().substring(0, 10);
-        }
-      }
-    }
-
-    return fallbackToday;
-  };
-
+  /** Fetches clean transaction arrays from the protected backend routes */
   const refreshLedgerData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
       const txData = await transactionService.getByWorkspace(activeWorkspaceId);
       setTransactions(txData.transactions);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to refresh data stream.";
+      const msg = error instanceof Error ? error.message : "Failed to refresh data stream from server.";
       toast.error(msg);
     }
   }, [activeWorkspaceId]);
 
+  /** Initializes global view parameters when user switches active workspaces */
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
@@ -167,7 +185,7 @@ export default function TransactionsPage() {
         setSelectedRecordIds([]);
       } catch (error: unknown) {
         console.error("Ledger Sync Failure:", error);
-        const msg = error instanceof Error ? error.message : "Failed to sync entries with Neon Cloud database.";
+        const msg = error instanceof Error ? error.message : "Failed to sync entries with cloud database.";
         toast.error(msg);
       } finally {
         setIsLoading(false);
@@ -177,7 +195,7 @@ export default function TransactionsPage() {
     syncWorkspaceLedgerOnSwitch();
   }, [activeWorkspaceId]);
 
-  /* FULL-STACK HANDLER: PROCESSES MULTIPART FILE SCAN THROUGHS VIA GEMINI ENGINE */
+  /** FULL-STACK HANDLER: PROCESSES MULTIPART FILE SCAN THROUGHS VIA GEMINI ENGINE */
   const handleReceiptScanProcessing = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const targetFile = e.target.files?.[0];
     if (!targetFile) return;
@@ -189,13 +207,12 @@ export default function TransactionsPage() {
       const formTransportContainer = new FormData();
       formTransportContainer.append("receipt", targetFile);
 
-      const response = await fetch("http://localhost:5000/api/transactions/scan", {
+      const response = await fetch(`${API_BASE_URL}/api/transactions/scan`, {
         method: "POST",
         body: formTransportContainer,
         credentials: "include",
       });
 
-      // 🚀 FIXED: Anti-Crash Safety Shield parsing content headers before JSON execution
       const contentType = response.headers.get("content-type") || "";
       
       if (!response.ok) {
@@ -203,14 +220,14 @@ export default function TransactionsPage() {
           const errorJson = await response.json();
           throw new Error(errorJson.error || "AI Ingestion system crash.");
         } else {
-          throw new Error(`Server returned non-JSON HTML page. (Status Code: ${response.status})`);
+          throw new Error(`Server returned a non-JSON HTML error page. (Status Code: ${response.status})`);
         }
       }
 
       const parsedResult = await response.json();
 
       const unassignedNode = categories.find(c => c.name.toLowerCase() === "unassigned");
-      const unassignedUUID = unassignedNode ? unassignedNode.id : categories[0]?.id || "";
+      const unassignedUUID = unassignedNode ? unassignedNode.id : (categories[0]?.id || "");
 
       const preFilledMockTransaction: Partial<Transaction> = {
         id: undefined, 
@@ -236,11 +253,11 @@ export default function TransactionsPage() {
       toast.error(msg, { id: notificationId });
     } finally {
       setIsScanning(false);
-      e.target.value = "";
+      e.target.value = ""; 
     }
   };
 
-  /* ENGINE HOOKS: DATA TRANSFORMATION PIPELINES */
+  /** ENGINE HOOKS: CSV & EXCEL DATA TRANSFORMATION PIPELINES */
   const handleFileDropProcessing = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -266,7 +283,11 @@ export default function TransactionsPage() {
       const reader = new FileReader();
       reader.onload = (evt) => {
         const bstr = evt.target?.result;
-        if (!bstr) return;
+        
+        if (!bstr || typeof bstr !== "string") {
+          toast.error("File buffer reading error. Ensure the spreadsheet is valid.");
+          return;
+        }
         
         const wb = XLSX.read(bstr, { type: "binary", cellDates: true, dateNF: "yyyy-mm-dd" });
         const wsname = wb.SheetNames[0];
@@ -312,7 +333,7 @@ export default function TransactionsPage() {
     }
 
     const unassignedNode = categories.find(c => c.name.toLowerCase() === "unassigned");
-    const unassignedUUID = unassignedNode ? unassignedNode.id : categories[0]?.id || "";
+    const unassignedUUID = unassignedNode ? unassignedNode.id : (categories[0]?.id || "");
 
     const cleanStagedDataset: ImportRowPreview[] = rawParsedRows.map((row, idx) => {
       let rawAmount = parseFloat(String(row[colMap.amount] || "0").replace(/[^0-9.-]/g, ""));
@@ -376,7 +397,7 @@ export default function TransactionsPage() {
         };
       });
 
-      const response = await fetch("http://localhost:5000/api/transactions/bulk", {
+      const response = await fetch(`${API_BASE_URL}/api/transactions/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -397,14 +418,14 @@ export default function TransactionsPage() {
       await refreshLedgerData();
 
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : "Ingestion thread error.";
+      const errorMsg = error instanceof Error ? error.message : "Ingestion network thread error.";
       toast.error(errorMsg);
     } finally {
       setIsSubmittingImport(false);
     }
   };
 
-  /* --- ACTIONS --- */
+  /* --- BASIC CRUD ACTIONS --- */
   const handleOpenCreateModal = () => {
     setEditingTransaction(null);
     setIsModalOpen(true);
@@ -430,7 +451,7 @@ export default function TransactionsPage() {
         originalAmount: payload.originalAmount,
         originalCurrency: payload.originalCurrency,
         baseAmountUSD: payload.baseAmountUSD,
-        type: payload.type,
+        type: payload.type as "INCOME" | "EXPENSE",
         description: payload.description,
         date: payload.date,
         workspaceId: activeWorkspaceId,
@@ -441,7 +462,7 @@ export default function TransactionsPage() {
       await refreshLedgerData(); 
       handleClosePopupModal();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Could not log transaction down onto server logs.";
+      const msg = error instanceof Error ? error.message : "Could not log transaction onto server framework.";
       toast.error(msg);
     }
   };
@@ -461,7 +482,7 @@ export default function TransactionsPage() {
       setSelectedRecordIds(current => current.filter(id => id !== targetRecordId));
       toast.success("Ledger entry dropped completely.");
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to drop entry row from database storage.";
+      const msg = error instanceof Error ? error.message : "Failed to drop entry row from storage.";
       toast.error(msg);
     }
   };
@@ -495,6 +516,7 @@ export default function TransactionsPage() {
 
   const handleClearSelectionQueue = () => setSelectedRecordIds([]);
 
+  /* --- DATA AGGREGATION & RENDER PIPELINES --- */
   const processedFilteredRecords = transactions.filter((singleLog) => {
     const normalQuery = searchQuery.toLowerCase().trim();
     const matchesSearch = normalQuery === "" || singleLog.description.toLowerCase().includes(normalQuery);
@@ -531,7 +553,11 @@ export default function TransactionsPage() {
     amount: Number(tx.amount), 
     type: tx.type.toLowerCase() as "income" | "expense"
   })).slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: EXPORTS / RENDER COMPONENT ===
+   ========================================================================== */
   return (
     <div className={styles.ledgerCanvasWrapper}>
       
@@ -558,15 +584,23 @@ export default function TransactionsPage() {
       />
 
       <main className={styles.mainContentStage}>
-        <TransactionLedgerGrid
-          records={adaptiveGridRows}
-          onEditRecord={handleEditRecordTrigger}
-          onDeleteRecord={handleDeleteRecordTrigger}
-          onSendReminder={(row) => setActiveReminderTx(row)} 
-          selectedIds={selectedRecordIds}
-          onToggleSelectRow={handleToggleSingleRowSelection}
-          onToggleSelectAllOnPage={handleToggleSelectAllOnPage}
-        />
+        {/* 🚀 FIXED: Solves the ESLint unused variable issue by rendering a clean fallback loader */}
+        {isLoading ? (
+          <div className={styles.inlineLoadingContainer}>
+            <FiLoader className={styles.inlineSpinner} />
+            <p>Syncing ledger records securely...</p>
+          </div>
+        ) : (
+          <TransactionLedgerGrid
+            records={adaptiveGridRows}
+            onEditRecord={handleEditRecordTrigger}
+            onDeleteRecord={handleDeleteRecordTrigger}
+            onSendReminder={(row) => setActiveReminderTx(row)} 
+            selectedIds={selectedRecordIds}
+            onToggleSelectRow={handleToggleSingleRowSelection}
+            onToggleSelectAllOnPage={handleToggleSelectAllOnPage}
+          />
+        )}
       </main>
 
       <div className={styles.paginationControlRowDeck}>
@@ -616,199 +650,208 @@ export default function TransactionsPage() {
         onChange={handleReceiptScanProcessing} 
       />
 
-      {/* Absolute Floating Glass Loading Shield for scanner engine parsing */}
-      {isScanning && (
-        <div className={styles.scanningOverlayBackdrop}>
-          <div className={styles.scanningCoreCard}>
-            <FiLoader className={styles.scanningSpinnerVector} />
-            <h4>Reading Receipt Matrix</h4>
-            <p>Gemini LLM is mapping variables, isolating currency codes, and structuring ledger lines...</p>
+      {/* Enclosed within strict DIVs to prevent 'removeChild of null' React unmount ghost errors */}
+      <div>
+        {isScanning && (
+          <div className={styles.scanningOverlayBackdrop}>
+            <div className={styles.scanningCoreCard}>
+              <FiLoader className={styles.scanningSpinnerVector} />
+              <h4>Reading Receipt Matrix</h4>
+              <p>Gemini LLM is mapping variables, isolating currency codes, and structuring ledger lines...</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* PRE-FLIGHT INTERACTIVE MAPPING INGESTION AUTOMATED DATA WIZARD MODAL */}
-      {isImportOpen && (
-        <div className={styles.modalOverlayBackdrop} onClick={() => { if(!isSubmittingImport) setIsImportOpen(false); }}>
-          <div className={`${styles.modalContentCard} ${styles.wizardExpansionLarge}`} onClick={(e) => e.stopPropagation()}>
-            
-            <div className={styles.wizardHeaderDeck}>
-              <div className={styles.wizardHeaderTitleBlock}>
-                <h3 className={styles.wizardMainTitle}>Automated Statement Importer</h3>
-                <span className={styles.wizardBadgePill}>Workspace Engine v2</span>
-              </div>
-              <div className={styles.stepperPipelineLayout}>
-                <span className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Upload</span>
-                <FiChevronRight className={styles.stepperArrowIcon} />
-                <span className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Map Headers</span>
-                <FiChevronRight className={styles.stepperArrowIcon} />
-                <span className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Validate Review</span>
-              </div>
-            </div>
-
-            {importStep === 1 && (
-              <div className={styles.dropzoneFrameZone}>
-                <FiUploadCloud className={styles.dropzoneUploadIcon} />
-                <p className={styles.dropzoneMainTitleText}>Drag and drop statement here, or click to browse</p>
-                <p className={styles.dropzoneSubtextMeta}>Supports standard banking sheet outputs (.csv, .xlsx, .xls)</p>
-                <input 
-                  type="file" 
-                  accept=".csv, .xlsx, .xls" 
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
-                  onChange={handleFileDropProcessing}
-                />
-              </div>
-            )}
-
-            {importStep === 2 && (
-              <div className={styles.wizardFormCoreBody}>
-                <div className={`${styles.wizardInfoAlertBox} ${styles.alertInfoBlue}`}>
-                  <FiFileText size={16} />
-                  <span>Map your spreadsheet columns to your ledger workspace layout metrics. Date, Description, and Amount fields are required parameters.</span>
+      <div>
+        {isImportOpen && (
+          <div className={styles.modalOverlayBackdrop} onClick={() => { if(!isSubmittingImport) setIsImportOpen(false); }}>
+            <div className={`${styles.modalContentCard} ${styles.wizardExpansionLarge}`} onClick={(e) => e.stopPropagation()}>
+              
+              <div className={styles.wizardHeaderDeck}>
+                <div className={styles.wizardHeaderTitleBlock}>
+                  <h3 className={styles.wizardMainTitle}>Automated Statement Importer</h3>
+                  <span className={styles.wizardBadgePill}>Workspace Engine v2</span>
                 </div>
-
-                <div className={styles.mappingSelectorsGridRow}>
-                  <div className={styles.formGroupWrapperField}>
-                    <label className={styles.fieldLayoutInputLabel}>Transaction Date Column *</label>
-                    <select value={colMap.date} onChange={e => setColMap(p => ({...p, date: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                      <option value="">-- Choose Column --</option>
-                      {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                  <div className={styles.formGroupWrapperField}>
-                    <label className={styles.fieldLayoutInputLabel}>Description / Narration Column *</label>
-                    <select value={colMap.description} onChange={e => setColMap(p => ({...p, description: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                      <option value="">-- Choose Column --</option>
-                      {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                  <div className={styles.formGroupWrapperField}>
-                    <label className={styles.fieldLayoutInputLabel}>Amount Column *</label>
-                    <select value={colMap.amount} onChange={e => setColMap(p => ({...p, amount: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                      <option value="">-- Choose Column --</option>
-                      {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                  <div className={styles.formGroupWrapperField}>
-                    <label className={styles.fieldLayoutInputLabel}>Currency Column (Optional)</label>
-                    <select value={colMap.currency} onChange={e => setColMap(p => ({...p, currency: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                      <option value="">-- Fallback Value Only ({fallbackCurrency}) --</option>
-                      {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div className={styles.stagerFallbackSubFormBlock}>
-                  <div className={styles.formGroupWrapperField}>
-                    <label className={styles.fieldLayoutInputLabel}>Fallback Document Currency</label>
-                    <input type="text" maxLength={3} value={fallbackCurrency} onChange={e => setFallbackCurrency(e.target.value.toUpperCase())} className={styles.premiumFieldInputTextControl} placeholder="PKR" />
-                  </div>
-                  <div className={styles.fieldGroupWrapperField}>
-                    <label className={styles.fieldLayoutInputLabel}>Default Flow Configuration</label>
-                    <select value={fallbackType} onChange={e => setFallbackType(e.target.value as "INCOME" | "EXPENSE")} className={styles.premiumFieldSelectControl}>
-                      <option value="EXPENSE">Expense (Debit/Payouts)</option>
-                      <option value="INCOME">Income (Credit/Deposits)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className={styles.wizardActionFooterToolbar}>
-                  <button type="button" onClick={() => setImportStep(1)} className={styles.wizardCancelControlBtn}>Back</button>
-                  <button type="button" onClick={handleComputeMappingVerification} className={styles.wizardPrimaryConfirmBtn}>Generate Preview</button>
+                <div className={styles.stepperPipelineLayout}>
+                  <span className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Upload</span>
+                  <FiChevronRight className={styles.stepperArrowIcon} />
+                  <span className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Map Headers</span>
+                  <FiChevronRight className={styles.stepperArrowIcon} />
+                  <span className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Validate Review</span>
                 </div>
               </div>
-            )}
 
-            {importStep === 3 && (
-              <div className={styles.wizardFormCoreBody}>
-                <div className={`${styles.wizardInfoAlertBox} ${styles.alertWarningAmber}`}>
-                  <FiAlertCircle size={16} />
-                  <span>Staging Area: Unmatched transactions will default into your protected <b>Unassigned</b> stack. You can clean or override row configurations below.</span>
+              {importStep === 1 && (
+                <div className={styles.dropzoneFrameZone}>
+                  <FiUploadCloud className={styles.dropzoneUploadIcon} />
+                  <p className={styles.dropzoneMainTitleText}>Drag and drop statement here, or click to browse</p>
+                  <p className={styles.dropzoneSubtextMeta}>Supports standard banking sheet outputs (.csv, .xlsx, .xls)</p>
+                  <input 
+                    type="file" 
+                    accept=".csv, .xlsx, .xls" 
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                    onChange={handleFileDropProcessing}
+                  />
                 </div>
+              )}
 
-                <div className={styles.previewDataGridContainerWindow}>
-                  <table className={styles.previewTableViewportLayout}>
-                    <thead className={styles.previewTableHeaderStickyDeck}>
-                      <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Amount</th>
-                        <th>Flow Type</th>
-                        <th>Workspace Category Core Mapping</th>
-                      </tr>
-                    </thead>
-                    <tbody className={styles.previewTableBodyRowCluster}>
-                      {stagedPreviewRows.map((row, rIdx) => (
-                        <tr key={row.index}>
-                          <td className="whitespace-nowrap font-medium">{row.date}</td>
-                          <td className={styles.tableCellTruncateText} title={row.description}>{row.description}</td>
-                          <td className="font-bold text-slate-900 dark:text-zinc-100">{row.currency} {row.amount}</td>
-                          <td>
-                            <span className={row.type === "INCOME" ? styles.badgeTypeIncomePill : styles.badgeTypeExpensePill}>
-                              {row.type}
-                            </span>
-                          </td>
-                          <td>
-                            <select 
-                              value={row.categoryId}
-                              onChange={(e) => {
-                                const nextVal = e.target.value;
-                                setStagedPreviewRows(prev => prev.map((pr, pIdx) => pIdx === rIdx ? {...pr, categoryId: nextVal} : pr));
-                              }}
-                              className={styles.tableCellInlineSelectControl}
-                            >
-                              {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                              ))}
-                            </select>
-                          </td>
+              {importStep === 2 && (
+                <div className={styles.wizardFormCoreBody}>
+                  <div className={`${styles.wizardInfoAlertBox} ${styles.alertInfoBlue}`}>
+                    <FiFileText size={16} />
+                    <span>Map your spreadsheet columns to your ledger workspace layout metrics. Date, Description, and Amount fields are required parameters.</span>
+                  </div>
+
+                  <div className={styles.mappingSelectorsGridRow}>
+                    <div className={styles.formGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel}>Transaction Date Column *</label>
+                      <select value={colMap.date} onChange={e => setColMap(p => ({...p, date: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Choose Column --</option>
+                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.formGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel}>Description / Narration Column *</label>
+                      <select value={colMap.description} onChange={e => setColMap(p => ({...p, description: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Choose Column --</option>
+                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.formGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel}>Amount Column *</label>
+                      <select value={colMap.amount} onChange={e => setColMap(p => ({...p, amount: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Choose Column --</option>
+                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.formGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel}>Currency Column (Optional)</label>
+                      <select value={colMap.currency} onChange={e => setColMap(p => ({...p, currency: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Fallback Value Only ({fallbackCurrency}) --</option>
+                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className={styles.stagerFallbackSubFormBlock}>
+                    <div className={styles.formGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel}>Fallback Document Currency</label>
+                      <input type="text" maxLength={3} value={fallbackCurrency} onChange={e => setFallbackCurrency(e.target.value.toUpperCase())} className={styles.premiumFieldInputTextControl} placeholder="PKR" />
+                    </div>
+                    <div className={styles.fieldGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel}>Default Flow Configuration</label>
+                      <select value={fallbackType} onChange={e => setFallbackType(e.target.value as "INCOME" | "EXPENSE")} className={styles.premiumFieldSelectControl}>
+                        <option value="EXPENSE">Expense (Debit/Payouts)</option>
+                        <option value="INCOME">Income (Credit/Deposits)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className={styles.wizardActionFooterToolbar}>
+                    <button type="button" onClick={() => setImportStep(1)} className={styles.wizardCancelControlBtn}>Back</button>
+                    <button type="button" onClick={handleComputeMappingVerification} className={styles.wizardPrimaryConfirmBtn}>Generate Preview</button>
+                  </div>
+                </div>
+              )}
+
+              {importStep === 3 && (
+                <div className={styles.wizardFormCoreBody}>
+                  <div className={`${styles.wizardInfoAlertBox} ${styles.alertWarningAmber}`}>
+                    <FiAlertCircle size={16} />
+                    <span>Staging Area: Unmatched transactions will default into your protected <b>Unassigned</b> stack. You can clean or override row configurations below.</span>
+                  </div>
+
+                  <div className={styles.previewDataGridContainerWindow}>
+                    <table className={styles.previewTableViewportLayout}>
+                      <thead className={styles.previewTableHeaderStickyDeck}>
+                        <tr>
+                          <th>Date</th>
+                          <th>Description</th>
+                          <th>Amount</th>
+                          <th>Flow Type</th>
+                          <th>Workspace Category Core Mapping</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className={styles.previewTableBodyRowCluster}>
+                        {stagedPreviewRows.map((row, rIdx) => (
+                          <tr key={row.index}>
+                            <td className="whitespace-nowrap font-medium">{row.date}</td>
+                            <td className={styles.tableCellTruncateText} title={row.description}>{row.description}</td>
+                            <td className="font-bold text-slate-900 dark:text-zinc-100">{row.currency} {row.amount}</td>
+                            <td>
+                              <span className={row.type === "INCOME" ? styles.badgeTypeIncomePill : styles.badgeTypeExpensePill}>
+                                {row.type}
+                              </span>
+                            </td>
+                            <td>
+                              <select 
+                                value={row.categoryId}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value;
+                                  setStagedPreviewRows(prev => prev.map((pr, pIdx) => pIdx === rIdx ? {...pr, categoryId: nextVal} : pr));
+                                }}
+                                className={styles.tableCellInlineSelectControl}
+                              >
+                                {categories.map(cat => (
+                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                <div className={styles.wizardActionFooterToolbar}>
-                  <span className={styles.wizardCounterSummaryMetaText}>{stagedPreviewRows.length} records staged.</span>
-                  <div className={styles.flexButtonGroupRow}>
-                    <button type="button" disabled={isSubmittingImport} onClick={() => setImportStep(2)} className={styles.wizardCancelControlBtn}>Back</button>
-                    <button type="button" disabled={isSubmittingImport} onClick={handleCommitBulkDataToBackend} className={styles.wizardCommitExecutionBtn}>
-                      {isSubmittingImport ? "Syncing Database Grid..." : "Commit Statement Import"}
-                    </button>
+                  <div className={styles.wizardActionFooterToolbar}>
+                    <span className={styles.wizardCounterSummaryMetaText}>{stagedPreviewRows.length} records staged.</span>
+                    <div className={styles.flexButtonGroupRow}>
+                      <button type="button" disabled={isSubmittingImport} onClick={() => setImportStep(2)} className={styles.wizardCancelControlBtn}>Back</button>
+                      <button type="button" disabled={isSubmittingImport} onClick={handleCommitBulkDataToBackend} className={styles.wizardCommitExecutionBtn}>
+                        {isSubmittingImport ? "Syncing Database Grid..." : "Commit Statement Import"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Active Debt Reminder Popup Modal */}
-      {activeReminderTx && (
-        <div className={styles.modalOverlayBackdrop} onClick={() => setActiveReminderTx(null)}>
-          <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
-            <DebtReminderForm 
-              transaction={activeReminderTx} 
-              onCancel={() => setActiveReminderTx(null)} 
-            />
+      <div>
+        {activeReminderTx && (
+          <div className={styles.modalOverlayBackdrop} onClick={() => setActiveReminderTx(null)}>
+            <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
+              <DebtReminderForm 
+                transaction={activeReminderTx} 
+                onCancel={() => setActiveReminderTx(null)} 
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Standard Transaction Modals */}
-      {isModalOpen && (
-        <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
-          <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
-            <TransactionForm 
-              onAddTransaction={handleUpsertTransaction}
-              availableCategories={categories}
-              initialData={editingTransaction}
-              onCancel={handleClosePopupModal}
-            />
+      <div>
+        {isModalOpen && (
+          <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
+            <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
+              <TransactionForm 
+                onAddTransaction={handleUpsertTransaction}
+                availableCategories={categories}
+                initialData={editingTransaction}
+                onCancel={handleClosePopupModal}
+                workspaceId={activeWorkspaceId || ""}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <BulkActionToolBelt
         selectedCount={selectedRecordIds.length}
@@ -822,3 +865,4 @@ export default function TransactionsPage() {
     </div>
   );
 }
+/* === SECTION 4 END === */

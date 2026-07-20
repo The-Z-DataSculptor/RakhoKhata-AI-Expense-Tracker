@@ -1,91 +1,103 @@
 // src/hooks/useTheme.ts
-"use client"; // Required because this hook uses browser-only features like useEffect and state
+"use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import { useEffect, useState } from "react";
+
+// Allowed theme values – prevents accidental misspellings
+export type ThemeMode = "light" | "dark" | "system";
 /* === SECTION 1 END === */
 
-
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-// THE "WHY" COMMENT LAYER: Explicitly defining the only three valid string 
-// values our theme switcher will allow. This prevents spelling mistakes later.
-export type ThemeMode = "light" | "dark" | "system";
+
+/**
+ * Applies the given theme to the root <html> element by setting a data
+ * attribute that is consumed by CSS variables.
+ */
+function applyThemeToDom(targetTheme: "light" | "dark"): void {
+  document.documentElement.setAttribute("data-theme", targetTheme);
+}
+
+/**
+ * Reads the saved theme preference from localStorage.
+ * Returns the stored value if valid, otherwise undefined.
+ */
+function readSavedTheme(): ThemeMode | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const stored = localStorage.getItem("theme");
+    if (stored === "light" || stored === "dark" || stored === "system") {
+      return stored;
+    }
+  } catch {
+    // localStorage may be disabled – ignore
+  }
+  return undefined;
+}
+
+/**
+ * Persists the chosen theme to localStorage.
+ * Silently ignores write failures.
+ */
+function persistTheme(theme: ThemeMode): void {
+  try {
+    if (theme !== "system") {
+      localStorage.setItem("theme", theme);
+    } else {
+      localStorage.removeItem("theme");
+    }
+  } catch {
+    // storage full or unavailable – not critical
+  }
+}
 /* === SECTION 2 END === */
 
-
 /* ==========================================================================
-   === SECTION 3: MAIN HOOK ARCHITECTURE ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
+
 export function useTheme() {
-  /* --- STATE INITIALIZATION --- */
-  // Initialize theme from localStorage on the client, defaulting to system when nothing is stored.
+  // Initialise from localStorage, defaulting to "system"
   const [theme, setTheme] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") {
-      return "light";
-    }
-    const savedPreference = localStorage.getItem("theme") as ThemeMode | null;
-    return savedPreference ?? "system";
+    return readSavedTheme() ?? "system";
   });
 
-  /* --- HELPER FUNCTIONS --- */
-  /* THE "WHY" COMMENT LAYER: This function directly mutates the actual browser 
-     DOM. It targets the root <html> tag and swaps out the custom attribute 
-     we configured in our globals.css file, instantly switching the colors. */
-  const applyThemeToDOM = (targetTheme: "light" | "dark") => {
-    document.documentElement.setAttribute("data-theme", targetTheme);
-  };
-
-  /* --- SIDE EFFECTS (USEEFFECTS) --- */
-  
-  // EFFECT 1: Handling theme changes and system hardware listeners
   useEffect(() => {
-    // Define a browser media query listener to check if the operating system is in dark mode
-    const systemMediaMatch = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-    // Core logic runner that calculates exactly which colors to display
-    const handleThemeSynchronization = () => {
-      // If the user explicitly picked light or dark, write it to storage and apply it
+    /**
+     * Synchronises the actual DOM and localStorage with the current theme choice.
+     * When "system" is selected, it listens to OS‑level changes.
+     */
+    function syncTheme() {
+      persistTheme(theme);
+
       if (theme !== "system") {
-        localStorage.setItem("theme", theme);
-        applyThemeToDOM(theme);
+        applyThemeToDom(theme);
         return;
       }
 
-      // IF THE THEME IS "SYSTEM":
-      // Remove any explicit individual overrides from storage so it follows the hardware
-      localStorage.removeItem("theme");
-      
-      // Check the current live status of the operating system's color scheme
-      if (systemMediaMatch.matches) {
-        applyThemeToDOM("dark");
-      } else {
-        applyThemeToDOM("light");
-      }
-    };
-
-    // Run the synchronization immediately whenever the state changes
-    handleThemeSynchronization();
-
-    /* THE "WHY" COMMENT LAYER: If the user has "system" active, we attach an 
-       event listener to the browser. If their OS transitions from light to 
-       dark mode (like at sunset), our app switches themes in real-time without 
-       requiring a page refresh. */
-    if (theme === "system") {
-      systemMediaMatch.addEventListener("change", handleThemeSynchronization);
+      // "system" – follow the OS preference
+      applyThemeToDom(mediaQuery.matches ? "dark" : "light");
     }
 
-    // Clean up the event listener when the component unmounts to keep memory usage low
-    return () => {
-      systemMediaMatch.removeEventListener("change", handleThemeSynchronization);
-    };
-  }, [theme]); // Re-run this entire block whenever the theme state updates
+    // Run immediately
+    syncTheme();
 
-  /* --- RETURN EXPOSED HOOK VALUES --- */
-  // We return the current active state and the setter function so our Navbar can use them.
+    // Listen for OS‑level changes when in "system" mode
+    if (theme === "system") {
+      mediaQuery.addEventListener("change", syncTheme);
+    }
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncTheme);
+    };
+  }, [theme]);
+
   return {
     activeTheme: theme,
     changeTheme: setTheme,

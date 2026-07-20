@@ -1,4 +1,4 @@
-/* K:\Developer\expense-tracker\src\components\forms\TransactionForm\TransactionForm.module.css */
+/* src/components/forms/TransactionForm/TransactionForm.module.css */
 
 /* ==========================================================================
    === SECTION 1: CONTAINER CARD & HEADERS ===
@@ -13,7 +13,6 @@
   overflow: hidden;
 }
 
-/* Decorative top accent bar using theme gradient tokens */
 .formCard::before {
   content: "";
   position: absolute;
@@ -55,12 +54,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
+  align-items: start; /* Kept at start to preserve visual horizontal alignment metrics */
 }
 
-/* Stack columns on small screens */
 @media (max-width: 640px) {
   .formRowSideBySide {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }
 
@@ -68,6 +68,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .label {
@@ -76,16 +77,28 @@
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  display: block;
+  line-height: 1.2; /* 🚀 FIXED: Absolute static height bounds prevent title mismatch strings */
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: PREMIUM INPUT FIELD ENHANCEMENTS ===
    ========================================================================== */
-/* Base text input */
-.inputField {
+/* Core structural height locker forces all inputs and segmented button bars to match identically */
+.inputField,
+.selectField,
+.inputFieldCurrency,
+.segmentedControl {
+  height: 44px; 
+  box-sizing: border-box;
+}
+
+.inputField,
+.selectField,
+.inputFieldCurrency {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0 1rem; 
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background-color: var(--background);
@@ -93,42 +106,59 @@
   font-size: 0.95rem;
   font-weight: 500;
   outline: none;
+  line-height: 1.4; 
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-  box-sizing: border-box;
 }
 
-/* Focus state uses primary soft tint from theme */
-.inputField:focus {
+.inputField:focus,
+.selectField:focus,
+.inputFieldCurrency:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
 
-/* Segmented control wrapper */
+/* Segmented control track box */
 .segmentedControl {
   display: flex;
   background-color: var(--background);
   border: 1px solid var(--border-color);
-  padding: 0.25rem;
+  padding: 3px; 
   border-radius: var(--radius-md);
-  height: 100%;
-  min-height: 43px;
+  width: 100%;
   align-items: stretch;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* Individual segment button */
+.segmentedControl:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+/* Individual segment tracking option label button */
 .segmentOption {
   flex: 1;
-  background: transparent;
-  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-muted);
-  border-radius: calc(var(--radius-md) - 2px);
+  border-radius: calc(var(--radius-md) - 3px);
   cursor: pointer;
+  position: relative;
+  user-select: none;
   transition: all var(--transition-fast);
 }
 
-/* Active states use semantic soft tints and color tokens */
+.hiddenRadioControl {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
 .segmentActiveExpense {
   background-color: var(--danger-soft);
   color: var(--color-danger);
@@ -141,38 +171,21 @@
   font-weight: 700;
 }
 
-/* Select wrapper and field */
 .selectWrapper {
   position: relative;
   width: 100%;
 }
 
 .selectField {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background-color: var(--background);
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  font-weight: 500;
-  outline: none;
   appearance: none;
   cursor: pointer;
-  box-sizing: border-box;
+  padding-right: 2.5rem;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e7a9c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 1rem center;
   background-size: 14px;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.selectField:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px var(--primary-soft);
-}
-
-/* Currency input container positions the badge absolutely */
 .currencyInputContainer {
   position: relative;
   display: flex;
@@ -180,27 +193,11 @@
   width: 100%;
 }
 
-/* Numeric currency input with extra right padding for badge */
 .inputFieldCurrency {
-  width: 100%;
-  padding: 0.75rem 3.5rem 0.75rem 1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background-color: var(--background);
-  color: var(--text-primary);
-  font-size: 0.95rem;
+  padding-right: 3.75rem; 
   font-weight: 600;
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.inputFieldCurrency:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px var(--primary-soft);
-}
-
-/* Currency badge sits on the right inside the input container */
 .currencyBadge {
   position: absolute;
   right: 0.75rem;
@@ -212,14 +209,16 @@
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   pointer-events: none;
+  display: inline-flex;
+  align-items: center;
 }
 
-/* Error text uses semantic danger color */
 .errorMessage {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-danger);
-  margin-top: 0.1rem;
+  margin-top: 0.35rem; 
+  display: block;
 }
 /* === SECTION 3 END === */
 
@@ -235,23 +234,23 @@
   width: 100%;
 }
 
-/* Both buttons share the same dimensions for visual balance */
 .submitBtn,
 .cancelBtn {
   flex: 0 0 auto;
   width: 160px;
-  padding: 0.75rem 0;
+  height: 44px; 
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   font-weight: 600;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all var(--transition-fast);
   border: 1px solid transparent;
   box-sizing: border-box;
 }
 
-/* Primary button (solid) */
 .submitBtn {
   background-color: var(--color-primary);
   color: var(--text-on-primary);
@@ -263,7 +262,6 @@
   transform: translateY(-1px);
 }
 
-/* Secondary button (outline) */
 .cancelBtn {
   background-color: transparent;
   color: var(--text-secondary);
@@ -276,7 +274,6 @@
   color: var(--color-primary);
 }
 
-/* Disabled state for both */
 .submitBtn:disabled,
 .cancelBtn:disabled {
   opacity: 0.5;
@@ -284,7 +281,6 @@
   transform: none;
 }
 
-/* Mobile: stack buttons vertically for narrow screens */
 @media (max-width: 480px) {
   .buttonGroup {
     flex-direction: column;

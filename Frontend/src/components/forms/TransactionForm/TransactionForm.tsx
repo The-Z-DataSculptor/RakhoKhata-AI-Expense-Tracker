@@ -2,7 +2,7 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import React, { useCallback, useEffect } from "react";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
@@ -15,49 +15,50 @@ import styles from "./TransactionForm.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
+interface TransactionSubmissionPayload {
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmountUSD: number;
+  type: string;
+  description: string;
+  date: string;
+  workspaceId: string;
+  categoryId: string;
+  id?: string;
+}
+
 interface TransactionFormProps {
-  onAddTransaction: (payload: {
-    originalAmount: number;
-    originalCurrency: string;
-    baseAmountUSD: number;
-    type: string;
-    description: string;
-    date: string;
-    workspaceId: string;
-    categoryId: string;
-    id?: string;
-  }) => Promise<void>;
+  onAddTransaction: (payload: TransactionSubmissionPayload) => Promise<void>;
   availableCategories: Category[];
   initialData?: Transaction | null;
   onCancel?: () => void;
+  workspaceId: string; 
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 export function TransactionForm({
   onAddTransaction,
   availableCategories,
   initialData,
   onCancel,
+  workspaceId,
 }: TransactionFormProps) {
-  // 🚀 FIXED: Differentiate between a real database record update and an AI receipt pre-fill scan
   const isEditMode = Boolean(initialData && initialData.id);
   const isAiScan = Boolean(initialData && !initialData.id);
   
   const { currency, convertAmount } = useCurrency();
   const defaultDateString = new Date().toISOString().substring(0, 10);
-
   const resolver = zodResolver(transactionFormSchema) as Resolver<TransactionFormValues>;
 
   const {
     register,
     handleSubmit,
     reset,
-    setValue,
     control,
     formState: { errors, isSubmitting },
   } = useForm<TransactionFormValues>({
@@ -85,12 +86,10 @@ export function TransactionForm({
         : Number(initialData.amount ?? 0);
 
       const sourceCurrency = initialData.originalCurrency || "USD";
-      
-      // Convert values flawlessly from receipt currency baseline to user's active workspace view currency
       const displayAmount = convertAmount(sourceAmount, sourceCurrency, currency);
 
       reset({
-        date: new Date(initialData.date).toISOString().substring(0, 10),
+        date: initialData.date ? new Date(initialData.date).toISOString().substring(0, 10) : defaultDateString,
         description: initialData.description || "",
         category: initialData.categoryId || "",
         type: (initialData.type || "EXPENSE").toUpperCase() as "EXPENSE" | "INCOME",
@@ -113,7 +112,7 @@ export function TransactionForm({
         const originalAmount = Number(data.amount);
         const baseAmountUSD = convertAmount(originalAmount, currency, "USD");
 
-        const payload = {
+        const payload: TransactionSubmissionPayload = {
           originalAmount,
           originalCurrency: currency,
           baseAmountUSD,
@@ -121,7 +120,7 @@ export function TransactionForm({
           description: data.description.trim(),
           date: new Date(data.date).toISOString(),
           categoryId: data.category,
-          workspaceId: "",
+          workspaceId: workspaceId,
           id: initialData?.id,
         };
 
@@ -142,55 +141,72 @@ export function TransactionForm({
           });
         }
       } catch (error: unknown) {
-        console.error("Failed to save transaction:", error);
-        toast.error("Could not save transaction. Please check your inputs.");
+        console.error("Failed to save transaction workflow:", error);
+        toast.error("Could not save transaction. Please check your network parameters.");
       }
     },
-    [initialData, isEditMode, isAiScan, onAddTransaction, reset, defaultDateString, convertAmount, currency]
+    [initialData, isEditMode, isAiScan, onAddTransaction, reset, defaultDateString, convertAmount, currency, workspaceId]
   );
+/* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
+/* ==========================================================================
+   === SECTION 4: EXPORTS / RENDER COMPONENT ===
+   ========================================================================== */
   return (
     <div className={styles.formCard}>
       <div className={styles.headerArea}>
         <h3 className={styles.formTitle}>
-          {/* 🚀 FIXED: Dynamic heading titles based on context state */}
           {isEditMode ? "Modify Transaction Details" : isAiScan ? "Verify Scanned Receipt" : "Create Transaction Entry"}
         </h3>
         <p className={styles.formSubtitle}>Log financial cash flows into your accounting ledger.</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout}>
+      <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout} noValidate>
         <div className={styles.formRowSideBySide}>
+          {/* POSTING DATE FIELD */}
           <div className={styles.fieldGroup}>
-            <label className={styles.label} htmlFor="date">Posting Date</label>
-            <input id="date" type="date" className={styles.inputField} {...register("date")} />
+            <label className={styles.label} htmlFor="date">Transaction Date</label>
+            <input 
+              id="date" 
+              type="date" 
+              className={styles.inputField} 
+              {...register("date")} 
+            />
             {errors.date && <span className={styles.errorMessage}>{errors.date.message}</span>}
           </div>
 
+          {/* FLOW CLASSIFICATION SEGMENTED CONTROLS */}
+          {/* 🚀 FIXED: Swapped out unpredictable fieldset selectors for a unified, stable .fieldGroup wrapper block */}
           <div className={styles.fieldGroup}>
-            <label className={styles.label}>Flow Classification</label>
+            <span className={styles.label}>Flow Classification</span>
             <div className={styles.segmentedControl}>
-              <button
-                type="button"
+              <label 
                 className={`${styles.segmentOption} ${currentType === "EXPENSE" ? styles.segmentActiveExpense : ""}`}
-                onClick={() => setValue("type", "EXPENSE", { shouldValidate: true })}
               >
+                <input 
+                  type="radio"
+                  value="EXPENSE"
+                  {...register("type")}
+                  className={styles.hiddenRadioControl}
+                />
                 Expense
-              </button>
-              <button
-                type="button"
+              </label>
+              <label 
                 className={`${styles.segmentOption} ${currentType === "INCOME" ? styles.segmentActiveIncome : ""}`}
-                onClick={() => setValue("type", "INCOME", { shouldValidate: true })}
               >
+                <input 
+                  type="radio"
+                  value="INCOME"
+                  {...register("type")}
+                  className={styles.hiddenRadioControl}
+                />
                 Income
-              </button>
+              </label>
             </div>
           </div>
         </div>
 
+        {/* LEDGER DESCRIPTION FIELD */}
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="description">Ledger Description</label>
           <input
@@ -198,12 +214,14 @@ export function TransactionForm({
             type="text"
             className={styles.inputField}
             placeholder="e.g., Office Supplies, Client Retainer, Cloud hosting"
+            maxLength={120}
             {...register("description")}
           />
           {errors.description && <span className={styles.errorMessage}>{errors.description.message}</span>}
         </div>
 
         <div className={styles.formRowSideBySide}>
+          {/* CATEGORY ALLOCATION DROPDOWN */}
           <div className={styles.fieldGroup}>
             <label className={styles.label} htmlFor="category">Category Allocation</label>
             <div className={styles.selectWrapper}>
@@ -219,6 +237,7 @@ export function TransactionForm({
             {errors.category && <span className={styles.errorMessage}>{errors.category.message}</span>}
           </div>
 
+          {/* TRANSACTION VALUE NUMERIC INPUT */}
           <div className={styles.fieldGroup}>
             <label className={styles.label} htmlFor="amount">Transaction Value</label>
             <div className={styles.currencyInputContainer}>
@@ -226,6 +245,8 @@ export function TransactionForm({
                 id="amount"
                 type="number"
                 step="0.01"
+                min="0.00"
+                max={99999999}
                 className={styles.inputFieldCurrency}
                 placeholder="0.00"
                 {...register("amount", { valueAsNumber: true })}
@@ -236,12 +257,22 @@ export function TransactionForm({
           </div>
         </div>
 
+        {/* INTERACTION TRIGGERS ACTION ROW */}
         <div className={styles.buttonGroup}>
-          <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
+          <button 
+            type="submit" 
+            className={styles.submitBtn} 
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Processing..." : isEditMode ? "Commit Changes" : isAiScan ? "Verify & Save" : "Record Entry"}
           </button>
           {onCancel && (
-            <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={isSubmitting}>
+            <button 
+              type="button" 
+              className={styles.cancelBtn} 
+              onClick={onCancel} 
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
           )}
@@ -250,3 +281,4 @@ export function TransactionForm({
     </div>
   );
 }
+/* === SECTION 4 END === */

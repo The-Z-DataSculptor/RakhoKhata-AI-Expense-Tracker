@@ -20,6 +20,34 @@
    ========================================================================== */
 .mainContentStage {
   width: 100%;
+  min-height: 400px; /* Provides stable structural space to prevent footer jump on load */
+}
+
+/* 🚀 FIXED: New Loading Screen Container Styles */
+.inlineLoadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 16px);
+  color: var(--text-secondary, #4e4a6b);
+  box-shadow: var(--shadow-soft, 0 4px 12px rgba(16, 4, 63, 0.05));
+}
+
+.inlineSpinner {
+  font-size: 2.5rem;
+  color: var(--color-primary, #613bbf);
+  animation: rotateProcessingSpinner 1.2s linear infinite;
+  margin-bottom: 1.25rem;
+}
+
+.inlineLoadingContainer p {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .paginationControlRowDeck {
@@ -124,6 +152,7 @@
   from { opacity: 0; transform: scale(0.95) translateY(10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: 🚀 NEW FLOATING SCANNING ENGINE LOADING SHIELD ===

@@ -2,21 +2,24 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
+/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useEffect, useCallback } from "react";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { categoryFormSchema, CategoryFormValues } from "@/schemas/categories";
-import { CategoryRecord } from "@/app/(dashboard)/dashboard/categories/page";
+import { categoryFormSchema, type CategoryFormValues } from "@/schemas/categories";
+import { type CategoryRecord } from "@/app/(dashboard)/dashboard/categories/page";
 import styles from "./CategoryForm.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
+/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 interface CategoryFormProps {
+  // Callback routine used to append or persist the valid category record
   onAddCategory: (newCategory: CategoryRecord) => void;
   initialData?: CategoryRecord | null;
   onCancel?: () => void;
@@ -24,11 +27,14 @@ interface CategoryFormProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
+/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryFormProps) {
-  const isEditMode = !!initialData;
+  // Establish edit operational state based on the presence of existing record payloads
+  const isEditMode = Boolean(initialData);
 
+  // Bind strict Zod schemas directly to our form validator engine resolver contract
   const resolver = zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>;
 
   const {
@@ -40,6 +46,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormValues>({
     resolver, 
+    mode: "onBlur", // Validates current field data states immediately when input focus is lost
     defaultValues: {
       name: "",
       type: "EXPENSE",
@@ -51,6 +58,11 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     },
   });
 
+  // Track field state choices dynamically to conditionally alter layout panels
+  const activeColor = useWatch({ control, name: "color", defaultValue: "#613BBF" });
+  const isRecurring = useWatch({ control, name: "isRecurring", defaultValue: false });
+
+  // Keep form fields perfectly in sync whenever incoming dataset properties shift
   useEffect(() => {
     if (initialData) {
       reset({
@@ -60,7 +72,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
         isRecurring: initialData.isRecurring || false,
         frequency: (initialData.frequency as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY") || "MONTHLY",
         dueDay: initialData.dueDay !== undefined && initialData.dueDay !== null ? initialData.dueDay : 1,
-        // 👇 FIXED: Explicit check allows 0 same-day reminder value to be loaded when editing
+        // Safe null checks ensure 0 same-day alert values populate accurately in edit mode
         reminderDays: initialData.reminderDays !== undefined && initialData.reminderDays !== null ? initialData.reminderDays : 3,
       });
     } else {
@@ -76,17 +88,16 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     }
   }, [initialData, reset]);
 
-  const activeColor = useWatch({ control, name: "color", defaultValue: "#613BBF" });
-  const isRecurring = useWatch({ control, name: "isRecurring", defaultValue: false });
-
+  // Main processing logic block executed upon successful form validation pass
   const onSubmit = useCallback(
     async (data: CategoryFormValues) => {
       try {
         const lowerCaseType = data.type.toLowerCase() as "income" | "expense" | "both";
 
+        // Assemble a clean, fully itemized data transfer record contract
         const completeCategoryRecord: CategoryRecord = {
           id: initialData ? initialData.id : `cat-${Date.now()}`,
-          name: data.name,
+          name: data.name.trim(), // Strip leading/trailing whitespaces to avoid text formatting issues
           type: lowerCaseType,
           iconSlug: lowerCaseType === "income" ? "FiBriefcase" : "FiShoppingCart",
           accentColor: data.color,
@@ -95,19 +106,18 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           isRecurring: data.isRecurring || false,
           frequency: data.frequency || "MONTHLY",
           dueDay: data.dueDay !== undefined && data.dueDay !== null ? data.dueDay : 1,
-          // 👇 FIXED: Explicit check allows 0 same-day reminder value to be submitted safely
           reminderDays: data.reminderDays !== undefined && data.reminderDays !== null ? data.reminderDays : 3,
         };
 
+        // Dispatch category record out to parent context operations
         onAddCategory(completeCategoryRecord);
 
+        // Display confirmation feedback banners based on execution state context
         if (initialData) {
           toast.success("Category changes saved successfully!");
         } else {
           toast.success("Custom spending category added!");
-        }
-
-        if (!initialData) {
+          // Reset form fields back to safe default baseline settings upon creation success
           reset({
             name: "",
             type: "EXPENSE",
@@ -118,39 +128,51 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
             reminderDays: 3,
           });
         }
-      } catch (error) {
-        console.error("Form submission error:", error);
-        toast.error("Could not save category.");
+      } catch (error: unknown) {
+        // Enforce strict type narrowing parameters to prevent internal path leaks
+        console.error("Category submission workflow processing error:", error);
+        toast.error("Could not save category. Verify all required field boundaries.");
       }
     },
     [initialData, onAddCategory, reset]
   );
+/* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
+/* ==========================================================================
+   === SECTION 4: EXPORTS / RENDER COMPONENT ===
+   ========================================================================== */
+/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
   return (
     <div className={styles.formCard}>
       <h3 className={styles.formTitle}>
         {isEditMode ? `Edit Category: ${initialData?.name}` : "Create New Category"}
       </h3>
 
-      <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout}>
+      <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout} noValidate>
+        {/* CATEGORY NAME TEXT INPUT */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="name">Category Name</label>
+          <label className={styles.label} htmlFor="categoryNameInput">Category Name</label>
           <input
-            id="name"
+            id="categoryNameInput"
             type="text"
             className={styles.inputField}
             placeholder="e.g., Groceries, Rent, Salary"
+            maxLength={40} // Defensive limitation boundary to prevent database text cell parsing issues
+            disabled={isSubmitting}
             {...register("name")}
           />
           {errors.name && <span className={styles.errorMessage}>{errors.name.message}</span>}
         </div>
 
+        {/* TRANSACTION FLOW CLASSIFICATION SELECTION */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label} htmlFor="type">Transaction Type</label>
-          <select id="type" className={styles.selectField} {...register("type")}>
+          <label className={styles.label} htmlFor="categoryTypeSelect">Transaction Type</label>
+          <select 
+            id="categoryTypeSelect" 
+            className={styles.selectField} 
+            disabled={isSubmitting}
+            {...register("type")}
+          >
             <option value="EXPENSE">Expense (Money Out)</option>
             <option value="INCOME">Income (Money In)</option>
             <option value="BOTH">Both (Income & Expense)</option>
@@ -158,38 +180,45 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           {errors.type && <span className={styles.errorMessage}>{errors.type.message}</span>}
         </div>
 
+        {/* HEX ACCENT COLOR PICKER COMPONENT CONTROLS */}
         <div className={styles.fieldGroup}>
-          <label className={styles.label}>Color</label>
+          <label className={styles.label} htmlFor="categoryColorPicker">Category Color Badge</label>
           <div className={styles.colorPickerWrapper}>
             <input
+              id="categoryColorPicker"
               type="color"
               className={styles.colorInput}
               value={activeColor}
+              disabled={isSubmitting}
               onChange={(e) => setValue("color", e.target.value, { shouldValidate: true })}
             />
             <input
               type="text"
               className={styles.inputField}
-              maxLength={7}
-              placeholder="#000000"
+              maxLength={7} // Limit string lengths exactly to standard hexadecimal parameters (#FFFFFF)
+              placeholder="#613BBF"
               value={activeColor}
+              disabled={isSubmitting}
               onChange={(e) => setValue("color", e.target.value, { shouldValidate: true })}
+              aria-label="Hex color string input text field value"
             />
           </div>
           {errors.color && <span className={styles.errorMessage}>{errors.color.message}</span>}
         </div>
 
+        {/* RECURRING BILL CHECKBOX CONFIGURATION TOGGLES */}
         <div className={styles.fieldGroup}>
           <div className={styles.recurringToggleRow}>
-            <label className={styles.label} htmlFor="isRecurring">Recurring Payment?</label>
+            <label className={styles.label} htmlFor="isCategoryRecurringCheckbox">Recurring Payment?</label>
             <div className={styles.toggleSwitch}>
               <input
                 type="checkbox"
-                id="isRecurring"
+                id="isCategoryRecurringCheckbox"
+                disabled={isSubmitting}
                 {...register("isRecurring")}
                 className={styles.toggleCheckbox}
               />
-              <label htmlFor="isRecurring" className={styles.toggleLabel}>
+              <label htmlFor="isCategoryRecurringCheckbox" className={styles.toggleLabel}>
                 <span className={styles.toggleSlider}></span>
               </label>
             </div>
@@ -197,11 +226,18 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           <p className={styles.hintText}>Enable for bills, subscriptions, and other regular payments.</p>
         </div>
 
+        {/* CONDITIONALLY RENDERED PANEL FOR RECURRING SCHEDULING RULE TARGETS */}
         {isRecurring && (
           <div className={styles.recurringDetailsPanel}>
+            {/* BILL DUE TIMELINE FREQUENCY OPTIONS */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label} htmlFor="frequency">Frequency</label>
-              <select id="frequency" className={styles.selectField} {...register("frequency")}>
+              <label className={styles.label} htmlFor="recurringFrequencySelect">Frequency</label>
+              <select 
+                id="recurringFrequencySelect" 
+                className={styles.selectField} 
+                disabled={isSubmitting}
+                {...register("frequency")}
+              >
                 <option value="WEEKLY">Weekly</option>
                 <option value="BIWEEKLY">Bi-Weekly</option>
                 <option value="MONTHLY">Monthly</option>
@@ -211,46 +247,56 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
               {errors.frequency && <span className={styles.errorMessage}>{errors.frequency.message}</span>}
             </div>
 
+            {/* MONTHLY CALENDAR DUE DAY ANCHOR */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label} htmlFor="dueDay">Due Day (of the month)</label>
+              <label className={styles.label} htmlFor="recurringDueDaySelect">Due Day (of the month)</label>
               <select
-                id="dueDay"
+                id="recurringDueDaySelect"
                 className={styles.selectField}
+                disabled={isSubmitting}
                 {...register("dueDay", { valueAsNumber: true })}
               >
-                {[...Array(28)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                {Array.from({ length: 28 }).map((_, index) => (
+                  <option key={index + 1} value={index + 1}>{index + 1}</option>
                 ))}
-                <option value="31">31 (Last day)</option>
+                <option value="31">31 (Last day of the month)</option>
               </select>
               {errors.dueDay && <span className={styles.errorMessage}>{errors.dueDay.message}</span>}
             </div>
 
+            {/* SYSTEM ALERTS LEAD TIMELINE SELECTION */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label} htmlFor="reminderDays">Remind Me</label>
+              <label className={styles.label} htmlFor="reminderDaysLeadSelect">Notification Lead Time</label>
               <select
-                id="reminderDays"
+                id="reminderDaysLeadSelect"
                 className={styles.selectField}
+                disabled={isSubmitting}
                 {...register("reminderDays", { valueAsNumber: true })}
               >
-                <option value="0">Same day</option>
-                <option value="1">1 day before</option>
-                <option value="2">2 days before</option>
-                <option value="3">3 days before</option>
-                <option value="5">5 days before</option>
-                <option value="7">1 week before</option>
+                <option value="0">Same day due date alert</option>
+                <option value="1">1 day before due date</option>
+                <option value="2">2 days before due date</option>
+                <option value="3">3 days before due date</option>
+                <option value="5">5 days before due date</option>
+                <option value="7">1 week before due date</option>
               </select>
               {errors.reminderDays && <span className={styles.errorMessage}>{errors.reminderDays.message}</span>}
             </div>
           </div>
         )}
 
+        {/* MODAL CONTROL ACTION ACTION FOOTER BUTTON DECK */}
         <div className={styles.buttonGroup}>
           <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : isEditMode ? "Save Changes" : "Create Category"}
           </button>
           {onCancel && (
-            <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={isSubmitting}>
+            <button 
+              type="button" 
+              className={styles.cancelBtn} 
+              onClick={onCancel} 
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
           )}
@@ -259,3 +305,4 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     </div>
   );
 }
+/* === SECTION 4 END === */

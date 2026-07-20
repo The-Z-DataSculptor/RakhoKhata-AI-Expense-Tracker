@@ -1,5 +1,10 @@
 // src/constants/geoData.ts
 
+/* ==========================================================================
+   === SECTION 1: TYPES & DATA CONTRACTS ===
+   ========================================================================== */
+
+/** Represents a currency option shown in dropdowns and the navbar. */
 export interface CurrencyConfig {
   code: string;
   symbol: string;
@@ -7,13 +12,21 @@ export interface CurrencyConfig {
   flag: string;
 }
 
+/** Represents a country with its default currency and language for onboarding. */
 export interface CountryConfig {
   name: string;
   defaultCurrency: string;
   defaultLanguage: string;
 }
+/* === SECTION 1 END === */
 
-// 🌐 1. UNIFIED SYSTEM GLOBAL ISO CURRENCIES
+/* ==========================================================================
+   === SECTION 2: GLOBAL GEO DATA ===
+   ========================================================================== */
+
+/**
+ * All supported currencies with their ISO code, symbol, and country flag.
+ */
 export const WORLD_CURRENCIES: CurrencyConfig[] = [
   { code: "PKR", symbol: "₨", label: "Pakistani Rupee", flag: "🇵🇰" },
   { code: "USD", symbol: "$", label: "US Dollar", flag: "🇺🇸" },
@@ -57,7 +70,10 @@ export const WORLD_CURRENCIES: CurrencyConfig[] = [
   { code: "BHD", symbol: "د.ب", label: "Bahraini Dinar", flag: "🇧🇭" },
 ];
 
-// 🌍 2. COMPLETE ALIGNED COUNTRIES WITH SUGGESTION AUTOPILOT
+/**
+ * Countries used in onboarding.
+ * Each entry provides the most common default currency and language for the region.
+ */
 export const WORLD_COUNTRIES: CountryConfig[] = [
   { name: "Pakistan", defaultCurrency: "PKR", defaultLanguage: "Urdu (اُردو)" },
   { name: "India", defaultCurrency: "INR", defaultLanguage: "Hindi (हिन्दी)" },
@@ -119,20 +135,46 @@ export const WORLD_COUNTRIES: CountryConfig[] = [
   { name: "Ukraine", defaultCurrency: "EUR", defaultLanguage: "Russian (Русский)" },
   { name: "Vietnam", defaultCurrency: "VND", defaultLanguage: "Vietnamese (Tiếng Việt)" },
   { name: "Yemen", defaultCurrency: "USD", defaultLanguage: "Arabic (العربية)" },
-  { name: "Zimbabwe", defaultCurrency: "USD", defaultLanguage: "English" }
+  { name: "Zimbabwe", defaultCurrency: "USD", defaultLanguage: "English" },
 ];
 
-// 🗣️ 3. CLEAN COMPREHENSIVE LANGUAGES CORE
+/**
+ * Commonly spoken languages shown as priority options during onboarding.
+ */
 export const PRIORITY_LANGUAGES = [
-  "English", "Urdu (اُردو)", "Punjabi (پنجابی)", "Sindhi (سنڌي)", 
-  "Pashto (پښتو)", "Hindi (हिन्दी)", "Spanish (Español)", 
-  "Arabic (العربية)", "French (Français)", "German (Deutsch)", "Japanese (日本語)"
+  "English",
+  "Urdu (اُردو)",
+  "Punjabi (پنجابی)",
+  "Sindhi (سنڌي)",
+  "Pashto (پښتو)",
+  "Hindi (हिन्दी)",
+  "Spanish (Español)",
+  "Arabic (العربية)",
+  "French (Français)",
+  "German (Deutsch)",
+  "Japanese (日本語)",
 ];
 
+/**
+ * Additional languages accessible through the "More Languages" toggle.
+ */
 export const EXTENDED_LANGUAGES = [
-  "Bengali (বাংলা)", "Tamil (தமிழ்)", "Telugu (తెлуу)", "Marathi (मराठी)", 
-  "Italian (Italiano)", "Portuguese (Português)", "Russian (Русский)", 
-  "Turkish (Türkçe)", "Mandarin (中文)", "Korean (한국어)", 
-  "Vietnamese (Tiếng Việt)", "Thai (ภาษาไทย)", "Kashmiri (کٲشُر)", 
-  "Saraiki (سرائیکی)", "Balochi (بلوچی)", "Malay (Bahasa Melayu)", "Indonesia (Bahasa)"
+  "Bengali (বাংলা)",
+  "Tamil (தமிழ்)",
+  "Telugu (తెలుু)",
+  "Marathi (मराठी)",
+  "Italian (Italiano)",
+  "Portuguese (Português)",
+  "Russian (Русский)",
+  "Turkish (Türkçe)",
+  "Mandarin (中文)",
+  "Korean (한국어)",
+  "Vietnamese (Tiếng Việt)",
+  "Thai (ภาษาไทย)",
+  "Kashmiri (کٲشُر)",
+  "Saraiki (سرائیکی)",
+  "Balochi (بلوچی)",
+  "Malay (Bahasa Melayu)",
+  "Indonesia (Bahasa)",
 ];
+/* === SECTION 2 END === */

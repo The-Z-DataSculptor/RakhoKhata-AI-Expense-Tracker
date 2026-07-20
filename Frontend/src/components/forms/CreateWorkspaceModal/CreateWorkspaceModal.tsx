@@ -2,8 +2,9 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
+/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useState, useCallback } from "react"; 
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting directly to the backend context brain
 import { toast } from "sonner"; // Notification popups to deliver immediate visual feedback
@@ -11,57 +12,74 @@ import styles from "./CreateWorkspaceModal.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
+   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
+/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 interface CreateWorkspaceModalProps {
-  onClose: () => void; // A function passed from the Sidebar to tell this form how to close itself
+  // A callback routine passed from the parent component to trigger closure of the view overlay
+  onClose: () => void; 
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
+/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
-  // Connect to our global context state engine to tap the async database connection route
+  // Connect to our global context state engine to access the async database pipeline connection
   const { createWorkspace } = useWorkspace();
   
-  // --- LOCAL FORM STATES ---
-  const [newWorkspaceName, setNewWorkspaceName] = useState<string>( "");
-  const [currency, setCurrency] = useState<string>("USD"); // Universal baseline standard default
-  const [isPending, setIsPending] = useState<boolean>(false); // Loading tracker to disable buttons during fetch rounds
+  // --- LOCAL FORM COMPONENT STATES ---
+  const [newWorkspaceName, setNewWorkspaceName] = useState<string>("");
+  const [currency, setCurrency] = useState<string>("USD"); // Universal baseline standard default currency
+  const [isPending, setIsPending] = useState<boolean>(false); // Tracking state to lock controls during active server communications
 
-  // Action: What happens when the user clicks "Create Workspace"
+  /**
+   * Dispatches the workspace generation parameters to the database context brain.
+   * Wrapped in useCallback to preserve memory reference space across rerenders.
+   */
   const handleCreateWorkspaceSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault(); // Stop the page from refreshing the whole browser window
+    e.preventDefault(); // Stop the browser from executing a hard window layout refresh
     
-    // Safety check: Don't let users send whitespace strings to Neon Cloud
-    if (!newWorkspaceName.trim()) return;
+    const sanitizedName = newWorkspaceName.trim();
+
+    // Safety check: Avoid broadcasting empty spaces or void text fields to the database layer
+    if (!sanitizedName) {
+      toast.error("Workspace name cannot be empty.");
+      return;
+    }
     
     try {
-      setIsPending(true); // Freeze form inputs to lock out multi-click double-creation bugs
+      setIsPending(true); // Freeze form inputs immediately to isolate against multi-click double-creation pipeline bugs
 
-      // Dispatch the backend network pipeline handshake via context parameters
-      await createWorkspace(newWorkspaceName.trim(), currency);
+      // Dispatch the backend network handshake via custom workspace context arguments
+      await createWorkspace(sanitizedName, currency);
       
-      // Clear out local state properties safely
+      // Clear out local state properties safely upon clean synchronization
       setNewWorkspaceName("");
+      
+      // Display a clear confirmation banner notification to the user
+      toast.success("Workspace environment built cleanly!");
       
       // Close out the popup viewport layout overlay frame
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
+      // Log full detailed telemetry privately to developer traces while showing clean generic errors to users
       console.error("Workspace deployment routine tracking failure:", error);
-      toast.error("Could not build a new workspace environment safely.");
+      const errorMessage = error instanceof Error ? error.message : "An unexpected storage engine failure occurred.";
+      toast.error(`Failed to construct environment: ${errorMessage}`);
     } finally {
-      setIsPending(false); // Re-open control toggles if a pipeline exception occurs
+      setIsPending(false); // Release control toggles safely when execution rounds finish
     }
   }, [newWorkspaceName, currency, createWorkspace, onClose]);
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
+   === SECTION 4: EXPORTS / RENDER COMPONENT ===
    ========================================================================== */
+/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
   return (
-    <div className={styles.modalOverlay}>
+    <div className={styles.modalOverlay} role="dialog" aria-modal="true">
       <div className={styles.modalContent}>
         
         <h3 className={styles.modalTitle}>Create New Workspace</h3>
@@ -69,7 +87,7 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
           Set up a separate environment for a new business, project, or goal. Data is completely isolated between workspaces.
         </p>
         
-        <form onSubmit={handleCreateWorkspaceSubmit}>
+        <form onSubmit={handleCreateWorkspaceSubmit} noValidate>
           {/* FIELD 1: WORKSPACE DESIGNATION INPUT ROW */}
           <div className={styles.inputGroup}>
             <label htmlFor="workspaceName">Workspace Name</label>
@@ -80,6 +98,7 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
               onChange={(e) => setNewWorkspaceName(e.target.value)}
               placeholder="e.g., Real Estate Side Hustle"
               disabled={isPending} 
+              maxLength={50} // Hard payload limit constraint to safeguard against database cell parsing strains
               autoFocus
               required
             />
@@ -96,7 +115,6 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
               className={styles.currencySelectField}
               required
             >
-              {/* FIXED: Formatted options stack array matching your exact future API keys blueprint */}
               <option value="USD">USD - United States Dollar ($)</option>
               <option value="PKR">PKR - Pakistani Rupee (Rs.)</option>
               <option value="EUR">EUR - Euro Zone (€)</option>

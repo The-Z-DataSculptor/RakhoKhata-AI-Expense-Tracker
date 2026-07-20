@@ -68,12 +68,11 @@ export interface InvestmentAsset {
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
-  // 🚀 EXTENDED STRONGLY-TYPED CONTRACTS (Zero-mutation tracking values)
   name?: string;
   icon?: string;
   userNote?: string;
-  history?: InvestmentHistoryNode[]; 
-  totalInvested?: number;   // legacy compatibility
+  history?: InvestmentHistoryNode[];
+  totalInvested?: number; // legacy compatibility
   capitalCurrency?: string; // legacy compatibility
 }
 
@@ -116,35 +115,55 @@ export interface Workspace {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: GENERIC FETCH HANDSHAKE WRAPPER ===
+   === SECTION 2: GENERIC FETCH WRAPPER ===
    ========================================================================== */
-export const apiFetch = async <T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+/**
+ * Base fetch function for all API calls.
+ * Automatically includes credentials and JSON content‑type unless
+ * the body is a FormData object (used for file uploads).
+ */
+export const apiFetch = async <T = unknown>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> => {
   const url = `${BACKEND_BASE_URL}${endpoint}`;
 
-  // 🚀 FIXED: Dynamically abstract the headers to allow multipart boundaries for binary streams
-  const customHeaders: Record<string, string> = { ...options.headers as Record<string, string> };
-  
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+  // When body is FormData, let the browser set the multipart boundary
   if (!(options.body instanceof FormData)) {
-    customHeaders["Content-Type"] = customHeaders["Content-Type"] || "application/json";
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
-  const defaultOptions: RequestInit = {
+  const mergedOptions: RequestInit = {
     ...options,
-    credentials: "include", // 🔑 Keeps cookies pinned and encrypted during the upload cycle
-    headers: customHeaders,
+    credentials: "include",
+    headers,
   };
 
   try {
-    const response = await fetch(url, defaultOptions);
+    const response = await fetch(url, mergedOptions);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Access denied. Status: ${response.status}`);
+      const errorData: unknown = await response
+        .json()
+        .catch(() => ({}));
+      const errorMessage =
+        typeof errorData === "object" &&
+        errorData !== null &&
+        "error" in errorData
+          ? (errorData as { error: string }).error
+          : `Access denied. Status: ${response.status}`;
+      throw new Error(errorMessage);
     }
 
     return response.json() as Promise<T>;
   } catch (error: unknown) {
-    if (error instanceof Error && !error.message.startsWith("Failed to fetch")) {
+    if (
+      error instanceof Error &&
+      !error.message.startsWith("Failed to fetch")
+    ) {
       throw error;
     }
     throw new Error(
@@ -155,112 +174,154 @@ export const apiFetch = async <T = unknown>(endpoint: string, options: RequestIn
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: STRONGLY-TYPED ACCOUNTING SERVICES ===
+   === SECTION 3: STRONGLY‑TYPED SERVICES ===
    ========================================================================== */
 export const transactionService = {
   getByWorkspace: (workspaceId: string) =>
-    apiFetch<{ transactions: Transaction[] }>(`/transactions?workspaceId=${workspaceId}`, { method: "GET" }),
+    apiFetch<{ transactions: Transaction[] }>(
+      `/transactions?workspaceId=${workspaceId}`,
+      { method: "GET" }
+    ),
 
   create: (data: Omit<Transaction, "id" | "category">) =>
-    apiFetch<{ message: string; transaction: Transaction }>("/transactions", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    apiFetch<{ message: string; transaction: Transaction }>(
+      "/transactions",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 
-  bulkCreate: (data: { workspaceId: string; transactions: Omit<Transaction, "id" | "category">[] }) =>
+  bulkCreate: (data: {
+    workspaceId: string;
+    transactions: Omit<Transaction, "id" | "category">[];
+  }) =>
     apiFetch<{ message: string }>("/transactions/bulk", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   delete: (id: string) =>
-    apiFetch<{ message: string }>(`/transactions/${id}`, { method: "DELETE" }),
+    apiFetch<{ message: string }>(`/transactions/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const categoryService = {
   getByWorkspace: (workspaceId: string) =>
-    apiFetch<{ categories: Category[] }>(`/categories?workspaceId=${workspaceId}`, { method: "GET" }),
+    apiFetch<{ categories: Category[] }>(
+      `/categories?workspaceId=${workspaceId}`,
+      { method: "GET" }
+    ),
 
   create: (data: Omit<Category, "id">) =>
-    apiFetch<{ message: string; category: Category }>("/categories", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    apiFetch<{ message: string; category: Category }>(
+      "/categories",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 
   update: (id: string, data: Partial<Omit<Category, "id">>) =>
-    apiFetch<{ message: string; category: Category }>(`/categories/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+    apiFetch<{ message: string; category: Category }>(
+      `/categories/${id}`,
+      { method: "PUT", body: JSON.stringify(data) }
+    ),
 
   delete: (id: string) =>
-    apiFetch<{ message: string }>(`/categories/${id}`, { method: "DELETE" }),
+    apiFetch<{ message: string }>(`/categories/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const budgetService = {
   getByWorkspace: (workspaceId: string) =>
-    apiFetch<{ budgets: Budget[] }>(`/budgets?workspaceId=${workspaceId}`, { method: "GET" }),
+    apiFetch<{ budgets: Budget[] }>(
+      `/budgets?workspaceId=${workspaceId}`,
+      { method: "GET" }
+    ),
 
-  create: (data: Omit<Budget, "id" | "category" | "spentAmount">) =>
+  create: (
+    data: Omit<Budget, "id" | "category" | "spentAmount">
+  ) =>
     apiFetch<{ message: string; budget: Budget }>("/budgets", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<Omit<Budget, "id" | "category" | "spentAmount">>) =>
-    apiFetch<{ message: string; budget: Budget }>(`/budgets/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+  update: (
+    id: string,
+    data: Partial<
+      Omit<Budget, "id" | "category" | "spentAmount">
+    >
+  ) =>
+    apiFetch<{ message: string; budget: Budget }>(
+      `/budgets/${id}`,
+      { method: "PUT", body: JSON.stringify(data) }
+    ),
 
   delete: (id: string) =>
-    apiFetch<{ message: string }>(`/budgets/${id}`, { method: "DELETE" }),
+    apiFetch<{ message: string }>(`/budgets/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const investmentService = {
   getByWorkspace: (workspaceId: string) =>
-    apiFetch<{ investments: InvestmentAsset[] }>(`/investments?workspaceId=${workspaceId}`, { method: "GET" }),
+    apiFetch<{ investments: InvestmentAsset[] }>(
+      `/investments?workspaceId=${workspaceId}`,
+      { method: "GET" }
+    ),
 
-  create: (data: Partial<InvestmentAsset> & Record<string, unknown>) =>
-    apiFetch<{ message: string; asset: InvestmentAsset }>("/investments", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  create: (
+    data: Partial<InvestmentAsset> & Record<string, unknown>
+  ) =>
+    apiFetch<{ message: string; asset: InvestmentAsset }>(
+      "/investments",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 
-  update: (id: string, data: Partial<InvestmentAsset> & Record<string, unknown>) =>
-    apiFetch<{ message: string; asset: InvestmentAsset }>(`/investments/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+  update: (
+    id: string,
+    data: Partial<InvestmentAsset> & Record<string, unknown>
+  ) =>
+    apiFetch<{ message: string; asset: InvestmentAsset }>(
+      `/investments/${id}`,
+      { method: "PUT", body: JSON.stringify(data) }
+    ),
 
   delete: (id: string) =>
-    apiFetch<{ message: string }>(`/investments/${id}`, { method: "DELETE" }),
+    apiFetch<{ message: string }>(`/investments/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const vaultAuthService = {
   checkStatus: () =>
-    apiFetch<{ hasPin: boolean }>("/auth/vault/pin-status", { method: "GET" }),
+    apiFetch<{ hasPin: boolean }>("/auth/vault/pin-status", {
+      method: "GET",
+    }),
 
   setupPin: (pin: string) =>
-    apiFetch<{ message: string }>("/auth/vault/pin-setup", {
-      method: "POST",
-      body: JSON.stringify({ pin }),
-    }),
+    apiFetch<{ message: string }>(
+      "/auth/vault/pin-setup",
+      { method: "POST", body: JSON.stringify({ pin }) }
+    ),
 
   verifyPin: (pin: string) =>
-    apiFetch<{ success: boolean; message: string }>("/auth/vault/pin-verify", {
-      method: "POST",
-      body: JSON.stringify({ pin }),
-    }),
+    apiFetch<{ success: boolean; message: string }>(
+      "/auth/vault/pin-verify",
+      { method: "POST", body: JSON.stringify({ pin }) }
+    ),
 
   disablePin: () =>
-    apiFetch<{ success: boolean; message: string }>("/auth/vault/pin-disable", {
-      method: "POST",
-    }),
+    apiFetch<{ success: boolean; message: string }>(
+      "/auth/vault/pin-disable",
+      { method: "POST" }
+    ),
 };
 
 export const aiService = {
-  ask: (question: string, persona: "auditor" | "coach" | "minimalist", workspaceId: string) =>
+  ask: (
+    question: string,
+    persona: "auditor" | "coach" | "minimalist",
+    workspaceId: string
+  ) =>
     apiFetch<{ response: string }>("/ai/ask", {
       method: "POST",
       body: JSON.stringify({ question, persona, workspaceId }),
@@ -269,48 +330,65 @@ export const aiService = {
 
 export const notificationService = {
   getAll: () =>
-    apiFetch<{ notifications: Notification[] }>("/notifications", { method: "GET" }),
+    apiFetch<{ notifications: Notification[] }>(
+      "/notifications",
+      { method: "GET" }
+    ),
 
   markAsRead: (id: string) =>
-    apiFetch<{ message: string; notification: Notification }>(`/notifications/${id}/read`, {
-      method: "PATCH",
-    }),
+    apiFetch<{ message: string; notification: Notification }>(
+      `/notifications/${id}/read`,
+      { method: "PATCH" }
+    ),
 
   markAllAsRead: () =>
-    apiFetch<{ message: string; count: number }>("/notifications/read-all", {
-      method: "PATCH",
-    }),
+    apiFetch<{ message: string; count: number }>(
+      "/notifications/read-all",
+      { method: "PATCH" }
+    ),
 };
 
 export const userService = {
   getProfile: () =>
-    apiFetch<{ user: UserProfile }>("/auth/me", { method: "GET" }),
-
-  updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
-    apiFetch<{ message: string; user: UserProfile }>("/auth/update-profile", {
-      method: "PUT",
-      body: JSON.stringify(data),
+    apiFetch<{ user: UserProfile }>("/auth/me", {
+      method: "GET",
     }),
 
-  changePassword: (currentPassword: string, newPassword: string) =>
-    apiFetch<{ message: string }>("/auth/change-password", {
-      method: "POST",
-      body: JSON.stringify({ currentPassword, newPassword }),
-    }),
+  updateProfile: (
+    data: Partial<Omit<UserProfile, "id" | "createdAt">>
+  ) =>
+    apiFetch<{ message: string; user: UserProfile }>(
+      "/auth/update-profile",
+      { method: "PUT", body: JSON.stringify(data) }
+    ),
 
-  // 🚀 NEW: Automated multi-part media upload routine mapped smoothly to central pipeline
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) =>
+    apiFetch<{ message: string }>(
+      "/auth/change-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }
+    ),
+
   uploadAvatar: (formData: FormData) =>
-    apiFetch<{ message: string; avatarUrl: string }>("/users/upload-avatar", {
-      method: "POST",
-      body: formData,
-    }),
+    apiFetch<{ message: string; avatarUrl: string }>(
+      "/users/upload-avatar",
+      { method: "POST", body: formData }
+    ),
 };
 
 export const workspaceService = {
-  update: (id: string, data: Partial<{ name: string; currency: string }>) =>
-    apiFetch<{ message: string; workspace: Workspace }>(`/workspaces/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+  update: (
+    id: string,
+    data: Partial<{ name: string; currency: string }>
+  ) =>
+    apiFetch<{ message: string; workspace: Workspace }>(
+      `/workspaces/${id}`,
+      { method: "PUT", body: JSON.stringify(data) }
+    ),
 };
 /* === SECTION 3 END === */

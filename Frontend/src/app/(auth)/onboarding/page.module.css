@@ -52,6 +52,7 @@
   flex-direction: column;
   position: relative;
   color: #ffffff;
+  box-sizing: border-box;
 }
 
 .backHomeBtn {
@@ -150,6 +151,11 @@
   font-weight: 600;
   font-size: 0.95rem;
 }
+
+/* Hidden by default on desktop */
+.mobileStepTracker {
+  display: none;
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -161,6 +167,7 @@
   flex-direction: column;
   background-color: #ffffff;
   padding: 3rem 4rem;
+  box-sizing: border-box;
 }
 
 .formContentArea {
@@ -276,6 +283,7 @@
   color: #4e4a6b;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .tagBtn:hover {
@@ -356,6 +364,7 @@
   transition: all 0.2s ease;
   background-color: #ffffff;
   position: relative;
+  box-sizing: border-box;
 }
 
 .selectionCard:hover {
@@ -377,6 +386,7 @@
 
 .cardEmoji {
   font-size: 1.8rem;
+  flex-shrink: 0;
 }
 
 .cardText h4 {
@@ -430,6 +440,7 @@
   transition: all 0.2s ease;
   font-family: inherit;
   border: none;
+  box-sizing: border-box;
 }
 
 .btnPrimary {
@@ -468,34 +479,202 @@
   cursor: not-allowed;
 }
 
+/* ==========================================================================
+   === SECTION 6: RESPONSIVE MOBILE ADAPTATIONS (≤ 850px / ≤ 768px) ===
+   ========================================================================== */
 @media (max-width: 850px) {
+  .wizardMasterLayout {
+    padding: 0.75rem;
+    align-items: center;
+  }
+
   .wizardContainer {
     flex-direction: column;
-    height: 90vh;
+    height: auto;
+    min-height: calc(100vh - 1.5rem);
+    border-radius: 16px;
   }
+
   .progressSidebar {
     width: 100%;
-    padding: 1.5rem;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    flex-direction: column;
+    align-items: stretch;
+    border-right: none;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.2);
   }
+
+  .backHomeBtn {
+    position: static;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+  }
+
+  .sidebarContent {
+    margin-top: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .brandTitle {
+    font-size: 1.4rem;
+  }
+
+  .brandSubtitle {
+    display: none;
+  }
+
+  /* Hide vertical desktop stepper on mobile */
   .stepperTracker {
     display: none; 
   }
-  .backHomeBtn {
-    position: relative;
-    top: 0; left: 0;
+
+  /* Show dedicated mobile step progress indicator */
+  .mobileStepTracker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(139, 92, 246, 0.25);
   }
-  .brandSubtitle { margin-bottom: 0; display: none; }
+
+  .mobileStepBadge {
+    font-size: 0.78rem;
+    color: #ddd6fe;
+    letter-spacing: 0.02em;
+  }
+
+  .mobileStepBadge strong {
+    color: #a78bfa;
+  }
+
+  .mobileProgressBarTrack {
+    width: 100%;
+    height: 4px;
+    background-color: rgba(139, 92, 246, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .mobileProgressBarFill {
+    height: 100%;
+    background: linear-gradient(to right, #8b5cf6, #10b981);
+    transition: width 0.3s ease;
+  }
+
   .formBody {
-    padding: 1.5rem;
+    padding: 1.25rem 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
+
+  .formContentArea {
+    padding-right: 0;
+  }
+
+  .stepHeader {
+    margin-bottom: 1.15rem;
+  }
+
+  .stepIconBox {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.65rem;
+  }
+
+  .stepIcon {
+    font-size: 1.25rem;
+  }
+
+  .stepHeader h2 {
+    font-size: 1.35rem;
+  }
+
+  .stepHeader p {
+    font-size: 0.82rem;
+  }
+
   .formRow {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
   }
+
   .cardsGrid {
     grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  /*
+   * iOS Auto-Zoom Fix: font-size: 1rem (16px) or above strictly enforced
+   * to prevent iOS Safari/Chrome from forcibly zooming in on focused inputs.
+   */
+  .textInput,
+  .selectInput {
+    font-size: 1rem !important; /* 16px threshold */
+    min-height: 48px;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .tagBtn {
+    min-height: 44px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Touch-optimized 48px height minimum selection cards */
+  .selectionCard {
+    min-height: 48px;
+    padding: 0.85rem;
+  }
+
+  .wizardFooter {
+    padding-top: 1rem;
+    margin-top: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .btnPrimary,
+  .btnSecondary,
+  .btnFinish {
+    min-height: 48px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    justify-content: center;
+    flex: 1;
   }
 }
-/* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 7: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .wizardMasterLayout {
+    padding: 0.4rem;
+  }
+
+  .formBody {
+    padding: 1rem 0.85rem;
+  }
+
+  .stepHeader h2 {
+    font-size: 1.2rem;
+  }
+
+  .cardEmoji {
+    font-size: 1.5rem;
+  }
+
+  .cardText h4 {
+    font-size: 0.88rem;
+  }
+
+  .cardText p {
+    font-size: 0.75rem;
+  }
+}
+/* === SECTION 7 END === */

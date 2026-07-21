@@ -1,6 +1,4 @@
-/* ==========================================================================
-   === FILEPATH: src/components/dashboard/TimeSwitcher/TimeSwitcher.module.css ===
-   ========================================================================== */
+/* src/components/dashboard/TimeSwitcher/TimeSwitcher.module.css */
 
 /* ==========================================
    === SECTION 1: OUTER WRAPPER LAYOUTS ===
@@ -31,7 +29,6 @@
   display: inline-flex;
   background-color: var(--surface-muted, #f4f4f9);
   padding: 0.25rem;
-  /* CHANGED: Replaced capsule rounding with crisp dashboard card radius values */
   border-radius: var(--radius-md, 8px);
   border: 1px solid var(--border-color);
 }
@@ -46,9 +43,8 @@
   border: none;
   padding: 0.5rem 1rem;
   font-size: 0.825rem;
-  font-weight: 700; /* Bumped to 700 for better legibility on flat layouts */
+  font-weight: 700;
   color: var(--text-secondary);
-  /* CHANGED: Fits perfectly into the outer box tray wrapper layout */
   border-radius: calc(var(--radius-md, 8px) - 2px);
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
@@ -65,33 +61,58 @@
 .pillActive {
   background-color: var(--bg-surface, #ffffff);
   color: var(--color-primary);
-  /* CHANGED: Replaced fuzzy radial glow with clean shadow token parameters */
   box-shadow: var(--shadow-soft, 0 2px 4px rgba(0, 0, 0, 0.04));
 }
 /* === SECTION 3 END === */
 
 
 /* ==========================================
-   === SECTION 4: MOBILE RESPONSIVE TUNING ===
-   ========================================= */
-@media (max-width: 576px) {
+   === SECTION 4: MOBILE RESPONSIVE TUNING (≤ 768px) ===
+   ========================================== */
+@media (max-width: 768px) {
   .switcherWrapper {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
     width: 100%;
+    margin-bottom: 1.15rem;
   }
-  
+
+  .contextLabel {
+    font-size: 0.72rem;
+  }
+
+  /* Full-width mobile segmented control track */
   .pillTray {
     display: flex;
     width: 100%;
     box-sizing: border-box;
+    padding: 3px;
   }
-  
+
+  /* Equal-width options with touch target height */
   .pillButton {
     flex: 1;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px; /* 44px touch accessibility minimum */
+    padding: 0.5rem 0.35rem;
+    font-size: 0.78rem;
     text-align: center;
-    padding: 0.5rem 0.5rem;
+    white-space: nowrap;
   }
 }
-/* === SECTION 4 END === */
+
+/* ==========================================
+   === SECTION 5: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================== */
+@media (max-width: 480px) {
+  .pillButton {
+    font-size: 0.73rem;
+    padding: 0.5rem 0.2rem;
+    letter-spacing: -0.01em;
+  }
+}
+/* === SECTION 5 END === */

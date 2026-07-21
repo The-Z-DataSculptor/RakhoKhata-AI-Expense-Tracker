@@ -4,7 +4,6 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useState } from "react";
 import { FaArrowRight, FaHeart } from "react-icons/fa6";
 import { BsToggleOff, BsToggleOn } from "react-icons/bs";
@@ -17,7 +16,6 @@ import styles from "./AddInvestmentForm.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 export interface InvestmentTypeOption {
   id: string;
   label: string;
@@ -93,7 +91,6 @@ const INVESTMENT_TYPES: InvestmentTypeOption[] = [
 /* ==========================================================================
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmentFormProps) {
   // Pull centralized multi-currency formatting calculations out of the active store contexts
   const { convertAmount } = useCurrency();
@@ -239,7 +236,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
 /* ==========================================================================
    === SECTION 4: EXPORTS / RENDER COMPONENT ===
    ========================================================================== */
-/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
   return (
     <form onSubmit={handleFormWorkflowSubmit} className={styles.formContainer} noValidate>
       {/* FLOW TIMELINE PROGRESS BAR HEADER */}
@@ -270,7 +266,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
               placeholder="e.g., S&P 500 Index, Ethereum Wallet"
               value={assetName}
               onChange={(e) => setAssetName(e.target.value)}
-              maxLength={60} // Buffer limit safety block
+              maxLength={60}
               required
               className={styles.primaryTextInput}
             />
@@ -285,7 +281,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
               placeholder="e.g., SPY, ETH, PROP"
               value={assetSymbol}
               onChange={(e) => setAssetSymbol(e.target.value)}
-              maxLength={12} // Strict length cap for ticker symbols
+              maxLength={12}
               required
               className={styles.primaryTextInput}
             />
@@ -374,7 +370,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
                 type="number"
                 step="0.01"
                 min="0.01"
-                max={999999999} // Guard against arbitrary multi-billion value integer processing errors
+                max={999999999}
                 placeholder="0.00"
                 value={totalMoneySpent}
                 onChange={(e) => setTotalMoneySpent(e.target.value)}
@@ -414,7 +410,7 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
               placeholder="e.g., Initial entry cost basis locked."
               value={userNote}
               onChange={(e) => setUserNote(e.target.value)}
-              maxLength={250} // Restrict length sizes to avoid buffer database exhaustion states
+              maxLength={250}
               className={styles.textareaFieldElement}
               rows={3}
             />

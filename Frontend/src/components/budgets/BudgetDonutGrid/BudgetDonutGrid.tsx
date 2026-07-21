@@ -27,7 +27,7 @@ interface BudgetDonutGridProps {
   onEditClick?: (id: string) => void;
   onDeleteClick?: (id: string) => void;
   isLoading?: boolean;
-  sourceCurrency: string;   // <-- NEW
+  sourceCurrency: string;
 }
 /* === SECTION 2 END === */
 

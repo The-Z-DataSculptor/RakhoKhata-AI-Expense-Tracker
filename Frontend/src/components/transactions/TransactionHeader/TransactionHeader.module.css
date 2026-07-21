@@ -1,8 +1,9 @@
 /* src/components/transactions/TransactionHeader/TransactionHeader.module.css */
 
 /* ==========================================================================
-   === SECTION 1: FLOATING GLASS CONTAINER DECK ===
+   === SECTION 1: CONTAINER DECK & LAYOUT ===
    ========================================================================== */
+/* === SECTION 1: CONTAINER DECK & LAYOUT === */
 .glassFloatingDeck {
   display: flex;
   align-items: center;
@@ -11,20 +12,28 @@
   gap: 1.5rem;
   background-color: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 14px);
-  padding: 1rem 1.5rem;
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.15rem 1.5rem;
   box-shadow: var(--shadow-soft, 0 10px 30px -10px rgba(16, 4, 63, 0.08));
   box-sizing: border-box;
 }
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: LEFT SIDE IDENTITY ELEMENT PIPELINES ===
+   === SECTION 2: BRANDING & STATUS METRICS ===
    ========================================================================== */
+/* === SECTION 2: BRANDING & STATUS METRICS === */
 .brandingBlock {
   display: flex;
   align-items: center;
   gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.titleWithBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .ledgerMainTitle {
@@ -38,13 +47,13 @@
 }
 
 .statusBadgePill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+  gap: 0.45rem;
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.05));
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: 20px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.3rem 0.65rem;
 }
 
 .emeraldGlowDot {
@@ -73,27 +82,11 @@
 }
 
 .statusBadgeText {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-secondary, #4e4a6b);
   letter-spacing: 0.01em;
   line-height: 1;
-}
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: RIGHT SIDE INTERACTION CONTROL STACKS ===
-   ========================================================================== */
-.interactiveBlock {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.actionButtonGroup {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
 }
 
 .counterMetaSummary {
@@ -102,22 +95,52 @@
   color: var(--text-muted, #7e7a9c);
   white-space: nowrap;
 }
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: ACTION BUTTONS & INTERACTION ===
+   ========================================================================== */
+/* === SECTION 3: ACTION BUTTONS & INTERACTION === */
+.interactiveBlock {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.actionButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.secondaryActionsGrid {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.premiumActionPill,
+.secondaryActionPill {
+  height: 42px;
+  border-radius: var(--radius-md, 10px);
+  padding: 0 1.25rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all var(--transition-fast, 0.2s ease-in-out);
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
 
 .premiumActionPill {
   background-color: var(--color-primary, #613bbf);
   color: var(--text-on-primary, #ffffff);
   border: 1px solid transparent;
-  border-radius: var(--radius-md, 8px);
-  padding: 0.6rem 1.25rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   box-shadow: 0 4px 12px -2px rgba(97, 59, 191, 0.25);
-  transition: var(--transition-fast, all 0.2s ease-in-out);
-  cursor: pointer;
-  white-space: nowrap;
 }
 
 .premiumActionPill:hover {
@@ -130,16 +153,6 @@
   background-color: var(--bg-surface, #ffffff);
   color: var(--text-secondary, #4e4a6b);
   border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-md, 8px);
-  padding: 0.6rem 1.25rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: var(--transition-fast, all 0.2s ease-in-out);
-  cursor: pointer;
-  white-space: nowrap;
 }
 
 .secondaryActionPill:hover {
@@ -149,17 +162,20 @@
   transform: translateY(-1px);
 }
 
-.premiumActionPill:active, .secondaryActionPill:active {
+.premiumActionPill:active, 
+.secondaryActionPill:active {
   transform: translateY(0);
 }
 
 .buttonPlusVector {
   flex-shrink: 0;
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: 🚀 NEW ABSOLUTE DROPDOWN INTERACTION ENGINE ===
+   === SECTION 4: DROPDOWN MENU & MOBILE RESPONSIVE ENGINE ===
    ========================================================================== */
+/* === SECTION 4: DROPDOWN MENU & MOBILE RESPONSIVE ENGINE === */
 .dropdownContainer {
   position: relative;
   display: inline-block;
@@ -186,14 +202,14 @@
   right: 0;
   background-color: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-md, 8px);
-  box-shadow: 0 12px 30px -4px rgba(16, 4, 63, 0.16);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 14px 32px -4px rgba(16, 4, 63, 0.18);
   z-index: 1000;
-  min-width: 190px;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   padding: 0.4rem;
-  gap: 0.2rem;
+  gap: 0.25rem;
   animation: slideDropdownOpen 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
@@ -203,8 +219,8 @@
   align-items: center;
   gap: 0.65rem;
   width: 100%;
-  padding: 0.6rem 0.85rem;
-  font-size: 0.84rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary, #4e4a6b);
   background: transparent;
@@ -217,12 +233,12 @@
 }
 
 .dropdownItem:hover {
-  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.04));
+  background-color: var(--primary-soft-hover, rgba(97, 59, 191, 0.05));
   color: var(--color-primary, #613bbf);
 }
 
 .dropdownItem svg {
-  opacity: 0.7;
+  opacity: 0.75;
   color: var(--text-secondary, #4e4a6b);
   transition: color 0.15s ease;
 }
@@ -242,60 +258,66 @@
     transform: translateY(0) scale(1);
   }
 }
-/* === SECTION 4 END === */
 
-/* ==========================================================================
-   === SECTION 5: DEVICE LAYOUT ADAPTATION VIEWPORTS ===
-   ========================================================================== */
+/* 🚀 RESPONSIVE MOBILE OVERHAUL ($<768\text{px}$) */
 @media (max-width: 768px) {
   .glassFloatingDeck {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1.25rem;
-    padding: 1.25rem;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
   }
 
   .brandingBlock {
     width: 100%;
     justify-content: space-between;
+    align-items: center;
+  }
+
+  .ledgerMainTitle {
+    font-size: 1.35rem;
   }
 
   .interactiveBlock {
     width: 100%;
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    gap: 1rem;
   }
 
   .actionButtonGroup {
     width: 100%;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
-  .counterMetaSummary {
-    align-self: center;
-    font-size: 0.82rem;
+  /* 🚀 Primary Action stretches to full width on phones */
+  .premiumActionPill {
+    width: 100%;
+    height: 44px;
   }
 
-  .dropdownContainer,
-  .premiumActionPill, 
+  /* 🚀 Secondary Actions organize into an equal 50/50 2-column grid */
+  .secondaryActionsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .dropdownContainer {
+    width: 100%;
+  }
+
   .secondaryActionPill {
     width: 100%;
-    justify-content: center;
-    padding: 0.75rem 1.25rem;
-  }
-
-  .dropdownContainer .secondaryActionPill {
-    width: 100%;
-    justify-content: center;
+    height: 44px;
+    padding: 0 0.5rem;
+    font-size: 0.82rem;
   }
 
   .dropdownMenu {
     width: 100%;
     left: 0;
     right: 0;
-    position: absolute;
+    min-width: unset;
   }
 }
-/* === SECTION 5 END === */
+/* === SECTION 4 END === */

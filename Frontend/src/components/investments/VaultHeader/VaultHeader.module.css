@@ -15,6 +15,7 @@
   box-shadow: var(--shadow-soft);
   gap: 1.5rem;
   transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+  box-sizing: border-box;
 }
 /* === SECTION 1 END === */
 
@@ -112,12 +113,11 @@
   transform: translateY(0);
 }
 
-/* FIXED: Green status badge styling configuration for when the PIN is actively set */
 .lockActiveBtn {
   background-color: var(--color-success, #16a34a);
   color: #ffffff;
   border-color: var(--color-success, #16a34a);
-  opacity: 1 !important; /* Forces it to stay bright even if HTML disabled attribute is present */
+  opacity: 1 !important;
   cursor: default;
 }
 
@@ -136,27 +136,63 @@
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: RESPONSIVE SCREEN ADAPTATIONS ===
+   === SECTION 4: RESPONSIVE MOBILE ADAPTATIONS (< 768px) ===
    ========================================================================== */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .headerLayoutRow {
     flex-direction: column;
-    align-items: flex-start;
-    padding: 1.25rem 1.5rem;
-    gap: 1.25rem;
+    align-items: stretch;
+    padding: 1.25rem;
+    gap: 1.15rem;
+  }
+
+  .titleMetaBlock {
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .mainTitleHeading {
+    font-size: 1.45rem;
+    letter-spacing: -0.02em;
+  }
+
+  .subtextMetaDescription {
+    font-size: 0.85rem;
+    line-height: 1.4;
   }
 
   .actionControlWrapper {
     width: 100%;
-    flex-direction: column-reverse;
-    gap: 0.75rem;
+    flex-direction: column-reverse; /* Places primary 'Add Investment' button on top for easy thumb access */
+    gap: 0.65rem;
   }
 
   .addAssetRecordBtn,
   .lockSetupBtn {
     width: 100%;
-    padding: 0.85rem 1.5rem;
+    height: 48px; /* Standard 48px touch target */
+    padding: 0 1.25rem;
+    font-size: 0.88rem;
     justify-content: center;
+    border-radius: var(--radius-md);
+    box-sizing: border-box;
+  }
+
+  .buttonIconGraphic {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Side-by-side action buttons on mid-sized mobile screens (480px – 768px) */
+@media (min-width: 480px) and (max-width: 768px) {
+  .actionControlWrapper {
+    flex-direction: row;
+  }
+
+  .addAssetRecordBtn,
+  .lockSetupBtn {
+    flex: 1;
   }
 }
 /* === SECTION 4 END === */

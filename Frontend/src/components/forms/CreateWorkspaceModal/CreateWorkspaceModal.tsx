@@ -4,7 +4,6 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useState, useCallback } from "react"; 
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext"; // Connecting directly to the backend context brain
 import { toast } from "sonner"; // Notification popups to deliver immediate visual feedback
@@ -14,7 +13,6 @@ import styles from "./CreateWorkspaceModal.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 interface CreateWorkspaceModalProps {
   // A callback routine passed from the parent component to trigger closure of the view overlay
   onClose: () => void; 
@@ -24,7 +22,6 @@ interface CreateWorkspaceModalProps {
 /* ==========================================================================
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalProps) {
   // Connect to our global context state engine to access the async database pipeline connection
   const { createWorkspace } = useWorkspace();
@@ -77,7 +74,6 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
 /* ==========================================================================
    === SECTION 4: EXPORTS / RENDER COMPONENT ===
    ========================================================================== */
-/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true">
       <div className={styles.modalContent}>

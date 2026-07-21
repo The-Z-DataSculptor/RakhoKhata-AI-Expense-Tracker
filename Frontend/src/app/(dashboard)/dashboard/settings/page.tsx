@@ -19,7 +19,8 @@ import {
   FiLock,
   FiGlobe,
   FiTarget,
-  FiCpu
+  FiCpu,
+  FiChevronDown
 } from "react-icons/fi";
 import { toast } from "sonner";
 import styles from "./page.module.css";
@@ -100,7 +101,7 @@ export default function SettingsPage() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  // 🚀 NEW: Modern UI Tab State
+  // Tab State
   const [activeTab, setActiveTab] = useState<"general" | "location" | "vibe" | "ai" | "security">("general");
 
   // --- PROFILE FORM STATES ---
@@ -131,7 +132,7 @@ export default function SettingsPage() {
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // --- FETCH USER PROFILE (inlined to avoid setState-in-effect warning) ---
+  // --- FETCH USER PROFILE ---
   useEffect(() => {
     (async () => {
       setIsProfileLoading(true);
@@ -152,9 +153,9 @@ export default function SettingsPage() {
         setIsProfileLoading(false);
       }
     })();
-  }, []); // run only on mount
+  }, []);
 
-  // --- VAULT PIN STATUS (inlined in effect to avoid lint warning) ---
+  // --- VAULT PIN STATUS ---
   useEffect(() => {
     let cancelled = false;
     const loadStatus = async () => {
@@ -162,7 +163,7 @@ export default function SettingsPage() {
         const status = await vaultAuthService.checkStatus();
         if (!cancelled) setIsVaultSecurityEnabled(status.hasPin);
       } catch {
-        // silently ignore – keep previous state
+        // keep previous state
       } finally {
         if (!cancelled) setIsSecurityLoading(false);
       }
@@ -171,7 +172,6 @@ export default function SettingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // --- VAULT PIN STATUS (kept for other handlers, not used in effects) ---
   const fetchVaultPinStatus = async () => {
     try {
       const status = await vaultAuthService.checkStatus();
@@ -190,7 +190,6 @@ export default function SettingsPage() {
     try {
       await userService.updateProfile({ name, email });
       toast.success("Profile updated successfully!");
-      // re-fetch after save to sync state
       const response = await userService.getProfile();
       const user = response.user;
       setName(user.name || "");
@@ -366,9 +365,7 @@ export default function SettingsPage() {
 
       <div className={styles.cardsStackDeck}>
 
-        {/* ============================================================
-            WORKSPACE CONTROL CARD
-            ============================================================ */}
+        {/* WORKSPACE CONTROL CARD */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame}>
@@ -427,6 +424,7 @@ export default function SettingsPage() {
                         onClick={() => handleDeleteClick(ws.id)}
                         disabled={isActive || deletingId !== null}
                         className={styles.rowDeleteTriggerActionBtn}
+                        aria-label={`Delete ${ws.name}`}
                       >
                         {isDeleting ? <FiLoader size={14} className={styles.loadingSpinnerAnimation} /> : <FiTrash2 size={14} />}
                       </button>
@@ -438,13 +436,33 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ============================================================
-            🚀 NEW: MODERN PROFILE SETTINGS WITH SIDEBAR TABS
-            ============================================================ */}
+        {/* PROFILE SETTINGS WITH RESPONSIVE NAVIGATION */}
         <section className={styles.settingsCardNode} style={{ padding: 0, overflow: 'hidden' }}>
           <div className={styles.modernSettingsContainer}>
             
-            {/* Sidebar Tabs Menu */}
+            {/* MOBILE DROPDOWN SELECTOR (< 768px ONLY) */}
+            <div className={styles.mobileTabSelectorWrapper}>
+              <label htmlFor="mobile-settings-tab" className={styles.mobileTabSelectorLabel}>
+                Settings Category
+              </label>
+              <div className={styles.mobileSelectFrame}>
+                <select
+                  id="mobile-settings-tab"
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value as "general" | "location" | "vibe" | "ai" | "security")}
+                  className={styles.mobileTabSelectElement}
+                >
+                  <option value="general">👤 Identity Details</option>
+                  <option value="location">🌐 Localization & Language</option>
+                  <option value="vibe">🎯 Financial Vibe & Goals</option>
+                  <option value="ai">🤖 AI Persona Companion</option>
+                  <option value="security">🔒 Password & Security</option>
+                </select>
+                <FiChevronDown className={styles.mobileSelectChevronIcon} size={18} />
+              </div>
+            </div>
+
+            {/* Sidebar Tabs Menu (DESKTOP ONLY) */}
             <div className={styles.settingsSidebar}>
               <button 
                 onClick={() => setActiveTab("general")} 
@@ -709,9 +727,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ============================================================
-            VAULT SECURITY CARD (UNCHANGED)
-            ============================================================ */}
+        {/* VAULT SECURITY CARD */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success, #16a34a)', backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.2)' }}>
@@ -736,7 +752,7 @@ export default function SettingsPage() {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
+              <div className={styles.vaultActionCluster}>
                 {isVaultSecurityEnabled && !isSecurityLoading && (
                   <button
                     type="button"

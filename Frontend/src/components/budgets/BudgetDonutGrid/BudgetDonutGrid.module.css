@@ -37,12 +37,15 @@
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
+  gap: 0.75rem;
 }
 
 .titleAndDateMeta {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .categoryTitle {
@@ -52,6 +55,7 @@
   color: var(--text-primary);
   letter-spacing: -0.02em;
   text-transform: uppercase;
+  word-break: break-word;
 }
 
 .durationTimelineSpan {
@@ -65,6 +69,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .actionIconGroup {
@@ -114,6 +119,7 @@
   flex-direction: column;
   gap: 0.75rem;
   flex: 1;
+  min-width: 0;
 }
 
 .metaLabelHeader {
@@ -133,6 +139,7 @@
   color: var(--text-primary);
   letter-spacing: -0.03em;
   line-height: 1.1;
+  word-break: break-word;
 }
 
 .currencyPrefix {
@@ -149,6 +156,7 @@
   font-weight: 700;
   color: var(--text-secondary);
   letter-spacing: -0.01em;
+  word-break: break-word;
 }
 /* === SECTION 3 END === */
 
@@ -159,6 +167,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .svgWrapperRelative {
@@ -214,6 +223,7 @@
   margin-top: auto;
   padding-top: 0.85rem;
   border-top: 1px dashed var(--border-color);
+  gap: 0.5rem;
 }
 
 .remainingContextLabel {
@@ -253,6 +263,7 @@
   border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .badgeSuccess { background-color: var(--success-soft, #f0fdf4); color: var(--color-success, #16a34a); }
@@ -302,10 +313,40 @@
 }
 /* === SECTION 7 END === */
 
-@media (max-width: 380px) {
-  .cardMainSection {
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    gap: 1.25rem;
+/* ==========================================================================
+   === SECTION 8: MOBILE CONTAINER LAYOUT ADAPTATIONS ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .gridContainer {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .donutCard {
+    padding: 1.15rem;
+  }
+
+  .cardHeaderTop {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--border-color);
+  }
+
+  .actionIconGroup {
+    border-left: none;
+    padding-left: 0;
   }
 }
+
+@media (max-width: 380px) {
+  .cardMainSection {
+    gap: 1rem;
+  }
+}
+/* === SECTION 8 END === */

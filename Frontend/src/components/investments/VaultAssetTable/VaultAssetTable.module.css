@@ -7,9 +7,10 @@
   gap: 0.5rem;
   margin-top: 1rem;
   letter-spacing: -0.02em;
+  box-sizing: border-box;
 }
 
-/* 4-COLUMN STRUCTURAL GRID */
+/* 4-COLUMN STRUCTURAL GRID (DESKTOP DEFAULT) */
 .tableHeader {
   display: grid;
   grid-template-columns: 1.3fr 1.2fr 1.5fr 1.2fr 0.8fr;
@@ -81,12 +82,14 @@
   justify-content: center;
   font-size: 1.2rem;
   color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 .identityTextStack {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
 }
 
 .assetName {
@@ -94,6 +97,9 @@
   font-weight: 800;
   color: var(--text-primary);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ticker {
@@ -147,6 +153,7 @@
   justify-content: center;
   transition: all 0.15s ease;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .iconBtn:hover {
@@ -161,6 +168,7 @@
   align-items: center;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-left: 0.25rem;
+  flex-shrink: 0;
 }
 
 .arrowRotated {
@@ -193,6 +201,7 @@
 .journalLeftBorder {
   width: 5px;
   background-color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .journalBody {
@@ -220,6 +229,7 @@
   color: var(--text-primary);
   line-height: 1.5;
   font-style: italic;
+  word-break: break-word;
 }
 
 /* HISTORY HEADER */
@@ -278,7 +288,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 4px var(--surface-muted); /* Cuts out track behind it */
+  box-shadow: 0 0 0 4px var(--surface-muted);
   color: #fff;
 }
 
@@ -309,6 +319,7 @@
   flex-direction: column;
   gap: 1rem;
   box-shadow: 0 2px 8px rgba(16, 4, 63, 0.02);
+  min-width: 0;
 }
 
 .nodeHeaderRow {
@@ -321,6 +332,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .nodeTitle {
@@ -358,12 +370,14 @@
   font-weight: 800;
   color: var(--text-muted);
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .memoText {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary);
+  word-break: break-word;
 }
 
 /* RECEIPT METRICS GRID */
@@ -393,6 +407,7 @@
   font-size: 0.9rem;
   font-weight: 800;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .emptyTimelineText {
@@ -402,8 +417,10 @@
   font-weight: 600;
 }
 
-/* RESPONSIVE MEDIA BREAKPOINTS */
-@media (max-width: 960px) {
+/* ==========================================================================
+   === RESPONSIVE BREAKPOINTS (DESKTOP INTENSE < 960px) ===
+   ========================================================================== */
+@media (max-width: 960px) and (min-width: 769px) {
   .tableHeader, .rowGrid {
     grid-template-columns: 1.5fr 1fr 1.2fr 100px;
   }
@@ -412,19 +429,185 @@
   }
 }
 
-@media (max-width: 640px) {
-  .tableHeader { display: none; }
-  .rowGrid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-  .rowGrid div:nth-child(3), .rowGrid div:nth-child(4) { display: none; }
-  
-  .receiptMetricsGrid {
-    grid-template-columns: 1fr;
+/* ==========================================================================
+   === MOBILE RESPONSIVE OVERHAUL (SCREENS <= 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .tableHeader {
+    display: none; /* Hide non-responsive table column headers */
+  }
+
+  /* Transform rowGrid into a clean, modern card layout */
+  .rowGrid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.15rem;
     gap: 0.85rem;
   }
-  
+
+  /* Top Row: Asset Identity (Left) */
+  .cell:nth-child(1) {
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Top Row: Actions Dock (Right) */
+  .cell:nth-child(5) {
+    order: 2;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  .actionsGroup {
+    gap: 0.65rem;
+  }
+
+  /* Touch-optimized action buttons */
+  .iconBtn {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+  }
+
+  .accordionIndicatorArrow {
+    padding: 0.35rem;
+    margin-left: 0;
+  }
+
+  /* Middle Row: Convert Quantity, Total Spent & Avg Cost into 3 equal stat cards */
+  .cell:nth-child(2),
+  .cell:nth-child(3),
+  .cell:nth-child(4) {
+    order: 3;
+    flex: 1 1 calc(33.333% - 0.6rem);
+    min-width: 90px;
+    background-color: var(--surface-muted);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 0.75rem;
+    box-sizing: border-box;
+  }
+
+  .dataStack {
+    gap: 0.2rem;
+  }
+
+  .primaryNumber,
+  .primaryValueNumber {
+    font-size: 0.88rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .secondaryLabel,
+  .secondarySpentLabel {
+    font-size: 0.68rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Expanded Drawer Mobile Adjustments */
+  .drawerContent {
+    padding: 1.15rem;
+    gap: 1.35rem;
+  }
+
+  .journalBody {
+    padding: 1rem;
+  }
+
+  .journalQuote {
+    font-size: 0.88rem;
+  }
+
+  .modernTimelineContainer {
+    padding-left: 1.15rem;
+    gap: 1.15rem;
+  }
+
+  .timelineTrack {
+    left: 13px;
+  }
+
+  .timelineNode {
+    gap: 0.85rem;
+  }
+
+  .timelineDot {
+    width: 26px;
+    height: 26px;
+  }
+
+  .timelineContentCard {
+    padding: 1rem;
+    gap: 0.85rem;
+  }
+
   .nodeHeaderRow {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
+    justify-content: space-between;
     gap: 0.5rem;
+  }
+
+  .nodeTitle {
+    font-size: 0.88rem;
+  }
+
+  .nodeDateBadge {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .receiptMetricsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding-top: 0.85rem;
+  }
+
+  .receiptLabel {
+    font-size: 0.65rem;
+  }
+
+  .receiptValue {
+    font-size: 0.82rem;
+  }
+}
+
+/* Extra-small mobile screens (< 480px) */
+@media (max-width: 480px) {
+  .rowGrid {
+    padding: 0.95rem;
+  }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 1.05rem;
+  }
+
+  .assetName {
+    font-size: 0.88rem;
+  }
+
+  /* Stack metrics into 2-column + 1-column layout for extreme clarity */
+  .cell:nth-child(2),
+  .cell:nth-child(3) {
+    flex: 1 1 calc(50% - 0.45rem);
+  }
+
+  .cell:nth-child(4) {
+    flex: 1 1 100%;
+  }
+
+  .receiptMetricsGrid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
   }
 }

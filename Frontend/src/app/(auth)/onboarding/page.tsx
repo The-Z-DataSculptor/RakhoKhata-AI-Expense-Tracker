@@ -82,6 +82,8 @@ const AI_PERSONAS: AiPersona[] = [
   { id: "silent_accountant", emoji: "📊", title: "Silent Accountant", desc: "Professional. No jokes, just raw mathematical logic." },
 ];
 
+const STEP_TITLES = ["Region", "Goals", "AI Assistant"];
+
 /** Shape of the onboarding form data */
 interface OnboardingFormData {
   country: string;
@@ -114,7 +116,7 @@ export default function OnboardingPage() {
     aiPersona: "",
   });
 
-  // ----- Auto‑detect user’s region from timezone -----
+  // Auto‑detect user’s region from timezone
   useEffect(() => {
     const timer = setTimeout(() => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -146,7 +148,7 @@ export default function OnboardingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ----- Country change handler (auto‑sets currency & language) -----
+  // Country change handler (auto‑sets currency & language)
   const handleCountryChange = (selectedCountryName: string) => {
     const match = WORLD_COUNTRIES.find((c) => c.name === selectedCountryName);
     setFormData((prev) => {
@@ -164,7 +166,7 @@ export default function OnboardingPage() {
     });
   };
 
-  // ----- Language toggling -----
+  // Language toggling
   const toggleLanguage = (lang: string) => {
     setFormData((prev) => {
       const current = prev.languages;
@@ -175,7 +177,7 @@ export default function OnboardingPage() {
     });
   };
 
-  // ----- Step navigation -----
+  // Step navigation
   const goNext = () => {
     if (step === 1 && !formData.country) {
       toast.error("Please choose your home country before continuing.");
@@ -190,7 +192,7 @@ export default function OnboardingPage() {
 
   const goPrev = () => setStep((s) => Math.max(s - 1, 1));
 
-  // ----- Final submission -----
+  // Final submission
   const submitForm = async () => {
     setIsSubmitting(true);
     try {
@@ -227,7 +229,7 @@ export default function OnboardingPage() {
     }
   };
 
-  // ----- Render step content -----
+  // Render step content
   const renderStepContent = () => {
     switch (step) {
       case 1:
@@ -243,8 +245,9 @@ export default function OnboardingPage() {
 
             <div className={styles.formRow}>
               <div className={styles.inputGroup}>
-                <label>Country</label>
+                <label htmlFor="country">Country</label>
                 <select
+                  id="country"
                   value={formData.country}
                   onChange={(e) => handleCountryChange(e.target.value)}
                   className={styles.selectInput}
@@ -261,8 +264,9 @@ export default function OnboardingPage() {
                 </select>
               </div>
               <div className={styles.inputGroup}>
-                <label>Default Currency</label>
+                <label htmlFor="currency">Default Currency</label>
                 <select
+                  id="currency"
                   value={formData.currency}
                   onChange={(e) =>
                     setFormData({ ...formData, currency: e.target.value })
@@ -356,8 +360,9 @@ export default function OnboardingPage() {
             </div>
 
             <div className={styles.inputGroup}>
-              <label>Job / Income Style</label>
+              <label htmlFor="occupation">Job / Income Style</label>
               <select
+                id="occupation"
                 value={formData.occupation}
                 onChange={(e) =>
                   setFormData({ ...formData, occupation: e.target.value })
@@ -481,15 +486,24 @@ export default function OnboardingPage() {
                   </div>
                   <div className={styles.stepLabels}>
                     <span className={styles.stepLabelTitle}>
-                      {num === 1
-                        ? "Region"
-                        : num === 2
-                        ? "Goals"
-                        : "AI Assistant"}
+                      {STEP_TITLES[num - 1]}
                     </span>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* DEDICATED MOBILE-ONLY STEP TRACKER CONTAINER */}
+          <div className={styles.mobileStepTracker}>
+            <span className={styles.mobileStepBadge}>
+              Step {step} of 3: <strong>{STEP_TITLES[step - 1]}</strong>
+            </span>
+            <div className={styles.mobileProgressBarTrack}>
+              <div
+                className={styles.mobileProgressBarFill}
+                style={{ width: `${(step / 3) * 100}%` }}
+              />
             </div>
           </div>
         </div>

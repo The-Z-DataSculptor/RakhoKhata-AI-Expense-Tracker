@@ -15,6 +15,7 @@
   display: flex;
   flex-direction: column;
   transition: var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .chartHeader {
@@ -40,11 +41,12 @@
   margin-bottom: 0;
 }
 
-/* WHY: Dedicated flex canvas container frame prevents SVG scaling layout distortions */
+/* Dedicated flex canvas container frame prevents SVG scaling layout distortions */
 .responsiveWrapperContainer {
   width: 100%;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* Custom Tooltip Card Styling */
@@ -98,3 +100,78 @@
   text-align: center;
 }
 /* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: MOBILE RESPONSIVE ADAPTATIONS (≤ 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .chartContainer {
+    height: 350px;
+    padding: 16px 12px;
+  }
+
+  .chartHeader {
+    margin-bottom: 12px;
+  }
+
+  .titleGroup h3 {
+    font-size: 1.05rem;
+  }
+
+  .titleGroup p {
+    font-size: 0.78rem;
+    margin-top: 2px;
+  }
+
+  .customTooltip {
+    padding: 8px 12px;
+  }
+
+  .tooltipLabel {
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+  }
+
+  .tooltipItem {
+    font-size: 0.78rem;
+    gap: 14px;
+    margin-top: 2px;
+  }
+
+  .netSavings {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 4: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .chartContainer {
+    height: 320px;
+    padding: 14px 8px;
+  }
+
+  .chartHeader {
+    margin-bottom: 8px;
+  }
+
+  .titleGroup h3 {
+    font-size: 0.98rem;
+  }
+
+  .titleGroup p {
+    font-size: 0.72rem;
+  }
+
+  .customTooltip {
+    padding: 6px 10px;
+  }
+
+  .tooltipItem {
+    font-size: 0.72rem;
+    gap: 10px;
+  }
+}
+/* === SECTION 4 END === */

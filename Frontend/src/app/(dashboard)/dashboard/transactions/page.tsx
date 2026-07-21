@@ -4,6 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
+/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
@@ -30,6 +31,7 @@ import styles from "./page.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
+/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 interface FormPayload {
   originalAmount: number;
   originalCurrency: string;
@@ -107,6 +109,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 /* ==========================================================================
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
+/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export default function TransactionsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
@@ -138,6 +141,7 @@ export default function TransactionsPage() {
   const [rawFileHeaders, setRawFileHeaders] = useState<string[]>([]);
   const [rawParsedRows, setRawParsedRows] = useState<ParsedRowData[]>([]);
   const [isSubmittingImport, setIsSubmittingImport] = useState<boolean>(false);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
 
   // DOM References anchoring hidden document file and camera triggers safely
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -155,7 +159,7 @@ export default function TransactionsPage() {
   const [fallbackType, setFallbackType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [stagedPreviewRows, setStagedPreviewRows] = useState<ImportRowPreview[]>([]);
 
-  /** Fetches clean transaction arrays from the protected backend routes */
+  /** Fetches clean transaction arrays from protected backend routes */
   const refreshLedgerData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
@@ -167,7 +171,7 @@ export default function TransactionsPage() {
     }
   }, [activeWorkspaceId]);
 
-  /** Initializes global view parameters when user switches active workspaces */
+  /** Initializes global view parameters when switching active workspaces */
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
@@ -258,12 +262,30 @@ export default function TransactionsPage() {
   };
 
   /** ENGINE HOOKS: CSV & EXCEL DATA TRANSFORMATION PIPELINES */
-  const handleFileDropProcessing = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const autoGuessFileHeaders = useCallback((headers: string[]) => {
+    const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const mapping = { date: "", description: "", amount: "", currency: "", type: "" };
+    
+    headers.forEach(h => {
+      const normal = clean(h);
+      if (normal.includes("date") || normal.includes("time")) mapping.date = h;
+      else if (normal.includes("desc") || normal.includes("narrative") || normal.includes("detail")) mapping.description = h;
+      else if (normal.includes("amount") || normal.includes("value") || normal.includes("paid") || normal.includes("price")) mapping.amount = h;
+      else if (normal.includes("curr") || normal.includes("code")) mapping.currency = h;
+      else if (normal.includes("type") || normal.includes("class")) mapping.type = h;
+    });
+    setColMap(mapping);
+  }, []);
 
+  const handleFileExtractionStream = useCallback((file: File) => {
     const fileNameLower = file.name.toLowerCase();
     
+    // OWASP Hardening Guard: Enforce strict file size limitations to prevent memory exhaustion
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size limits exceeded. Upload statements below 10 Megabytes.");
+      return;
+    }
+
     if (fileNameLower.endsWith(".csv")) {
       Papa.parse<ParsedRowData>(file, {
         header: true,
@@ -295,7 +317,7 @@ export default function TransactionsPage() {
         const data = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 });
         
         if (data.length > 0) {
-          const headers = data[0];
+          const headers = data[0].map(h => String(h));
           const rows = XLSX.utils.sheet_to_json<ParsedRowData>(ws);
           setRawFileHeaders(headers);
           setRawParsedRows(rows);
@@ -309,21 +331,29 @@ export default function TransactionsPage() {
     } else {
       toast.error("Unsupported file extension. Drop a clean .csv or .xlsx workbook file.");
     }
+  }, [autoGuessFileHeaders]);
+
+  const handleFileDropProcessing = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileExtractionStream(file);
   };
 
-  const autoGuessFileHeaders = (headers: string[]) => {
-    const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const mapping = { date: "", description: "", amount: "", currency: "", type: "" };
-    
-    headers.forEach(h => {
-      const normal = clean(h);
-      if (normal.includes("date") || normal.includes("time")) mapping.date = h;
-      else if (normal.includes("desc") || normal.includes("narrative") || normal.includes("detail")) mapping.description = h;
-      else if (normal.includes("amount") || normal.includes("value") || normal.includes("paid") || normal.includes("price")) mapping.amount = h;
-      else if (normal.includes("curr") || normal.includes("code")) mapping.currency = h;
-      else if (normal.includes("type") || normal.includes("class")) mapping.type = h;
-    });
-    setColMap(mapping);
+  const handleDragOverGate = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeaveGate = () => {
+    setIsDraggingOver(false);
+  };
+
+  const handleNativeDropTrigger = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const uploadedFile = e.dataTransfer.files?.[0];
+    if (uploadedFile) {
+      handleFileExtractionStream(uploadedFile);
+    }
   };
 
   const handleComputeMappingVerification = () => {
@@ -350,7 +380,7 @@ export default function TransactionsPage() {
 
       let rowCurrency = fallbackCurrency;
       if (colMap.currency && row[colMap.currency]) {
-        rowCurrency = String(colMap.currency && row[colMap.currency]).toUpperCase().trim().substring(0, 3);
+        rowCurrency = String(row[colMap.currency]).toUpperCase().trim().substring(0, 3);
       }
 
       let targetCategoryId = unassignedUUID;
@@ -561,6 +591,7 @@ export default function TransactionsPage() {
   return (
     <div className={styles.ledgerCanvasWrapper}>
       
+      {/* Transaction Action Header */}
       <TransactionHeader 
         totalCount={processedFilteredRecords.length}
         onAddTransactionClick={handleOpenCreateModal}
@@ -569,6 +600,7 @@ export default function TransactionsPage() {
         onCameraScannerSelect={() => cameraInputRef.current?.click()}
       />
 
+      {/* Transaction Filter Toolbar */}
       <TransactionFilterBar
         searchQuery={searchQuery}
         onSearchChange={(v) => { setSearchQuery(v); setCurrentPage(1); }}
@@ -583,8 +615,8 @@ export default function TransactionsPage() {
         }}
       />
 
+      {/* Primary Data Grid */}
       <main className={styles.mainContentStage}>
-        {/* 🚀 FIXED: Solves the ESLint unused variable issue by rendering a clean fallback loader */}
         {isLoading ? (
           <div className={styles.inlineLoadingContainer}>
             <FiLoader className={styles.inlineSpinner} />
@@ -603,6 +635,7 @@ export default function TransactionsPage() {
         )}
       </main>
 
+      {/* Pagination Control Row */}
       <div className={styles.paginationControlRowDeck}>
         <div className={styles.capacitySelectorFlexCluster}>
           <span className={styles.capacityLabelText}>Rows per page:</span>
@@ -626,6 +659,7 @@ export default function TransactionsPage() {
         />
       </div>
 
+      {/* Summary Footer Bar */}
       <TransactionFooter 
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
@@ -633,7 +667,7 @@ export default function TransactionsPage() {
         activeWorkspaceId={activeWorkspaceId}
       />
 
-      {/* Hidden document upload and camera inputs handles */}
+      {/* Hidden File Input Channels */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -650,7 +684,7 @@ export default function TransactionsPage() {
         onChange={handleReceiptScanProcessing} 
       />
 
-      {/* Enclosed within strict DIVs to prevent 'removeChild of null' React unmount ghost errors */}
+      {/* Floating glass loading shield for AI scanner execution matches */}
       <div>
         {isScanning && (
           <div className={styles.scanningOverlayBackdrop}>
@@ -663,7 +697,7 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {/* PRE-FLIGHT INTERACTIVE MAPPING INGESTION AUTOMATED DATA WIZARD MODAL */}
+      {/* EMBEDDED AUTOMATED STATEMENT IMPORTER MODAL */}
       <div>
         {isImportOpen && (
           <div className={styles.modalOverlayBackdrop} onClick={() => { if(!isSubmittingImport) setIsImportOpen(false); }}>
@@ -672,64 +706,85 @@ export default function TransactionsPage() {
               <div className={styles.wizardHeaderDeck}>
                 <div className={styles.wizardHeaderTitleBlock}>
                   <h3 className={styles.wizardMainTitle}>Automated Statement Importer</h3>
-                  <span className={styles.wizardBadgePill}>Workspace Engine v2</span>
+                  <span className={styles.wizardBadgePill}>Engine v2.4</span>
                 </div>
                 <div className={styles.stepperPipelineLayout}>
-                  <span className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Upload</span>
+                  <div className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
+                    <span className={styles.stepperStepNumber}>1</span>
+                    <span>Upload</span>
+                  </div>
                   <FiChevronRight className={styles.stepperArrowIcon} />
-                  <span className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Map Headers</span>
+                  <div className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
+                    <span className={styles.stepperStepNumber}>2</span>
+                    <span>Map Headers</span>
+                  </div>
                   <FiChevronRight className={styles.stepperArrowIcon} />
-                  <span className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>Validate Review</span>
+                  <div className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
+                    <span className={styles.stepperStepNumber}>3</span>
+                    <span>Review & Commit</span>
+                  </div>
                 </div>
               </div>
 
+              {/* STEP 1: INTERACTIVE DRAG & DROP ZONE */}
               {importStep === 1 && (
-                <div className={styles.dropzoneFrameZone}>
-                  <FiUploadCloud className={styles.dropzoneUploadIcon} />
-                  <p className={styles.dropzoneMainTitleText}>Drag and drop statement here, or click to browse</p>
-                  <p className={styles.dropzoneSubtextMeta}>Supports standard banking sheet outputs (.csv, .xlsx, .xls)</p>
+                <div 
+                  className={`${styles.dropzoneFrameZone} ${isDraggingOver ? styles.dropzoneActiveTint : ""}`}
+                  onDragOver={handleDragOverGate}
+                  onDragLeave={handleDragLeaveGate}
+                  onDrop={handleNativeDropTrigger}
+                >
+                  <div className={styles.dropzoneIconWrapper}>
+                    <FiUploadCloud className={styles.dropzoneUploadIcon} />
+                  </div>
+                  <p className={styles.dropzoneMainTitleText}>Drag & Drop bank statement file here</p>
+                  <p className={styles.dropzoneSubtextMeta}>Supports standard financial exports (.csv, .xlsx, .xls) up to 10MB</p>
+                  <span className={styles.dropzoneBrowseBtn}>Browse Computer</span>
                   <input 
                     type="file" 
                     accept=".csv, .xlsx, .xls" 
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                    className={styles.nativeFullHiddenFileInputControl} 
                     onChange={handleFileDropProcessing}
                   />
                 </div>
               )}
 
+              {/* STEP 2: COLUMN MAPPING FORM */}
               {importStep === 2 && (
                 <div className={styles.wizardFormCoreBody}>
                   <div className={`${styles.wizardInfoAlertBox} ${styles.alertInfoBlue}`}>
-                    <FiFileText size={16} />
-                    <span>Map your spreadsheet columns to your ledger workspace layout metrics. Date, Description, and Amount fields are required parameters.</span>
+                    <FiFileText size={18} className={styles.alertIconFlex} />
+                    <div>
+                      <strong>Header Alignment Required:</strong> Map column fields from your uploaded file to ledger workspace schema.
+                    </div>
                   </div>
 
                   <div className={styles.mappingSelectorsGridRow}>
                     <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel}>Transaction Date Column *</label>
-                      <select value={colMap.date} onChange={e => setColMap(p => ({...p, date: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Choose Column --</option>
+                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapDateCol">Transaction Date *</label>
+                      <select id="mapDateCol" value={colMap.date} onChange={e => setColMap(p => ({...p, date: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Select Column --</option>
                         {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                     <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel}>Description / Narration Column *</label>
-                      <select value={colMap.description} onChange={e => setColMap(p => ({...p, description: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Choose Column --</option>
+                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapDescCol">Description / Narrative *</label>
+                      <select id="mapDescCol" value={colMap.description} onChange={e => setColMap(p => ({...p, description: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Select Column --</option>
                         {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                     <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel}>Amount Column *</label>
-                      <select value={colMap.amount} onChange={e => setColMap(p => ({...p, amount: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Choose Column --</option>
+                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapAmountCol">Transaction Amount *</label>
+                      <select id="mapAmountCol" value={colMap.amount} onChange={e => setColMap(p => ({...p, amount: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Select Column --</option>
                         {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                     <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel}>Currency Column (Optional)</label>
-                      <select value={colMap.currency} onChange={e => setColMap(p => ({...p, currency: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Fallback Value Only ({fallbackCurrency}) --</option>
+                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapCurrCol">Currency Code (Optional)</label>
+                      <select id="mapCurrCol" value={colMap.currency} onChange={e => setColMap(p => ({...p, currency: e.target.value}))} className={styles.premiumFieldSelectControl}>
+                        <option value="">-- Fallback Only ({fallbackCurrency}) --</option>
                         {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
@@ -737,14 +792,14 @@ export default function TransactionsPage() {
 
                   <div className={styles.stagerFallbackSubFormBlock}>
                     <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel}>Fallback Document Currency</label>
-                      <input type="text" maxLength={3} value={fallbackCurrency} onChange={e => setFallbackCurrency(e.target.value.toUpperCase())} className={styles.premiumFieldInputTextControl} placeholder="PKR" />
+                      <label className={styles.fieldLayoutInputLabel} htmlFor="fallbackCurrInput">Fallback Currency</label>
+                      <input id="fallbackCurrInput" type="text" maxLength={3} value={fallbackCurrency} onChange={e => setFallbackCurrency(e.target.value.toUpperCase())} className={styles.premiumFieldInputTextControl} placeholder="PKR" />
                     </div>
-                    <div className={styles.fieldGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel}>Default Flow Configuration</label>
-                      <select value={fallbackType} onChange={e => setFallbackType(e.target.value as "INCOME" | "EXPENSE")} className={styles.premiumFieldSelectControl}>
-                        <option value="EXPENSE">Expense (Debit/Payouts)</option>
-                        <option value="INCOME">Income (Credit/Deposits)</option>
+                    <div className={styles.formGroupWrapperField}>
+                      <label className={styles.fieldLayoutInputLabel} htmlFor="fallbackTypeSelect">Default Cash Flow Type</label>
+                      <select id="fallbackTypeSelect" value={fallbackType} onChange={e => setFallbackType(e.target.value as "INCOME" | "EXPENSE")} className={styles.premiumFieldSelectControl}>
+                        <option value="EXPENSE">Expense (Debit / Outflow)</option>
+                        <option value="INCOME">Income (Credit / Inflow)</option>
                       </select>
                     </div>
                   </div>
@@ -756,30 +811,33 @@ export default function TransactionsPage() {
                 </div>
               )}
 
+              {/* STEP 3: PREVIEW & STAGING DATA GRID */}
               {importStep === 3 && (
                 <div className={styles.wizardFormCoreBody}>
                   <div className={`${styles.wizardInfoAlertBox} ${styles.alertWarningAmber}`}>
-                    <FiAlertCircle size={16} />
-                    <span>Staging Area: Unmatched transactions will default into your protected <b>Unassigned</b> stack. You can clean or override row configurations below.</span>
+                    <FiAlertCircle size={18} className={styles.alertIconFlex} />
+                    <div>
+                      <strong>Staging Area:</strong> Review imported entries. Unmapped records will default to <b>Unassigned</b>.
+                    </div>
                   </div>
 
                   <div className={styles.previewDataGridContainerWindow}>
                     <table className={styles.previewTableViewportLayout}>
                       <thead className={styles.previewTableHeaderStickyDeck}>
                         <tr>
-                          <th>Date</th>
+                          <th>Posting Date</th>
                           <th>Description</th>
-                          <th>Amount</th>
+                          <th>Value Amount</th>
                           <th>Flow Type</th>
-                          <th>Workspace Category Core Mapping</th>
+                          <th>Category Allocation</th>
                         </tr>
                       </thead>
                       <tbody className={styles.previewTableBodyRowCluster}>
                         {stagedPreviewRows.map((row, rIdx) => (
                           <tr key={row.index}>
-                            <td className="whitespace-nowrap font-medium">{row.date}</td>
+                            <td className={styles.tableCellDate}>{row.date}</td>
                             <td className={styles.tableCellTruncateText} title={row.description}>{row.description}</td>
-                            <td className="font-bold text-slate-900 dark:text-zinc-100">{row.currency} {row.amount}</td>
+                            <td className={styles.tableCellAmount}>{row.currency} {row.amount.toFixed(2)}</td>
                             <td>
                               <span className={row.type === "INCOME" ? styles.badgeTypeIncomePill : styles.badgeTypeExpensePill}>
                                 {row.type}
@@ -806,7 +864,7 @@ export default function TransactionsPage() {
                   </div>
 
                   <div className={styles.wizardActionFooterToolbar}>
-                    <span className={styles.wizardCounterSummaryMetaText}>{stagedPreviewRows.length} records staged.</span>
+                    <span className={styles.wizardCounterSummaryMetaText}>{stagedPreviewRows.length} transactions ready to sync.</span>
                     <div className={styles.flexButtonGroupRow}>
                       <button type="button" disabled={isSubmittingImport} onClick={() => setImportStep(2)} className={styles.wizardCancelControlBtn}>Back</button>
                       <button type="button" disabled={isSubmittingImport} onClick={handleCommitBulkDataToBackend} className={styles.wizardCommitExecutionBtn}>
@@ -836,7 +894,7 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {/* Standard Transaction Modals */}
+      {/* Standard Transaction Details Input Form Modals */}
       <div>
         {isModalOpen && (
           <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
@@ -853,6 +911,7 @@ export default function TransactionsPage() {
         )}
       </div>
 
+      {/* Bulk Action Toolbar */}
       <BulkActionToolBelt
         selectedCount={selectedRecordIds.length}
         onClearSelection={handleClearSelectionQueue}

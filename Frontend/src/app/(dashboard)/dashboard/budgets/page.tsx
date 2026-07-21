@@ -98,7 +98,7 @@ export default function BudgetsPage() {
         return;
       }
 
-      // Only send enterprise fields – no deprecated limitAmount
+      // Only send enterprise fields
       const basePayload = {
         originalAmount: formData.originalAmount,
         originalCurrency: formData.originalCurrency,
@@ -160,7 +160,6 @@ export default function BudgetsPage() {
     }
   };
 
-  // 🔥 FIXED: Use originalAmount instead of the deleted limitAmount
   const computedBudgetItems: BudgetItem[] = budgets.map((budget) => {
     const originalLimit = Number(budget.originalAmount);
     const limitCurrency = budget.originalCurrency || "USD";
@@ -277,7 +276,6 @@ export default function BudgetsPage() {
             ? {
                 id: editingBudget.id,
                 categoryName: editingBudget.category?.name || "",
-                // Pass the original amount so the form shows the correct value
                 limitAmount: Number(editingBudget.originalAmount),
                 startDate: editingBudget.startDate,
                 endDate: editingBudget.endDate,

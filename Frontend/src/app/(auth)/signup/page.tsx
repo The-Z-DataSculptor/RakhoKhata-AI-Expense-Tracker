@@ -71,7 +71,7 @@ interface AiPersona {
   desc: string;
 }
 
-// Static data arrays – declared outside component to avoid re‑creating on every render
+// Static data arrays
 const OCCUPATIONS: OccupationOption[] = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
@@ -98,6 +98,8 @@ const AI_PERSONAS: AiPersona[] = [
   { id: "forensic_detective", emoji: "🕵️‍♂️", title: "Forensic Detective", desc: "Hyper-analytical. Finds sneaky hidden spending leaks." },
   { id: "silent_accountant", emoji: "📊", title: "Silent Accountant", desc: "Professional. No jokes, just raw mathematical logic." },
 ];
+
+const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -124,7 +126,7 @@ export default function SignupPage() {
     aiPersona: "",
   });
 
-  // ----- Auto‑detect region from timezone -----
+  // Auto-detect region from timezone
   useEffect(() => {
     const timer = setTimeout(() => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -156,7 +158,7 @@ export default function SignupPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ----- Country change → auto‑sets currency & language -----
+  // Country change → auto-sets currency & language
   const handleCountryChange = (selectedCountryName: string) => {
     const match = WORLD_COUNTRIES.find((c) => c.name === selectedCountryName);
 
@@ -175,7 +177,7 @@ export default function SignupPage() {
     });
   };
 
-  // ----- Language toggling -----
+  // Language toggling
   const toggleLanguage = (lang: string) => {
     setFormData((prev) => {
       const current = prev.languages;
@@ -186,10 +188,9 @@ export default function SignupPage() {
     });
   };
 
-  // ----- Step navigation -----
+  // Step navigation
   const handleNext = () => {
     if (step === 1) {
-      // Zod validation for account details
       const validation = signupSchema.safeParse(formData);
       if (!validation.success) {
         const firstError = validation.error.issues[0]?.message ?? "Please check your inputs.";
@@ -202,7 +203,7 @@ export default function SignupPage() {
 
   const handlePrev = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // ----- Final submission -----
+  // Final submission
   const submitForm = async () => {
     setIsSubmitting(true);
     try {
@@ -235,7 +236,7 @@ export default function SignupPage() {
     }
   };
 
-  // ----- Step content rendering -----
+  // Step content rendering
   const renderStepContent = () => {
     switch (step) {
       case 1:
@@ -249,8 +250,9 @@ export default function SignupPage() {
               <p>Please fill in your basic details below.</p>
             </div>
             <div className={styles.inputGroup}>
-              <label>Full Name</label>
+              <label htmlFor="fullName">Full Name</label>
               <input
+                id="fullName"
                 type="text"
                 placeholder="Enter your name"
                 value={formData.fullName}
@@ -262,8 +264,9 @@ export default function SignupPage() {
               />
             </div>
             <div className={styles.inputGroup}>
-              <label>Email Address</label>
+              <label htmlFor="email">Email Address</label>
               <input
+                id="email"
                 type="email"
                 placeholder="name@example.com"
                 value={formData.email}
@@ -275,8 +278,9 @@ export default function SignupPage() {
             </div>
             <div className={styles.formRow}>
               <div className={styles.inputGroup}>
-                <label>Password</label>
+                <label htmlFor="password">Password</label>
                 <input
+                  id="password"
                   type="password"
                   placeholder="Choose a password"
                   value={formData.password}
@@ -287,8 +291,9 @@ export default function SignupPage() {
                 />
               </div>
               <div className={styles.inputGroup}>
-                <label>Confirm Password</label>
+                <label htmlFor="confirmPassword">Confirm Password</label>
                 <input
+                  id="confirmPassword"
                   type="password"
                   placeholder="Repeat your password"
                   value={formData.confirmPassword}
@@ -314,8 +319,9 @@ export default function SignupPage() {
 
             <div className={styles.formRow}>
               <div className={styles.inputGroup}>
-                <label>Country</label>
+                <label htmlFor="country">Country</label>
                 <select
+                  id="country"
                   value={formData.country}
                   onChange={(e) => handleCountryChange(e.target.value)}
                   className={styles.selectInput}
@@ -332,8 +338,9 @@ export default function SignupPage() {
                 </select>
               </div>
               <div className={styles.inputGroup}>
-                <label>Default Currency</label>
+                <label htmlFor="currency">Default Currency</label>
                 <select
+                  id="currency"
                   value={formData.currency}
                   onChange={(e) =>
                     setFormData({ ...formData, currency: e.target.value })
@@ -428,8 +435,9 @@ export default function SignupPage() {
             </div>
 
             <div className={styles.inputGroup}>
-              <label>Job / Income Style</label>
+              <label htmlFor="occupation">Job / Income Style</label>
               <select
+                id="occupation"
                 value={formData.occupation}
                 onChange={(e) =>
                   setFormData({ ...formData, occupation: e.target.value })
@@ -532,6 +540,7 @@ export default function SignupPage() {
           <Link href="/" className={styles.backHomeBtn}>
             ← Cancel
           </Link>
+
           <div className={styles.sidebarContent}>
             <h1 className={styles.brandTitle}>RakhoKhata.</h1>
             <p className={styles.brandSubtitle}>
@@ -551,17 +560,24 @@ export default function SignupPage() {
                   </div>
                   <div className={styles.stepLabels}>
                     <span className={styles.stepLabelTitle}>
-                      {num === 1
-                        ? "Account"
-                        : num === 2
-                        ? "Region"
-                        : num === 3
-                        ? "Goals"
-                        : "AI Assistant"}
+                      {STEP_TITLES[num - 1]}
                     </span>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* DEDICATED MOBILE-ONLY STEP TRACKER CONTAINER */}
+          <div className={styles.mobileStepTracker}>
+            <span className={styles.mobileStepBadge}>
+              Step {step} of 4: <strong>{STEP_TITLES[step - 1]}</strong>
+            </span>
+            <div className={styles.mobileProgressBarTrack}>
+              <div
+                className={styles.mobileProgressBarFill}
+                style={{ width: `${(step / 4) * 100}%` }}
+              />
             </div>
           </div>
         </div>

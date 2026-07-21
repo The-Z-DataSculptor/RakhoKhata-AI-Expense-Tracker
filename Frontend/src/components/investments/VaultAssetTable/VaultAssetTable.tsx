@@ -168,6 +168,7 @@ export function VaultAssetTable({
                         type="button"
                         className={styles.iconBtn}
                         title="Edit this item"
+                        aria-label={`Edit ${asset.name}`}
                         onClick={(e) => { e.stopPropagation(); onEditClick(asset); }}
                       >
                         <PencilIcon />
@@ -177,6 +178,7 @@ export function VaultAssetTable({
                       type="button"
                       className={styles.iconBtn}
                       title="Delete this item"
+                      aria-label={`Delete ${asset.name}`}
                       onClick={(e) => { e.stopPropagation(); onDeleteAsset(asset.id); }}
                     >
                       <TrashIcon />

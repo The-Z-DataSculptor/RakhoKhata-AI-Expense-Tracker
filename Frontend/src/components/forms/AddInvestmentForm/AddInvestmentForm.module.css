@@ -15,6 +15,7 @@
   max-height: 90vh;
   overflow-y: auto;
   letter-spacing: -0.02em;
+  box-sizing: border-box;
 }
 
 .progressHeader {
@@ -125,6 +126,7 @@
   font-weight: 700;
   outline: none;
   transition: var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .primaryTextInput,
@@ -213,6 +215,7 @@
   border: 1px dashed var(--border-color);
   padding: 1rem;
   border-radius: var(--radius-md);
+  box-sizing: border-box;
 }
 
 .toggleContext {
@@ -257,7 +260,7 @@
 /* === SECTION 5 END === */
 
 /* ==========================================================================
-   === SECTION 6: FOOTER ACTIONS ACTIONS BUTTONS ===
+   === SECTION 6: FOOTER ACTIONS BUTTONS ===
    ========================================================================== */
 .actionFooter {
   display: flex;
@@ -280,6 +283,7 @@
   align-items: center;
   gap: 0.5rem;
   transition: var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .secondaryBtn {
@@ -315,3 +319,139 @@
   box-shadow: 0 4px 14px var(--primary-soft-strong);
 }
 /* === SECTION 6 END === */
+
+/* ==========================================================================
+   === SECTION 7: MOBILE RESPONSIVE ADAPTATIONS (≤ 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .formContainer {
+    padding: 1.25rem 1rem;
+    gap: 1.15rem;
+    max-height: 85vh;
+    border-radius: var(--radius-lg, 12px);
+  }
+
+  .progressHeader {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .progressTab {
+    font-size: 0.78rem;
+    gap: 0.35rem;
+  }
+
+  .tabLine {
+    margin: 0 0.5rem;
+  }
+
+  .promptSpeechBubble {
+    padding: 0.85rem 1rem;
+  }
+
+  .speechTitle {
+    font-size: 0.95rem;
+  }
+
+  .speechText {
+    font-size: 0.78rem;
+  }
+
+  /* 
+   * Strict iOS Auto-Zoom Fix: font-size: 1rem (16px) or above strictly enforced
+   * to prevent iOS Safari/Chrome from forcibly zooming in on focused inputs.
+   */
+  .primaryTextInput,
+  .cleanDropdownInput {
+    height: 48px; /* Touch target minimum height */
+    font-size: 1rem; /* 16px threshold */
+    padding: 0 0.85rem;
+  }
+
+  .monetaryTextInput {
+    height: 48px;
+    font-size: 1rem;
+    padding: 0 0.85rem 0 4rem;
+  }
+
+  .monetaryTextInputNoPrefix {
+    height: 48px;
+    font-size: 1rem;
+    padding: 0 4rem 0 0.85rem;
+  }
+
+  .textareaFieldElement {
+    font-size: 1rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .customToggleBox {
+    padding: 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .toggleMainTitle {
+    font-size: 0.82rem;
+  }
+
+  .toggleSubtitle {
+    font-size: 0.74rem;
+  }
+
+  .toggleActionBtn {
+    font-size: 2rem;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .actionFooter {
+    gap: 0.65rem;
+    padding-top: 1rem;
+  }
+
+  .secondaryBtn,
+  .primaryBtn,
+  .submitVaultBtn {
+    flex: 1;
+    min-height: 48px; /* Touch accessibility target */
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 8: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .formContainer {
+    padding: 1rem 0.85rem;
+    gap: 1rem;
+  }
+
+  .progressTab {
+    font-size: 0.72rem;
+  }
+
+  .tabIndex {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+  }
+
+  .customToggleBox {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .actionFooter {
+    flex-direction: column-reverse;
+  }
+
+  .secondaryBtn,
+  .primaryBtn,
+  .submitVaultBtn {
+    width: 100%;
+  }
+}
+/* === SECTION 8 END === */

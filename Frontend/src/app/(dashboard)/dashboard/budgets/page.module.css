@@ -143,6 +143,7 @@
   border: 1px dashed var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 12px);
   padding: 2rem;
+  box-sizing: border-box;
 }
 
 .fallbackText {
@@ -175,16 +176,31 @@
 /* === SECTION 5 END === */
 
 /* ==========================================================================
-   === SECTION 6: PHONE SCREEN RESPONSIVENESS ===
+   === SECTION 6: MOBILE RESPONSIVE ADAPTATIONS (≤ 768px) ===
    ========================================================================== */
-@media (max-width: 850px) {
+@media (max-width: 768px) {
+  .pageViewport {
+    padding: 1rem 1rem 0 1rem;
+    gap: 1.15rem;
+  }
+
   .dashboardHeaderCardBox {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1.25rem;
-    padding: 1.25rem;
+    align-items: stretch;
+    gap: 1.15rem;
+    padding: 1.15rem 1rem;
+    border-radius: var(--radius-lg, 12px);
   }
-  
+
+  .welcomeHeadline {
+    font-size: 1.35rem;
+  }
+
+  .welcomeSubtext {
+    font-size: 0.82rem;
+    padding-left: 0;
+  }
+
   .actionControlsFlexDeck {
     width: 100%;
     flex-direction: column;
@@ -194,21 +210,72 @@
 
   .rangePillsControlDeck {
     width: 100%;
+    padding: 3px;
+    box-sizing: border-box;
   }
 
   .timePeriodPillBtn {
     flex: 1;
+    min-height: 44px; /* Touch target accessibility minimum height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.78rem;
     text-align: center;
+    white-space: nowrap;
   }
 
   .primaryCreateActionButton {
     width: 100%;
+    height: 48px; /* 48px touch target */
+    min-height: 48px;
+    font-size: 0.88rem;
+  }
+
+  .sectionFallback {
+    padding: 1.5rem 1rem;
+    min-height: 200px;
+  }
+
+  .fallbackText {
+    font-size: 0.95rem;
+  }
+
+  .subFallbackText {
+    font-size: 0.8rem;
+  }
+
+  .footerContainerBlock {
+    padding-top: 1.25rem;
+    padding-bottom: 1rem;
   }
 }
 
-@media (max-width: 580px) {
+/* ==========================================================================
+   === SECTION 7: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
   .pageViewport {
-    padding: 1.25rem 1.25rem 0 1.25rem;
+    padding: 0.85rem 0.85rem 0 0.85rem;
+    gap: 1rem;
+  }
+
+  .dashboardHeaderCardBox {
+    padding: 1rem 0.85rem;
+  }
+
+  .welcomeHeadline {
+    font-size: 1.2rem;
+  }
+
+  .welcomeSubtext {
+    font-size: 0.78rem;
+  }
+
+  .timePeriodPillBtn {
+    font-size: 0.73rem;
+    padding: 0.5rem 0.15rem;
   }
 }
-/* === SECTION 6 END === */
+/* === SECTION 7 END === */

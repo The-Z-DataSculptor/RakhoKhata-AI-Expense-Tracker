@@ -40,7 +40,7 @@
 .splitBarMasterTrack {
   width: 100%;
   height: 32px;
-  background-color: #f3f4f6; /* Super subtle background baseline gray track */
+  background-color: #f3f4f6;
   border-radius: 8px;
   overflow: hidden;
   display: flex;
@@ -67,15 +67,15 @@
 
 /* Solid, clean color-coded profiles targeting high scannability */
 .segmentFixed {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); /* Clean Crimson Red */
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
 .segmentFlexible {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); /* Bright Blue Accent */
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .segmentSavings {
-  background-color: #e5e7eb; /* Soft neutral gray representing unclaimed empty workspace space */
+  background-color: #e5e7eb;
   border-left: 2px dashed #ffffff;
 }
 .segmentSavings .segmentLabel {
@@ -105,6 +105,8 @@
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .indicatorDot {
@@ -166,7 +168,6 @@
   width: 100%;
 }
 
-/* Generates a nice graphical downward pointing open frame line */
 .bracketDashedLines {
   display: flex;
   width: 80%;
@@ -193,12 +194,12 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: #f0fdf4; /* Friendly soft light green highlight padding box */
+  background-color: #f0fdf4;
   border: 1px solid #bbf7d0;
   padding: 0.65rem 1rem;
   border-radius: 8px;
   font-size: 0.82rem;
-  color: #166534; /* Rich forest green text */
+  color: #166534;
   text-align: center;
 }
 
@@ -212,18 +213,126 @@
   50% { transform: translateY(-3px); }
 }
 
-/* Mobile Adjustments */
+/* ==========================================================================
+   === SECTION 5: MOBILE RESPONSIVE ADAPTATIONS (≤ 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .containerCard {
+    padding: 1.15rem;
+    gap: 1.15rem;
+    border-radius: var(--radius-lg, 12px);
+  }
+
+  .mainTitle {
+    font-size: 1.05rem;
+  }
+
+  .subTitle {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .splitBarMasterTrack {
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  .segmentLabel {
+    font-size: 0.68rem;
+  }
+
+  .detailsGridRows {
+    gap: 0.85rem;
+    padding-top: 1rem;
+  }
+
+  .infoRowBlock {
+    gap: 1rem;
+  }
+
+  .rowHeadline {
+    font-size: 0.85rem;
+  }
+
+  .rowSubtext {
+    font-size: 0.74rem;
+    line-height: 1.35;
+  }
+
+  .amountValue {
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .percentageValue {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .bracketDashedLines {
+    width: 90%;
+  }
+
+  .rewardMessageText {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 6: EXTRA SMALL SCREENS (≤ 560px) ===
+   ========================================================================== */
 @media (max-width: 560px) {
+  .containerCard {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
   .infoRowBlock {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.45rem;
   }
+
+  .leftLabelSide {
+    width: 100%;
+  }
+
+  /*
+   * Transforms values into a clean horizontal summary sub-row aligned 
+   * directly underneath the text column on narrow smartphone screens
+   */
   .rightValueSide {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
     text-align: left;
-    padding-left: 2rem;
+    padding-left: 2.15rem;
+    box-sizing: border-box;
   }
+
+  .amountValue {
+    font-size: 0.88rem;
+  }
+
+  .percentageValue {
+    font-size: 0.72rem;
+    background-color: var(--surface-muted, #f3f4f6);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
   .bracketDashedLines {
     width: 100%;
   }
+
+  .rewardMessageText {
+    font-size: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+  }
 }
+/* === SECTION 6 END === */

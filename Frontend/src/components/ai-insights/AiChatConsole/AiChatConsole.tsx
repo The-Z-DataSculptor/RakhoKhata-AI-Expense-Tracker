@@ -70,11 +70,13 @@ export function AiChatConsole({
             placeholder={getPlaceholder()}
             disabled={isExternalLoading || !isDataReady}
             className={styles.chatTextFieldInputElement}
+            aria-label="Ask your AI assistant"
           />
           <button
             type="submit"
             disabled={isExternalLoading || !inputValue.trim() || !isDataReady}
             className={styles.submitExecuteButtonLauncher}
+            aria-label="Submit query"
           >
             <span>{isExternalLoading ? "Thinking..." : "Ask"}</span>
             <FiArrowRight size={16} />
@@ -98,4 +100,4 @@ export function AiChatConsole({
     </section>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

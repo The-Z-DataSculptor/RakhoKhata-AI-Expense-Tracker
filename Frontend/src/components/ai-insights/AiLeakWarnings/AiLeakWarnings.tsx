@@ -69,12 +69,12 @@ export function AiLeakWarnings({ warnings, isLoading }: AiLeakWarningsProps) {
             return (
               <div key={warning.id} className={styles.singleLeakCardItem}>
                 <div className={styles.cardTopDetailsRow}>
-                  <h4 className={styles.leakCardCategoryTitle}>
+                  <h4 className={styles.leakCardCategoryTitle} title={warning.categoryName}>
                     <span
                       className={styles.categoryDot}
                       style={{ backgroundColor: dotColor }}
                     />
-                    {warning.categoryName}
+                    <span>{warning.categoryName}</span>
                   </h4>
                   <span
                     className={`${styles.leakSeverityBadgeLabel} ${

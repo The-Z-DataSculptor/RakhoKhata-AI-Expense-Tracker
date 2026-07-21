@@ -4,7 +4,6 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useEffect, useCallback } from "react";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +16,6 @@ import styles from "./CategoryForm.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 interface CategoryFormProps {
   // Callback routine used to append or persist the valid category record
   onAddCategory: (newCategory: CategoryRecord) => void;
@@ -29,7 +27,6 @@ interface CategoryFormProps {
 /* ==========================================================================
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryFormProps) {
   // Establish edit operational state based on the presence of existing record payloads
   const isEditMode = Boolean(initialData);
@@ -129,7 +126,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           });
         }
       } catch (error: unknown) {
-        // Enforce strict type narrowing parameters to prevent internal path leaks
         console.error("Category submission workflow processing error:", error);
         toast.error("Could not save category. Verify all required field boundaries.");
       }
@@ -141,7 +137,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
 /* ==========================================================================
    === SECTION 4: EXPORTS / RENDER COMPONENT ===
    ========================================================================== */
-/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
   return (
     <div className={styles.formCard}>
       <h3 className={styles.formTitle}>
@@ -157,7 +152,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
             type="text"
             className={styles.inputField}
             placeholder="e.g., Groceries, Rent, Salary"
-            maxLength={40} // Defensive limitation boundary to prevent database text cell parsing issues
+            maxLength={40}
             disabled={isSubmitting}
             {...register("name")}
           />
@@ -195,7 +190,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
             <input
               type="text"
               className={styles.inputField}
-              maxLength={7} // Limit string lengths exactly to standard hexadecimal parameters (#FFFFFF)
+              maxLength={7}
               placeholder="#613BBF"
               value={activeColor}
               disabled={isSubmitting}
@@ -285,7 +280,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           </div>
         )}
 
-        {/* MODAL CONTROL ACTION ACTION FOOTER BUTTON DECK */}
+        {/* MODAL CONTROL ACTION FOOTER BUTTON DECK */}
         <div className={styles.buttonGroup}>
           <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : isEditMode ? "Save Changes" : "Create Category"}

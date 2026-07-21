@@ -12,7 +12,7 @@ interface ControlLeverProps {
   fixedExpenses: number;     
   flexibleExpenses: number;  
   activePeriod: TimePeriod;
-  sourceCurrency: string;   // <-- NEW: workspace currency for formatting
+  sourceCurrency: string;   // workspace currency for formatting
 }
 
 export default function ControlLever({

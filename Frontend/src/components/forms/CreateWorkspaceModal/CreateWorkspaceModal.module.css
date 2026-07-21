@@ -17,6 +17,7 @@
   align-items: center;
   justify-content: center;
   animation: fadeIn 0.2s ease;
+  box-sizing: border-box;
 }
 
 .modalContent {
@@ -28,6 +29,7 @@
   max-width: 400px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 /* ==========================================================================
@@ -74,9 +76,10 @@
   outline: none;
   transition: border-color 0.2s ease, background-color 0.2s ease;
   width: 100%;
+  box-sizing: border-box;
 }
 
-/* FIXED: Premium styled dropdown properties ensuring uniform height metrics across browsers */
+/* Premium styled dropdown properties ensuring uniform height metrics across browsers */
 .currencySelectField {
   cursor: pointer;
   appearance: auto; /* Retains natural native selector arrow handles cleanly */
@@ -113,6 +116,7 @@
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .cancelBtn:hover {
@@ -130,6 +134,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: opacity 0.2s ease;
+  box-sizing: border-box;
 }
 
 .confirmBtn:hover {
@@ -153,3 +158,96 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ==========================================================================
+   === SECTION 6: MOBILE RESPONSIVE ADAPTATIONS (≤ 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .modalOverlay {
+    padding: 1rem;
+    align-items: center;
+  }
+
+  .modalContent {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg, 12px);
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modalTitle {
+    font-size: 1.1rem;
+  }
+
+  .modalDescription {
+    font-size: 0.8rem;
+    margin-bottom: 1.15rem;
+    line-height: 1.4;
+  }
+
+  .inputGroup {
+    margin-bottom: 1.15rem;
+    gap: 0.4rem;
+  }
+
+  .inputGroup label {
+    font-size: 0.78rem;
+  }
+
+  /* 
+   * Strict iOS Auto-Zoom Fix: Enforce font-size: 1rem (16px) or above 
+   * on mobile to prevent iOS Safari/Chrome from zooming in when focused.
+   */
+  .inputGroup input,
+  .currencySelectField {
+    font-size: 1rem !important; /* 16px threshold */
+    height: 48px; /* Touch target minimum height */
+    padding: 0 0.85rem;
+  }
+
+  .modalActions {
+    gap: 0.65rem;
+    padding-top: 0.5rem;
+  }
+
+  .cancelBtn,
+  .confirmBtn {
+    min-height: 48px; /* Touch target height */
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 7: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .modalOverlay {
+    padding: 0.5rem;
+  }
+
+  .modalContent {
+    padding: 1rem 0.85rem;
+  }
+
+  .modalTitle {
+    font-size: 1rem;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse; /* Primary confirm button on top for single-thumb submission */
+  }
+
+  .cancelBtn,
+  .confirmBtn {
+    width: 100%;
+  }
+}
+/* === SECTION 7 END === */

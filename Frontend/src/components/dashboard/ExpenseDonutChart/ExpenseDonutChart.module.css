@@ -68,7 +68,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 130px; /* WHY: Slight extension ensures complex currency combinations stay contained */
+  width: 130px; /* Slight extension ensures complex currency combinations stay contained */
   text-align: center;
   pointer-events: none; /* Allows chart hovers behind container nodes cleanly */
 }
@@ -87,7 +87,7 @@
 }
 
 .centerMainValue {
-  font-size: 1.15rem; /* WHY: Slightly optimized scale to comfortably host multi-character indicators cleanly */
+  font-size: 1.15rem;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.02em;
@@ -111,6 +111,7 @@
 .customLegendPanel {
   flex: 1;
   width: 100%;
+  min-width: 0;
 }
 
 .legendListContainer {
@@ -132,6 +133,7 @@
   background-color: var(--surface-muted);
   cursor: pointer;
   transition: all var(--transition-fast) ease-in-out;
+  box-sizing: border-box;
 }
 
 /* HOVER TRIGGERS LINKING LIST TO DONUT SLICES */
@@ -147,6 +149,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .colorIdentityBadge {
@@ -160,6 +164,9 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .activeLegendRow .categoryNameText {
@@ -170,6 +177,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .absoluteCurrencyText {
@@ -209,21 +217,118 @@
 /* === SECTION 4 END === */
 
 /* ==========================================================================
-   === SECTION 5: SMARTPHONE STRUCTURAL BREAKPOINTS START ===
+   === SECTION 5: RESPONSIVE MOBILE ADAPTATIONS (≤ 768px) ===
    ========================================================================== */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .focusCardContainer {
+    padding: 1.15rem 1rem;
+    border-radius: var(--radius-lg, 12px);
+  }
+
+  .focusCardHeader {
+    margin-bottom: 1.15rem;
+  }
+
+  .focusCardHeader h3 {
+    font-size: 1.05rem;
+  }
+
+  .focusCardHeader p {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
   .focusCardBody {
     flex-direction: column;
-    gap: 24px;
+    align-items: center;
+    gap: 1.25rem;
   }
-  
+
   .chartViewportWrapper {
     margin: 0 auto;
   }
 
+  .legendListContainer {
+    gap: 6px;
+  }
+
+  /* Touch-friendly 44px minimum target height for items */
+  .legendListItem {
+    min-height: 44px;
+    padding: 0.55rem 0.75rem;
+  }
+
   .legendListItem:hover,
   .activeLegendRow {
-    transform: none; /* Nullify sliding movements on mobile tap configurations */
+    transform: none; /* Nullify horizontal sliding translations on mobile touch */
+  }
+
+  .legendLeftContent {
+    gap: 8px;
+  }
+
+  .categoryNameText {
+    font-size: 0.82rem;
+  }
+
+  .legendRightContent {
+    gap: 10px;
+  }
+
+  .absoluteCurrencyText {
+    font-size: 0.82rem;
+  }
+
+  .percentageSplitText {
+    font-size: 0.72rem;
+    min-width: 28px;
   }
 }
-/* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .focusCardContainer {
+    padding: 1rem 0.85rem;
+  }
+
+  .focusCardHeader {
+    margin-bottom: 0.85rem;
+  }
+
+  .focusCardHeader h3 {
+    font-size: 0.98rem;
+  }
+
+  .focusCardHeader p {
+    font-size: 0.74rem;
+  }
+
+  .chartViewportWrapper {
+    width: 180px;
+    height: 190px;
+  }
+
+  .centerHoleMetricsDisplay {
+    width: 110px;
+  }
+
+  .centerMetaLabel {
+    font-size: 0.65rem;
+  }
+
+  .centerMainValue {
+    font-size: 0.98rem;
+  }
+
+  .centerPercentageIndicator {
+    font-size: 0.7rem;
+  }
+
+  .categoryNameText,
+  .absoluteCurrencyText {
+    font-size: 0.78rem;
+  }
+}
+/* === SECTION 6 END === */

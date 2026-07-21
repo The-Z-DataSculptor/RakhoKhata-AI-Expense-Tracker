@@ -21,7 +21,7 @@ import styles from './ExpenseDonutChart.module.css';
    ========================================================================== */
 interface ExpenseDonutChartProps {
   data: CategoryBreakdownItem[];
-  sourceCurrency: string;   // <-- NEW
+  sourceCurrency: string;
 }
 /* === SECTION 2 END === */
 

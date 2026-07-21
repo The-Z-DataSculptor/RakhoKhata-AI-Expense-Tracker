@@ -21,7 +21,7 @@ interface MetricRowProps {
   };
   periodLabel: string;
   activePeriod: TimePeriod;
-  sourceCurrency: string;   // <-- NEW: workspace currency
+  sourceCurrency: string;   // workspace currency
 }
 
 export default function MetricRow({ metrics, periodLabel, activePeriod, sourceCurrency }: MetricRowProps) {

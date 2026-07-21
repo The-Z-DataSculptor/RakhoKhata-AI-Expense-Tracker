@@ -31,7 +31,7 @@ export function AiResponseCard({
 }: AiResponseCardProps) {
   if (!isVisible) return null;
 
-  // UPGRADED: Icons increased to size 24 to match the grander text
+  // Icons size 24 for high-clarity brand presentation
   const getIcon = () => {
     if (activePersona === "auditor") return <FiShield className={styles.iconAuditor} size={24} />;
     if (activePersona === "coach") return <FiTrendingUp className={styles.iconCoach} size={24} />;

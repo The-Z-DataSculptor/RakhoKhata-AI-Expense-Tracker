@@ -25,7 +25,7 @@ import styles from './CashFlowChart.module.css';
    ========================================================================== */
 interface CashFlowChartProps {
   data: CashFlowDataPoint[];
-  sourceCurrency: string;   // <-- NEW
+  sourceCurrency: string;
 }
 
 interface CustomTooltipProps {
@@ -37,7 +37,7 @@ interface CustomTooltipProps {
   }>;
   label?: string;
   formatAmount: (amount: number, sourceCurrency?: string) => string;
-  sourceCurrency: string;   // <-- NEW
+  sourceCurrency: string;
 }
 /* === SECTION 2 END === */
 
@@ -191,3 +191,4 @@ export default function CashFlowChart({ data, sourceCurrency }: CashFlowChartPro
     </div>
   );
 }
+/* === SECTION 4 END === */

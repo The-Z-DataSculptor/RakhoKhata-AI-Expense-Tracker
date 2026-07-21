@@ -95,7 +95,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
 
-  // Performance-grade State Synchronization pattern (No cascading useEffect renders)
+  // Performance-grade State Synchronization pattern
   const [prevAvatarUrl, setPrevAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
 
@@ -113,7 +113,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   } | null>(null);
   const [dynamicFact, setDynamicFact] = useState<string>("");
 
-  // Moved data sets inside the hook scope to resolve all linter dependency array tracking exceptions cleanly
   useEffect(() => {
     const timeGreetings = [
       { hourStart: 5, hourEnd: 11, icon: <FiSunrise size={18} />, text: "Good morning" },
@@ -489,13 +488,13 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
             </div>
           ) : currentAvatarUrl ? (
             <>
-              {/* 🚀 FIXED: Swapped to a standard img tag to safely read directly from local express server ports without NextJS proxy breaks */}
-              <img 
+              <Image 
                 src={currentAvatarUrl} 
                 alt={user?.name || "User Avatar"} 
                 className={styles.profileAvatarImage} 
-                width="38"
-                height="38"
+                width={38}
+                height={38}
+                unoptimized
               />
               <div className={styles.avatarCameraOverlay}>
                 <FiCamera size={14} />

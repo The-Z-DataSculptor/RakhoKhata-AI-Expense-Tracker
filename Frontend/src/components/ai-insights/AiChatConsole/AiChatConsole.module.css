@@ -6,8 +6,9 @@
 .consoleSectionFrame {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem; /* Increased from 0.85rem */
+  gap: 1.25rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .consolePromptHeader {
@@ -25,7 +26,7 @@
 
 .consoleGroupTitle {
   margin: 0;
-  font-size: 1rem; /* Increased from 0.82rem */
+  font-size: 1rem;
   font-weight: 800;
   color: var(--text-primary, #10043f);
   text-transform: uppercase;
@@ -43,12 +44,13 @@
   display: flex;
   align-items: center;
   background-color: var(--bg-surface, #ffffff);
-  border: 2px solid var(--border-color, #e5e1f4); /* Thicker border */
-  border-radius: 16px; /* Larger radius */
-  padding: 0.75rem 1rem 0.75rem 1.5rem; /* More padding */
+  border: 2px solid var(--border-color, #e5e1f4);
+  border-radius: 16px;
+  padding: 0.75rem 1rem 0.75rem 1.5rem;
   gap: 1rem;
   box-shadow: 0 4px 20px rgba(16, 4, 63, 0.04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-sizing: border-box;
 }
 
 .inputFlexFieldBar:focus-within {
@@ -75,10 +77,11 @@
   border: none;
   outline: none;
   color: var(--text-primary, #10043f);
-  font-size: 1.15rem; /* Increased from 0.9rem */
+  font-size: 1.15rem;
   font-weight: 600;
   padding: 0.5rem 0;
   min-height: 52px;
+  min-width: 0;
 }
 
 .chatTextFieldInputElement::placeholder {
@@ -99,12 +102,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.75rem 1.75rem; /* More padding */
+  padding: 0.75rem 1.75rem;
   background: linear-gradient(135deg, var(--color-primary, #613bbf), var(--color-primary-dark, #5c39bd));
   color: #ffffff;
   border: none;
-  border-radius: 12px; /* Larger radius */
-  font-size: 0.95rem; /* Increased from 0.82rem */
+  border-radius: 12px;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -137,7 +140,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem; /* Increased from 0.5rem */
+  gap: 0.75rem;
   width: 100%;
   margin-top: 0.5rem;
 }
@@ -145,11 +148,11 @@
 .suggestionClickablePillBadge {
   display: inline-flex;
   align-items: center;
-  padding: 0.6rem 1.1rem; /* More padding */
+  padding: 0.6rem 1.1rem;
   background-color: var(--bg-surface, #ffffff);
   border: 1.5px solid var(--border-color, #e5e1f4);
   border-radius: 24px;
-  font-size: 0.9rem; /* Increased from 0.78rem */
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-secondary, #4e4a6b);
   cursor: pointer;
@@ -171,65 +174,120 @@
 }
 
 /* ==========================================================================
-   === SECTION 5: RESPONSIVE DISPLAY TRANSFORMS ===
+   === SECTION 5: RESPONSIVE DISPLAY TRANSFORMS (≤ 768px) ===
    ========================================================================== */
 @media (max-width: 768px) {
+  .consoleSectionFrame {
+    gap: 1rem;
+  }
+
   .inputFlexFieldBar {
-    padding: 0.6rem 0.8rem 0.6rem 1rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.85rem;
     border-radius: 14px;
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
   .leftMessageIconBox {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
   }
   
   .leftMessageIconBox svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
+  /* 
+   * Enforce font-size at strictly 1rem (16px) or above on mobile inputs
+   * to prevent iOS Safari/Chrome auto-zoom on focus.
+   */
   .chatTextFieldInputElement {
-    font-size: 1rem;
+    font-size: 1rem; /* 16px threshold */
     min-height: 44px;
   }
 
   .chatTextFieldInputElement::placeholder {
-    font-size: 0.9rem;
+    font-size: 0.92rem;
+    text-overflow: ellipsis;
   }
 
   .submitExecuteButtonLauncher {
+    min-height: 44px;
     padding: 0.65rem 1.25rem;
+    font-size: 0.88rem;
+    border-radius: 10px;
+  }
+
+  /* Smooth touch-scroll track for suggestion chips on mobile */
+  .suggestionsRowStack {
+    gap: 0.6rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .suggestionsRowStack::-webkit-scrollbar {
+    display: none;
+  }
+
+  .suggestionClickablePillBadge {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.82rem;
+    min-height: 44px; /* Touch accessibility target */
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 6: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .consoleSectionFrame {
+    gap: 0.85rem;
+  }
+
+  .inputFlexFieldBar {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.4rem 0.4rem 0.4rem 0.75rem;
+    gap: 0.5rem;
+    border-radius: 12px;
+  }
+
+  .leftMessageIconBox {
+    display: none; /* Hide internal icon to maximize typing width on 360px displays */
+  }
+
+  .chatTextFieldInputElement {
+    font-size: 1rem; /* Maintains 16px strictly to prevent Safari auto-zoom */
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .chatTextFieldInputElement::placeholder {
     font-size: 0.85rem;
+  }
+
+  .submitExecuteButtonLauncher {
+    min-height: 44px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    gap: 0.4rem;
+  }
+
+  .suggestionsRowStack {
+    gap: 0.5rem;
+    margin-top: 0.25rem;
   }
 
   .suggestionClickablePillBadge {
     padding: 0.5rem 0.85rem;
     font-size: 0.8rem;
+    min-height: 44px;
   }
 }
-
-@media (max-width: 480px) {
-  .inputFlexFieldBar {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0.75rem;
-    gap: 0.75rem;
-    border-radius: 12px;
-  }
-
-  .leftMessageIconBox {
-    display: none;
-  }
-
-  .submitExecuteButtonLauncher {
-    width: 100%;
-    justify-content: center;
-    padding: 0.7rem 1.5rem;
-  }
-
-  .suggestionsRowStack {
-    gap: 0.5rem;
-  }
-}
+/* === SECTION 6 END === */

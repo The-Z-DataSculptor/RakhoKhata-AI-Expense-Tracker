@@ -95,8 +95,11 @@ export default function BulkDrawer({
     <div className={styles.overlay} onClick={handleCloseDrawer}>
       <aside className={styles.drawerPanel} onClick={(e) => e.stopPropagation()}>
 
+        {/* Mobile visual drag handle for native sheet appearance */}
+        <div className={styles.mobileDragHandle} />
+
         <header className={styles.drawerHeader}>
-          <div>
+          <div className={styles.headerTextGroup}>
             <h2 className={styles.title}>Unassigned Workspace</h2>
             <p className={styles.subtitle}>
               {transactions.length} transactions require matching tags
@@ -110,8 +113,8 @@ export default function BulkDrawer({
         {transactions.length > 0 && (
           <div className={styles.utilityControlBar}>
             <button className={styles.bulkSelectToggleBtn} onClick={toggleSelectAll} type="button">
-              <FiCheckSquare size={14} />
-              {selectedIds.length === transactions.length ? "Deselect All" : "Select All Items"}
+              <FiCheckSquare size={16} />
+              <span>{selectedIds.length === transactions.length ? "Deselect All" : "Select All Items"}</span>
             </button>
           </div>
         )}
@@ -142,7 +145,6 @@ export default function BulkDrawer({
                     <span className={styles.dateStampText}>{tx.date}</span>
                   </div>
                   <div className={styles.amountDisplayBadge}>
-                    {/* ✅ FIXED: Use "USD" as source (amounts are in base USD) */}
                     {formatAmount(tx.amount, "USD")}
                   </div>
                 </div>

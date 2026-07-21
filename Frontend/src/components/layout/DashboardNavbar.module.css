@@ -339,7 +339,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 5: NEW NOTIFICATION ENGINE STYLES ===
+   === SECTION 5: NOTIFICATION ENGINE STYLES ===
    ========================================================================== */
 .notificationBadgeCount {
   position: absolute;
@@ -578,15 +578,15 @@
   margin-top: 0.15rem;
 }
 
-/* ==========================================================================
-   === SECTION 7: RESPONSIVE & MOBILE RULES ===
-   ========================================================================== */
 .hamburgerMenuIconToggle,
 .mobileNavigationDrawerTray,
 .mobileBackdrop {
   display: none;
 }
 
+/* ==========================================================================
+   === SECTION 7: RESPONSIVE & MOBILE RULES (≤ 768px) ===
+   ========================================================================== */
 @media (max-width: 1024px) {
   .factSubtext {
     max-width: 280px;
@@ -595,36 +595,76 @@
 
 @media (max-width: 768px) {
   .topNavbar {
-    padding: 0 1.25rem;
+    padding: 0 1rem;
+    gap: 0.5rem;
   }
 
-  .currencyToggleTrigger,
-  .dropdownMenuContainer {
-    display: none;
+  .welcomeSection {
+    min-width: 0;
+    flex: 1;
   }
 
-  /* Force display notifications dropdown trigger even in mobile deck */
-  .actionControlDeck .dropdownMenuContainer:nth-child(2) {
-    display: block !important;
+  .greetingTitle {
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .metaRow {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.35rem;
-    margin-top: 0.25rem;
+    gap: 0.25rem;
+    margin-top: 0.15rem;
+    min-width: 0;
   }
 
   .factSeparator {
     display: none;
   }
 
+  .factSubtextWrapper {
+    width: 100%;
+  }
+
   .factSubtext {
     max-width: 100%;
     background-color: var(--surface-muted);
-    padding: 0.4rem 0.6rem;
+    padding: 0.35rem 0.55rem;
     border-radius: 6px;
     border: 1px solid var(--border-color);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .actionControlDeck {
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  /* Hide individual dropdown triggers from standard top navbar bar except notifications & profile */
+  .currencyToggleTrigger,
+  .actionControlDeck > .dropdownMenuContainer:first-child,
+  .actionControlDeck > .dropdownMenuContainer:last-of-type {
+    display: none;
+  }
+
+  /* Force display notification dropdown trigger on mobile navbar */
+  .actionControlDeck .dropdownMenuContainer:nth-child(2) {
+    display: block !important;
+  }
+
+  /* Touch-friendly 44px min touch targets for mobile buttons */
+  .utilityIconButton {
+    width: 44px;
+    height: 44px;
+  }
+
+  .profileAvatarContainer {
+    width: 40px;
+    height: 40px;
   }
 
   .hamburgerMenuIconToggle {
@@ -634,10 +674,10 @@
     background: transparent;
     border: none;
     color: var(--text-primary);
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     cursor: pointer;
-    margin-left: 0.25rem;
+    margin-left: 0.15rem;
   }
 
   .mobileBackdrop {
@@ -659,6 +699,8 @@
     top: 72px;
     left: 0;
     width: 100%;
+    max-height: calc(100vh - 72px);
+    overflow-y: auto;
     background-color: var(--bg-surface);
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
@@ -667,10 +709,10 @@
   }
 
   .mobileDrawerWrapper {
-    padding: 1.5rem 1.25rem;
+    padding: 1.25rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   .mobileDrawerDivider {
@@ -682,11 +724,11 @@
   .mobileDrawerGroupItem {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
   .mobileLabelHeader {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -695,21 +737,24 @@
 
   .mobileButtonLayoutGridRow {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
   }
 
+  /* Touch-friendly 48px target heights for mobile drawer choices */
   .mobileActiveActionButton,
   .mobileSecondaryActionButton {
-    padding: 0.65rem 0.5rem;
+    min-height: 48px;
+    padding: 0.55rem 0.6rem;
     border-radius: 8px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     cursor: pointer;
     transition: all 0.15s ease;
+    box-sizing: border-box;
   }
 
   .mobileFlagIcon {
@@ -718,7 +763,7 @@
 
   .mobileCurrencySymbol {
     opacity: 0.6;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
   }
 
   .mobileActiveActionButton {
@@ -738,15 +783,56 @@
   .notificationDropdownMenuFrame {
     position: fixed;
     top: 72px;
-    right: 1rem;
-    left: 1rem;
+    right: 0.75rem;
+    left: 0.75rem;
     width: auto;
     max-width: none;
+    max-height: calc(100vh - 88px);
+  }
+
+  .notificationScrollableContainer {
+    max-height: calc(100vh - 150px);
   }
 }
 
 /* ==========================================================================
-   === SECTION 8: CUSTOM INTERACTIVE PROFILE CAMERA OVERLAYS ===
+   === SECTION 8: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .topNavbar {
+    padding: 0 0.85rem;
+  }
+
+  .greetingTitle {
+    font-size: 0.95rem;
+  }
+
+  .factSubtext {
+    display: none; /* Hide fact pill on extra small mobile screens to keep navbar layout clean */
+  }
+
+  .mobileButtonLayoutGridRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .profileAvatarContainer {
+    width: 36px;
+    height: 36px;
+  }
+
+  .utilityIconButton {
+    width: 40px;
+    height: 40px;
+  }
+
+  .hamburgerMenuIconToggle {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 9: CUSTOM INTERACTIVE PROFILE CAMERA OVERLAYS ===
    ========================================================================== */
 .avatarCameraOverlay {
   position: absolute;

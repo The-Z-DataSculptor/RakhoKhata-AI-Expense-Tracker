@@ -8,7 +8,7 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  max-width: 950px; /* Slightly wider for the new sidebar layout */
+  max-width: 950px;
   margin: 0 auto;
   box-sizing: border-box;
   letter-spacing: -0.02em;
@@ -71,6 +71,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  box-sizing: border-box;
 }
 
 .cardHeaderArea {
@@ -149,6 +150,7 @@
   outline: none;
   transition: all 0.2s ease;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .primaryTextInputElement:focus, .selectInput:focus {
@@ -160,6 +162,7 @@
 .saveActionSubmitBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   background-color: var(--color-primary, #613bbf);
@@ -171,6 +174,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .saveActionSubmitBtn:hover:not(:disabled) {
@@ -192,12 +196,17 @@
 }
 
 /* ==========================================================================
-   === SECTION 4: MODERN SIDEBAR TABS UI ===
+   === SECTION 4: MODERN SIDEBAR & MOBILE NAVIGATION ===
    ========================================================================== */
 .modernSettingsContainer {
   display: flex;
   flex-direction: row;
   min-height: 400px;
+}
+
+/* Hidden by default on desktop viewports (> 768px) */
+.mobileTabSelectorWrapper {
+  display: none;
 }
 
 .settingsSidebar {
@@ -225,6 +234,7 @@
   font-size: 0.9rem;
   transition: all 0.2s ease;
   position: relative;
+  box-sizing: border-box;
 }
 
 .tabButton:hover {
@@ -238,7 +248,6 @@
   font-weight: 700;
 }
 
-/* The active indicator line on the left of the tab */
 .tabButtonActive::before {
   content: "";
   position: absolute;
@@ -259,6 +268,7 @@
   flex: 1;
   padding: 2rem;
   background-color: var(--bg-surface, #ffffff);
+  min-width: 0;
 }
 
 .panelHeader {
@@ -294,7 +304,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 5: RICH CARDS & TAGS (Vibe & AI Persona) ===
+   === SECTION 5: RICH CARDS & TAGS ===
    ========================================================================== */
 .richCardsGrid {
   display: grid;
@@ -312,6 +322,7 @@
   border-radius: var(--radius-md, 10px);
   cursor: pointer;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .richCard:hover {
@@ -360,6 +371,7 @@
   color: var(--text-secondary, #4e4a6b);
   cursor: pointer;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .tagBtn:hover {
@@ -374,7 +386,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 6: WORKSPACE DIRECTORY LIST ===
+   === SECTION 6: WORKSPACE DIRECTORY LIST & VAULT SECURITY ===
    ========================================================================== */
 .directoryEntriesListWrapper {
   display: flex;
@@ -404,6 +416,7 @@
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 8px);
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .wsRowCardItem:hover {
@@ -425,6 +438,8 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .wsVisualMarkerDot {
@@ -432,6 +447,7 @@
   height: 6px;
   border-radius: 50%;
   background-color: var(--text-muted, #7e7a9c);
+  flex-shrink: 0;
 }
 
 .wsActiveCardHighlight .wsVisualMarkerDot {
@@ -442,6 +458,9 @@
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary, #10043f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .activeStatusPillBadge {
@@ -452,6 +471,7 @@
   background-color: rgba(97, 59, 191, 0.08);
   padding: 0.15rem 0.6rem;
   border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .deletingStatusPillBadge {
@@ -462,6 +482,7 @@
   background-color: rgba(220, 38, 38, 0.08);
   padding: 0.15rem 0.6rem;
   border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .rowDeleteTriggerActionBtn {
@@ -475,6 +496,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .rowDeleteTriggerActionBtn:hover:not(:disabled) {
@@ -501,6 +523,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .rowControlHeadline {
@@ -513,6 +537,13 @@
   font-size: 0.85rem;
   color: var(--text-muted, #7e7a9c);
   line-height: 1.4;
+}
+
+.vaultActionCluster {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .loadingSpinnerAnimation {
@@ -535,79 +566,235 @@
 }
 
 /* ==========================================================================
-   === SECTION 7: RESPONSIVE SCREEN BREAKPOINTS ===
+   === SECTION 7: RESPONSIVE SCREEN BREAKPOINTS (≤ 768px) ===
    ========================================================================== */
 @media (max-width: 768px) {
-  .modernSettingsContainer {
-    flex-direction: column;
-  }
-  
-  .settingsSidebar {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 0;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color, #e5e1f4);
-    /* Hide scrollbar for cleaner look */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .settingsSidebar::-webkit-scrollbar {
-    display: none;
+  .settingsCanvasDeck {
+    gap: 1.25rem;
+    padding-bottom: 1.5rem;
   }
 
-  .tabButton {
-    padding: 1rem;
-    white-space: nowrap;
-    border-bottom: 3px solid transparent;
+  .dashboardHeaderCardBox {
+    padding: 1.25rem;
+  }
+
+  .mainHeadline {
+    font-size: 1.4rem;
+  }
+
+  .subtextDescription {
+    font-size: 0.82rem;
+  }
+
+  .cardsStackDeck {
+    gap: 1.25rem;
+  }
+
+  .settingsCardNode {
+    padding: 1.25rem;
+    gap: 1.25rem;
+  }
+
+  .primaryTextInputElement,
+  .selectInput {
+    font-size: 1rem; /* 16px to prevent iOS auto-zoom */
+    min-height: 48px;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .saveActionSubmitBtn {
+    min-height: 48px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.88rem;
+    width: 100%;
     justify-content: center;
   }
 
-  /* Move the active line to the bottom on mobile */
-  .tabButtonActive::before {
-    display: none;
+  .modernSettingsContainer {
+    flex-direction: column;
+    min-height: auto;
   }
   
-  .tabButtonActive {
-    border-bottom-color: var(--color-primary, #613bbf);
+  /* Hide desktop sidebar on mobile */
+  .settingsSidebar {
+    display: none !important;
+  }
+
+  /* Show mobile section dropdown selector */
+  .mobileTabSelectorWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.15rem 1.25rem;
+    background-color: var(--surface-muted, #f9f8ff);
+    border-bottom: 1px solid var(--border-color, #e5e1f4);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .mobileTabSelectorLabel {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted, #7e7a9c);
+    letter-spacing: 0.05em;
+  }
+
+  .mobileSelectFrame {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .mobileTabSelectElement {
+    width: 100%;
+    height: 48px; /* 48px touch target */
+    padding: 0 2.5rem 0 1rem;
+    background-color: var(--bg-surface, #ffffff);
+    border: 1px solid var(--border-color, #e5e1f4);
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-primary, #10043f);
+    font-size: 1rem; /* Strictly 16px to prevent iOS Safari auto-zoom */
+    font-weight: 700;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  }
+
+  .mobileTabSelectElement:focus {
+    border-color: var(--color-primary, #613bbf);
+    box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.1);
+  }
+
+  .mobileSelectChevronIcon {
+    position: absolute;
+    right: 1rem;
+    color: var(--color-primary, #613bbf);
+    pointer-events: none;
   }
 
   .settingsContentArea {
-    padding: 1.5rem;
+    padding: 1.25rem;
+  }
+
+  .panelHeader {
+    margin-bottom: 1.25rem;
+  }
+
+  .panelTitle {
+    font-size: 1.1rem;
+  }
+
+  .panelDescription {
+    font-size: 0.8rem;
   }
   
   .profileFormRow {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .actionFooter {
     flex-direction: column;
-  }
-  
-  .saveActionSubmitBtn {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 640px) {
-  .dashboardHeaderCardBox {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1.25rem;
+    margin-top: 1.5rem;
+    padding-top: 1.15rem;
   }
 
-  .inputActionCluster {
-    flex-direction: column;
-    gap: 0.5rem;
+  .richCardsGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .richCard {
+    padding: 1rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    min-height: 48px;
+  }
+
+  .richCardEmoji {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .richCardText h4 {
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .richCardText p {
+    font-size: 0.78rem;
+  }
+
+  .tagBtn {
+    min-height: 44px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .wsRowCardItem {
+    padding: 0.75rem;
+    min-height: 48px;
+  }
+
+  .rowDeleteTriggerActionBtn {
+    width: 44px;
+    height: 44px;
   }
 
   .placeholderControlRowFlexDeck {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    align-items: stretch;
+    gap: 1.15rem;
+  }
+
+  .vaultActionCluster {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .vaultActionCluster button {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
   }
 }
-/* === SECTION 7 END === */
+
+/* ==========================================================================
+   === SECTION 8: EXTRA SMALL SCREENS (≤ 640px) ===
+   ========================================================================== */
+@media (max-width: 640px) {
+  .dashboardHeaderCardBox {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.15rem;
+  }
+
+  .inputActionCluster {
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .wsRowIdentityFrame {
+    gap: 0.45rem;
+  }
+
+  .wsIdentityNameLabel {
+    font-size: 0.85rem;
+  }
+
+  .activeStatusPillBadge,
+  .deletingStatusPillBadge {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.45rem;
+  }
+}
+/* === SECTION 8 END === */

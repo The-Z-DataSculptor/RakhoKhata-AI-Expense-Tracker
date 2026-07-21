@@ -1,5 +1,8 @@
 /* src/components/budgets/BudgetHeader/BudgetHeader.module.css */
 
+/* ==========================================================================
+   === SECTION 1: HEADER CONTAINER & LAYOUT ===
+   ========================================================================== */
 .headerContainer {
   display: flex;
   justify-content: space-between;
@@ -9,6 +12,7 @@
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border-color, #e5e7eb);
   margin-bottom: 1.75rem;
+  box-sizing: border-box;
 }
 
 .textGroup {
@@ -17,53 +21,150 @@
   gap: 0.35rem;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .pageTitle {
   margin: 0;
   font-size: 1.6rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.activeCountBadge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background-color: var(--primary-soft, rgba(97, 59, 191, 0.1));
+  color: var(--color-primary, #613bbf);
+  border: 1px solid var(--border-color, rgba(97, 59, 191, 0.2));
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .pageSubtitle {
   margin: 0;
   font-size: 0.88rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #4e4a6b);
 }
 
 .controlsGroup {
   display: flex;
-  align-items: center; /* Forces the time switcher and button to stay perfectly centered on the same line */
-  gap: 1.5rem;
+  align-items: center;
+  gap: 1.25rem;
   flex-wrap: wrap;
 }
 
-/* Fixes the layout mistake by clearing out the bottom margin of the time switcher inside this container */
+.timeSwitcherWrapper {
+  display: flex;
+  align-items: center;
+}
+
+/* Clears bottom margin of TimeSwitcher inside controlsGroup */
 .controlsGroup > div {
   margin-bottom: 0 !important;
 }
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === ACTION BUTTONS ===
+   === SECTION 2: ACTION BUTTONS ===
    ========================================================================== */
 .createBudgetBtn {
-  padding: 0.6rem 1.25rem;
-  font-size: 0.85rem;
+  height: 42px;
+  padding: 0 1.25rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  background-color: var(--color-primary);
+  background-color: var(--color-primary, #613bbf);
   color: var(--text-on-primary, #ffffff);
   border: none;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 10px);
   cursor: pointer;
-  transition: var(--transition-fast, all 0.15s ease);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  box-shadow: 0 4px 12px -2px rgba(97, 59, 191, 0.25);
+  transition: var(--transition-fast, all 0.2s ease-in-out);
+  white-space: nowrap;
 }
 
 .createBudgetBtn:hover {
-  background-color: var(--color-primary-dark);
+  background-color: var(--color-primary-dark, #5c39bd);
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px -2px rgba(97, 59, 191, 0.35);
 }
 
 .createBudgetBtn:active {
   transform: translateY(0);
 }
+
+.plusIcon {
+  flex-shrink: 0;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: MOBILE ADAPTIVE RESPONSIVE SHIFTS (< 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .headerContainer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.15rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .textGroup {
+    width: 100%;
+    gap: 0.25rem;
+  }
+
+  .titleRow {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .pageTitle {
+    font-size: 1.35rem;
+  }
+
+  .pageSubtitle {
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .controlsGroup {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0.85rem;
+  }
+
+  .timeSwitcherWrapper {
+    width: 100%;
+  }
+
+  /* 🚀 Full-width TimeSwitcher container on mobile */
+  .timeSwitcherWrapper > div {
+    width: 100%;
+  }
+
+  /* 🚀 Touch-friendly $46px high primary CTA button on mobile */
+  .createBudgetBtn {
+    width: 100%;
+    height: 46px;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md, 12px);
+  }
+}
+/* === SECTION 3 END === */

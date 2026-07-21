@@ -6,16 +6,22 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(16, 4, 63, 0.4); 
-  backdrop-filter: blur(4px); 
+  background: rgba(16, 4, 63, 0.45); 
+  backdrop-filter: blur(5px); 
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   justify-content: flex-end;
   z-index: 1000;
+  box-sizing: border-box;
+}
+
+.mobileDragHandle {
+  display: none;
 }
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: DRAWER PANEL ===
+   === SECTION 2: DRAWER PANEL (DESKTOP DEFAULT) ===
    ========================================================================== */
 .drawerPanel {
   width: 440px;
@@ -26,6 +32,7 @@
   flex-direction: column;
   box-shadow: -10px 0 30px rgba(16, 4, 63, 0.06);
   animation: slideInDrawer 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 @keyframes slideInDrawer {
@@ -50,25 +57,37 @@
   background-color: var(--bg-surface, #ffffff);
 }
 
+.headerTextGroup {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0.75rem;
+}
+
 .title {
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--text-primary, #10043f);
   letter-spacing: -0.01em;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subtitle {
   font-size: 0.8rem;
   color: var(--text-muted, #7e7a9c);
   margin: 0.25rem 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .closeButton {
-  background: transparent;
-  border: none;
-  width: 32px;
-  height: 32px;
+  background: var(--surface-muted, #f9f8ff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -76,13 +95,13 @@
   color: var(--text-muted, #7e7a9c);
   cursor: pointer;
   transition: var(--transition-fast, all 0.2s ease);
-  border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
 .closeButton:hover {
   color: var(--color-danger, #dc2626);
-  background-color: rgba(220, 38, 38, 0.05);
-  border-color: rgba(220, 38, 38, 0.1);
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 /* === SECTION 3 END === */
 
@@ -101,19 +120,19 @@
   background: transparent;
   border: none;
   color: var(--color-primary, #613bbf);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  gap: 0.45rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
   transition: var(--transition-fast);
 }
 
 .bulkSelectToggleBtn:hover {
-  background-color: rgba(97, 59, 191, 0.06);
+  background-color: rgba(97, 59, 191, 0.08);
 }
 /* === SECTION 4 END === */
 
@@ -128,6 +147,7 @@
   flex-direction: column;
   gap: 0.65rem;
   background-color: var(--background, #f9f8ff);
+  -webkit-overflow-scrolling: touch;
 }
 
 .rowCard {
@@ -141,6 +161,7 @@
   cursor: pointer;
   transition: var(--transition-fast, all 0.2s ease-in-out);
   gap: 0.85rem;
+  box-sizing: border-box;
 }
 
 .rowCard:hover {
@@ -151,14 +172,14 @@
 
 .activeRowCard {
   border-color: var(--color-primary, #613bbf);
-  background-color: rgba(97, 59, 191, 0.02);
-  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.04);
+  background-color: rgba(97, 59, 191, 0.03);
+  box-shadow: 0 4px 12px rgba(97, 59, 191, 0.05);
 }
 
 .customCheckIndicator {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   border: 2px solid var(--border-color, #e5e1f4);
   display: flex;
   align-items: center;
@@ -189,6 +210,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .merchantLabel {
@@ -262,6 +284,7 @@
   gap: 0.75rem;
   background-color: var(--bg-surface, #ffffff);
   box-shadow: 0 -8px 24px rgba(16, 4, 63, 0.04);
+  box-sizing: border-box;
 }
 
 .actionBarTopRow {
@@ -276,8 +299,8 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--color-primary, #613bbf);
-  background-color: rgba(97, 59, 191, 0.06);
-  padding: 0.2rem 0.6rem;
+  background-color: rgba(97, 59, 191, 0.08);
+  padding: 0.25rem 0.65rem;
   border-radius: 12px;
 }
 
@@ -298,6 +321,7 @@
   font-weight: 600;
   outline: none;
   transition: var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .workspaceDropdownSelect:focus {
@@ -315,15 +339,12 @@
   cursor: pointer;
   transition: var(--transition-fast, all 0.2s ease);
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .workspaceApplyExecuteBtn:hover:not(:disabled) {
   opacity: 0.95;
   transform: translateY(-1px);
-}
-
-.workspaceApplyExecuteBtn:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .workspaceApplyExecuteBtn:disabled {
@@ -334,12 +355,165 @@
 /* === SECTION 6 END === */
 
 /* ==========================================================================
-   === SECTION 7: MOBILE RESPONSIVE ADAPTATIONS ===
+   === SECTION 7: MOBILE NATIVE BOTTOM SHEET REFACTOR (≤ 768px) ===
    ========================================================================== */
-@media (max-width: 500px) {
+@media (max-width: 768px) {
+  /* Overlay aligns panel to screen bottom like native mobile bottom sheets */
+  .overlay {
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  /* Transform Drawer into a Bottom Sheet Overlay */
   .drawerPanel {
     width: 100%;
+    max-width: 100%;
+    height: 88vh;
+    max-height: 88vh;
     border-left: none;
+    border-top: 1px solid var(--border-color, #e5e1f4);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 40px rgba(16, 4, 63, 0.2);
+    animation: slideUpBottomSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  @keyframes slideUpBottomSheet {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  /* Native Mobile Bottom Sheet Handle Bar */
+  .mobileDragHandle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    background-color: var(--border-color, #e5e1f4);
+    border-radius: 2px;
+    margin: 0.6rem auto 0 auto;
+    flex-shrink: 0;
+  }
+
+  .drawerHeader {
+    padding: 0.85rem 1.15rem;
+    background-color: var(--bg-surface, #ffffff);
+  }
+
+  .title {
+    font-size: 1.05rem;
+  }
+
+  .subtitle {
+    font-size: 0.76rem;
+  }
+
+  /* 44px min hit target for close button */
+  .closeButton {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .utilityControlBar {
+    padding: 0.6rem 1.15rem;
+  }
+
+  .bulkSelectToggleBtn {
+    min-height: 44px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+  }
+
+  .listContainer {
+    padding: 0.85rem 1rem;
+    gap: 0.65rem;
+  }
+
+  /* 48px touch-friendly transaction cards */
+  .rowCard {
+    padding: 0.85rem 1rem;
+    min-height: 48px;
+    gap: 0.85rem;
+  }
+
+  .rowCard:hover {
+    transform: none; /* Disables hover translation jumps on touch interaction */
+  }
+
+  .customCheckIndicator {
+    width: 22px;
+    height: 22px;
+  }
+
+  .merchantLabel {
+    font-size: 0.88rem;
+  }
+
+  .dateStampText {
+    font-size: 0.72rem;
+  }
+
+  .amountDisplayBadge {
+    font-size: 0.9rem;
+  }
+
+  .actionBarStage {
+    padding: 1rem 1.15rem;
+    padding-bottom: max(1.15rem, env(safe-area-inset-bottom));
+    gap: 0.65rem;
+  }
+
+  /* Strict iOS Auto-Zoom Fix: font-size: 1rem (16px) or above strictly enforced */
+  .workspaceDropdownSelect {
+    height: 48px;
+    font-size: 1rem !important; /* 16px threshold */
+    padding: 0 0.85rem;
+  }
+
+  .workspaceApplyExecuteBtn {
+    height: 48px;
+    min-height: 48px;
+    padding: 0 1.25rem;
+    font-size: 0.9rem;
   }
 }
-/* === SECTION 7 END === */
+
+/* ==========================================================================
+   === SECTION 8: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .drawerPanel {
+    height: 92vh;
+    max-height: 92vh;
+  }
+
+  .drawerHeader {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .listContainer {
+    padding: 0.75rem 0.85rem;
+  }
+
+  /* Stack selector & action trigger vertically for single-thumb submission */
+  .actionExecutionRow {
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .workspaceDropdownSelect,
+  .workspaceApplyExecuteBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+}
+/* === SECTION 8 END === */

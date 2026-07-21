@@ -5,6 +5,7 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React from "react";
+import { FiPlus } from "react-icons/fi";
 import TimeSwitcher, { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import styles from "./BudgetHeader.module.css";
 /* === SECTION 1 END === */
@@ -31,23 +32,40 @@ export function BudgetHeader({
 }: BudgetHeaderProps) {
   return (
     <div className={styles.headerContainer}>
-      {/* LEFT SIDE: HEADINGS */}
+      
+      {/* LEFT SIDE: HEADINGS & STATUS BADGE */}
       <div className={styles.textGroup}>
-        <h1 className={styles.pageTitle}>Budgets</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>Budgets</h1>
+          {totalBudgets > 0 && (
+            <span className={styles.activeCountBadge}>
+              {totalBudgets} Active
+            </span>
+          )}
+        </div>
         <p className={styles.pageSubtitle}>
           Set spending limits and track your monthly targets.
-          {totalBudgets > 0 && ` (${totalBudgets} active)`}
         </p>
       </div>
 
       {/* RIGHT SIDE: INTERACTIVE CONTROLS */}
       <div className={styles.controlsGroup}>
-        <TimeSwitcher activePeriod={activeRange} onPeriodChange={onRangeChange} />
+        <div className={styles.timeSwitcherWrapper}>
+          <TimeSwitcher activePeriod={activeRange} onPeriodChange={onRangeChange} />
+        </div>
 
-        <button type="button" className={styles.createBudgetBtn} onClick={onCreateBudgetClick}>
-          Create New Budget
+        <button 
+          type="button" 
+          className={styles.createBudgetBtn} 
+          onClick={onCreateBudgetClick}
+          aria-label="Create a new budget category limit"
+        >
+          <FiPlus size={16} className={styles.plusIcon} />
+          <span>Create New Budget</span>
         </button>
       </div>
+
     </div>
   );
 }
+/* === SECTION 3 END === */

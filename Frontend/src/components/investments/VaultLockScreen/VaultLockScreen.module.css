@@ -14,6 +14,7 @@
   background-color: transparent;
   position: relative;
   animation: fadeIn 0.3s ease-out;
+  box-sizing: border-box;
 }
 
 .lockBoxPanel {
@@ -23,6 +24,7 @@
   gap: 1.75rem;
   width: 100%;
   max-width: 400px;
+  box-sizing: border-box;
 }
 
 .loadingPulseText {
@@ -90,6 +92,7 @@
   display: flex;
   gap: 0.85rem;
   justify-content: center;
+  width: 100%;
 }
 
 .pinBox {
@@ -105,6 +108,7 @@
   outline: none;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform 0.1s ease;
+  box-sizing: border-box;
 }
 
 .pinBox:focus {
@@ -170,7 +174,7 @@
   font-weight: 600;
   color: var(--text-muted);
   line-height: 1.4;
-  margin-bottom: 2.2rem; /* Clear dynamic breathing window height boundary spacing for action chip placement below */
+  margin-bottom: 2.2rem;
 }
 
 .skipActionIconButtonLink {
@@ -253,3 +257,100 @@
   animation: shakeMotion 0.3s ease-in-out;
 }
 /* === SECTION 5 END === */
+
+/* ==========================================================================
+   === SECTION 6: MOBILE RESPONSIVE ADAPTATIONS (≤768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .lockScreenContainer {
+    padding: 1.25rem 1rem;
+    min-height: 50vh;
+  }
+
+  .lockBoxPanel {
+    gap: 1.35rem;
+  }
+
+  .iconCircle {
+    width: 52px;
+    height: 52px;
+  }
+
+  .lockIcon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .titleText {
+    font-size: 1.2rem;
+  }
+
+  .subtitleText {
+    font-size: 0.8rem;
+  }
+
+  .pinBoxesWrapper {
+    gap: 0.65rem;
+  }
+
+  /*
+   * iOS Auto-Zoom Fix: font-size is strictly maintained at or above 16px
+   * (1.35rem = 21.6px) to prevent iOS Safari/Chrome from zooming in on focus.
+   */
+  .pinBox {
+    width: 48px;
+    height: 58px;
+    font-size: 1.35rem; /* 21.6px >= 16px threshold */
+  }
+
+  .footerArea {
+    height: 44px; /* Sufficient space for mobile touch area */
+  }
+
+  /* 44px minimum touch target for thumb accessibility */
+  .forgotPinButton {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 7: EXTRA SMALL SCREENS (≤480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .lockScreenContainer {
+    padding: 1rem 0.75rem;
+  }
+
+  .lockBoxPanel {
+    gap: 1.15rem;
+  }
+
+  .pinBoxesWrapper {
+    gap: 0.5rem;
+  }
+
+  /* 
+   * Compact 48px height minimum touch target for PIN boxes on small screens,
+   * maintaining 16px+ font size for iOS auto-zoom prevention.
+   */
+  .pinBox {
+    width: 44px;
+    height: 52px;
+    font-size: 1.25rem; /* 20px >= 16px threshold */
+    border-radius: var(--radius-sm, 8px);
+  }
+
+  .skipVaultBannerCard {
+    padding: 1rem;
+  }
+
+  .skipContentTextDeck p {
+    margin-bottom: 2.5rem;
+  }
+}
+/* === SECTION 7 END === */

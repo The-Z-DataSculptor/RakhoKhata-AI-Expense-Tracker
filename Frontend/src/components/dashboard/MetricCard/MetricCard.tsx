@@ -1,4 +1,5 @@
 // src/components/dashboard/MetricCard/MetricCard.tsx
+"use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & DEPENDENCIES ===
@@ -22,7 +23,7 @@ export interface MetricItem {
 
 export interface MetricCardProps {
   metrics: MetricItem[];
-  sourceCurrency: string; // <-- NEW: the workspace currency for formatting
+  sourceCurrency: string; // workspace currency for formatting
 }
 /* === SECTION 2 END === */
 
@@ -63,7 +64,7 @@ export default React.memo(function MetricCard({ metrics, sourceCurrency }: Metri
         const firstWord = extractedFirstWord || "";
         const remainingWords = restWordsArray.join(" ");
 
-        // 👇 Build subtext with projected value if available
+        // Build subtext with projected value if available
         let displaySubtext = item.subtext;
         if (item.projectedValue !== undefined && item.projectedValue !== null) {
           displaySubtext = `${item.subtext} · Projected monthly: ${formatAmount(item.projectedValue, sourceCurrency)}`;
@@ -74,7 +75,7 @@ export default React.memo(function MetricCard({ metrics, sourceCurrency }: Metri
             <header className={styles.cardHeaderRow}>
               <div className={styles.metaLabelGroup}>
                 <span className={styles.cardIndexMarker}>{displayIndex}</span>
-                <h3 className={styles.cardTitle}>
+                <h3 className={styles.cardTitle} title={item.title}>
                   <span className={styles.titleAccent}>{firstWord.toUpperCase()}</span>
                   {" "}{remainingWords.toUpperCase()}
                 </h3>
@@ -86,12 +87,12 @@ export default React.memo(function MetricCard({ metrics, sourceCurrency }: Metri
 
             <div className={styles.cardBodyContent}>
               <h2 className={styles.metricValueDisplay}>
-                {formatAmount(item.value, sourceCurrency)}   {/* <-- FIXED: now uses sourceCurrency */}
+                {formatAmount(item.value, sourceCurrency)}
               </h2>
             </div>
 
             <footer className={styles.cardFooterRow}>
-              <p className={styles.commentSubtext}>
+              <p className={styles.commentSubtext} title={displaySubtext}>
                 <span className={styles.commentSyntax}>|</span> {displaySubtext}
               </p>
             </footer>

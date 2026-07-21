@@ -4,7 +4,6 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useState, useEffect } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { toast } from "sonner";
@@ -15,7 +14,6 @@ import styles from "./CreateBudgetModal.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
-/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 export interface NewBudgetFormData {
   originalAmount: number;
   originalCurrency: string;
@@ -44,7 +42,6 @@ interface CreateBudgetModalProps {
 /* ==========================================================================
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initialData }: CreateBudgetModalProps) {
   const { currency, convertAmount } = useCurrency();
 
@@ -75,7 +72,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
   useEffect(() => {
     if (!isOpen) return;
 
-    // 🚀 FIXED: Added proper clean-up memory handlers for asynchronous state loading sequences
     const stateLoadTimerId = setTimeout(() => {
       const currentMonthBoundaries = getCurrentMonthRange();
 
@@ -154,7 +150,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
 /* ==========================================================================
    === SECTION 4: EXPORTS / RENDER COMPONENT ===
    ========================================================================== */
-/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
   return (
     <div className={styles.modalOverlay} onClick={handleClose} role="dialog" aria-modal="true">
       <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
@@ -205,7 +200,7 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
                 type="number"
                 required
                 min="0.01"
-                max={99999999} // Hard block against mathematical integer overflow exploits
+                max={99999999}
                 step="0.01"
                 placeholder="0.00"
                 className={styles.inputFieldWithPrefix}

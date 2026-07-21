@@ -16,7 +16,7 @@ interface VaultHeaderProps {
   onAddAssetClick: () => void; 
   /** Callback function triggered when a user clicks to setup the 4-digit PIN */
   onSetupPinClick?: () => void;
-  /** FIXED: Tracks if the database PIN lock is currently active */
+  /** Tracks if the database PIN lock is currently active */
   hasPinEnabled?: boolean;
 }
 /* === SECTION 2 END === */
@@ -40,13 +40,13 @@ export function VaultHeader({ onAddAssetClick, onSetupPinClick, hasPinEnabled = 
       <div className={styles.actionControlWrapper}>
         
         {/* SECONDARY ACTION: VAULT PIN LOCK SETUP */}
-        {/* FIXED: Applies conditional styling layout classes and disables the button if already active */}
         <button 
           type="button" 
           className={`${styles.lockSetupBtn} ${hasPinEnabled ? styles.lockActiveBtn : ""}`} 
           onClick={hasPinEnabled ? undefined : onSetupPinClick}
           title={hasPinEnabled ? "Security lock is active" : "Secure your vault with a 4-digit PIN"}
           disabled={hasPinEnabled}
+          aria-label={hasPinEnabled ? "PIN Lock Active" : "Enable Vault Lock"}
         >
           <svg 
             className={styles.buttonIconGraphic} 
@@ -82,6 +82,7 @@ export function VaultHeader({ onAddAssetClick, onSetupPinClick, hasPinEnabled = 
           type="button" 
           className={styles.addAssetRecordBtn} 
           onClick={onAddAssetClick}
+          aria-label="Add Investment Asset"
         >
           <svg 
             className={styles.buttonIconGraphic} 

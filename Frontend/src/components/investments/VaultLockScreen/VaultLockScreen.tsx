@@ -53,7 +53,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
         if (isMounted) {
           setHasPin(status.hasPin);
           
-          // FIXED: Defer the automated unlock using a macro-task timeout wrapper 
+          // Defer automated unlock using a macro-task timeout wrapper 
           // to prevent React from blocking simultaneous state updates during mounts.
           if (!status.hasPin) {
             setTimeout(() => {
@@ -167,6 +167,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
               strokeLinecap="round" 
               strokeLinejoin="round"
               className={styles.lockIcon}
+              aria-hidden="true"
             >
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -192,6 +193,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               autoComplete="off"
+              aria-label={`Digit ${index + 1} of 4`}
             />
           ))}
         </div>
@@ -216,3 +218,6 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     </div>
   );
 }
+/* ==========================================================================
+   === SECTION 4 END ===
+   ========================================================================== */

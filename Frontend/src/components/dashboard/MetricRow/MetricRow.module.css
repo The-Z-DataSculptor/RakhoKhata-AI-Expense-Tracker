@@ -12,3 +12,23 @@
   margin-bottom: 2.5rem;
 }
 /* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: MOBILE RESPONSIVE ADAPTATIONS (≤ 768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .rowGridContainer {
+    /* Optimizes vertical spacing to maintain high-density dashboard layouts */
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 3: EXTRA SMALL SCREENS (≤ 480px) ===
+   ========================================================================== */
+@media (max-width: 480px) {
+  .rowGridContainer {
+    margin-bottom: 1.25rem;
+  }
+}
+/* === SECTION 3 END === */

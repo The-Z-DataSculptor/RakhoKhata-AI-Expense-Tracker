@@ -1,4 +1,5 @@
-// src/components/investments/PinSetupModal/PinSetupModal.tsx
+/* K:\Developer\Expense-Tracker\Frontend\src\components\investments\PinSetupModal\PinSetupModal.tsx
+
 "use client";
 
 /* ==========================================================================
@@ -54,7 +55,7 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
     }
   }, [isOpen, focusInput]);
 
-  // Close handler: just call onClose – state will be reset by remount
+  // Close handler: call onClose – state will be reset by remount
   const handleCloseModal = useCallback(() => {
     onClose();
   }, [onClose]);
@@ -185,6 +186,7 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
             className={styles.closeButton}
             onClick={handleCloseModal}
             disabled={isProcessing}
+            aria-label="Close modal"
           >
             &times;
           </button>

@@ -1,17 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Enable standalone build for lightweight Docker image */
+  output: "standalone",
+
   images: {
     remotePatterns: [
-      // 🌐 GOOGLE AUTHENTICATION SYSTEM (Kept fully intact)
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
         port: "",
         pathname: "/**",
       },
-      // 🚀 LOCAL FILESYSTEM BACKEND STORAGE (Added for custom uploads)
       {
         protocol: "http",
         hostname: "localhost",

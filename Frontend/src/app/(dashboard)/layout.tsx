@@ -14,11 +14,17 @@ import styles from "./layout.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPESCRIPT INTERFACES ===
+   === SECTION 2: TYPESCRIPT INTERFACES & DYNAMIC ROUTING ===
    ========================================================================== */
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
+
+// 🚀 DOCKER-READY API ROUTER: Switches to internal container networking on the server
+const API_URL =
+  typeof window === "undefined"
+    ? (process.env.INTERNAL_API_URL || "http://backend:5000") // Next.js Server (Docker container to container)
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"); // User's Browser
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -39,7 +45,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
   try {
     // 3. Handshake: Dispatch a server-to-server request to your protected Express API endpoint
-    const response = await fetch("http://localhost:5000/api/auth/me", {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
       method: "GET",
       headers: {
         Cookie: `token=${sessionToken}`, 
@@ -58,7 +64,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     userData = result.user;
 
     // 5. DATA LINK LAYER: Fetch workspaces directly on the server to catch their default currency choice
-    const workspaceResponse = await fetch("http://localhost:5000/api/workspaces", {
+    const workspaceResponse = await fetch(`${API_URL}/api/workspaces`, {
       method: "GET",
       headers: {
         Cookie: `token=${sessionToken}`,
@@ -93,7 +99,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           <div className={styles.mainContentArea}>
             
             {/* INTERACTIVE STICKY TOP TOOLBAR */}
-            {/* 🚀 FIXED: Cleaned up props since initialization is handled seamlessly at the Provider root above */}
             <DashboardNavbar 
               user={userData} 
               currentWorkspaceId={activeWorkspace?.id}

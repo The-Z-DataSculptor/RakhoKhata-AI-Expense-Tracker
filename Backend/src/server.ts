@@ -23,13 +23,16 @@ import { globalApiLimiter } from "./middleware/rateLimitMiddleware";
 const app = express();
 
 /* ==========================================================================
-   === SECTION 2: GLOBAL MIDDLEWARE ===
+   === SECTION 2: GLOBAL MIDDLEWARE & PROXY CONFIG ===
    ========================================================================== */
+
+// 🚀 Enable trust proxy so Express reads real client IPs behind Docker / Nginx / Cloud proxies
+app.set("trust proxy", 1);
 
 // Enable Cross-Origin Resource Sharing for the Next.js frontend
 app.use(
   cors({
-    origin: "http://localhost:3000", // Adjust in production
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
     credentials: true,
   })
 );
@@ -41,7 +44,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Serve static files (e.g., uploaded avatars) from the public directory
-// Use an absolute path to avoid directory traversal issues
 app.use(
   "/uploads",
   express.static(path.resolve(process.cwd(), "public", "uploads"))
@@ -101,9 +103,7 @@ app.use(
   ) => {
     console.error("Global Server Exception Caught:", err);
 
-    // Use the error status code or default to 500
     const statusCode = err.status || 500;
-    // In production, replace the message with a generic one
     const message =
       process.env.NODE_ENV === "production"
         ? "An unexpected server error occurred."

@@ -1,60 +1,36 @@
 // Backend/src/middleware/rateLimitMiddleware.ts
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
-   ========================================================================== */
 import rateLimit from "express-rate-limit";
-/* === SECTION 1 END === */
+import { Request } from "express";
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
-
-/**
- * Minimal interface to represent the request object for our
- * development bypass helper. This avoids using the 'any' type.
- */
-interface MinimalRequest {
-  ip?: string;
-  connection?: {
-    remoteAddress?: string;
-  };
-  // Express‑rate‑limit attaches additional properties,
-  // but we only need the IP address for the check.
+// Extend Request interface to recognize authenticated users
+interface AuthenticatedRequest extends Request {
+  user?: { id: string };
 }
 
 /**
- * Determines whether the request originates from a local development
- * environment. This allows bypassing rate limits during local testing.
+ * Clean development check relying strictly on environment configuration.
  */
-function isDevelopment(req: MinimalRequest): boolean {
-  // The IP address may be stored in req.ip or req.connection.remoteAddress
-  const ip = req.ip || req.connection?.remoteAddress || "";
-
-  return (
-    process.env.NODE_ENV === "development" ||
-    ip === "127.0.0.1" ||
-    ip === "::1" ||
-    ip.includes("localhost")
-  );
-}
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
-   ========================================================================== */
+const isDev = process.env.NODE_ENV === "development";
 
 /**
- * Global safety limiter that applies to general dashboard requests.
- * Increased to 1,000 requests per 15 minutes to accommodate complex single‑page applications.
+ * Key generator that falls back to User ID for authenticated sessions,
+ * preventing shared IP lockouts on office/home networks.
+ */
+const userOrIpKey = (req: Request) => {
+  const authReq = req as AuthenticatedRequest;
+  return authReq.user?.id || req.ip || "unknown";
+};
+
+/**
+ * Global safety limiter for general dashboard reads.
  */
 export const globalApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000,
-  skip: (req) => isDevelopment(req as MinimalRequest),
+  skip: () => isDev,
   message: {
-    error:
-      "Too many dashboard network requests. Security cooldown active, please try again in 15 minutes.",
+    error: "Too many dashboard requests. Security cooldown active, please try again in 15 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -62,49 +38,47 @@ export const globalApiLimiter = rateLimit({
 
 /**
  * Strict authentication limiter for login, signup, and PIN operations.
- * Protects against brute‑force attacks.
+ * Skips successful attempts so only FAILED attempts trigger the penalty.
  */
 export const strictAuthLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
-  skip: (req) => isDevelopment(req as MinimalRequest),
+  skip: () => isDev,
+  skipSuccessfulRequests: true,
   message: {
-    error:
-      "Too many failed login or security authentication attempts. Please try again in 15 minutes.",
+    error: "Too many failed security attempts. Please wait 15 minutes before trying again.",
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 /**
- * AI API limiter for Gemini‑powered endpoints.
- * Prevents excessive calls that would exhaust API credits or quotas.
+ * AI API limiter for Gemini-powered endpoints.
+ * ⚡ Updated: Lowered limit to 15 requests per hour.
  */
 export const aiApiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 30,
-  skip: (req) => isDevelopment(req as MinimalRequest),
+  max: 15, // 🚀 Changed from 30 to 15
+  skip: () => isDev,
+  keyGenerator: userOrIpKey,
   message: {
-    error:
-      "You have reached your hourly limit for AI financial insights. Please try again in an hour.",
+    error: "You have reached your hourly limit of 15 AI financial insights. Please try again in an hour.",
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 /**
- * Mutation safety limiter that protects write operations (POST, PUT, DELETE).
- * Stops automated scripts from flooding the database with junk entries.
+ * Mutation safety limiter that protects database write operations (POST, PUT, DELETE).
  */
 export const writeActionsLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 150,
-  skip: (req) => isDevelopment(req as MinimalRequest),
+  skip: () => isDev,
+  keyGenerator: userOrIpKey,
   message: {
-    error:
-      "You are updating database records too rapidly. Please slow down and try again in 5 minutes.",
+    error: "You are updating records too rapidly. Please slow down and try again in 5 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
-/* === SECTION 3 END === */

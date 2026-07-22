@@ -1,13 +1,22 @@
-// src/components/Navbar.tsx
+// src/components/layout/Navbar.tsx
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import styles from "./Navbar.module.css";
+
+/* Helper to safely check client hydration without triggering extra re-renders */
+const subscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+function useIsMounted() {
+  return useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
+}
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -16,19 +25,11 @@ import styles from "./Navbar.module.css";
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+
+  // 🚀 React 19 compliant hydration check (Zero cascading render warnings)
+  const mounted = useIsMounted();
 
   const { activeTheme, changeTheme } = useTheme();
-
-  /* --- LIFECYCLE: Set mounted flag after client hydration --- */
-  useEffect(() => {
-    // 👇 Defer state update to avoid React 19 warning about synchronous setState in effect
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -65,9 +66,21 @@ export default function Navbar() {
         </button>
         
         <ul className={`${styles.navLinks} ${isOpen ? styles.navLinksActive : ""}`}>
-          <li><a href="#features" onClick={() => setIsOpen(false)}>Features</a></li>
-          <li><a href="#pricing" onClick={() => setIsOpen(false)}>Pricing</a></li>
-          <li><a href="#blog" onClick={() => setIsOpen(false)}>Blogs</a></li>
+          <li>
+            <Link href="/#features" onClick={() => setIsOpen(false)}>
+              Features
+            </Link>
+          </li>
+          <li>
+            <Link href="/#pricing" onClick={() => setIsOpen(false)}>
+              Pricing
+            </Link>
+          </li>
+          <li>
+            <Link href="/beta" onClick={() => setIsOpen(false)}>
+              Blogs
+            </Link>
+          </li>
         </ul>
         
         <div className={`${styles.authActions} ${isOpen ? styles.authActionsActive : ""}`}>
@@ -105,13 +118,14 @@ export default function Navbar() {
             )}
           </div>
 
-          <a href="/login" className={styles.signInLink} onClick={() => setIsOpen(false)}>
+          <Link href="/login" className={styles.signInLink} onClick={() => setIsOpen(false)}>
             Sign In
-          </a>
-          <button className={styles.signUpButton}>
+          </Link>
+
+          <Link href="/signup" className={styles.signUpButton} onClick={() => setIsOpen(false)}>
             Get Started
             <span className={styles.buttonArrow}>→</span>
-          </button>
+          </Link>
         </div>
 
       </nav>

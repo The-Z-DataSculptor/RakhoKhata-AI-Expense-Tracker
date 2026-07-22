@@ -24,10 +24,27 @@ interface CachedRates {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: CACHE UTILITIES ===
+   === SECTION 2: CACHE & FALLBACK UTILITIES ===
    ========================================================================== */
 const LOCAL_STORAGE_KEY = "rakho_khata_live_rates";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Dynamic API Base URL for Docker, Local Dev, and Production
+const API_BASE_URL =
+  typeof window === "undefined"
+    ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000")
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
+
+// Emergency fallback rates so the app never crashes if the backend is offline
+const FALLBACK_RATES: Record<string, number> = {
+  USD: 1,
+  PKR: 278.50,
+  EUR: 0.92,
+  GBP: 0.78,
+  INR: 83.50,
+  CAD: 1.37,
+  AUD: 1.50,
+};
 
 // In‑memory fallback for server‑side rendering environments
 let memoryCache: CachedRates | null = null;
@@ -83,25 +100,34 @@ function loadCachedRates(): Record<string, number> | null {
  * Fetches fresh exchange rates from the backend proxy (which hides the API key).
  */
 async function fetchFreshRates(): Promise<Record<string, number>> {
-  const endpoint = "http://localhost:5000/api/auth/exchange-rates";
+  const endpoint = `${API_BASE_URL}/api/auth/exchange-rates`;
 
-  const response = await fetch(endpoint);
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(
-      `Backend exchange rate proxy error: ${response.status} – ${errorBody}`
-    );
+  try {
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.warn(`Backend exchange rate proxy warning (${response.status}): ${errorBody}`);
+      return FALLBACK_RATES;
+    }
+
+    const data: ExchangeRateResponse = await response.json();
+
+    if (data.result !== "success" || !data.conversion_rates) {
+      console.warn(`Exchange rate engine warning: result is "${data?.result}"`);
+      return FALLBACK_RATES;
+    }
+
+    return data.conversion_rates;
+  } catch (error: unknown) {
+    // 🛡️ Catches network errors ("Failed to fetch") without throwing an unhandled exception
+    console.warn("⚠️ Unable to reach exchange rate server. Using offline fallback rates.", error);
+    return FALLBACK_RATES;
   }
-
-  const data: ExchangeRateResponse = await response.json();
-
-  if (data.result !== "success") {
-    throw new Error(
-      `Exchange rate engine returned unsuccessful result: ${data.result}`
-    );
-  }
-
-  return data.conversion_rates;
 }
 /* === SECTION 2 END === */
 
@@ -111,7 +137,7 @@ async function fetchFreshRates(): Promise<Record<string, number>> {
 
 /**
  * Returns the best available exchange rates, using the cache when possible
- * and falling back to a stale cache or throwing if completely unavailable.
+ * and falling back to stale data or default rates if the server is offline.
  */
 export async function getExchangeRates(): Promise<Record<string, number>> {
   // 1. Use fresh cache if available
@@ -124,7 +150,7 @@ export async function getExchangeRates(): Promise<Record<string, number>> {
     persistRates(fresh);
     return fresh;
   } catch (error: unknown) {
-    console.error("Failed to fetch fresh exchange rates:", error);
+    console.warn("Failed to fetch fresh exchange rates, checking stale cache:", error);
 
     // 3. Last resort: return stale cache (even if expired)
     if (memoryCache) {
@@ -147,7 +173,9 @@ export async function getExchangeRates(): Promise<Record<string, number>> {
       }
     }
 
-    throw error; // No rates available at all
+    // 4. Safe offline fallback if no cache or connection exists
+    console.warn("Using default fallback exchange rates.");
+    return FALLBACK_RATES;
   }
 }
 
@@ -166,18 +194,8 @@ export async function convertCurrency(
   const from = fromCurrency.toUpperCase();
   const to = toCurrency.toUpperCase();
 
-  const rateFrom = rates[from];
-  if (!rateFrom) {
-    throw new Error(
-      `Source currency "${from}" is not available in the exchange rate matrix.`
-    );
-  }
-  const rateTo = rates[to];
-  if (!rateTo) {
-    throw new Error(
-      `Target currency "${to}" is not available in the exchange rate matrix.`
-    );
-  }
+  const rateFrom = rates[from] || FALLBACK_RATES[from] || 1;
+  const rateTo = rates[to] || FALLBACK_RATES[to] || 1;
 
   const converted = (amount / rateFrom) * rateTo;
   return Math.round(converted * 100) / 100;

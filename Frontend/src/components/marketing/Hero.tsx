@@ -5,6 +5,7 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React from "react";
+import Link from "next/link";
 import styles from "./Hero.module.css";
 /* === SECTION 1 END === */
 
@@ -43,12 +44,20 @@ export default function Hero() {
           </p>
           
           <div className={styles.buttonGroup}>
-            <button className={styles.primaryBtn}>
+            {/* 🚀 CONNECTED: Links directly to /signup */}
+            <Link href="/signup" className={styles.primaryBtn}>
               Start Free Trial <span className={styles.btnArrow}>→</span>
-            </button>
-            <button className={styles.secondaryBtn}>
+            </Link>
+
+            {/* 🚀 CONNECTED: Opens YouTube Live Demo in a new tab */}
+            <a 
+              href="https://www.youtube.com/watch?v=v6bx9g-mqyo" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className={styles.secondaryBtn}
+            >
               Watch Live Demo
-            </button>
+            </a>
           </div>
         </div>
         {/* ==================== LEFT COLUMN END ==================== */}

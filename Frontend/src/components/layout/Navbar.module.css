@@ -51,6 +51,7 @@
   user-select: none;
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
 
   flex: 0 0 auto;
   order: 1;
@@ -288,6 +289,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-soft);
+  text-decoration: none; /* 🚀 Ensures Link tag looks like a true button */
 }
 
 .signUpButton:hover {

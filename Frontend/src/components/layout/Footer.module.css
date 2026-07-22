@@ -1,3 +1,5 @@
+/* src/components/Footer.module.css */
+
 /* ==========================================================================
    === SECTION 1: RADIAL LAYOUT ENGINE ===
    ========================================================================== */
@@ -22,9 +24,11 @@
   font-family: var(--font-navbar);
   font-size: 1.35rem;
   font-weight: 300;
-  color: var(--text-primary); /* FIXED: Swapped from --foreground to protect visibility in dark mode */
+  color: var(--text-primary);
   letter-spacing: -0.03em;
   user-select: none;
+  text-decoration: none; /* 🚀 Ensures Link tag renders cleanly without link underlines */
+  display: inline-block;
 }
 
 .logoAccent {
@@ -33,8 +37,6 @@
   margin-left: 0.15rem;
 }
 
-/* THE "WHY" COMMENT LAYER: Use --text-muted instead of pure opacity so the text 
-   retains semantic color in both light and dark modes, improving accessibility. */
 .tagline { 
   color: var(--text-muted);
   font-size: 1rem; 
@@ -51,7 +53,7 @@
 
 .navLinks a {
   text-decoration: none;
-  color: var(--text-secondary); /* FIXED: Swapped from --foreground for proper contrast steps */
+  color: var(--text-secondary);
   font-size: 0.9rem;
   padding: 8px 16px;
   border-radius: var(--radius-lg);
@@ -59,8 +61,6 @@
   transition: var(--transition-fast);
 }
 
-/* THE "WHY" COMMENT LAYER: Use --text-on-primary instead of hardcoded white. 
-   This ensures consistent theming if primary button background ever changes in the future. */
 .navLinks a:hover {
   background: var(--color-primary);
   color: var(--text-on-primary);
@@ -74,7 +74,6 @@
   justify-content: center;
 }
 
-/* THE "WHY" COMMENT LAYER: Use --text-secondary for better contrast in dark mode. */
 .socialIcons a {
   text-decoration: none;
   color: var(--text-secondary);
@@ -83,7 +82,6 @@
   transition: var(--transition-fast);
 }
 
-/* Removed underline, added color change and lift for icons */
 .socialIcons a:hover { 
   color: var(--color-primary);
   transform: translateY(-2px);
@@ -91,8 +89,6 @@
 
 /* === SECTION 5: COPYRIGHT === */
 .copy {
-  /* THE "WHY" COMMENT LAYER: Use --text-muted for semantic consistency with supporting text 
-     across both light and dark themes, improving readability of the copyright notice. */
   color: var(--text-muted);
   font-size: 0.75rem;
   letter-spacing: 0.1em;

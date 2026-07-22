@@ -1,7 +1,10 @@
+// src/components/PricingSection.tsx
+
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React from "react";
+import Link from "next/link";
 // Import the CSS module for local scoped styling
 import styles from "./PricingSection.module.css";
 
@@ -84,9 +87,10 @@ export default function PricingSection() {
             ))}
           </ul>
 
-          <button className={styles.freeButton}>
+          {/* 🚀 CONNECTED: Links directly to /signup */}
+          <Link href="/signup" className={styles.freeButton}>
             Get Started Free
-          </button>
+          </Link>
         </div>
         {/* --- CARD A END: FREE TIER --- */}
 
@@ -126,9 +130,10 @@ export default function PricingSection() {
             ))}
           </ul>
 
-          <button className={styles.proButton}>
+          {/* 🚀 CONNECTED: Links directly to /beta */}
+          <Link href="/beta" className={styles.proButton}>
             Unlock Power Automation
-          </button>
+          </Link>
         </div>
         {/* --- CARD B END: PRO TIER --- */}
 

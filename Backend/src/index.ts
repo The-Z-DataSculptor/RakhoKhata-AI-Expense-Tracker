@@ -11,9 +11,10 @@ import { initBillReminderCron } from "./workers/billReminderWorker";
 /* ==========================================================================
    === SECTION 2: SERVER STARTUP & BACKGROUND JOBS ===
    ========================================================================== */
-const PORT = 5000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
 
-app.listen(PORT, "0.0.0.0", () => {
+// Dual-stack host binding handles localhost, 127.0.0.1, and IPv6 ::1 seamlessly
+app.listen(PORT, () => {
   console.log(
     `🚀 Financial secure core engine active on http://localhost:${PORT}`
   );

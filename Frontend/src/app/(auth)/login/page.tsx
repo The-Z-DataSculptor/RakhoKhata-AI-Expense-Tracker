@@ -11,7 +11,6 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -26,10 +25,17 @@ import styles from "./page.module.css";
 
 type MarketTrend = "STABLE_GROWTH" | "CORRECTIVE_RECOVERY" | "HIGH_VOLATILITY_BURST";
 
-/** Stable empty subscription for useSyncExternalStore */
+interface LoginSuccessResponse {
+  message: string;
+  user: {
+    id: string;
+    email: string;
+    isOnboardingCompleted: boolean;
+  };
+}
+
 const emptySubscribe = () => (): void => {};
 
-/** Returns a human‑readable label for the market trend status */
 function marketTrendLabel(trend: MarketTrend): string {
   switch (trend) {
     case "STABLE_GROWTH":
@@ -49,15 +55,13 @@ function marketTrendLabel(trend: MarketTrend): string {
    ========================================================================== */
 
 export default function LoginPage() {
-  const router = useRouter();
-
-  // ----- UI state -----
+  // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
 
-  // ----- React Hook Form -----
+  // React Hook Form
   const {
     register,
     handleSubmit,
@@ -67,18 +71,17 @@ export default function LoginPage() {
     mode: "onBlur",
   });
 
-  // ----- Canvas state -----
+  // Canvas state
   const [marketVolatility, setMarketVolatility] = useState(12);
   const [marketTrend, setMarketTrend] = useState<MarketTrend>("STABLE_GROWTH");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastMousePos = useRef({ x: 0, y: 0 });
-  const lastMouseTime = useRef<number>(0);   // ← FIX: not impure; will be updated on first mouse move
+  const lastMouseTime = useRef<number>(0);
 
   const currentAmplitude = useRef(20);
   const targetAmplitude = useRef(20);
 
-  // Ensure client‑side rendering for the interactive canvas
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   // ---------------------------------------------------------------------------
@@ -93,25 +96,35 @@ export default function LoginPage() {
         credentials: "include",
       });
 
-      const result: unknown = await response.json();
+      const result = (await response.json()) as LoginSuccessResponse | { error: string };
 
       if (!response.ok) {
         const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
+          "error" in result
+            ? result.error
             : "Authentication failed. Please verify credentials.";
         throw new Error(errorMessage);
       }
 
-      toast.success("Welcome back! Loading your dashboard securely...");
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      router.push("/dashboard");
+      toast.success("Welcome back! Loading your session...");
+
+      // Route user depending on their onboarding completion status
+      const targetDestination =
+        "user" in result && result.user.isOnboardingCompleted
+          ? "/dashboard"
+          : "/onboarding";
+
+      // Hard navigation ensures new HTTP-only session cookies hydrate cleanly
+      setTimeout(() => {
+        window.location.href = targetDestination;
+      }, 500);
+
     } catch (error: unknown) {
       console.error("Login Error:", error);
       const message =
         error instanceof Error
           ? error.message
-          : "An unexpected error occurred. Please check your backend.";
+          : "An unexpected error occurred. Please check your backend connection.";
       toast.error(message);
     }
   };
@@ -119,9 +132,7 @@ export default function LoginPage() {
   // ---------------------------------------------------------------------------
   // FORGOT PASSWORD FLOW
   // ---------------------------------------------------------------------------
-  const handleForgotPasswordSubmit = async (
-    e: React.FormEvent
-  ) => {
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedEmail = forgotEmail.trim();
     if (!trimmedEmail) {
@@ -171,7 +182,7 @@ export default function LoginPage() {
   };
 
   // ---------------------------------------------------------------------------
-  // CANVAS ANIMATION (market pulse effect)
+  // CANVAS ANIMATION
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!isClient) return;
@@ -182,7 +193,6 @@ export default function LoginPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Resize handler
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
@@ -202,20 +212,16 @@ export default function LoginPage() {
         return;
       }
 
-      // CSS variable extraction (safe fallback)
       const rootStyles = getComputedStyle(document.documentElement);
       const bg = rootStyles.getPropertyValue("--background").trim() || "#0A061B";
       const primary = rootStyles.getPropertyValue("--color-primary").trim() || "#613bbf";
       const success = rootStyles.getPropertyValue("--color-success").trim() || "#16a34a";
 
-      // Clear with a faint background
       ctx.fillStyle = bg.startsWith("#") ? `${bg}26` : "rgba(255,255,255,0.15)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Update wave offset
       waveOffset += 0.04;
 
-      // Smooth amplitude toward target
       currentAmplitude.current +=
         (targetAmplitude.current - currentAmplitude.current) * 0.08;
       if (targetAmplitude.current > 20) {
@@ -236,7 +242,6 @@ export default function LoginPage() {
         lastStateUpdate = now;
       }
 
-      // Draw the wave
       ctx.beginPath();
       ctx.lineWidth = 3;
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
@@ -255,7 +260,6 @@ export default function LoginPage() {
       }
       ctx.stroke();
 
-      // Pulsing node
       const nodeX = (waveOffset * 40) % canvas.width;
       const nodeBaseline = canvas.height * 0.6 - (nodeX / canvas.width) * 120;
       const nodeSine =
@@ -301,7 +305,6 @@ export default function LoginPage() {
     lastMousePos.current = { x: e.clientX, y: e.clientY };
     lastMouseTime.current = now;
   };
-/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: RENDER COMPONENT ===
@@ -412,7 +415,6 @@ export default function LoginPage() {
                 href="http://localhost:5000/api/auth/google"
                 className={styles.googleOAuthHighwayButton}
               >
-                {/* Google "G" icon */}
                 <svg
                   width="18"
                   height="18"
@@ -557,4 +559,3 @@ export default function LoginPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

@@ -16,7 +16,11 @@ interface TokenPayload {
 
 // Custom request type that attaches the decoded user information
 export interface AuthenticatedRequest extends Request {
-  user?: TokenPayload;
+  user?: {
+    id: string;      // 🚀 Added 'id' for compatibility across all middlewares
+    userId: string;  // Kept 'userId' for backward compatibility
+    email: string;
+  };
 }
 /* === SECTION 1 END === */
 
@@ -76,7 +80,9 @@ export const verifyTokenGuard = async (
     const decoded = payload as unknown as TokenPayload;
 
     // 4. Attach the verified user information to the request for downstream handlers
+    // 🚀 Provides both 'id' and 'userId' to prevent property mismatch bugs
     req.user = {
+      id: decoded.userId,
       userId: decoded.userId,
       email: decoded.email,
     };
@@ -86,7 +92,6 @@ export const verifyTokenGuard = async (
   } catch (error: unknown) {
     console.error("PASETO Verification Guard Exception:", error);
 
-    // Check if the token has expired so we can give a more specific reason
     const errorMessage = String(error);
     if (errorMessage.includes("expired")) {
       res
@@ -99,7 +104,6 @@ export const verifyTokenGuard = async (
       return;
     }
 
-    // Generic authentication failure – never reveal why exactly
     res
       .status(403)
       .json(
@@ -120,7 +124,7 @@ export const ensureOnboardingCompleted = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res
         .status(401)

@@ -20,11 +20,11 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-// 🚀 DOCKER-READY API ROUTER: Switches to internal container networking on the server
+// 🚀 DYNAMIC API ROUTER: Uses localhost for local dev, respects env overrides for Docker
 const API_URL =
   typeof window === "undefined"
-    ? (process.env.INTERNAL_API_URL || "http://backend:5000") // Next.js Server (Docker container to container)
-    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"); // User's Browser
+    ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000")
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       headers: {
         Cookie: `token=${sessionToken}`, 
       },
-      cache: "no-store", // Disables internal caching mechanisms so user state profiles match the DB perfectly
+      cache: "no-store", // Disables internal caching so user state profiles match the DB perfectly
     });
 
     const result = await response.json();
@@ -87,12 +87,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
 
   return (
-    /* 🚀 FIXED: Injected the active server-side workspace currency directly into CurrencyProvider to stop layout jumps */
     <CurrencyProvider initialCurrency={activeWorkspace?.currency || "USD"}>
       <WorkspaceProvider>
         <div className={styles.dashboardShell}>
           
-          {/* PERSISTENT SIDEBAR NAVIGATION (Passing our live database profile properties directly down) */}
+          {/* PERSISTENT SIDEBAR NAVIGATION */}
           <Sidebar user={userData} />
 
           {/* RIGHT SIDE VIEWPORT ENGINE BLOCK */}
@@ -104,9 +103,8 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
               currentWorkspaceId={activeWorkspace?.id}
             />
 
-            {/* INJECTED CORE APP CONTENT (THE OVERVIEW HUB DROPS IN HERE) */}
+            {/* INJECTED CORE APP CONTENT */}
             <main className={styles.pageInjectionViewport}>
-              {/* INNER WRAPPER: Ensures scroll anchoring functions perfectly across dynamic heights */}
               <div className={styles.scrollAnchorWrapper}>
                 {children}
               </div>

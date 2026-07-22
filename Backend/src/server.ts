@@ -26,30 +26,41 @@ const app = express();
    === SECTION 2: GLOBAL MIDDLEWARE & PROXY CONFIG ===
    ========================================================================== */
 
-// 🚀 Enable trust proxy so Express reads real client IPs behind Docker / Nginx / Cloud proxies
 app.set("trust proxy", 1);
 
-// Enable Cross-Origin Resource Sharing for the Next.js frontend
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  process.env.CLIENT_URL?.replace(/\/$/, "") || "http://localhost:3000",
+];
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      const normalized = origin.replace(/\/$/, "");
+      if (allowedOrigins.includes(normalized) || process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    optionsSuccessStatus: 200,
   })
 );
 
-// Parse incoming JSON request bodies
 app.use(express.json());
-
-// Parse cookies from HTTP requests
 app.use(cookieParser());
 
-// Serve static files (e.g., uploaded avatars) from the public directory
 app.use(
   "/uploads",
   express.static(path.resolve(process.cwd(), "public", "uploads"))
 );
 
-// Apply a global rate limiter to all /api routes
 app.use("/api", globalApiLimiter);
 /* === SECTION 2 END === */
 
@@ -57,7 +68,6 @@ app.use("/api", globalApiLimiter);
    === SECTION 3: API ROUTES ===
    ========================================================================== */
 
-// Health check endpoint
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -72,7 +82,6 @@ app.get("/api/health", async (_req: Request, res: Response) => {
   }
 });
 
-// Mount individual route modules
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/workspaces", workspaceRoutes);
@@ -82,6 +91,11 @@ app.use("/api/budgets", budgetRoutes);
 app.use("/api/investments", investmentRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+// Standard 404 Catch-All (Compatible with Express 5 / path-to-regexp v8)
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: "Requested API endpoint does not exist." });
+});
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -93,7 +107,6 @@ interface AppError {
   message?: string;
 }
 
-// Centralized error handler – never leaks stack traces in production
 app.use(
   (
     err: AppError,

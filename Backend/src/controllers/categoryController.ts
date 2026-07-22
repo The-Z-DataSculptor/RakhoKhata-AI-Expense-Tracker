@@ -31,7 +31,9 @@ function buildSafeError(message: string): { error: string } {
  */
 function isSystemCategory(name: string): boolean {
   const normalized = name.toLowerCase().trim();
-  return IMMUTABLE_SYSTEM_CATEGORIES.includes(normalized);
+  return IMMUTABLE_SYSTEM_CATEGORIES.some((sysCat) =>
+    normalized.includes(sysCat)
+  );
 }
 /* === SECTION 2 END === */
 
@@ -75,12 +77,24 @@ export const getWorkspaceCategories = async (
       return;
     }
 
+    // Retrieve database categories
     const categories = await prisma.category.findMany({
       where: { workspaceId: targetWorkspaceId },
       orderBy: { name: "asc" },
     });
 
-    res.status(200).json({ categories });
+    // 🚀 Custom Pin Sorting: Forces "Unassigned" to Index 0, alphabetizes the rest
+    const sortedCategories = [...categories].sort((a, b) => {
+      const aIsUnassigned = a.name.toLowerCase().includes("unassigned");
+      const bIsUnassigned = b.name.toLowerCase().includes("unassigned");
+
+      if (aIsUnassigned && !bIsUnassigned) return -1;
+      if (!aIsUnassigned && bIsUnassigned) return 1;
+
+      return a.name.localeCompare(b.name);
+    });
+
+    res.status(200).json({ categories: sortedCategories });
   } catch (error: unknown) {
     console.error("Fetch Categories Controller Error:", error);
     res

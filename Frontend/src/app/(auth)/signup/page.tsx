@@ -18,6 +18,8 @@ import {
   FiCheckCircle,
   FiPlus,
   FiMinus,
+  FiMail,
+  FiShield,
 } from "react-icons/fi";
 
 import { signupSchema } from "@/schemas/auth";
@@ -33,6 +35,9 @@ import styles from "./page.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
+
+/** Signup registration flow mode */
+type SignupMethod = "CHOOSE" | "EMAIL";
 
 /** Shape of the form data used throughout the wizard */
 interface SignupFormData {
@@ -109,6 +114,8 @@ const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
 export default function SignupPage() {
   const router = useRouter();
 
+  // Mode selection state: "CHOOSE" displays options; "EMAIL" displays standard wizard
+  const [signupMethod, setSignupMethod] = useState<SignupMethod>("CHOOSE");
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -188,7 +195,7 @@ export default function SignupPage() {
     });
   };
 
-  // Step navigation
+  // Step navigation with explicit field validations
   const handleNext = () => {
     if (step === 1) {
       const validation = signupSchema.safeParse(formData);
@@ -198,13 +205,47 @@ export default function SignupPage() {
         return;
       }
     }
+
+    if (step === 2) {
+      if (!formData.country.trim()) {
+        toast.error("Please select your country to continue.");
+        return;
+      }
+      if (!formData.currency.trim()) {
+        toast.error("Please select a default currency.");
+        return;
+      }
+    }
+
+    if (step === 3) {
+      if (!formData.occupation) {
+        toast.error("Please select your income style / job type.");
+        return;
+      }
+      if (!formData.financialGoal) {
+        toast.error("Please select a main financial goal.");
+        return;
+      }
+    }
+
     setStep((prev) => Math.min(prev + 1, 4));
   };
 
-  const handlePrev = () => setStep((prev) => Math.max(prev - 1, 1));
+  const handlePrev = () => {
+    if (step === 1) {
+      setSignupMethod("CHOOSE");
+      return;
+    }
+    setStep((prev) => Math.max(prev - 1, 1));
+  };
 
-  // Final submission
+  // Final submission validation
   const submitForm = async () => {
+    if (!formData.aiPersona) {
+      toast.error("Please pick an AI assistant personality style to complete registration.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await fetch("http://localhost:5000/api/auth/signup", {
@@ -238,6 +279,90 @@ export default function SignupPage() {
 
   // Step content rendering
   const renderStepContent = () => {
+    if (signupMethod === "CHOOSE") {
+      return (
+        <div className={styles.stepContainer} suppressHydrationWarning>
+          <div className={styles.stepHeader}>
+            <div className={styles.stepIconBox}>
+              <FiShield className={styles.stepIcon} />
+            </div>
+            <h2>Get Started with RakhoKhata</h2>
+            <p>Choose your preferred account creation method below.</p>
+          </div>
+
+          <div className={styles.methodChoiceGrid}>
+            {/* Google OAuth Option */}
+            <a
+              href="http://localhost:5000/api/auth/google"
+              className={`${styles.methodChoiceCard} ${styles.googleChoiceCard}`}
+            >
+              <div className={`${styles.methodIconBox} ${styles.googleIconBox}`}>
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M17.64 9.20455C17.64 8.59091 17.5855 8.00455 17.4845 7.44545H9V10.783H13.8436C13.635 11.91 13.0009 12.8645 12.0477 13.5027V15.6695H14.9564C16.6582 14.1027 17.64 11.8705 17.64 9.20455Z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M9 18C11.43 18 13.4673 17.1955 14.9591 15.6695L12.0505 13.5027C11.2445 14.0427 10.2136 14.3645 9 14.3645C6.65455 14.3645 4.66636 12.7841 3.95727 10.6555H0.949091V12.9886C2.43545 15.9409 5.48182 18 9 18Z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M3.95727 10.6555C3.77727 10.1155 3.67636 9.54273 3.67636 8.95455C3.67636 8.36636 3.77727 7.79364 3.95727 7.25364V4.92045H0.949091C0.340909 6.13364 0 7.50545 0 8.95455C0 10.4036 0.340909 11.7755 0.949091 12.9886L3.95727 10.6555Z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M9 3.63545C10.3227 3.63545 11.5091 4.09091 12.4418 4.98273L15.0245 2.40001C13.4645 0.946364 11.4245 0 9 0C5.48182 0 2.43545 2.05909 0.949091 5.01136L3.95727 7.34455C4.66636 5.21591 6.65455 3.63545 9 3.63545Z"
+                    fill="#EA4335"
+                  />
+                </svg>
+              </div>
+              <div className={styles.methodText}>
+                <h4>Continue with Google</h4>
+                <p>1-click fast registration using your Google account.</p>
+              </div>
+              <FiChevronRight className={styles.methodArrow} />
+            </a>
+
+            <div className={styles.authChoiceDivider}>
+              <span>or create an account manually</span>
+            </div>
+
+            {/* Email Registration Option */}
+            <button
+              type="button"
+              onClick={() => {
+                setSignupMethod("EMAIL");
+                setStep(1);
+              }}
+              className={`${styles.methodChoiceCard} ${styles.emailChoiceCard}`}
+            >
+              <div className={`${styles.methodIconBox} ${styles.emailIconBox}`}>
+                <FiMail />
+              </div>
+              <div className={styles.methodText}>
+                <h4>Sign up with Email</h4>
+                <p>Set up a password-protected account step-by-step.</p>
+              </div>
+              <FiChevronRight className={styles.methodArrow} />
+            </button>
+          </div>
+
+          <div className={styles.existingAccountLinkBlock}>
+            Already have an account?{" "}
+            <Link href="/login" className={styles.hyperlinkHighlight}>
+              Log in here
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     switch (step) {
       case 1:
         return (
@@ -552,11 +677,17 @@ export default function SignupPage() {
                 <div
                   key={num}
                   className={`${styles.stepIndicator} ${
-                    step >= num ? styles.stepIndicatorActive : ""
+                    signupMethod === "EMAIL" && step >= num
+                      ? styles.stepIndicatorActive
+                      : ""
                   }`}
                 >
                   <div className={styles.stepNumber}>
-                    {num < step ? <FiCheckCircle /> : num}
+                    {signupMethod === "EMAIL" && num < step ? (
+                      <FiCheckCircle />
+                    ) : (
+                      num
+                    )}
                   </div>
                   <div className={styles.stepLabels}>
                     <span className={styles.stepLabelTitle}>
@@ -571,12 +702,20 @@ export default function SignupPage() {
           {/* DEDICATED MOBILE-ONLY STEP TRACKER CONTAINER */}
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
-              Step {step} of 4: <strong>{STEP_TITLES[step - 1]}</strong>
+              {signupMethod === "CHOOSE" ? (
+                <>Welcome to <strong>RakhoKhata</strong></>
+              ) : (
+                <>
+                  Step {step} of 4: <strong>{STEP_TITLES[step - 1]}</strong>
+                </>
+              )}
             </span>
             <div className={styles.mobileProgressBarTrack}>
               <div
                 className={styles.mobileProgressBarFill}
-                style={{ width: `${(step / 4) * 100}%` }}
+                style={{
+                  width: `${signupMethod === "CHOOSE" ? 0 : (step / 4) * 100}%`,
+                }}
               />
             </div>
           </div>
@@ -588,36 +727,32 @@ export default function SignupPage() {
             {renderStepContent()}
           </div>
 
-          <div className={styles.wizardFooter}>
-            {step > 1 ? (
+          {signupMethod === "EMAIL" && (
+            <div className={styles.wizardFooter}>
               <button
                 onClick={handlePrev}
                 className={styles.btnSecondary}
                 disabled={isSubmitting}
               >
-                <FiChevronLeft /> Back
+                <FiChevronLeft /> {step === 1 ? "Change Method" : "Back"}
               </button>
-            ) : (
-              <div />
-            )}
 
-            {step < 4 ? (
-              <button onClick={handleNext} className={styles.btnPrimary}>
-                Continue <FiChevronRight />
-              </button>
-            ) : (
-              <button
-                onClick={submitForm}
-                className={styles.btnFinish}
-                disabled={isSubmitting || !formData.aiPersona}
-              >
-                {isSubmitting
-                  ? "Creating..."
-                  : "Finish Registration"}
-                <FiCheckCircle style={{ marginLeft: "8px" }} />
-              </button>
-            )}
-          </div>
+              {step < 4 ? (
+                <button onClick={handleNext} className={styles.btnPrimary}>
+                  Continue <FiChevronRight />
+                </button>
+              ) : (
+                <button
+                  onClick={submitForm}
+                  className={styles.btnFinish}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Creating..." : "Finish Registration"}
+                  <FiCheckCircle style={{ marginLeft: "8px" }} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ const GEMINI_API_URL =
 // Supported timeline scopes for analysis
 type TimelineScope = "today" | "week" | "month";
 
-// Pre‑defined companion personalities with strict prompt instructions
+// Pre‑defined companion personalities with strict simple-language instructions
 interface CompanionPersona {
   title: string;
   instruction: string;
@@ -24,33 +24,33 @@ const COMPANION_PERSONAS: Record<string, CompanionPersona> = {
   savage_roaster: {
     title: "Savage Roaster",
     instruction:
-      "You are a witty, extremely blunt Pakistani corporate financial roaster named RakhoKhata AI Buddy. Use friendly, conversational English mixed with mild, funny local Urdu/Pakistani street slang (like 'Aari Meri Jaan', 'Yaar', 'Kharcha', 'Hisaab', 'Daba ke kharch kiya'). Address the user directly by name. Look at their metrics context and give a sharp, hilarious reality check about their expenses, then prompt them to select one of the three scope analysis buttons below. STIPULATION: Never output a dollar sign ($) before strings, numbers, or headers. Output all amounts explicitly as PKR.",
+      "You are RakhoKhata AI Buddy — a witty, funny, blunt friend from Pakistan. Speak in EXTREMELY SIMPLE, easy-to-read everyday English, mixed with mild local slang (like 'Yaar', 'Kharcha', 'Hisaab'). Never use complicated words or complex financial terms. Keep every sentence short, clear, and funny. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
   },
   supportive_coach: {
     title: "Supportive Coach",
     instruction:
-      "You are an encouraging, highly supportive money coach. Be incredibly helpful, positive, and motivating. Address the user directly by name. Praise their progress, check their metrics, and gently advise them to select an analytical timeline button below to work toward their financial freedom. STIPULATION: Never output a dollar sign ($) before text or quotation markers under any circumstances. Output currency as PKR.",
+      "You are an encouraging money coach. Speak in VERY SIMPLE, clear, everyday English. Be positive and friendly. Avoid long or complicated financial words. Keep sentences short and easy to understand. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
   },
   forensic_detective: {
     title: "Forensic Detective",
     instruction:
-      "You are an elite, sharp financial Forensic Detective. Be logical, professional, and state your observations like case files. Scan their metrics for leak anomalies, and direct them to choose a timeline analysis button below so you can search for leaks in their ledgers. STIPULATION: Do not output dollar indicators ($). Explicitly print currency labels as PKR.",
+      "You are a sharp financial detective. Speak in SIMPLE, clear English. State your observations like simple clues. Avoid complex jargon or big words. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
   },
   silent_accountant: {
     title: "Silent Accountant",
     instruction:
-      "You are a quiet, hyper-analytical Silent Accountant. Keep your analysis entirely focus-driven, mathematical, and practical. Address the user directly, state their metrics simply, and invite them to run calculations by clicking a timeline button below. STIPULATION: Clean out all western currency markers ($). Print only numeric values appended with PKR.",
+      "You are a calm, direct accountant. Speak in SUPER SIMPLE, basic English. Give clear, straightforward facts and numbers. No long words or confusing financial terms. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
   },
 };
 
 // Simple persona instructions for the general AI ask endpoint
 const PERSONA_INSTRUCTIONS: Record<string, string> = {
   auditor:
-    "You are a Strict Financial Auditor. Be direct, honest, and critical. Point out waste clearly. Limit your response to 3-5 sentences.",
+    "You are a Strict Financial Auditor. Speak in super simple, plain English. Be direct and honest about wasted money using short, simple sentences. Avoid complex jargon. Limit your response to 3-5 sentences.",
   coach:
-    "You are a supportive Money Coach. Be encouraging and helpful. Give practical, actionable advice. Limit your response to 3-5 sentences.",
+    "You are a supportive Money Coach. Speak in simple, friendly, easy-to-understand English. Give basic, practical advice. Limit your response to 3-5 sentences.",
   minimalist:
-    "You are a Minimalist Advisor. Help the user simplify their spending. Suggest what to cut or reduce. Limit your response to 3-5 sentences.",
+    "You are a Minimalist Advisor. Speak in simple everyday English. Tell the user clearly and simply what to cut or save. Limit your response to 3-5 sentences.",
 };
 
 // Safely retrieves the Gemini API key from environment variables
@@ -67,7 +67,6 @@ function getApiKey(): string {
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 
-// Shape of the computed workspace metrics returned by fetchAndCalculateWorkspaceMetrics
 interface WorkspaceMetrics {
   totalIncome: number;
   totalExpenses: number;
@@ -91,19 +90,16 @@ interface WorkspaceMetrics {
   dateRangeText: string;
 }
 
-// Expanded user record including optional fields that may exist on the User model
 interface ExtendedUser {
   id: string;
   name: string;
   email: string;
   aiPersona?: string | null;
-  // Cooldown timestamp fields – may not exist in all schemas; using unknown for safety
   lastTodayAnalysisRun?: unknown;
   lastWeekAnalysisRun?: unknown;
   lastMonthAnalysisRun?: unknown;
 }
 
-// The full context object passed to the AI prompt builder
 interface PromptData {
   income: number;
   expenses: number;
@@ -131,15 +127,12 @@ function getDateRangeForScope(scope: TimelineScope): {
     start.setUTCHours(0, 0, 0, 0);
     end.setUTCHours(23, 59, 59, 999);
   } else if (scope === "week") {
-    // Last 7 days including today
     start.setUTCDate(anchor.getUTCDate() - 6);
     start.setUTCHours(0, 0, 0, 0);
     end.setUTCHours(23, 59, 59, 999);
   } else if (scope === "month") {
-    // First day of current month to last day of current month
     start.setUTCDate(1);
     start.setUTCHours(0, 0, 0, 0);
-    // Set end to the first day of next month minus one millisecond
     const nextMonth = new Date(anchor);
     nextMonth.setUTCMonth(anchor.getUTCMonth() + 1, 1);
     nextMonth.setUTCHours(0, 0, 0, 0);
@@ -147,17 +140,6 @@ function getDateRangeForScope(scope: TimelineScope): {
   }
 
   return { startDate: start, endDate: end };
-}
-
-/**
- * Checks if two Date objects represent the same calendar day.
- */
-function isSameCalendarDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
 }
 /* === SECTION 2 END === */
 
@@ -180,7 +162,6 @@ async function fetchAndCalculateWorkspaceMetrics(
 }> {
   const { startDate, endDate } = getDateRangeForScope(scope);
 
-  // Fire all independent database queries simultaneously
   const [workspace, user, transactions, categories, budgets] =
     await Promise.all([
       prisma.workspace.findUnique({
@@ -226,7 +207,6 @@ async function fetchAndCalculateWorkspaceMetrics(
   let flexibleExpenses = 0;
   const categorySpent: Record<string, number> = {};
 
-  // Build the raw transaction list for the AI prompt
   const rawTransactionsList = transactions.map((tx) => {
     const amount = Number(tx.originalAmount ?? 0);
     const catName = tx.category?.name ?? "Uncategorized";
@@ -240,7 +220,6 @@ async function fetchAndCalculateWorkspaceMetrics(
       totalExpenses += amount;
       categorySpent[catName] = (categorySpent[catName] || 0) + amount;
 
-      // Classify as fixed or flexible based on category flags
       if (tx.category?.isFixed || tx.category?.isRecurring) {
         fixedExpenses += amount;
       } else {
@@ -259,13 +238,11 @@ async function fetchAndCalculateWorkspaceMetrics(
 
   const safeToSpend = totalIncome - totalExpenses;
 
-  // Determine the top spending category
   const sortedExpenses = Object.entries(categorySpent).sort(
     ([, a], [, b]) => b - a
   );
   const topCategory = sortedExpenses.length > 0 ? sortedExpenses[0][0] : "None";
 
-  // Prepare budget list with current spending status
   const parsedBudgets = budgets.map((b) => {
     const catName = b.category?.name ?? "Unknown";
     const limit = Number(b.originalAmount ?? 0);
@@ -297,7 +274,6 @@ async function fetchAndCalculateWorkspaceMetrics(
 
 /**
  * Builds a detailed, structured prompt for the Gemini API.
- * The prompt includes the full transaction ledger, budgets, and metrics.
  */
 function buildPrompt(question: string, data: PromptData): string {
   const {
@@ -323,7 +299,6 @@ function buildPrompt(question: string, data: PromptData): string {
           .join("\n")
       : "No active budgets registered in this workspace.";
 
-  // Render the raw transaction ledger as a formatted table
   const ledgerTable =
     rawTransactions.length > 0
       ? rawTransactions
@@ -357,25 +332,16 @@ USER QUERY:
 "${question}"
 
 STIPULATIONS:
-1. Rely exclusively on the itemized ledger above to list or audit raw transactions.
-2. Under absolutely no circumstances should you ever output a dollar sign ($). All currencies must be displayed in PKR.
-3. Be incredibly thorough and call out specific dates and transaction descriptions in your answer.
+1. Rely exclusively on the itemized ledger above to answer raw transaction questions.
+2. Under absolutely no circumstances output a dollar sign ($). All currencies must be displayed in PKR.
+3. CRITICAL: Explain everything in VERY SIMPLE, EASY-TO-UNDERSTAND English. Do NOT use complex financial words, dense jargon, or confusing phrasing. Keep sentences short and clear.
 `;
 }
 
-/* --- Cooldown helpers (disabled – fields not in schema) --- */
-// The cooldown fields (lastTodayAnalysisRun etc.) do not exist in the current
-// User model. The following code safely skips any attempted writes.
 async function trySaveCooldown(
   userId: string,
   scope: TimelineScope
-): Promise<void> {
-  // The field mapping would be:
-  // today: "lastTodayAnalysisRun", week: "lastWeekAnalysisRun", month: "lastMonthAnalysisRun"
-  // Because these columns are not defined, we skip the update entirely.
-  // In a production system you would either add these columns or use a separate table.
-  // Intentionally left empty – no database operation.
-}
+): Promise<void> {}
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -384,8 +350,6 @@ async function trySaveCooldown(
 
 /**
  * POST /api/ai/ask
- * Receives a user question and the current workspace, then queries
- * the Gemini API with full ledger context.
  */
 export const askAI = async (
   req: AuthenticatedRequest,
@@ -395,7 +359,6 @@ export const askAI = async (
     const userId = req.user?.userId;
     const { question, persona, workspaceId } = req.body;
 
-    // 1. Authentication and input validation
     if (!userId) {
       res.status(401).json({ error: "Authentication required." });
       return;
@@ -408,18 +371,15 @@ export const askAI = async (
       return;
     }
 
-    // 2. Resolve the persona (default to coach if missing/invalid)
     const personaKey =
       persona && PERSONA_INSTRUCTIONS[persona]
         ? persona
         : "coach";
     const systemInstruction = PERSONA_INSTRUCTIONS[personaKey];
 
-    // 3. Fetch and compute workspace metrics for the full month
     const { workspace, metrics, user } =
       await fetchAndCalculateWorkspaceMetrics(workspaceId, userId, "month");
 
-    // 4. Build the AI prompt
     const promptData: PromptData = {
       income: metrics.totalIncome,
       expenses: metrics.totalExpenses,
@@ -432,7 +392,6 @@ export const askAI = async (
     };
     const prompt = buildPrompt(question, promptData);
 
-    // 5. Call Gemini API
     const apiKey = getApiKey();
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: "POST",
@@ -456,20 +415,16 @@ export const askAI = async (
     }
 
     const result: unknown = await response.json();
-
-    // Safely extract the AI reply
     const aiText = extractAiText(result);
     res.status(200).json({ response: aiText });
   } catch (error: unknown) {
     console.error("AI Ask Controller Error:", error);
-    // Never leak internal details
     res.status(500).json({ error: "An unexpected error occurred while processing your request." });
   }
 };
 
 /**
  * POST /api/ai/greeting
- * Generates a warm, creative greeting based on the user's persona.
  */
 export const getAiCompanionGreeting = async (
   req: AuthenticatedRequest,
@@ -513,16 +468,17 @@ Current time of day is: ${timeOfDay}.
 
 Persona: ${selectedPersona.title}
 
-TASK: Write a highly creative, unique, warm, and deeply impressive greeting for ${user.name} that is guaranteed to light up their day and bring a smile to their face.
+TASK: Write a short, warm, and simple greeting for ${user.name} to start their day with a smile.
 
 STIPULATIONS:
-1. Under absolutely no circumstances should you ever mention account balances, income, expenses, transactions, or financial figures.
-2. If you are the 'Savage Roaster', be witty, incredibly funny, and affectionately tease them about their energy or life today.
-3. If you are the 'Supportive Coach', be highly motivating, inspirational, and tell them why they are amazing.
-4. If you are the 'Forensic Detective', state a playful, dramatic "observation" about their morning or day.
-5. If you are the 'Silent Accountant', be elegantly calm, encouraging, and highly practical.
-6. Write a maximum of 2 sentences.
-7. CRITICAL: Absolutely never output a dollar sign ($) anywhere in your response text.
+1. Under absolutely no circumstances mention account balances, income, expenses, transactions, or financial figures.
+2. If 'Savage Roaster', be witty, funny, and playfully tease them in super simple English.
+3. If 'Supportive Coach', be friendly and encouraging in clear, simple words.
+4. If 'Forensic Detective', state a fun, simple, playful "clue" about their day.
+5. If 'Silent Accountant', be calm, warm, and simple.
+6. Write a maximum of 2 short sentences.
+7. CRITICAL: Use VERY SIMPLE, EASY-TO-READ English. No long or complex words!
+8. CRITICAL: Absolutely never output a dollar sign ($) anywhere.
 `;
 
     const apiKey = getApiKey();
@@ -538,10 +494,9 @@ STIPULATIONS:
     });
 
     if (!response.ok) {
-      // Fallback greeting if AI fails
       res.status(200).json({
         user: { name: user.name, aiPersona: personaKey },
-        greeting: `Aari Meri Jaan, ${user.name}! Ready to look at your budgets? Pick a duration scope down below.`,
+        greeting: `Hey ${user.name}! Ready to check your money today? Tap a button below to get started!`,
         cooldowns: { today: false, week: false, month: false },
       });
       return;
@@ -562,8 +517,6 @@ STIPULATIONS:
 
 /**
  * POST /api/ai/execute-analysis
- * Generates a financial analysis report for the selected scope
- * and locks the cooldown button for that scope (cooldown saving disabled).
  */
 export const executeAiCompanionAnalysis = async (
   req: AuthenticatedRequest,
@@ -583,14 +536,12 @@ export const executeAiCompanionAnalysis = async (
       return;
     }
 
-    // Validate the scope parameter
     const validScopes: TimelineScope[] = ["today", "week", "month"];
     if (!validScopes.includes(scope)) {
       res.status(400).json({ error: "Invalid scope. Allowed: today, week, month." });
       return;
     }
 
-    // Fetch metrics for the given scope
     const { user, metrics } = await fetchAndCalculateWorkspaceMetrics(
       workspaceId,
       userId,
@@ -607,18 +558,21 @@ export const executeAiCompanionAnalysis = async (
       COMPANION_PERSONAS[personaKey] || COMPANION_PERSONAS.supportive_coach;
 
     const analysisPrompt = `
-Give ${user.name} a brief, actionable, and persona-aligned analysis report of their workspace data.
-You are checking their metrics over a '${scope}' timeframe block (${metrics.dateRangeText}).
+Give ${user.name} a super simple, easy-to-read summary of their spending for the '${scope}' period (${metrics.dateRangeText}).
 
-Live Metric Ledger Values inside this duration:
-- Safe To Spend Amount: PKR ${metrics.safeToSpend.toFixed(2)}
-- Income: PKR ${metrics.totalIncome.toFixed(2)}
-- Total Workspace Expenses: PKR ${metrics.totalExpenses.toFixed(2)}
-- Flexible Spending Rows: PKR ${metrics.flexibleExpenses.toFixed(2)}
-- Constant Fixed Costs: PKR ${metrics.fixedExpenses.toFixed(2)}
+Summary Numbers:
+- Money Safe to Spend: PKR ${metrics.safeToSpend.toFixed(2)}
+- Total Income: PKR ${metrics.totalIncome.toFixed(2)}
+- Total Money Spent: PKR ${metrics.totalExpenses.toFixed(2)}
+- Everyday / Flexible Spending: PKR ${metrics.flexibleExpenses.toFixed(2)}
+- Regular Fixed Bills: PKR ${metrics.fixedExpenses.toFixed(2)}
 
-Please write 3 tight sentences analyzing this specifically for their '${scope}' performance. If 'savage_roaster', tease them about where their PKR went. If 'coach', tell them how to safe-keep their safe-to-spend!
-CRITICAL: Keep your output entirely clear of dollar signs ($). Use 'PKR' or simple plain quotation formatting blocks.
+CRITICAL INSTRUCTIONS:
+1. Write exactly 3 short, super simple sentences analyzing their '${scope}' spending.
+2. Use EXTREMELY SIMPLE, everyday English that anyone can read in 5 seconds.
+3. Do NOT use long words, heavy financial terms, or complex corporate language.
+4. If 'savage_roaster', tease them simply about their spending. If 'coach', give them a simple tip on saving.
+5. NEVER use a dollar sign ($). Write all money in 'PKR'.
 `;
 
     const apiKey = getApiKey();
@@ -641,7 +595,6 @@ CRITICAL: Keep your output entirely clear of dollar signs ($). Use 'PKR' or simp
     const result: unknown = await response.json();
     const analysisText = extractAiText(result);
 
-    // Attempt to save cooldown – currently a no-op because fields don't exist in the DB
     await trySaveCooldown(userId, scope as TimelineScope);
 
     res.status(200).json({
@@ -659,7 +612,6 @@ CRITICAL: Keep your output entirely clear of dollar signs ($). Use 'PKR' or simp
  */
 function extractAiText(result: unknown): string {
   try {
-    // result is expected to be an object with candidates[0].content.parts[0].text
     const obj = result as Record<string, unknown>;
     const candidates = obj?.candidates as Array<Record<string, unknown>> | undefined;
     const firstCandidate = candidates?.[0];

@@ -259,7 +259,136 @@
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: TAGS & CARDS (INTERACTIVE UI) ===
+   === SECTION 4: INITIAL CHOICE METHOD SELECTION CARDS ===
+   ========================================================================== */
+.methodChoiceGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.methodChoiceCard {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  border: 2px solid #e5e1f4;
+  background-color: #ffffff;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  text-align: left;
+}
+
+.methodChoiceCard:hover {
+  transform: translateY(-3px);
+  border-color: #8b5cf6;
+  box-shadow: 0 12px 30px rgba(139, 92, 246, 0.15);
+  background-color: #fcfbfe;
+}
+
+.methodIconBox {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.googleIconBox {
+  background-color: #ffffff;
+  border: 1px solid #e5e1f4;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+.emailIconBox {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+.methodText {
+  flex: 1;
+}
+
+.methodText h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #10043f;
+}
+
+.methodText p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #7e7a9c;
+  line-height: 1.4;
+}
+
+.methodArrow {
+  font-size: 1.4rem;
+  color: #8b5cf6;
+  transition: transform 0.2s ease;
+}
+
+.methodChoiceCard:hover .methodArrow {
+  transform: translateX(4px);
+}
+
+.authChoiceDivider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.5rem 0;
+  color: #a09cb8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.authChoiceDivider::before,
+.authChoiceDivider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e5e1f4;
+}
+
+.authChoiceDivider span {
+  padding: 0 1rem;
+}
+
+.existingAccountLinkBlock {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: #7e7a9c;
+  text-align: center;
+}
+
+.hyperlinkHighlight {
+  color: #8b5cf6;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.hyperlinkHighlight:hover {
+  color: #613bbf;
+  text-decoration: underline;
+}
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: TAGS & CARDS (INTERACTIVE UI) ===
    ========================================================================== */
 .tagsContainerOuter {
   display: flex;
@@ -417,10 +546,10 @@
 .aiCardActive .checkIcon {
   color: #10b981;
 }
-/* === SECTION 4 END === */
+/* === SECTION 5 END === */
 
 /* ==========================================================================
-   === SECTION 5: WIZARD FOOTER CONTROLS ===
+   === SECTION 6: WIZARD FOOTER CONTROLS ===
    ========================================================================== */
 .wizardFooter {
   display: flex;
@@ -483,7 +612,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE MOBILE ADAPTATIONS (≤ 850px / ≤ 768px) ===
+   === SECTION 7: RESPONSIVE MOBILE ADAPTATIONS (≤ 850px / ≤ 768px) ===
    ========================================================================== */
 @media (max-width: 850px) {
   .wizardMasterLayout {
@@ -611,12 +740,12 @@
   }
 
   /*
-   * iOS Auto-Zoom Fix: font-size: 1rem (16px) or above strictly enforced
-   * to prevent iOS Safari/Chrome from forcibly zooming in on focused inputs.
+   * iOS Auto-Zoom Fix: Enforce >= 16px (1rem) font threshold
+   * to strictly block mobile browsers from forcefully zooming inputs.
    */
   .textInput,
   .selectInput {
-    font-size: 1rem !important; /* 16px threshold */
+    font-size: 1rem !important;
     min-height: 48px;
     padding: 0.75rem 0.85rem;
   }
@@ -629,8 +758,9 @@
     align-items: center;
   }
 
-  /* Touch-optimized 48px height minimum selection cards */
-  .selectionCard {
+  /* Touch-optimized 48px minimum target sizes */
+  .selectionCard,
+  .methodChoiceCard {
     min-height: 48px;
     padding: 0.85rem;
   }
@@ -653,7 +783,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 7: EXTRA SMALL SCREENS (≤ 480px) ===
+   === SECTION 8: EXTRA SMALL SCREENS (≤ 480px) ===
    ========================================================================== */
 @media (max-width: 480px) {
   .wizardMasterLayout {
@@ -680,4 +810,4 @@
     font-size: 0.75rem;
   }
 }
-/* === SECTION 7 END === */
+/* === SECTION 8 END === */

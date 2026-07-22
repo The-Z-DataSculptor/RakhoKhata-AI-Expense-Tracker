@@ -12,25 +12,33 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 
-// System categories that are automatically created for every workspace
-const CORE_SYSTEM_CATEGORIES = [
+// Default unassigned system category — placed at index 0 so it seeds first
+const UNASSIGNED_CATEGORY = {
+  name: "Unassigned (Needs Sorting)",
+  type: "EXPENSE",
+  color: "#6b7280",
+  isFixed: true,
+};
+
+const OTHER_CORE_SYSTEM_CATEGORIES = [
   { name: "Owed to Me (Receivable)", type: "INCOME", color: "#22c55e", isFixed: true },
   { name: "My Debts (Payable)", type: "EXPENSE", color: "#ef4444", isFixed: true },
-  { name: "Unassigned (Needs Sorting)", type: "EXPENSE", color: "#6b7280", isFixed: true },
 ];
 
-// Shared personal category templates
+// Shared personal category templates (Unassigned is FIRST)
 export const SHARED_DEFAULT_PERSONAL_CATEGORIES = [
+  UNASSIGNED_CATEGORY,
   { name: "Salary", type: "INCOME", color: "#10B981" },
   { name: "Rent & Housing", type: "EXPENSE", color: "#EF4444" },
-  ...CORE_SYSTEM_CATEGORIES,
+  ...OTHER_CORE_SYSTEM_CATEGORIES,
 ];
 
-// Shared business category templates
+// Shared business category templates (Unassigned is FIRST)
 export const SHARED_DEFAULT_BUSINESS_CATEGORIES = [
+  UNASSIGNED_CATEGORY,
   { name: "Revenue", type: "INCOME", color: "#10b981" },
   { name: "Payroll", type: "EXPENSE", color: "#f43f5e" },
-  ...CORE_SYSTEM_CATEGORIES,
+  ...OTHER_CORE_SYSTEM_CATEGORIES,
 ];
 
 /**

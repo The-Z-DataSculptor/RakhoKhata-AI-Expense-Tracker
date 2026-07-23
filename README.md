@@ -1,3 +1,5 @@
+<img width="1541" height="892" alt="Rakho Khata Hero" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
+
 # 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics Suite
 
 > A full-stack, dockerized financial tracking engine featuring multi-currency accounting, automated statement imports, interactive analytics, and an AI financial companion powered by Google Gemini.
@@ -15,35 +17,29 @@ The application is engineered as a modern decoupled full-stack architecture, uti
 ## 🌟 Key Features
 
 ### 🤖 AI Financial Companion
-
 - Integrated with the native **Google Gemini SDK** (`@google/genai`) via a secure backend gateway.
 - Generates plain-English financial breakdowns, spending audit reports, and tailored budgeting advice.
 - Features customizable commentary personas ranging from encouraging financial coaching to direct, roast-style budget reviews.
 
 ### 💱 Multi-Currency & Workspace Engine
-
 - Full support for multi-currency transaction logging (PKR, USD, EUR, GBP, INR, and dynamic base conversions).
 - Real-time balance calculations with workspace-wide base currency toggles.
 
 ### 📊 Interactive Analytics & Dashboard
-
 - Visual cash flow trends, budget health gauges, and category breakdowns powered by **Recharts**.
 - "Safe to Spend" gauge controls to keep daily expenditure aligned with monthly targets.
 
 ### 📑 Document Parsing & Export Engine
-
 - Automated statement parsing via **ExcelJS** and **PapaParse** for instant batch transaction uploads.
 - Automated PDF report generation built with **PDFKit**.
 - Image receipt upload pipeline powered by **Multer**.
 
 ### 🔒 Enterprise-Grade Security
-
 - Modern **PASETO token-based authentication** (stateless and cryptographically secure).
 - Strict endpoint rate-limiting, CORS origin isolation, and payload validation using **Zod**.
 - Background cron scheduling via **Node-Cron** for automated notifications and email alerts via **Resend**.
 
 ### 🐳 100% Dockerized Deployment
-
 - Optimized multi-stage Docker builds utilizing Next.js `standalone` mode to minimize container footprint.
 - Single-command orchestration for frontend, backend, and database migrations via Docker Compose.
 
@@ -60,13 +56,13 @@ graph TD
     B -->|Secure Server Gateway| D[🤖 Google Gemini AI SDK<br/>@google/genai]
 ```
 
-| Layer                   | Technology Stack                                                                                               |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------- |
-| **Frontend**            | Next.js 16 (App Router), React 19, TypeScript, CSS Modules, Tailwind CSS, shadcn/ui, Recharts, React Hook Form |
-| **Backend**             | Node.js, Express 5, PASETO Auth, Zod Validation, Node-Cron, Resend Email API                                   |
-| **Database & Tools**    | PostgreSQL (Neon Cloud), Prisma ORM, ExcelJS, PapaParse, PDFKit, Multer                                        |
-| **AI Integration**      | Google Gemini AI SDK (`@google/genai`)                                                                         |
-| **DevOps & Containers** | Docker, Docker Compose (Multi-stage Node/Alpine builds)                                                        |
+| Layer | Technology Stack |
+| :--- | :--- |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, CSS Modules, Tailwind CSS, shadcn/ui, Recharts, React Hook Form |
+| **Backend** | Node.js, Express 5, PASETO Auth, Zod Validation, Node-Cron, Resend Email API |
+| **Database & Tools** | PostgreSQL (Neon Cloud), Prisma ORM, ExcelJS, PapaParse, PDFKit, Multer |
+| **AI Integration** | Google Gemini AI SDK (`@google/genai`) |
+| **DevOps & Containers** | Docker, Docker Compose (Multi-stage Node/Alpine builds) |
 
 ---
 
@@ -75,12 +71,10 @@ graph TD
 The entire system is configured to launch with a single command using Docker Compose.
 
 ### Prerequisites
-
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
 - [Git](https://git-scm.com/) installed.
 
 ### Step 1: Clone the Repository
-
 ```bash
 Step 2: Configure Environment Variables
 Create a .env file in the backend directory based on the example configuration:
@@ -138,4 +132,3 @@ Full-Stack Software Engineer & Systems Developer
 💼 LinkedIn: syed-zain-hassan
 
 💻 GitHub Profile: @The-Z-DataSculptor
-```

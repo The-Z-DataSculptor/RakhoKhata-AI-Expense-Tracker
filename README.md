@@ -1,3 +1,5 @@
+<img width="1541" height="892" alt="Rakho Khata Hero" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
+
 # 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics Suite
 
 > A full-stack, dockerized financial tracking engine featuring multi-currency accounting, automated statement imports, interactive analytics, and an AI financial companion powered by Google Gemini.

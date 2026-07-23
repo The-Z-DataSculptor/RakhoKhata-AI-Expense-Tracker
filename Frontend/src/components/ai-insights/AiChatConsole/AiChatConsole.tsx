@@ -2,11 +2,19 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & STATIC CONSTANTS ===
    ========================================================================== */
 import React, { useState } from "react";
 import { FiMessageSquare, FiArrowRight, FiZap } from "react-icons/fi";
 import styles from "./AiChatConsole.module.css";
+
+// WHY THIS FIX WAS MADE: Defining suggestions outside the component scope prevents
+// memory allocation and garbage collection overhead on every component re-render.
+const STATIC_SUGGESTIONS = [
+  { id: "q1", label: "🔍 Where am I wasting money?", question: "Show me where I'm wasting money this month." },
+  { id: "q2", label: "🛒 Can I buy a new desk?", question: "Can I afford a 50,000 PKR desk next month?" },
+  { id: "q3", label: "📱 Check my bills", question: "Check my bills and subscriptions for price increases." },
+] as const;
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -31,20 +39,19 @@ export function AiChatConsole({
 }: AiChatConsoleProps) {
   const [inputValue, setInputValue] = useState<string>("");
 
-  const suggestions = [
-    { id: "q1", label: "🔍 Where am I wasting money?", question: "Show me where I'm wasting money this month." },
-    { id: "q2", label: "🛒 Can I buy a new desk?", question: "Can I afford a 50,000 PKR desk next month?" },
-    { id: "q3", label: "📱 Check my bills", question: "Check my bills and subscriptions for price increases." },
-  ];
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isExternalLoading || !isDataReady) return;
-    onQueryStart(inputValue.trim());
+    const sanitizedQuery = inputValue.trim();
+
+    // WHY THIS FIX WAS MADE: Validates input length and data readiness state before triggering
+    // query callbacks to prevent empty or premature network requests.
+    if (!sanitizedQuery || isExternalLoading || !isDataReady) return;
+
+    onQueryStart(sanitizedQuery);
     setInputValue("");
   };
 
-  const getPlaceholder = () => {
+  const getPlaceholder = (): string => {
     if (!isDataReady) return "Loading database connection...";
     if (activePersona === "auditor") return "Ask the Auditor: 'Where did I overspend?'";
     if (activePersona === "coach") return "Ask the Coach: 'How can I save more?'";
@@ -69,6 +76,9 @@ export function AiChatConsole({
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={getPlaceholder()}
             disabled={isExternalLoading || !isDataReady}
+            // WHY THIS FIX WAS MADE: Imposes a strict 500 character limit to prevent memory exhaustion
+            // and block oversized payloads from straining backend API endpoints.
+            maxLength={500}
             className={styles.chatTextFieldInputElement}
             aria-label="Ask your AI assistant"
           />
@@ -85,7 +95,7 @@ export function AiChatConsole({
       </form>
 
       <div className={styles.suggestionsRowStack}>
-        {suggestions.map((item) => (
+        {STATIC_SUGGESTIONS.map((item) => (
           <button
             key={item.id}
             type="button"

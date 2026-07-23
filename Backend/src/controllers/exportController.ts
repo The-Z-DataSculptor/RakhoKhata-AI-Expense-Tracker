@@ -3,13 +3,16 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-import { Response } from "express";
+import { Response as ExpressResponse } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 
-// Valid export time scopes – used for input validation
+// Maximum record threshold per export to prevent server memory exhaustion
+const MAX_EXPORT_TRANSACTIONS = 5000;
+
+// Valid export time scopes supported by the reporting engine
 const ALLOWED_EXPORT_SCOPES = [
   "today",
   "week",
@@ -27,69 +30,78 @@ type ExportScope = (typeof ALLOWED_EXPORT_SCOPES)[number];
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 
-// Safe error response builder – never leaks stack traces
+// Builds standard error response object without leaking internal server details
 function buildSafeError(message: string): { error: string } {
   return { error: message };
 }
 
 /**
- * Validates and casts the incoming scope query parameter.
- * Returns a valid ExportScope or undefined if invalid.
+ * WHY THIS IS NEEDED: Prevents HTTP query array injection attacks.
+ * Parses raw query parameters and ensures only single string values are accepted.
  */
-function parseExportScope(raw: unknown): ExportScope | undefined {
-  if (
-    typeof raw === "string" &&
-    (ALLOWED_EXPORT_SCOPES as readonly string[]).includes(raw)
-  ) {
-    return raw as ExportScope;
+function extractSingleString(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
   }
   return undefined;
 }
 
 /**
- * Calculates the start and end dates for the given export scope.
- * Uses a fixed anchor date (2026-07-17) for consistent results during development.
+ * Validates and casts an unverified scope query input.
  */
-function getExportDateRange(scope: ExportScope): {
-  gte?: Date;
-  lte?: Date;
-} {
-  const anchor = new Date("2026-07-17T12:00:00Z");
-  const start = new Date(anchor);
-  const end = new Date(anchor);
+function parseExportScope(raw: unknown): ExportScope | undefined {
+  const sanitized = extractSingleString(raw);
+  if (sanitized && (ALLOWED_EXPORT_SCOPES as readonly string[]).includes(sanitized)) {
+    return sanitized as ExportScope;
+  }
+  return undefined;
+}
+
+/**
+ * WHY THIS FIX WAS MADE: Replaced hardcoded test date ("2026-07-17") with real-time UTC Date.
+ * Calculates explicit start (gte) and end (lte) boundaries for database range filtering.
+ */
+function getExportDateRange(scope: ExportScope): { gte?: Date; lte?: Date } {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  // Set default end boundary to end of today in UTC
+  end.setUTCHours(23, 59, 59, 999);
 
   switch (scope) {
     case "today":
       start.setUTCHours(0, 0, 0, 0);
-      end.setUTCHours(23, 59, 59, 999);
       return { gte: start, lte: end };
+
     case "week":
-      start.setUTCDate(anchor.getUTCDate() - 6);
+      start.setUTCDate(now.getUTCDate() - 6);
       start.setUTCHours(0, 0, 0, 0);
-      end.setUTCHours(23, 59, 59, 999);
       return { gte: start, lte: end };
+
     case "month":
       start.setUTCDate(1);
       start.setUTCHours(0, 0, 0, 0);
-      const nextMonth = new Date(anchor);
-      nextMonth.setUTCMonth(anchor.getUTCMonth() + 1, 1);
-      nextMonth.setUTCHours(0, 0, 0, 0);
-      end.setTime(nextMonth.getTime() - 1);
       return { gte: start, lte: end };
+
     case "3months":
-      start.setUTCMonth(anchor.getUTCMonth() - 3);
+      start.setUTCMonth(now.getUTCMonth() - 3);
       start.setUTCHours(0, 0, 0, 0);
-      return { gte: start };
+      return { gte: start, lte: end };
+
     case "6months":
-      start.setUTCMonth(anchor.getUTCMonth() - 6);
+      start.setUTCMonth(now.getUTCMonth() - 6);
       start.setUTCHours(0, 0, 0, 0);
-      return { gte: start };
+      return { gte: start, lte: end };
+
     case "year":
-      start.setUTCFullYear(anchor.getUTCFullYear(), 0, 1);
+      start.setUTCFullYear(now.getUTCFullYear(), 0, 1);
       start.setUTCHours(0, 0, 0, 0);
-      return { gte: start };
+      return { gte: start, lte: end };
+
     case "all":
-      return {}; // No date filter
+      return {}; // No date filter applied
+
     default:
       return {};
   }
@@ -100,194 +112,131 @@ function getExportDateRange(scope: ExportScope): {
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 
-// ---------------------------------------------------------------------------
-// EXPORT TRANSACTIONS AS EXCEL
-// ---------------------------------------------------------------------------
+/**
+ * GET /api/export/excel
+ * Generates and streams an Excel spreadsheet report of workspace transactions.
+ */
 export const exportTransactionsExcel = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
-    const { workspaceId, scope } = req.query as {
-      workspaceId?: string;
-      scope?: string;
-    };
+    const rawWorkspaceId = extractSingleString(req.query.workspaceId);
+    const rawScope = extractSingleString(req.query.scope);
 
-    if (!workspaceId) {
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Missing active workspace target parameter."
-          )
-        );
+    if (!rawWorkspaceId) {
+      res.status(400).json(buildSafeError("Workspace ID parameter is required."));
       return;
     }
 
-    // Validate and parse the scope
-    const validScope = parseExportScope(scope);
-    if (scope !== undefined && !validScope) {
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Invalid scope parameter. Allowed: today, week, month, 3months, 6months, year, all."
-          )
-        );
+    const validScope = parseExportScope(rawScope);
+    if (rawScope !== undefined && !validScope) {
+      res.status(400).json(buildSafeError("Invalid scope parameter provided."));
       return;
     }
 
-    // Verify workspace ownership
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
+    // WHY THIS FIX WAS MADE: Verifies user workspace access (BOLA Authorization Shield).
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: rawWorkspaceId, userId: userId },
+      select: { id: true, name: true, currency: true },
     });
-    if (
-      !workspace ||
-      workspace.userId !== userId
-    ) {
-      res.status(403).json(buildSafeError("Access denied."));
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
       return;
     }
 
-    // Fetch transactions within the selected date range
-    const dateFilter = validScope
-      ? getExportDateRange(validScope)
-      : {};
+    // WHY THIS FIX WAS MADE: Added MAX_EXPORT_TRANSACTIONS limit to prevent server memory exhaustion.
+    const dateFilter = validScope ? getExportDateRange(validScope) : {};
     const transactions = await prisma.transaction.findMany({
       where: {
-        workspaceId: workspaceId,
-        ...(Object.keys(dateFilter).length > 0
-          ? { date: dateFilter }
-          : {}),
+        workspaceId: rawWorkspaceId,
+        ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
       },
       include: { category: true },
       orderBy: { date: "desc" },
+      take: MAX_EXPORT_TRANSACTIONS,
     });
 
-    // Build the Excel workbook
+    // Initialize Excel workbook
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(
-      "Ledger Statement"
-    );
+    const worksheet = workbook.addWorksheet("Ledger Statement");
 
-    // Title row
+    // Title Row Formatting
     worksheet.mergeCells("A1:F1");
     const titleCell = worksheet.getCell("A1");
     titleCell.value = `RakhoKhata Ledger Statement — Workspace: ${workspace.name}`;
-    titleCell.font = {
-      name: "Arial",
-      size: 16,
-      bold: true,
-      color: { argb: "FFFFFF" },
-    };
-    titleCell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "6366F1" },
-    };
-    titleCell.alignment = {
-      vertical: "middle",
-      horizontal: "center",
-    };
+    titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: "FFFFFF" } };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "6366F1" } };
+    titleCell.alignment = { vertical: "middle", horizontal: "center" };
     worksheet.getRow(1).height = 40;
 
-    worksheet.addRow([]); // Blank spacer
+    worksheet.addRow([]); // Blank spacer row
 
-    // Header row
+    // Table Header Row
     const headerRow = worksheet.addRow([
       "Date",
       "Type",
       "Description",
       "Category",
-      "Original Value",
+      "Amount",
       "Currency",
     ]);
     headerRow.height = 25;
     headerRow.eachCell((cell) => {
-      cell.font = {
-        name: "Arial",
-        size: 11,
-        bold: true,
-        color: { argb: "FFFFFF" },
-      };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "1F2937" },
-      };
-      cell.alignment = {
-        vertical: "middle",
-        horizontal: "left",
-      };
+      cell.font = { name: "Arial", size: 11, bold: true, color: { argb: "FFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1F2937" } };
+      cell.alignment = { vertical: "middle", horizontal: "left" };
     });
-    // Align the amount column to the right
-    worksheet.getCell("E3").alignment = {
-      horizontal: "right",
-    };
 
-    // Populate rows
+    // Populate Data Rows
     for (const tx of transactions) {
-      const formattedDate = tx.date
-        .toISOString()
-        .split("T")[0];
-      const amountNum = Number(tx.originalAmount);
+      const formattedDate = tx.date.toISOString().split("T")[0];
+      const amountValue = Number(tx.originalAmount);
+
       const row = worksheet.addRow([
         formattedDate,
         tx.type,
         tx.description,
         tx.category?.name || "Uncategorized",
-        amountNum,
-        tx.originalCurrency,
+        amountValue,
+        tx.originalCurrency || workspace.currency,
       ]);
 
       row.height = 20;
       row.getCell(5).numFmt = "#,##0.00";
 
-      // Color coding based on transaction type
+      // Color coding row based on transaction type
       if (tx.type === "INCOME") {
-        row.getCell(2).font = {
-          color: { argb: "137333" },
-          bold: true,
-        };
+        row.getCell(2).font = { color: { argb: "137333" }, bold: true };
         row.eachCell((cell) => {
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "E6F4EA" },
-          };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E6F4EA" } };
         });
       } else {
-        row.getCell(2).font = {
-          color: { argb: "C5221F" },
-          bold: true,
-        };
+        row.getCell(2).font = { color: { argb: "C5221F" }, bold: true };
         row.eachCell((cell) => {
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FCE8E6" },
-          };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FCE8E6" } };
         });
       }
     }
 
-    // Auto-fit column widths
+    // Explicit Column Widths
     worksheet.columns = [
-      { width: 15 }, // Date
-      { width: 12 }, // Type
-      { width: 30 }, // Description
-      { width: 20 }, // Category
-      { width: 18 }, // Amount
-      { width: 12 }, // Currency
+      { width: 15 },
+      { width: 12 },
+      { width: 30 },
+      { width: 20 },
+      { width: 18 },
+      { width: 12 },
     ];
 
-    // Set response headers and send the file
+    // Response Headers
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -297,93 +246,74 @@ export const exportTransactionsExcel = async (
       `attachment; filename=Statement_${validScope || "all"}.xlsx`
     );
 
+    // Stream generated workbook directly to client response
     await workbook.xlsx.write(res);
     res.end();
   } catch (error: unknown) {
     console.error("Excel Export Error:", error);
+
+    // WHY THIS FIX WAS MADE: Cleans up stream safely if an exception occurs mid-export.
     if (!res.headersSent) {
-      res
-        .status(500)
-        .json(
-          buildSafeError(
-            "Internal server error exporting spreadsheet."
-          )
-        );
+      res.status(500).json(buildSafeError("Internal server error exporting spreadsheet report."));
+    } else {
+      res.destroy(); // Terminate broken socket connection
     }
   }
 };
 
-// ---------------------------------------------------------------------------
-// EXPORT TRANSACTIONS AS PDF
-// ---------------------------------------------------------------------------
+/**
+ * GET /api/export/pdf
+ * Generates and streams a PDF accounting report document.
+ */
 export const exportTransactionsPdf = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
-    const { workspaceId, scope } = req.query as {
-      workspaceId?: string;
-      scope?: string;
-    };
+    const rawWorkspaceId = extractSingleString(req.query.workspaceId);
+    const rawScope = extractSingleString(req.query.scope);
 
-    if (!workspaceId) {
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Missing active workspace target parameter."
-          )
-        );
+    if (!rawWorkspaceId) {
+      res.status(400).json(buildSafeError("Workspace ID parameter is required."));
       return;
     }
 
-    // Validate scope
-    const validScope = parseExportScope(scope);
-    if (scope !== undefined && !validScope) {
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Invalid scope parameter. Allowed: today, week, month, 3months, 6months, year, all."
-          )
-        );
+    const validScope = parseExportScope(rawScope);
+    if (rawScope !== undefined && !validScope) {
+      res.status(400).json(buildSafeError("Invalid scope parameter provided."));
       return;
     }
 
-    // Verify workspace ownership
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
+    // Verify workspace access (BOLA Authorization Shield)
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: rawWorkspaceId, userId: userId },
+      select: { id: true, name: true, currency: true },
     });
-    if (
-      !workspace ||
-      workspace.userId !== userId
-    ) {
-      res.status(403).json(buildSafeError("Access denied."));
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
       return;
     }
 
-    // Fetch transactions
-    const dateFilter = validScope
-      ? getExportDateRange(validScope)
-      : {};
+    // Fetch capped transaction history
+    const dateFilter = validScope ? getExportDateRange(validScope) : {};
     const transactions = await prisma.transaction.findMany({
       where: {
-        workspaceId: workspaceId,
-        ...(Object.keys(dateFilter).length > 0
-          ? { date: dateFilter }
-          : {}),
+        workspaceId: rawWorkspaceId,
+        ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}),
       },
       include: { category: true },
       orderBy: { date: "desc" },
+      take: MAX_EXPORT_TRANSACTIONS,
     });
 
-    // Create PDF document in landscape
+    // Create PDF document in landscape orientation
     const doc = new PDFDocument({
       size: "A4",
       layout: "landscape",
@@ -396,111 +326,84 @@ export const exportTransactionsPdf = async (
       `attachment; filename=Statement_${validScope || "all"}.pdf`
     );
 
+    // Pipe PDF generation directly into express response stream
     doc.pipe(res);
 
-    // --- Header block ---
-    doc
-      .rect(40, 40, 762, 50)
-      .fill("#6366F1");
+    // Document Header Block
+    doc.rect(40, 40, 762, 50).fill("#6366F1");
     doc
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
       .fontSize(16)
-      .text(`RAKHOKHATA ACCOUNTING STATEMENT`, 60, 58);
+      .text("RAKHOKHATA ACCOUNTING STATEMENT", 60, 58);
+
     doc
       .fontSize(10)
       .font("Helvetica")
       .text(
         `Workspace: ${workspace.name.toUpperCase()}  |  Scope: ${String(validScope || "ALL").toUpperCase()}`,
         60,
-        76,
-        { align: "left" }
+        76
       );
 
-    // --- Table header ---
+    // Table Column Header
     let currentY = 110;
-    doc
-      .fillColor("#1F2937")
-      .rect(40, currentY, 762, 22)
-      .fill();
-    doc
-      .fillColor("#FFFFFF")
-      .font("Helvetica-Bold")
-      .fontSize(10);
+    doc.rect(40, currentY, 762, 22).fill("#1F2937");
+    doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(10);
     doc.text("Date", 50, currentY + 6);
     doc.text("Type", 140, currentY + 6);
     doc.text("Description", 230, currentY + 6);
     doc.text("Category", 480, currentY + 6);
-    doc.text("Value Amount", 640, currentY + 6, {
-      width: 140,
-      align: "right",
-    });
+    doc.text("Amount", 640, currentY + 6, { width: 140, align: "right" });
 
     currentY += 22;
     doc.font("Helvetica").fontSize(9);
 
-    // --- Row rendering ---
+    // Render Data Rows
     for (const tx of transactions) {
-      // Add a new page if near bottom
+      // Trigger new page if rendering near bottom edge
       if (currentY > 520) {
         doc.addPage();
         currentY = 40;
 
-        // Redraw header on new page
-        doc
-          .fillColor("#1F2937")
-          .rect(40, currentY, 762, 22)
-          .fill();
-        doc
-          .fillColor("#FFFFFF")
-          .font("Helvetica-Bold");
+        doc.rect(40, currentY, 762, 22).fill("#1F2937");
+        doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(10);
         doc.text("Date", 50, currentY + 6);
         doc.text("Type", 140, currentY + 6);
         doc.text("Description", 230, currentY + 6);
         doc.text("Category", 480, currentY + 6);
-        doc.text("Value Amount", 640, currentY + 6, {
-          width: 140,
-          align: "right",
-        });
+        doc.text("Amount", 640, currentY + 6, { width: 140, align: "right" });
+
         currentY += 22;
         doc.font("Helvetica").fontSize(9);
       }
 
-      // Row background colour
       const isIncome = tx.type === "INCOME";
       const bgColor = isIncome ? "#E6F4EA" : "#FCE8E6";
-      doc
-        .fillColor(bgColor)
-        .rect(40, currentY, 762, 20)
-        .fill();
 
-      // Write cells
+      doc.rect(40, currentY, 762, 20).fill(bgColor);
+
       const dateStr = tx.date.toISOString().split("T")[0];
-      doc.fillColor("#1F2937");
-      doc.text(dateStr, 50, currentY + 6);
+      doc.fillColor("#1F2937").text(dateStr, 50, currentY + 6);
 
       doc
         .fillColor(isIncome ? "#137333" : "#C5221F")
-        .font("Helvetica-Bold");
-      doc.text(tx.type, 140, currentY + 6);
+        .font("Helvetica-Bold")
+        .text(tx.type, 140, currentY + 6);
 
       doc.fillColor("#1F2937").font("Helvetica");
-      const description =
+
+      // Sanitize description length to prevent table overflow
+      const safeDescription =
         tx.description.length > 45
           ? tx.description.substring(0, 42) + "..."
           : tx.description;
-      doc.text(description, 230, currentY + 6);
-      doc.text(
-        tx.category?.name || "Uncategorized",
-        480,
-        currentY + 6
-      );
 
-      const formattedValue = `${Number(tx.originalAmount).toFixed(2)} ${tx.originalCurrency}`;
-      doc.text(formattedValue, 640, currentY + 6, {
-        width: 140,
-        align: "right",
-      });
+      doc.text(safeDescription, 230, currentY + 6);
+      doc.text(tx.category?.name || "Uncategorized", 480, currentY + 6);
+
+      const formattedAmount = `${Number(tx.originalAmount).toFixed(2)} ${tx.originalCurrency || workspace.currency}`;
+      doc.text(formattedAmount, 640, currentY + 6, { width: 140, align: "right" });
 
       currentY += 20;
     }
@@ -508,14 +411,12 @@ export const exportTransactionsPdf = async (
     doc.end();
   } catch (error: unknown) {
     console.error("PDF Export Error:", error);
+
+    // WHY THIS FIX WAS MADE: Cleans up stream safely if an exception occurs mid-export.
     if (!res.headersSent) {
-      res
-        .status(500)
-        .json(
-          buildSafeError(
-            "Internal server error exporting system document report vectors."
-          )
-        );
+      res.status(500).json(buildSafeError("Internal server error generating PDF report."));
+    } else {
+      res.destroy(); // Terminate broken socket connection
     }
   }
 };

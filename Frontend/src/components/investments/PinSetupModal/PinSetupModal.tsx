@@ -1,5 +1,4 @@
-/* K:\Developer\Expense-Tracker\Frontend\src\components\investments\PinSetupModal\PinSetupModal.tsx
-
+// src/components/investments/PinSetupModal/PinSetupModal.tsx
 "use client";
 
 /* ==========================================================================
@@ -23,10 +22,9 @@ interface PinSetupModalProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: COMPONENT LOGIC & HANDLERS ===
    ========================================================================== */
 export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModalProps) {
-  // Determine initial step based on mode – runs only on mount/remount
   const getInitialStep = useCallback(() => {
     if (mode === "DISABLE" || mode === "CHANGE") return "VERIFY_CURRENT";
     return "CREATE";
@@ -39,6 +37,20 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // WHY THIS FIX WAS MADE: Managed timeout reference array cleans up all timers on unmount
+  // or step shifts to avoid unmounted component state updates.
+  const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
+
+  const registerTimeout = useCallback((fn: () => void, delayMs: number) => {
+    const timerId = setTimeout(fn, delayMs);
+    timeoutRefs.current.push(timerId);
+    return timerId;
+  }, []);
+
+  const clearAllTimeouts = useCallback(() => {
+    timeoutRefs.current.forEach((id) => clearTimeout(id));
+    timeoutRefs.current = [];
+  }, []);
 
   const focusInput = useCallback((index: number) => {
     const targetInput = inputRefs.current[index];
@@ -47,20 +59,32 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
     }
   }, []);
 
-  // Focus the first input when modal opens
   useEffect(() => {
     if (isOpen) {
-      const timeoutId = setTimeout(() => focusInput(0), 100);
-      return () => clearTimeout(timeoutId);
+      registerTimeout(() => focusInput(0), 100);
     }
-  }, [isOpen, focusInput]);
+    return () => {
+      clearAllTimeouts();
+    };
+  }, [isOpen, focusInput, registerTimeout, clearAllTimeouts]);
 
-  // Close handler: call onClose – state will be reset by remount
+  // WHY THIS FIX WAS MADE: Added Escape key listener for accessible modal closing.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isProcessing) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isProcessing, onClose]);
+
   const handleCloseModal = useCallback(() => {
+    if (isProcessing) return;
+    clearAllTimeouts();
     onClose();
-  }, [onClose]);
+  }, [onClose, isProcessing, clearAllTimeouts]);
 
-  // --- API interaction functions ---
   const handleVerifyCurrentPin = async (pin: string): Promise<boolean> => {
     try {
       await vaultAuthService.verifyPin(pin);
@@ -79,10 +103,9 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
     await vaultAuthService.disablePin();
   };
 
-  // --- Input handler ---
   const handleChange = useCallback(
     async (index: number, value: string) => {
-      if (!/^\d*$/.test(value)) return;
+      if (!/^\d*$/.test(value) || isProcessing) return;
 
       const newDigits = [...digits];
       newDigits[index] = value.slice(-1);
@@ -109,14 +132,14 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
             } else if (mode === "CHANGE") {
               setStep("CREATE");
               setDigits(["", "", "", ""]);
-              focusInput(0);
+              registerTimeout(() => focusInput(0), 50);
               toast.info("Now enter your new PIN.");
             }
           } else if (step === "CREATE") {
             setFirstPin(completePin);
             setStep("CONFIRM");
             setDigits(["", "", "", ""]);
-            focusInput(0);
+            registerTimeout(() => focusInput(0), 50);
           } else if (step === "CONFIRM") {
             if (completePin !== firstPin) throw new Error("PINs do not match");
 
@@ -128,16 +151,16 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
         } catch (err: unknown) {
           setIsError(true);
           setDigits(["", "", "", ""]);
-          focusInput(0);
+          registerTimeout(() => focusInput(0), 50);
           const msg = err instanceof Error ? err.message : "Something went wrong.";
           toast.error(msg);
-          setTimeout(() => setIsError(false), 500);
+          registerTimeout(() => setIsError(false), 500);
         } finally {
           setIsProcessing(false);
         }
       }
     },
-    [digits, step, firstPin, mode, focusInput, onSuccess, handleCloseModal]
+    [digits, step, firstPin, mode, focusInput, onSuccess, handleCloseModal, isProcessing, registerTimeout]
   );
 
   const handleKeyDown = useCallback(
@@ -172,9 +195,13 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
   };
 
   if (!isOpen) return null;
+  /* === SECTION 3 END === */
 
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
-    <div className={styles.modalOverlay} onClick={handleCloseModal}>
+    <div className={styles.modalOverlay} onClick={handleCloseModal} role="dialog" aria-modal="true">
       <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <div className={styles.headerTextStack}>
@@ -200,7 +227,7 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
           >
             {digits.map((digit, index) => (
               <input
-                key={index}
+                key={`modal-pin-box-${index}`}
                 ref={(el) => {
                   inputRefs.current[index] = el;
                 }}
@@ -213,13 +240,14 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 autoComplete="off"
+                aria-label={`Digit ${index + 1} of 4`}
               />
             ))}
           </div>
 
           <div className={styles.messageArea}>
             {isError ? (
-              <span className={styles.errorMessage}>Invalid PIN. Please try again.</span>
+              <span className={styles.errorMessage} role="alert">Invalid PIN. Please try again.</span>
             ) : (
               <span className={styles.helperMessage}>
                 {mode === "DISABLE"

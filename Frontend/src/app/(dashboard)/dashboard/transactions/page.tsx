@@ -2,16 +2,15 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { transactionService, categoryService, Transaction, Category } from "@/utils/api";
 import { toast } from "sonner";
 
-// Spreadsheet Ingestion Engine Libs
+// Spreadsheet Ingestion Engine Libraries
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { FiUploadCloud, FiChevronRight, FiFileText, FiAlertCircle, FiLoader } from "react-icons/fi";
@@ -24,14 +23,13 @@ import BulkActionToolBelt from "@/components/transactions/BulkActionToolBelt/Bul
 import TransactionFooter from "@/components/transactions/TransactionFooter/TransactionFooter";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
-import { DebtReminderForm } from "@/components/forms/DebtReminderForm/DebtReminderForm"; 
+import { DebtReminderForm } from "@/components/forms/DebtReminderForm/DebtReminderForm";
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
-/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
+// ----- Dynamic API base URL (environment‑driven) -----
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// ----- Internal types -----
 interface FormPayload {
   originalAmount: number;
   originalCurrency: string;
@@ -55,23 +53,31 @@ interface ImportRowPreview {
 }
 
 type ParsedRowData = Record<string, string>;
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: UTILITIES & HELPERS ===
+   ========================================================================== */
 
 /**
- * 🚀 RESILIENT HELPER: PARSES EXCEL SERIALS AND REGIONAL STRINGS SAFELY
- * Extracts dates from messy spreadsheet formats without crashing the engine.
+ * Safely parses a raw value into an ISO date string (YYYY‑MM‑DD).
+ * Handles Excel serial numbers, standard date strings, and DD‑MM‑YYYY formats.
+ * Falls back to today's date when parsing fails.
  */
 const safeParseSpreadsheetDate = (rawVal: unknown): string => {
   const fallbackToday = new Date().toISOString().substring(0, 10);
   if (!rawVal) return fallbackToday;
 
   if (rawVal instanceof Date) {
-    return !isNaN(rawVal.getTime()) ? rawVal.toISOString().substring(0, 10) : fallbackToday;
+    return !isNaN(rawVal.getTime())
+      ? rawVal.toISOString().substring(0, 10)
+      : fallbackToday;
   }
 
   const strVal = String(rawVal).trim();
   const numericSerial = Number(strVal);
-  
-  // Handle proprietary Excel numeric serial date formats safely
+
+  // Excel serial date (days since 1900-01-01, range ~1980-2070)
   if (!isNaN(numericSerial) && numericSerial > 30000 && numericSerial < 60000) {
     const computedExcelDate = new Date((numericSerial - 25569) * 86400 * 1000);
     if (!isNaN(computedExcelDate.getTime())) {
@@ -84,15 +90,14 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
     return parsed.toISOString().substring(0, 10);
   }
 
-  // Handle standard manual user string layouts (DD-MM-YYYY or similar)
-  const stringParts = strVal.split(/[-/.]/);
-  if (stringParts.length === 3) {
-    const firstPart = parseInt(stringParts[0], 10);
-    const secondPart = parseInt(stringParts[1], 10) - 1; 
-    const thirdPart = parseInt(stringParts[2], 10);
-
-    if (thirdPart > 1000 && secondPart >= 0 && secondPart < 12 && firstPart > 0 && firstPart <= 31) {
-      parsed = new Date(thirdPart, secondPart, firstPart);
+  // Try DD‑MM‑YYYY or DD/MM/YYYY
+  const parts = strVal.split(/[-/.]/);
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (year > 1000 && month >= 0 && month < 12 && day > 0 && day <= 31) {
+      parsed = new Date(year, month, day);
       if (!isNaN(parsed.getTime())) {
         return parsed.toISOString().substring(0, 10);
       }
@@ -101,278 +106,273 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
 
   return fallbackToday;
 };
-
-// Dynamic Environment Routing to prevent hardcoded Localhost leaks in production
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 3: COMPONENT LOGIC & HANDLERS ===
    ========================================================================== */
-/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export default function TransactionsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
 
-  /* --- DATA STATES --- */
+  // ----- Data state -----
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isScanning, setIsScanning] = useState<boolean>(false); 
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
 
-  /* --- VIEW & FILTER STATES --- */
+  // ----- Filter state -----
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedType, setSelectedType] = useState<TransactionTypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
 
-  /* --- MODAL STATES --- */
+  // ----- Modal state -----
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeReminderTx, setActiveReminderTx] = useState<TransactionRecord | null>(null);
 
-  /* --- AUTOMATED INGESTION WIZARD STATES --- */
+  // ----- Import wizard state -----
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [importStep, setImportStep] = useState<number>(1);
   const [rawFileHeaders, setRawFileHeaders] = useState<string[]>([]);
   const [rawParsedRows, setRawParsedRows] = useState<ParsedRowData[]>([]);
   const [isSubmittingImport, setIsSubmittingImport] = useState<boolean>(false);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
-
-  // DOM References anchoring hidden document file and camera triggers safely
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Column Mapping Layout Configuration States
+  // ----- Column mapping & preview -----
   const [colMap, setColMap] = useState({
     date: "",
     description: "",
     amount: "",
     currency: "",
-    type: ""
+    type: "",
   });
   const [fallbackCurrency, setFallbackCurrency] = useState<string>(workspaceCurrency);
   const [fallbackType, setFallbackType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [stagedPreviewRows, setStagedPreviewRows] = useState<ImportRowPreview[]>([]);
 
-  /** Fetches clean transaction arrays from protected backend routes */
+  // ---------------------------------------------------------------------------
+  // DATA FETCHING
+  // ---------------------------------------------------------------------------
   const refreshLedgerData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
       const txData = await transactionService.getByWorkspace(activeWorkspaceId);
       setTransactions(txData.transactions);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to refresh data stream from server.";
-      toast.error(msg);
+      const message = error instanceof Error ? error.message : "Failed to refresh transactions.";
+      toast.error(message);
     }
   }, [activeWorkspaceId]);
 
-  /** Initializes global view parameters when switching active workspaces */
+  // Initial load & workspace switch
   useEffect(() => {
-    if (!activeWorkspaceId) return;
+    let isMounted = true;
+    if (!activeWorkspaceId) {
+      return;
+    }
 
-    const syncWorkspaceLedgerOnSwitch = async () => {
-      setIsLoading(true);
+    const loadInitialData = async () => {
       try {
+        if (isMounted) setIsLoading(true);
         const [txData, catData] = await Promise.all([
           transactionService.getByWorkspace(activeWorkspaceId),
-          categoryService.getByWorkspace(activeWorkspaceId)
+          categoryService.getByWorkspace(activeWorkspaceId),
         ]);
-        
-        setTransactions(txData.transactions);
-        setCategories(catData.categories);
-        setCurrentPage(1);
-        setSelectedRecordIds([]);
+        if (isMounted) {
+          setTransactions(txData.transactions);
+          setCategories(catData.categories);
+          setCurrentPage(1);
+          setSelectedRecordIds([]);
+        }
       } catch (error: unknown) {
         console.error("Ledger Sync Failure:", error);
-        const msg = error instanceof Error ? error.message : "Failed to sync entries with cloud database.";
-        toast.error(msg);
+        if (isMounted) {
+          const message = error instanceof Error ? error.message : "Failed to sync transactions.";
+          toast.error(message);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    syncWorkspaceLedgerOnSwitch();
+    loadInitialData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [activeWorkspaceId]);
 
-  /** FULL-STACK HANDLER: PROCESSES MULTIPART FILE SCAN THROUGHS VIA GEMINI ENGINE */
+  // ---------------------------------------------------------------------------
+  // RECEIPT SCANNING (AI)
+  // ---------------------------------------------------------------------------
   const handleReceiptScanProcessing = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const targetFile = e.target.files?.[0];
-    if (!targetFile) return;
+    const file = e.target.files?.[0];
+    if (!file || !activeWorkspaceId) return;
 
     setIsScanning(true);
-    const notificationId = toast.loading("AI Engine analyzing receipt layout pixels...");
+    const notificationId = toast.loading("AI Engine analyzing receipt...");
 
     try {
-      const formTransportContainer = new FormData();
-      formTransportContainer.append("receipt", targetFile);
+      const formData = new FormData();
+      formData.append("receipt", file);
+      formData.append("workspaceId", activeWorkspaceId);
 
       const response = await fetch(`${API_BASE_URL}/api/transactions/scan`, {
         method: "POST",
-        body: formTransportContainer,
+        body: formData,
         credentials: "include",
       });
 
-      const contentType = response.headers.get("content-type") || "";
-      
       if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
         if (contentType.includes("application/json")) {
           const errorJson = await response.json();
-          throw new Error(errorJson.error || "AI Ingestion system crash.");
+          throw new Error(errorJson.error || "AI scan failed.");
         } else {
-          throw new Error(`Server returned a non-JSON HTML error page. (Status Code: ${response.status})`);
+          throw new Error(`Server returned an unexpected response (Status: ${response.status}).`);
         }
       }
 
       const parsedResult = await response.json();
 
-      const unassignedNode = categories.find(c => c.name.toLowerCase() === "unassigned");
-      const unassignedUUID = unassignedNode ? unassignedNode.id : (categories[0]?.id || "");
+      const unassignedCategory = categories.find(
+        (c) => c.name.toLowerCase() === "unassigned"
+      );
+      const defaultCategoryId = unassignedCategory?.id || categories[0]?.id || "";
 
-      const preFilledMockTransaction: Partial<Transaction> = {
-        id: undefined, 
+      const scannedTransaction: Partial<Transaction> = {
         description: parsedResult.merchant || "AI Scanned Receipt",
-        date: parsedResult.date ? new Date(parsedResult.date).toISOString() : new Date().toISOString(),
+        date: parsedResult.date
+          ? new Date(parsedResult.date).toISOString()
+          : new Date().toISOString(),
         originalAmount: Number(parsedResult.totalAmount || 0),
         originalCurrency: parsedResult.currency || workspaceCurrency,
-        amount: Number(parsedResult.totalAmount || 0), 
-        baseAmountUSD: convertAmount(Number(parsedResult.totalAmount || 0), parsedResult.currency || workspaceCurrency, "USD"),
+        baseAmountUSD: convertAmount(
+          Number(parsedResult.totalAmount || 0),
+          parsedResult.currency || workspaceCurrency,
+          "USD"
+        ),
         type: "EXPENSE",
-        categoryId: unassignedUUID,
-        category: unassignedNode || categories[0],
+        categoryId: defaultCategoryId,
+        category: unassignedCategory || categories[0],
       };
 
-      toast.success("Receipt structure extracted cleanly!", { id: notificationId });
-      
-      setEditingTransaction(preFilledMockTransaction as Transaction);
+      toast.success("Receipt data extracted!", { id: notificationId });
+      setEditingTransaction(scannedTransaction as Transaction);
       setIsModalOpen(true);
-
     } catch (error: unknown) {
       console.error("OCR AI Pipeline breakdown:", error);
-      const msg = error instanceof Error ? error.message : "Network processing timeout.";
-      toast.error(msg, { id: notificationId });
+      const message = error instanceof Error ? error.message : "Network processing timeout.";
+      toast.error(message, { id: notificationId });
     } finally {
       setIsScanning(false);
-      e.target.value = ""; 
+      e.target.value = "";
     }
   };
 
-  /** ENGINE HOOKS: CSV & EXCEL DATA TRANSFORMATION PIPELINES */
+  // ---------------------------------------------------------------------------
+  // SPREADSHEET IMPORT LOGIC
+  // ---------------------------------------------------------------------------
   const autoGuessFileHeaders = useCallback((headers: string[]) => {
     const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     const mapping = { date: "", description: "", amount: "", currency: "", type: "" };
-    
-    headers.forEach(h => {
-      const normal = clean(h);
-      if (normal.includes("date") || normal.includes("time")) mapping.date = h;
-      else if (normal.includes("desc") || normal.includes("narrative") || normal.includes("detail")) mapping.description = h;
-      else if (normal.includes("amount") || normal.includes("value") || normal.includes("paid") || normal.includes("price")) mapping.amount = h;
-      else if (normal.includes("curr") || normal.includes("code")) mapping.currency = h;
-      else if (normal.includes("type") || normal.includes("class")) mapping.type = h;
-    });
+
+    for (const header of headers) {
+      const normal = clean(header);
+      if (!mapping.date && (normal.includes("date") || normal.includes("time"))) mapping.date = header;
+      if (!mapping.description && (normal.includes("desc") || normal.includes("narrative") || normal.includes("detail")))
+        mapping.description = header;
+      if (!mapping.amount && (normal.includes("amount") || normal.includes("value") || normal.includes("paid") || normal.includes("price")))
+        mapping.amount = header;
+      if (!mapping.currency && (normal.includes("curr") || normal.includes("code"))) mapping.currency = header;
+      if (!mapping.type && (normal.includes("type") || normal.includes("class"))) mapping.type = header;
+    }
+
     setColMap(mapping);
   }, []);
 
-  const handleFileExtractionStream = useCallback((file: File) => {
-    const fileNameLower = file.name.toLowerCase();
-    
-    // OWASP Hardening Guard: Enforce strict file size limitations to prevent memory exhaustion
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File size limits exceeded. Upload statements below 10 Megabytes.");
-      return;
-    }
+  const handleFileExtractionStream = useCallback(
+    (file: File) => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File size exceeds 10 MB limit.");
+        return;
+      }
 
-    if (fileNameLower.endsWith(".csv")) {
-      Papa.parse<ParsedRowData>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results: Papa.ParseResult<ParsedRowData>) => {
-          if (results.meta.fields && results.data.length > 0) {
-            setRawFileHeaders(results.meta.fields);
-            setRawParsedRows(results.data);
-            autoGuessFileHeaders(results.meta.fields);
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith(".csv")) {
+        Papa.parse<ParsedRowData>(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.meta.fields && results.data.length > 0) {
+              setRawFileHeaders(results.meta.fields);
+              setRawParsedRows(results.data);
+              autoGuessFileHeaders(results.meta.fields);
+              setImportStep(2);
+            } else {
+              toast.error("CSV file appears to be empty or corrupt.");
+            }
+          },
+        });
+      } else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const data = evt.target?.result;
+          if (!data || typeof data !== "string") {
+            toast.error("Failed to read Excel file.");
+            return;
+          }
+          const workbook = XLSX.read(data, { type: "binary", cellDates: true, dateNF: "yyyy-mm-dd" });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
+          if (rows.length > 0) {
+            const headers = rows[0].map((h) => String(h));
+            const body = XLSX.utils.sheet_to_json<ParsedRowData>(sheet);
+            setRawFileHeaders(headers);
+            setRawParsedRows(body);
+            autoGuessFileHeaders(headers);
             setImportStep(2);
           } else {
-            toast.error("CSV statement configuration looks empty or corrupt.");
+            toast.error("Excel sheet appears to be empty.");
           }
-        }
-      });
-    } else if (fileNameLower.endsWith(".xlsx") || fileNameLower.endsWith(".xls")) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const bstr = evt.target?.result;
-        
-        if (!bstr || typeof bstr !== "string") {
-          toast.error("File buffer reading error. Ensure the spreadsheet is valid.");
-          return;
-        }
-        
-        const wb = XLSX.read(bstr, { type: "binary", cellDates: true, dateNF: "yyyy-mm-dd" });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 });
-        
-        if (data.length > 0) {
-          const headers = data[0].map(h => String(h));
-          const rows = XLSX.utils.sheet_to_json<ParsedRowData>(ws);
-          setRawFileHeaders(headers);
-          setRawParsedRows(rows);
-          autoGuessFileHeaders(headers);
-          setImportStep(2);
-        } else {
-          toast.error("Excel tracking sheet looks empty.");
-        }
-      };
-      reader.readAsBinaryString(file);
-    } else {
-      toast.error("Unsupported file extension. Drop a clean .csv or .xlsx workbook file.");
-    }
-  }, [autoGuessFileHeaders]);
-
-  const handleFileDropProcessing = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileExtractionStream(file);
-  };
-
-  const handleDragOverGate = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeaveGate = () => {
-    setIsDraggingOver(false);
-  };
-
-  const handleNativeDropTrigger = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-    const uploadedFile = e.dataTransfer.files?.[0];
-    if (uploadedFile) {
-      handleFileExtractionStream(uploadedFile);
-    }
-  };
+        };
+        reader.readAsBinaryString(file);
+      } else {
+        toast.error("Unsupported file type. Please upload a .csv or .xlsx file.");
+      }
+    },
+    [autoGuessFileHeaders]
+  );
 
   const handleComputeMappingVerification = () => {
     if (!colMap.date || !colMap.description || !colMap.amount) {
-      toast.error("Mapping Error: Date, Description, and Amount columns must be aligned.");
+      toast.error("Please map the Date, Description, and Amount columns.");
       return;
     }
 
-    const unassignedNode = categories.find(c => c.name.toLowerCase() === "unassigned");
-    const unassignedUUID = unassignedNode ? unassignedNode.id : (categories[0]?.id || "");
+    const unassignedCategory = categories.find((c) => c.name.toLowerCase() === "unassigned");
+    const defaultCategoryId = unassignedCategory?.id || categories[0]?.id || "";
 
-    const cleanStagedDataset: ImportRowPreview[] = rawParsedRows.map((row, idx) => {
+    const previewRows: ImportRowPreview[] = rawParsedRows.map((row, idx) => {
       let rawAmount = parseFloat(String(row[colMap.amount] || "0").replace(/[^0-9.-]/g, ""));
       let detectedType: "INCOME" | "EXPENSE" = fallbackType;
 
       if (colMap.type && row[colMap.type]) {
-        const tStr = String(row[colMap.type]).toUpperCase();
-        if (tStr.includes("INC") || tStr.includes("CR") || tStr.includes("DEP")) detectedType = "INCOME";
-        else if (tStr.includes("EXP") || tStr.includes("DR") || tStr.includes("WD")) detectedType = "EXPENSE";
+        const typeStr = String(row[colMap.type]).toUpperCase();
+        if (typeStr.includes("INC") || typeStr.includes("CR") || typeStr.includes("DEP"))
+          detectedType = "INCOME";
+        else if (typeStr.includes("EXP") || typeStr.includes("DR") || typeStr.includes("WD"))
+          detectedType = "EXPENSE";
       } else if (rawAmount < 0) {
         detectedType = "EXPENSE";
         rawAmount = Math.abs(rawAmount);
@@ -383,29 +383,32 @@ export default function TransactionsPage() {
         rowCurrency = String(row[colMap.currency]).toUpperCase().trim().substring(0, 3);
       }
 
-      let targetCategoryId = unassignedUUID;
-      const descLower = String(row[colMap.description] || "").toLowerCase();
-      
-      if (descLower.includes("salary") || descLower.includes("dividend")) {
-        const found = categories.find(c => c.name.toLowerCase().includes("salary") || c.name.toLowerCase().includes("revenue"));
-        if (found) targetCategoryId = found.id;
-      } else if (descLower.includes("rent") || descLower.includes("housing") || descLower.includes("landlord")) {
-        const found = categories.find(c => c.name.toLowerCase().includes("rent") || c.name.toLowerCase().includes("housing"));
-        if (found) targetCategoryId = found.id;
+      let categoryId = defaultCategoryId;
+      const description = String(row[colMap.description] || "").toLowerCase();
+      if (description.includes("salary") || description.includes("dividend")) {
+        const found = categories.find(
+          (c) => c.name.toLowerCase().includes("salary") || c.name.toLowerCase().includes("revenue")
+        );
+        if (found) categoryId = found.id;
+      } else if (description.includes("rent") || description.includes("housing")) {
+        const found = categories.find(
+          (c) => c.name.toLowerCase().includes("rent") || c.name.toLowerCase().includes("housing")
+        );
+        if (found) categoryId = found.id;
       }
 
       return {
         index: idx,
         date: safeParseSpreadsheetDate(row[colMap.date]),
-        description: String(row[colMap.description] || "Imported Ledger Record Entry"),
+        description: String(row[colMap.description] || "Imported Transaction"),
         amount: isNaN(rawAmount) ? 0 : rawAmount,
         currency: rowCurrency,
         type: detectedType,
-        categoryId: targetCategoryId
+        categoryId,
       };
     });
 
-    setStagedPreviewRows(cleanStagedDataset);
+    setStagedPreviewRows(previewRows);
     setImportStep(3);
   };
 
@@ -414,48 +417,54 @@ export default function TransactionsPage() {
     setIsSubmittingImport(true);
 
     try {
-      const formattedPayload = stagedPreviewRows.map(row => {
-        const convertedToUSD = convertAmount(row.amount, row.currency, "USD");
-        return {
-          originalAmount: row.amount,
-          originalCurrency: row.currency,
-          baseAmountUSD: convertedToUSD,
-          type: row.type,
-          description: row.description,
-          date: new Date(row.date).toISOString(),
-          categoryId: row.categoryId
-        };
-      });
+      const payload = stagedPreviewRows.map((row) => ({
+        originalAmount: row.amount,
+        originalCurrency: row.currency,
+        baseAmountUSD: convertAmount(row.amount, row.currency, "USD"),
+        type: row.type,
+        description: row.description,
+        date: new Date(row.date).toISOString(),
+        categoryId: row.categoryId,
+      }));
 
       const response = await fetch(`${API_BASE_URL}/api/transactions/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: activeWorkspaceId,
-          transactions: formattedPayload
+          transactions: payload,
         }),
-        credentials: "include"
+        credentials: "include",
       });
 
-      const resData = await response.json();
+      const result: unknown = await response.json();
       if (!response.ok) {
-        throw new Error(typeof resData?.error === "string" ? resData.error : "Bulk pipeline ingestion crash.");
+        const errorMessage =
+          typeof result === "object" && result !== null && "error" in result
+            ? (result as { error: string }).error
+            : "Bulk import failed.";
+        throw new Error(errorMessage);
       }
 
-      toast.success(typeof resData?.message === "string" ? resData.message : "Spreadsheet matching records uploaded successfully!");
+      const successMessage =
+        typeof result === "object" && result !== null && "message" in result
+          ? (result as { message: string }).message
+          : "Transactions imported successfully!";
+      toast.success(successMessage);
       setIsImportOpen(false);
       setImportStep(1);
       await refreshLedgerData();
-
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : "Ingestion network thread error.";
-      toast.error(errorMsg);
+      const message = error instanceof Error ? error.message : "Import failed due to a network error.";
+      toast.error(message);
     } finally {
       setIsSubmittingImport(false);
     }
   };
 
-  /* --- BASIC CRUD ACTIONS --- */
+  // ---------------------------------------------------------------------------
+  // CRUD OPERATIONS
+  // ---------------------------------------------------------------------------
   const handleOpenCreateModal = () => {
     setEditingTransaction(null);
     setIsModalOpen(true);
@@ -476,7 +485,7 @@ export default function TransactionsPage() {
       if (payload.id) {
         await transactionService.delete(payload.id);
       }
-      
+
       await transactionService.create({
         originalAmount: payload.originalAmount,
         originalCurrency: payload.originalCurrency,
@@ -486,148 +495,169 @@ export default function TransactionsPage() {
         date: payload.date,
         workspaceId: activeWorkspaceId,
         categoryId: payload.categoryId,
-        amount: payload.originalAmount, 
+        amount: payload.originalAmount,
       });
 
-      await refreshLedgerData(); 
+      await refreshLedgerData();
       handleClosePopupModal();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Could not log transaction onto server framework.";
-      toast.error(msg);
+      const message = error instanceof Error ? error.message : "Failed to save transaction.";
+      toast.error(message);
     }
   };
 
-  const handleEditRecordTrigger = (targetRecordId: string) => {
-    const match = transactions.find((t) => t.id === targetRecordId);
+  const handleEditRecordTrigger = (targetId: string) => {
+    const match = transactions.find((t) => t.id === targetId);
     if (match) {
       setEditingTransaction(match);
       setIsModalOpen(true);
     }
   };
 
-  const handleDeleteRecordTrigger = async (targetRecordId: string) => {
+  const handleDeleteRecordTrigger = async (targetId: string) => {
     try {
-      await transactionService.delete(targetRecordId);
-      setTransactions(prev => prev.filter(item => item.id !== targetRecordId));
-      setSelectedRecordIds(current => current.filter(id => id !== targetRecordId));
-      toast.success("Ledger entry dropped completely.");
+      await transactionService.delete(targetId);
+      setTransactions((prev) => prev.filter((item) => item.id !== targetId));
+      setSelectedRecordIds((prev) => prev.filter((id) => id !== targetId));
+      toast.success("Transaction deleted.");
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to drop entry row from storage.";
-      toast.error(msg);
+      const message = error instanceof Error ? error.message : "Failed to delete transaction.";
+      toast.error(message);
     }
   };
 
   const handleBulkDeleteExecution = async () => {
     try {
-      await Promise.all(selectedRecordIds.map(id => transactionService.delete(id)));
-      toast.success(`Successfully cleared ${selectedRecordIds.length} financial rows.`);
-      setTransactions(prev => prev.filter(row => !selectedRecordIds.includes(row.id)));
+      await Promise.all(selectedRecordIds.map((id) => transactionService.delete(id)));
+      toast.success(`Successfully deleted ${selectedRecordIds.length} transactions.`);
+      setTransactions((prev) => prev.filter((row) => !selectedRecordIds.includes(row.id)));
       setSelectedRecordIds([]);
       setCurrentPage(1);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Bulk ledger flush operation experienced a failure.";
-      toast.error(msg);
+      const message = error instanceof Error ? error.message : "Bulk delete failed.";
+      toast.error(message);
       await refreshLedgerData();
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // SELECTION HANDLERS
+  // ---------------------------------------------------------------------------
   const handleToggleSingleRowSelection = (targetId: string) => {
-    setSelectedRecordIds((current) => 
-      current.includes(targetId) ? current.filter(id => id !== targetId) : [...current, targetId]
+    setSelectedRecordIds((prev) =>
+      prev.includes(targetId) ? prev.filter((id) => id !== targetId) : [...prev, targetId]
     );
   };
 
   const handleToggleSelectAllOnPage = (visiblePageIds: string[]) => {
-    setSelectedRecordIds((current) => {
-      const isAllChecked = visiblePageIds.every(id => current.includes(id));
-      return isAllChecked ? current.filter(id => !visiblePageIds.includes(id)) : Array.from(new Set([...current, ...visiblePageIds]));
+    setSelectedRecordIds((prev) => {
+      const allSelected = visiblePageIds.every((id) => prev.includes(id));
+      return allSelected
+        ? prev.filter((id) => !visiblePageIds.includes(id))
+        : Array.from(new Set([...prev, ...visiblePageIds]));
     });
   };
 
   const handleClearSelectionQueue = () => setSelectedRecordIds([]);
 
-  /* --- DATA AGGREGATION & RENDER PIPELINES --- */
-  const processedFilteredRecords = transactions.filter((singleLog) => {
-    const normalQuery = searchQuery.toLowerCase().trim();
-    const matchesSearch = normalQuery === "" || singleLog.description.toLowerCase().includes(normalQuery);
-    const matchesType = selectedType === "all" || singleLog.type.toUpperCase() === selectedType.toUpperCase();
-    const matchesCategory = selectedCategory === "all" || singleLog.categoryId === selectedCategory;
-    return matchesSearch && matchesType && matchesCategory;
-  });
+  // ---------------------------------------------------------------------------
+  // AGGREGATION FOR DISPLAY (MEMOIZED)
+  // ---------------------------------------------------------------------------
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      const query = searchQuery.toLowerCase().trim();
+      const matchesSearch = !query || tx.description.toLowerCase().includes(query);
+      const matchesType = selectedType === "all" || tx.type.toUpperCase() === selectedType.toUpperCase();
+      const matchesCategory =
+        selectedCategory === "all" || tx.categoryId === selectedCategory;
+      return matchesSearch && matchesType && matchesCategory;
+    });
+  }, [transactions, searchQuery, selectedType, selectedCategory]);
 
-  let totalIncomeUSD = 0;
-  let totalExpenseUSD = 0;
+  const { calculatedIncomeTotal, calculatedExpenseTotal } = useMemo(() => {
+    let totalIncomeUSD = 0;
+    let totalExpenseUSD = 0;
 
-  processedFilteredRecords.forEach((recordItem) => {
-    const value = Number(recordItem.baseAmountUSD ?? recordItem.amount ?? 0);
-    if (recordItem.type.toUpperCase() === "INCOME") {
-      totalIncomeUSD += value;
-    } else if (recordItem.type.toUpperCase() === "EXPENSE") {
-      totalExpenseUSD += value;
-    }
-  });
+    filteredTransactions.forEach((tx) => {
+      const value = Number(tx.baseAmountUSD ?? tx.amount ?? 0);
+      if (tx.type.toUpperCase() === "INCOME") totalIncomeUSD += value;
+      else if (tx.type.toUpperCase() === "EXPENSE") totalExpenseUSD += value;
+    });
 
-  const calculatedIncomeTotal = convertAmount(totalIncomeUSD, "USD", workspaceCurrency);
-  const calculatedExpenseTotal = convertAmount(totalExpenseUSD, "USD", workspaceCurrency);
+    return {
+      calculatedIncomeTotal: convertAmount(totalIncomeUSD, "USD", workspaceCurrency),
+      calculatedExpenseTotal: convertAmount(totalExpenseUSD, "USD", workspaceCurrency),
+    };
+  }, [filteredTransactions, workspaceCurrency, convertAmount]);
 
-  const indexPositionOfLastRowItem = currentPage * itemsPerPage;
-  const indexPositionOfFirstRowItem = indexPositionOfLastRowItem - itemsPerPage;
-  
-  const adaptiveGridRows = processedFilteredRecords.map(tx => ({
-    id: tx.id,
-    date: tx.date.substring(0, 10),
-    description: tx.description,
-    category: tx.category?.name || "General",
-    originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
-    originalCurrency: tx.originalCurrency ?? "USD",
-    amount: Number(tx.amount), 
-    type: tx.type.toLowerCase() as "income" | "expense"
-  })).slice(indexPositionOfFirstRowItem, indexPositionOfLastRowItem);
-/* === SECTION 3 END === */
+  // Pagination slice
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const pagedTransactions = filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
 
-/* ==========================================================================
-   === SECTION 4: EXPORTS / RENDER COMPONENT ===
-   ========================================================================== */
+  const gridRows: TransactionRecord[] = useMemo(() => {
+    return pagedTransactions.map((tx) => ({
+      id: tx.id,
+      date: tx.date ? String(tx.date).substring(0, 10) : "",
+      description: tx.description,
+      category: tx.category?.name || "General",
+      originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
+      originalCurrency: tx.originalCurrency ?? "USD",
+      amount: Number(tx.amount || 0),
+      type: tx.type.toLowerCase() as "income" | "expense",
+    }));
+  }, [pagedTransactions]);
+  /* === SECTION 3 END === */
+
+  /* ==========================================================================
+     === SECTION 4: RENDER COMPONENT ===
+     ========================================================================== */
   return (
     <div className={styles.ledgerCanvasWrapper}>
-      
-      {/* Transaction Action Header */}
-      <TransactionHeader 
-        totalCount={processedFilteredRecords.length}
+      {/* Header */}
+      <TransactionHeader
+        totalCount={filteredTransactions.length}
         onAddTransactionClick={handleOpenCreateModal}
-        onImportClick={() => { setImportStep(1); setIsImportOpen(true); }}
+        onImportClick={() => {
+          setImportStep(1);
+          setIsImportOpen(true);
+        }}
         onFileScannerSelect={() => fileInputRef.current?.click()}
         onCameraScannerSelect={() => cameraInputRef.current?.click()}
       />
 
-      {/* Transaction Filter Toolbar */}
+      {/* Filter Bar – updated to use category objects */}
       <TransactionFilterBar
         searchQuery={searchQuery}
-        onSearchChange={(v) => { setSearchQuery(v); setCurrentPage(1); }}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setCurrentPage(1);
+        }}
         selectedType={selectedType}
-        onTypeChange={(t) => { setSelectedType(t); setCurrentPage(1); }}
-        availableCategories={categories.map(c => c.name)}
+        onTypeChange={(val) => {
+          setSelectedType(val);
+          setCurrentPage(1);
+        }}
+        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
         selectedCategory={selectedCategory}
-        onCategoryChange={(c) => {
-          const match = categories.find(cat => cat.name.toLowerCase() === c.toLowerCase());
-          setSelectedCategory(match ? match.id : "all");
+        onCategoryChange={(catId) => {
+          setSelectedCategory(catId);
           setCurrentPage(1);
         }}
       />
 
-      {/* Primary Data Grid */}
+      {/* Main Grid */}
       <main className={styles.mainContentStage}>
         {isLoading ? (
           <div className={styles.inlineLoadingContainer}>
             <FiLoader className={styles.inlineSpinner} />
-            <p>Syncing ledger records securely...</p>
+            <p>Syncing ledger records...</p>
           </div>
         ) : (
           <TransactionLedgerGrid
-            records={adaptiveGridRows}
+            records={gridRows}
             onEditRecord={handleEditRecordTrigger}
             onDeleteRecord={handleDeleteRecordTrigger}
-            onSendReminder={(row) => setActiveReminderTx(row)} 
+            onSendReminder={(row) => setActiveReminderTx(row)}
             selectedIds={selectedRecordIds}
             onToggleSelectRow={handleToggleSingleRowSelection}
             onToggleSelectAllOnPage={handleToggleSelectAllOnPage}
@@ -635,13 +665,16 @@ export default function TransactionsPage() {
         )}
       </main>
 
-      {/* Pagination Control Row */}
+      {/* Pagination */}
       <div className={styles.paginationControlRowDeck}>
         <div className={styles.capacitySelectorFlexCluster}>
           <span className={styles.capacityLabelText}>Rows per page:</span>
-          <select 
-            value={itemsPerPage} 
-            onChange={(event) => { setItemsPerPage(Number(event.target.value)); setCurrentPage(1); }}
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
             className={styles.nativeCapacitySelectDropdown}
           >
             <option value={5}>5</option>
@@ -650,268 +683,355 @@ export default function TransactionsPage() {
             <option value={50}>50</option>
           </select>
         </div>
-
         <TransactionPagination
-          totalItems={processedFilteredRecords.length}
+          totalItems={filteredTransactions.length}
           itemsPerPage={itemsPerPage}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
         />
       </div>
 
-      {/* Summary Footer Bar */}
-      <TransactionFooter 
+      {/* Footer Totals */}
+      <TransactionFooter
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
         sourceCurrency={workspaceCurrency}
         activeWorkspaceId={activeWorkspaceId}
       />
 
-      {/* Hidden File Input Channels */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        style={{ display: "none" }} 
+      {/* Hidden File Inputs for Receipt Scanning */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
         accept="image/*,application/pdf"
-        onChange={handleReceiptScanProcessing} 
+        onChange={handleReceiptScanProcessing}
       />
-      <input 
-        type="file" 
-        ref={cameraInputRef} 
-        style={{ display: "none" }} 
-        accept="image/*" 
-        capture="environment" 
-        onChange={handleReceiptScanProcessing} 
+      <input
+        type="file"
+        ref={cameraInputRef}
+        style={{ display: "none" }}
+        accept="image/*"
+        capture="environment"
+        onChange={handleReceiptScanProcessing}
       />
 
-      {/* Floating glass loading shield for AI scanner execution matches */}
-      <div>
-        {isScanning && (
-          <div className={styles.scanningOverlayBackdrop}>
-            <div className={styles.scanningCoreCard}>
-              <FiLoader className={styles.scanningSpinnerVector} />
-              <h4>Reading Receipt Matrix</h4>
-              <p>Gemini LLM is mapping variables, isolating currency codes, and structuring ledger lines...</p>
-            </div>
+      {/* AI Scanning Overlay */}
+      {isScanning && (
+        <div className={styles.scanningOverlayBackdrop}>
+          <div className={styles.scanningCoreCard}>
+            <FiLoader className={styles.scanningSpinnerVector} />
+            <h4>Reading Receipt Matrix</h4>
+            <p>Gemini LLM is mapping variables and structuring ledger lines...</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* EMBEDDED AUTOMATED STATEMENT IMPORTER MODAL */}
-      <div>
-        {isImportOpen && (
-          <div className={styles.modalOverlayBackdrop} onClick={() => { if(!isSubmittingImport) setIsImportOpen(false); }}>
-            <div className={`${styles.modalContentCard} ${styles.wizardExpansionLarge}`} onClick={(e) => e.stopPropagation()}>
-              
-              <div className={styles.wizardHeaderDeck}>
-                <div className={styles.wizardHeaderTitleBlock}>
-                  <h3 className={styles.wizardMainTitle}>Automated Statement Importer</h3>
-                  <span className={styles.wizardBadgePill}>Engine v2.4</span>
+      {/* Import Wizard Modal */}
+      {isImportOpen && (
+        <div
+          className={styles.modalOverlayBackdrop}
+          onClick={() => {
+            if (!isSubmittingImport) setIsImportOpen(false);
+          }}
+        >
+          <div
+            className={`${styles.modalContentCard} ${styles.wizardExpansionLarge}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.wizardHeaderDeck}>
+              <div className={styles.wizardHeaderTitleBlock}>
+                <h3 className={styles.wizardMainTitle}>Statement Import Wizard</h3>
+                <span className={styles.wizardBadgePill}>Engine v2.4</span>
+              </div>
+              <div className={styles.stepperPipelineLayout}>
+                <div className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
+                  <span className={styles.stepperStepNumber}>1</span>
+                  <span>Upload</span>
                 </div>
-                <div className={styles.stepperPipelineLayout}>
-                  <div className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
-                    <span className={styles.stepperStepNumber}>1</span>
-                    <span>Upload</span>
+                <FiChevronRight className={styles.stepperArrowIcon} />
+                <div className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
+                  <span className={styles.stepperStepNumber}>2</span>
+                  <span>Map Headers</span>
+                </div>
+                <FiChevronRight className={styles.stepperArrowIcon} />
+                <div className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
+                  <span className={styles.stepperStepNumber}>3</span>
+                  <span>Review & Commit</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Upload */}
+            {importStep === 1 && (
+              <div
+                className={`${styles.dropzoneFrameZone} ${isDraggingOver ? styles.dropzoneActiveTint : ""}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingOver(true);
+                }}
+                onDragLeave={() => setIsDraggingOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingOver(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleFileExtractionStream(file);
+                }}
+              >
+                <div className={styles.dropzoneIconWrapper}>
+                  <FiUploadCloud className={styles.dropzoneUploadIcon} />
+                </div>
+                <p className={styles.dropzoneMainTitleText}>Drag & drop bank statement here</p>
+                <p className={styles.dropzoneSubtextMeta}>Supports .csv, .xlsx, .xls (max 10 MB)</p>
+                <span className={styles.dropzoneBrowseBtn}>Browse Computer</span>
+                <input
+                  type="file"
+                  accept=".csv, .xlsx, .xls"
+                  className={styles.nativeFullHiddenFileInputControl}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileExtractionStream(file);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Step 2: Map Columns */}
+            {importStep === 2 && (
+              <div className={styles.wizardFormCoreBody}>
+                <div className={`${styles.wizardInfoAlertBox} ${styles.alertInfoBlue}`}>
+                  <FiFileText size={18} className={styles.alertIconFlex} />
+                  <div>
+                    <strong>Header Alignment Required:</strong> Map the columns from your file to ledger fields.
                   </div>
-                  <FiChevronRight className={styles.stepperArrowIcon} />
-                  <div className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
-                    <span className={styles.stepperStepNumber}>2</span>
-                    <span>Map Headers</span>
+                </div>
+
+                <div className={styles.mappingSelectorsGridRow}>
+                  <div className={styles.formGroupWrapperField}>
+                    <label htmlFor="mapDateCol">Transaction Date *</label>
+                    <select
+                      id="mapDateCol"
+                      value={colMap.date}
+                      onChange={(e) => setColMap((p) => ({ ...p, date: e.target.value }))}
+                      className={styles.premiumFieldSelectControl}
+                    >
+                      <option value="">-- Select Column --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <FiChevronRight className={styles.stepperArrowIcon} />
-                  <div className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
-                    <span className={styles.stepperStepNumber}>3</span>
-                    <span>Review & Commit</span>
+                  <div className={styles.formGroupWrapperField}>
+                    <label htmlFor="mapDescCol">Description / Narrative *</label>
+                    <select
+                      id="mapDescCol"
+                      value={colMap.description}
+                      onChange={(e) => setColMap((p) => ({ ...p, description: e.target.value }))}
+                      className={styles.premiumFieldSelectControl}
+                    >
+                      <option value="">-- Select Column --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.formGroupWrapperField}>
+                    <label htmlFor="mapAmountCol">Transaction Amount *</label>
+                    <select
+                      id="mapAmountCol"
+                      value={colMap.amount}
+                      onChange={(e) => setColMap((p) => ({ ...p, amount: e.target.value }))}
+                      className={styles.premiumFieldSelectControl}
+                    >
+                      <option value="">-- Select Column --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.formGroupWrapperField}>
+                    <label htmlFor="mapCurrCol">Currency Code (Optional)</label>
+                    <select
+                      id="mapCurrCol"
+                      value={colMap.currency}
+                      onChange={(e) => setColMap((p) => ({ ...p, currency: e.target.value }))}
+                      className={styles.premiumFieldSelectControl}
+                    >
+                      <option value="">-- Fallback Only ({fallbackCurrency}) --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.stagerFallbackSubFormBlock}>
+                  <div className={styles.formGroupWrapperField}>
+                    <label htmlFor="fallbackCurrInput">Fallback Currency</label>
+                    <input
+                      id="fallbackCurrInput"
+                      type="text"
+                      maxLength={3}
+                      value={fallbackCurrency}
+                      onChange={(e) => setFallbackCurrency(e.target.value.toUpperCase())}
+                      className={styles.premiumFieldInputTextControl}
+                      placeholder="PKR"
+                    />
+                  </div>
+                  <div className={styles.formGroupWrapperField}>
+                    <label htmlFor="fallbackTypeSelect">Default Cash Flow Type</label>
+                    <select
+                      id="fallbackTypeSelect"
+                      value={fallbackType}
+                      onChange={(e) => setFallbackType(e.target.value as "INCOME" | "EXPENSE")}
+                      className={styles.premiumFieldSelectControl}
+                    >
+                      <option value="EXPENSE">Expense (Debit / Outflow)</option>
+                      <option value="INCOME">Income (Credit / Inflow)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.wizardActionFooterToolbar}>
+                  <button type="button" onClick={() => setImportStep(1)} className={styles.wizardCancelControlBtn}>
+                    Back
+                  </button>
+                  <button type="button" onClick={handleComputeMappingVerification} className={styles.wizardPrimaryConfirmBtn}>
+                    Generate Preview
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Review & Commit */}
+            {importStep === 3 && (
+              <div className={styles.wizardFormCoreBody}>
+                <div className={`${styles.wizardInfoAlertBox} ${styles.alertWarningAmber}`}>
+                  <FiAlertCircle size={18} className={styles.alertIconFlex} />
+                  <div>
+                    <strong>Staging Area:</strong> Unmapped records will be placed in <b>Unassigned</b>.
+                  </div>
+                </div>
+
+                <div className={styles.previewDataGridContainerWindow}>
+                  <table className={styles.previewTableViewportLayout}>
+                    <thead className={styles.previewTableHeaderStickyDeck}>
+                      <tr>
+                        <th>Posting Date</th>
+                        <th>Description</th>
+                        <th>Value Amount</th>
+                        <th>Flow Type</th>
+                        <th>Category Allocation</th>
+                      </tr>
+                    </thead>
+                    <tbody className={styles.previewTableBodyRowCluster}>
+                      {stagedPreviewRows.map((row, rIdx) => (
+                        <tr key={row.index}>
+                          <td className={styles.tableCellDate}>{row.date}</td>
+                          <td className={styles.tableCellTruncateText} title={row.description}>
+                            {row.description}
+                          </td>
+                          <td className={styles.tableCellAmount}>
+                            {row.currency} {row.amount.toFixed(2)}
+                          </td>
+                          <td>
+                            <span
+                              className={
+                                row.type === "INCOME" ? styles.badgeTypeIncomePill : styles.badgeTypeExpensePill
+                              }
+                            >
+                              {row.type}
+                            </span>
+                          </td>
+                          <td>
+                            <select
+                              value={row.categoryId}
+                              onChange={(e) => {
+                                const newId = e.target.value;
+                                setStagedPreviewRows((prev) =>
+                                  prev.map((pr, idx) => (idx === rIdx ? { ...pr, categoryId: newId } : pr))
+                                );
+                              }}
+                              className={styles.tableCellInlineSelectControl}
+                            >
+                              {categories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className={styles.wizardActionFooterToolbar}>
+                  <span className={styles.wizardCounterSummaryMetaText}>
+                    {stagedPreviewRows.length} transactions ready to sync.
+                  </span>
+                  <div className={styles.flexButtonGroupRow}>
+                    <button
+                      type="button"
+                      disabled={isSubmittingImport}
+                      onClick={() => setImportStep(2)}
+                      className={styles.wizardCancelControlBtn}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSubmittingImport}
+                      onClick={handleCommitBulkDataToBackend}
+                      className={styles.wizardCommitExecutionBtn}
+                    >
+                      {isSubmittingImport ? "Syncing..." : "Commit Statement Import"}
+                    </button>
                   </div>
                 </div>
               </div>
-
-              {/* STEP 1: INTERACTIVE DRAG & DROP ZONE */}
-              {importStep === 1 && (
-                <div 
-                  className={`${styles.dropzoneFrameZone} ${isDraggingOver ? styles.dropzoneActiveTint : ""}`}
-                  onDragOver={handleDragOverGate}
-                  onDragLeave={handleDragLeaveGate}
-                  onDrop={handleNativeDropTrigger}
-                >
-                  <div className={styles.dropzoneIconWrapper}>
-                    <FiUploadCloud className={styles.dropzoneUploadIcon} />
-                  </div>
-                  <p className={styles.dropzoneMainTitleText}>Drag & Drop bank statement file here</p>
-                  <p className={styles.dropzoneSubtextMeta}>Supports standard financial exports (.csv, .xlsx, .xls) up to 10MB</p>
-                  <span className={styles.dropzoneBrowseBtn}>Browse Computer</span>
-                  <input 
-                    type="file" 
-                    accept=".csv, .xlsx, .xls" 
-                    className={styles.nativeFullHiddenFileInputControl} 
-                    onChange={handleFileDropProcessing}
-                  />
-                </div>
-              )}
-
-              {/* STEP 2: COLUMN MAPPING FORM */}
-              {importStep === 2 && (
-                <div className={styles.wizardFormCoreBody}>
-                  <div className={`${styles.wizardInfoAlertBox} ${styles.alertInfoBlue}`}>
-                    <FiFileText size={18} className={styles.alertIconFlex} />
-                    <div>
-                      <strong>Header Alignment Required:</strong> Map column fields from your uploaded file to ledger workspace schema.
-                    </div>
-                  </div>
-
-                  <div className={styles.mappingSelectorsGridRow}>
-                    <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapDateCol">Transaction Date *</label>
-                      <select id="mapDateCol" value={colMap.date} onChange={e => setColMap(p => ({...p, date: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Select Column --</option>
-                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
-                    <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapDescCol">Description / Narrative *</label>
-                      <select id="mapDescCol" value={colMap.description} onChange={e => setColMap(p => ({...p, description: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Select Column --</option>
-                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
-                    <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapAmountCol">Transaction Amount *</label>
-                      <select id="mapAmountCol" value={colMap.amount} onChange={e => setColMap(p => ({...p, amount: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Select Column --</option>
-                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
-                    <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel} htmlFor="mapCurrCol">Currency Code (Optional)</label>
-                      <select id="mapCurrCol" value={colMap.currency} onChange={e => setColMap(p => ({...p, currency: e.target.value}))} className={styles.premiumFieldSelectControl}>
-                        <option value="">-- Fallback Only ({fallbackCurrency}) --</option>
-                        {rawFileHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className={styles.stagerFallbackSubFormBlock}>
-                    <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel} htmlFor="fallbackCurrInput">Fallback Currency</label>
-                      <input id="fallbackCurrInput" type="text" maxLength={3} value={fallbackCurrency} onChange={e => setFallbackCurrency(e.target.value.toUpperCase())} className={styles.premiumFieldInputTextControl} placeholder="PKR" />
-                    </div>
-                    <div className={styles.formGroupWrapperField}>
-                      <label className={styles.fieldLayoutInputLabel} htmlFor="fallbackTypeSelect">Default Cash Flow Type</label>
-                      <select id="fallbackTypeSelect" value={fallbackType} onChange={e => setFallbackType(e.target.value as "INCOME" | "EXPENSE")} className={styles.premiumFieldSelectControl}>
-                        <option value="EXPENSE">Expense (Debit / Outflow)</option>
-                        <option value="INCOME">Income (Credit / Inflow)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className={styles.wizardActionFooterToolbar}>
-                    <button type="button" onClick={() => setImportStep(1)} className={styles.wizardCancelControlBtn}>Back</button>
-                    <button type="button" onClick={handleComputeMappingVerification} className={styles.wizardPrimaryConfirmBtn}>Generate Preview</button>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: PREVIEW & STAGING DATA GRID */}
-              {importStep === 3 && (
-                <div className={styles.wizardFormCoreBody}>
-                  <div className={`${styles.wizardInfoAlertBox} ${styles.alertWarningAmber}`}>
-                    <FiAlertCircle size={18} className={styles.alertIconFlex} />
-                    <div>
-                      <strong>Staging Area:</strong> Review imported entries. Unmapped records will default to <b>Unassigned</b>.
-                    </div>
-                  </div>
-
-                  <div className={styles.previewDataGridContainerWindow}>
-                    <table className={styles.previewTableViewportLayout}>
-                      <thead className={styles.previewTableHeaderStickyDeck}>
-                        <tr>
-                          <th>Posting Date</th>
-                          <th>Description</th>
-                          <th>Value Amount</th>
-                          <th>Flow Type</th>
-                          <th>Category Allocation</th>
-                        </tr>
-                      </thead>
-                      <tbody className={styles.previewTableBodyRowCluster}>
-                        {stagedPreviewRows.map((row, rIdx) => (
-                          <tr key={row.index}>
-                            <td className={styles.tableCellDate}>{row.date}</td>
-                            <td className={styles.tableCellTruncateText} title={row.description}>{row.description}</td>
-                            <td className={styles.tableCellAmount}>{row.currency} {row.amount.toFixed(2)}</td>
-                            <td>
-                              <span className={row.type === "INCOME" ? styles.badgeTypeIncomePill : styles.badgeTypeExpensePill}>
-                                {row.type}
-                              </span>
-                            </td>
-                            <td>
-                              <select 
-                                value={row.categoryId}
-                                onChange={(e) => {
-                                  const nextVal = e.target.value;
-                                  setStagedPreviewRows(prev => prev.map((pr, pIdx) => pIdx === rIdx ? {...pr, categoryId: nextVal} : pr));
-                                }}
-                                className={styles.tableCellInlineSelectControl}
-                              >
-                                {categories.map(cat => (
-                                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                ))}
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className={styles.wizardActionFooterToolbar}>
-                    <span className={styles.wizardCounterSummaryMetaText}>{stagedPreviewRows.length} transactions ready to sync.</span>
-                    <div className={styles.flexButtonGroupRow}>
-                      <button type="button" disabled={isSubmittingImport} onClick={() => setImportStep(2)} className={styles.wizardCancelControlBtn}>Back</button>
-                      <button type="button" disabled={isSubmittingImport} onClick={handleCommitBulkDataToBackend} className={styles.wizardCommitExecutionBtn}>
-                        {isSubmittingImport ? "Syncing Database Grid..." : "Commit Statement Import"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Active Debt Reminder Popup Modal */}
-      <div>
-        {activeReminderTx && (
-          <div className={styles.modalOverlayBackdrop} onClick={() => setActiveReminderTx(null)}>
-            <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
-              <DebtReminderForm 
-                transaction={activeReminderTx} 
-                onCancel={() => setActiveReminderTx(null)} 
-              />
-            </div>
+      {/* Debt Reminder Modal */}
+      {activeReminderTx && (
+        <div className={styles.modalOverlayBackdrop} onClick={() => setActiveReminderTx(null)}>
+          <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
+            <DebtReminderForm
+              transaction={activeReminderTx}
+              onCancel={() => setActiveReminderTx(null)}
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Standard Transaction Details Input Form Modals */}
-      <div>
-        {isModalOpen && (
-          <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
-            <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
-              <TransactionForm 
-                onAddTransaction={handleUpsertTransaction}
-                availableCategories={categories}
-                initialData={editingTransaction}
-                onCancel={handleClosePopupModal}
-                workspaceId={activeWorkspaceId || ""}
-              />
-            </div>
+      {/* Transaction Form Modal */}
+      {isModalOpen && (
+        <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
+          <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
+            <TransactionForm
+              onAddTransaction={handleUpsertTransaction}
+              availableCategories={categories}
+              initialData={editingTransaction}
+              onCancel={handleClosePopupModal}
+              workspaceId={activeWorkspaceId || ""}
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Bulk Action Toolbar */}
+      {/* Bulk Action Toolbelt */}
       <BulkActionToolBelt
         selectedCount={selectedRecordIds.length}
         onClearSelection={handleClearSelectionQueue}

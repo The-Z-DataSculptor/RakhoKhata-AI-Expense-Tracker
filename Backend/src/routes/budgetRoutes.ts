@@ -1,7 +1,7 @@
 // Backend/src/routes/budgetRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Router } from "express";
 import {
@@ -10,7 +10,14 @@ import {
   updateBudget,
   deleteBudget,
 } from "../controllers/budgetController";
-import { verifyTokenGuard } from "../middleware/authMiddleware";
+import {
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+} from "../middleware/authMiddleware";
+import {
+  globalApiLimiter,
+  writeActionsLimiter,
+} from "../middleware/rateLimitMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -18,21 +25,69 @@ import { verifyTokenGuard } from "../middleware/authMiddleware";
    ========================================================================== */
 const router = Router();
 
-// Fetch all budgets for a workspace (workspaceId query parameter required)
-router.get("/", verifyTokenGuard, getWorkspaceBudgets);
+/**
+ * GET /api/budgets
+ * Fetches all budget rules for a workspace (requires workspaceId query parameter).
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `globalApiLimiter` to prevent database query
+ * starvation attacks, and `ensureOnboardingCompleted` to enforce account setup prerequisites.
+ */
+router.get(
+  "/",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  globalApiLimiter,
+  getWorkspaceBudgets
+);
 
-// Create a new budget rule
-router.post("/", verifyTokenGuard, createBudget);
+/**
+ * POST /api/budgets
+ * Creates a new budget limit rule for a category inside a workspace.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to block automated script
+ * spam from flooding database tables with duplicate budget records.
+ */
+router.post(
+  "/",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  createBudget
+);
 
-// Update an existing budget
-router.put("/:id", verifyTokenGuard, updateBudget);
+/**
+ * PUT /api/budgets/:id
+ * Updates target amount or configuration for an existing budget rule.
+ * 
+ * WHY THIS FIX WAS MADE: Rate limited using `writeActionsLimiter` to prevent race conditions
+ * and rapid mutation lock contention on database rows.
+ */
+router.put(
+  "/:id",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  updateBudget
+);
 
-// Delete a budget
-router.delete("/:id", verifyTokenGuard, deleteBudget);
+/**
+ * DELETE /api/budgets/:id
+ * Deletes a budget rule record from the target workspace.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to safeguard against bulk-deletion
+ * attacks or repeated API deletion triggers.
+ */
+router.delete(
+  "/:id",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  deleteBudget
+);
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: EXPORT ===
+   === SECTION 3: EXPORTS ===
    ========================================================================== */
 export default router;
 /* === SECTION 3 END === */

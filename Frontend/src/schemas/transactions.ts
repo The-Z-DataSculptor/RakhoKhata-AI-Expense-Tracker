@@ -12,6 +12,13 @@ import * as z from "zod";
 /**
  * Schema for transaction form validation.
  * Ensures the incoming data is complete and correctly typed before submission.
+ *
+ * WHY .positive() is used on amount:
+ * A transaction with a zero amount is meaningless. We require a value > 0.
+ *
+ * WHY max length on description is 150:
+ * Most bank descriptions are concise, but some imported statements can
+ * have longer narratives. 150 characters covers virtually all cases.
  */
 export const transactionFormSchema = z.object({
   date: z
@@ -20,8 +27,9 @@ export const transactionFormSchema = z.object({
 
   description: z
     .string()
+    .trim()
     .min(3, { message: "Description must be at least 3 characters" })
-    .max(80, { message: "Description must be under 80 characters" }),
+    .max(150, { message: "Description must be under 150 characters" }),
 
   category: z
     .string()
@@ -44,7 +52,5 @@ export const transactionFormSchema = z.object({
  * Inferred TypeScript type from the Zod schema.
  * Used by React Hook Form and other components.
  */
-export type TransactionFormValues = z.infer<
-  typeof transactionFormSchema
->;
+export type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 /* === SECTION 3 END === */

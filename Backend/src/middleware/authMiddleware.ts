@@ -1,9 +1,9 @@
 // Backend/src/middleware/authMiddleware.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-import { Response, NextFunction, Request } from "express";
+import { Response as ExpressResponse, NextFunction, Request } from "express";
 import crypto from "crypto";
 import { decrypt } from "paseto-ts/v4";
 import { prisma } from "../db";
@@ -12,45 +12,64 @@ import { prisma } from "../db";
 interface TokenPayload {
   userId: string;
   email: string;
+  exp?: string;
 }
 
 // Custom request type that attaches the decoded user information
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;      // 🚀 Added 'id' for compatibility across all middlewares
-    userId: string;  // Kept 'userId' for backward compatibility
+    id: string;      // Added for compatibility across all middlewares
+    userId: string;  // Kept for backward compatibility
     email: string;
   };
 }
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
 /**
- * Generates the symmetric key required by PASETO (v4.local) using the application secret.
- * The key must be exactly 52 characters long starting with "k4.local.".
+ * Standardized JSON error response builder
  */
-function derivePasetoKey(): string {
-  const secret =
-    process.env.PASETO_SECRET ||
-    "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
-  const hash = crypto.createHash("sha256").update(secret).digest();
-  const base64url = hash.toString("base64url");
-  return `k4.local.${base64url}`;
+function buildSafeError(message: string): { error: string } {
+  return { error: message };
 }
 
 /**
- * Builds a safe error object. No internal details are ever exposed.
+ * WHY THIS FIX WAS MADE: Generates a 52-character PASERK key and throws an explicit startup error
+ * in production if PASETO_SECRET is missing, preventing silent fallbacks to insecure keys.
  */
-function safeError(message: string): { error: string } {
-  return { error: message };
+function derivePasetoKey(): string {
+  const secret = process.env.PASETO_SECRET;
+
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!");
+    }
+    // Safe fallback for local development environment only
+    const devFallback = "dev_secret_key_must_be_at_least_32_characters_long_for_security";
+    const devHash = crypto.createHash("sha256").update(devFallback).digest();
+    return `k4.local.${devHash.toString("base64url")}`;
+  }
+
+  const hash = crypto.createHash("sha256").update(secret).digest();
+  return `k4.local.${hash.toString("base64url")}`;
+}
+
+// Memory cache for the derived key to avoid hashing on every single HTTP request
+let cachedPasetoKey: string | null = null;
+
+function getPasetoKey(): string {
+  if (!cachedPasetoKey) {
+    cachedPasetoKey = derivePasetoKey();
+  }
+  return cachedPasetoKey;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 3: CORE LOGIC ENGINE & MIDDLEWARES ===
    ========================================================================== */
 
 /**
@@ -59,32 +78,50 @@ function safeError(message: string): { error: string } {
  */
 export const verifyTokenGuard = async (
   req: AuthenticatedRequest,
-  res: Response,
+  res: ExpressResponse,
   next: NextFunction
 ): Promise<void> => {
   try {
-    // 1. Extract token from HTTP‑only cookie
+    // 1. Extract token from HTTP-only cookie
     const token = req.cookies?.token;
 
-    if (!token) {
+    if (!token || typeof token !== "string" || !token.trim()) {
       res
         .status(401)
-        .json(safeError("Access denied. Active session token missing."));
+        .json(buildSafeError("Access denied. Active session token missing."));
       return;
     }
 
-    // 2. Decrypt the token using the derived PASETO key
-    const { payload } = await decrypt(derivePasetoKey(), token);
+    // 2. Decrypt the token using the cached PASETO key
+    const { payload } = await decrypt(getPasetoKey(), token);
 
-    // 3. Narrow the payload to our known TokenPayload interface
+    // 3. Narrow and validate the payload safely
     const decoded = payload as unknown as TokenPayload;
 
-    // 4. Attach the verified user information to the request for downstream handlers
-    // 🚀 Provides both 'id' and 'userId' to prevent property mismatch bugs
+    // WHY THIS FIX WAS MADE: Explicitly verifies payload integrity so missing userId or email doesn't pollute req.user.
+    if (!decoded || typeof decoded !== "object" || !decoded.userId || !decoded.email) {
+      res
+        .status(401)
+        .json(buildSafeError("Invalid session token payload structure."));
+      return;
+    }
+
+    // WHY THIS FIX WAS MADE: Explicitly checks the ISO expiration timestamp claim to reject expired session tokens.
+    if (decoded.exp) {
+      const expirationDate = new Date(decoded.exp);
+      if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
+        res
+          .status(401)
+          .json(buildSafeError("Your financial session has expired. Please log in again."));
+        return;
+      }
+    }
+
+    // 4. Attach verified user identity to the request context
     req.user = {
-      id: decoded.userId,
-      userId: decoded.userId,
-      email: decoded.email,
+      id: String(decoded.userId).trim(),
+      userId: String(decoded.userId).trim(),
+      email: String(decoded.email).trim().toLowerCase(),
     };
 
     // 5. Proceed to the next middleware or route handler
@@ -95,22 +132,14 @@ export const verifyTokenGuard = async (
     const errorMessage = String(error);
     if (errorMessage.includes("expired")) {
       res
-        .status(403)
-        .json(
-          safeError(
-            "Your financial session has expired. Please log in again."
-          )
-        );
+        .status(401)
+        .json(buildSafeError("Your financial session has expired. Please log in again."));
       return;
     }
 
     res
-      .status(403)
-      .json(
-        safeError(
-          "Session authentication failed or token has been tampered with."
-        )
-      );
+      .status(401)
+      .json(buildSafeError("Session authentication failed or token has been tampered with."));
   }
 };
 
@@ -120,7 +149,7 @@ export const verifyTokenGuard = async (
  */
 export const ensureOnboardingCompleted = async (
   req: AuthenticatedRequest,
-  res: Response,
+  res: ExpressResponse,
   next: NextFunction
 ): Promise<void> => {
   try {
@@ -128,38 +157,39 @@ export const ensureOnboardingCompleted = async (
     if (!userId) {
       res
         .status(401)
-        .json(
-          safeError("Unauthorized access. Active user session context missing.")
-        );
+        .json(buildSafeError("Unauthorized access. Active user session context missing."));
       return;
     }
 
-    // Look up the onboarding status directly from the database
+    // WHY THIS FIX WAS MADE: Queries only the onboarding status to minimize database query overhead.
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
       select: { isOnboardingCompleted: true },
     });
 
-    if (!userProfile || !userProfile.isOnboardingCompleted) {
+    if (!userProfile) {
+      res
+        .status(401)
+        .json(buildSafeError("User account no longer exists. Session invalid."));
+      return;
+    }
+
+    if (!userProfile.isOnboardingCompleted) {
       res
         .status(403)
         .json(
-          safeError(
-            "Access denied. Please complete your personalized profile onboarding setup first."
-          )
+          buildSafeError("Access denied. Please complete your personalized profile onboarding setup first.")
         );
       return;
     }
 
-    // User has completed onboarding – continue to the requested route
+    // User has completed onboarding – continue to requested route
     next();
   } catch (error: unknown) {
     console.error("Onboarding Validation Gate Exception:", error);
     res
       .status(500)
-      .json(
-        safeError("Internal server error confirming customization status.")
-      );
+      .json(buildSafeError("Internal server error confirming customization status."));
   }
 };
 /* === SECTION 3 END === */

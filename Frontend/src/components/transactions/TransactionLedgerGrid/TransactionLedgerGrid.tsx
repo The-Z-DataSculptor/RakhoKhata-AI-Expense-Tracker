@@ -35,8 +35,23 @@ interface TransactionLedgerGridProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC & RENDER ===
+   === SECTION 3: COMPONENT LOGIC & HELPERS ===
    ========================================================================== */
+// WHY THIS FIX WAS MADE: Defensively parses currency amounts to prevent unhandled .toFixed()
+// exceptions on null or non-numeric inputs.
+const formatOriginalCurrency = (amount: unknown, currency?: string): string => {
+  const numericVal = Number(amount);
+  const safeAmount = isNaN(numericVal) ? 0 : numericVal;
+  const safeCurrency = currency ? currency.trim().toUpperCase() : "USD";
+  return `${safeAmount.toFixed(2)} ${safeCurrency}`;
+};
+
+const checkIsDebtCategory = (catName?: string): boolean => {
+  if (!catName) return false;
+  const lowercase = catName.toLowerCase();
+  return lowercase.includes("owed") || lowercase.includes("debts");
+};
+
 export default function TransactionLedgerGrid({
   records,
   onEditRecord,
@@ -46,24 +61,24 @@ export default function TransactionLedgerGrid({
   onToggleSelectRow,
   onToggleSelectAllOnPage,
 }: TransactionLedgerGridProps) {
-  
-  const validatedRecords = records || [];
-  const isAllOnPageSelected = validatedRecords.length > 0 && validatedRecords.every((row) => selectedIds.includes(row.id));
+  // Defensive array verification
+  const validatedRecords = Array.isArray(records) ? records : [];
+  const safeSelectedIds = Array.isArray(selectedIds) ? selectedIds : [];
+
+  const isAllOnPageSelected = 
+    validatedRecords.length > 0 && 
+    validatedRecords.every((row) => safeSelectedIds.includes(row.id));
+
   const currentPageIds = validatedRecords.map((row) => row.id);
+  /* === SECTION 3 END === */
 
-  const formatOriginalCurrency = (amount: number, currency: string) => {
-    return `${amount.toFixed(2)} ${currency}`;
-  };
-
-  const checkIsDebtCategory = (catName: string) => {
-    const lowercase = catName.toLowerCase();
-    return lowercase.includes("owed") || lowercase.includes("debts");
-  };
-
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.ledgerTableViewportWrapper}>
       {validatedRecords.length === 0 ? (
-        <div className={styles.emptyStateContainerBlock}>
+        <div className={styles.emptyStateContainerBlock} role="status">
           <p className={styles.emptyStateNoticeText}>
             No active transaction logs match your filter combinations.
           </p>
@@ -81,6 +96,7 @@ export default function TransactionLedgerGrid({
                       className={styles.rowSelectionCheckboxInput}
                       checked={isAllOnPageSelected}
                       onChange={() => onToggleSelectAllOnPage(currentPageIds)}
+                      aria-label="Select all transactions on current page"
                     />
                   </th>
                   <th style={{ width: "120px" }}>Date</th>
@@ -91,14 +107,15 @@ export default function TransactionLedgerGrid({
                 </tr>
               </thead>
               <tbody>
-                {validatedRecords.map((singleRowItem) => {
+                {validatedRecords.map((singleRowItem, index) => {
                   const isIncomeType = singleRowItem.type === "income";
-                  const isRowChecked = selectedIds.includes(singleRowItem.id);
+                  const isRowChecked = safeSelectedIds.includes(singleRowItem.id);
                   const isDebt = checkIsDebtCategory(singleRowItem.category);
-                  
+                  const uniqueKey = singleRowItem.id || `row-${index}`;
+
                   return (
                     <tr 
-                      key={singleRowItem.id} 
+                      key={uniqueKey} 
                       className={`${styles.zebraStripeRowNode} ${isRowChecked ? styles.selectedRowHighlightNode : ""}`}
                     >
                       <td style={{ textAlign: "center" }}>
@@ -107,13 +124,16 @@ export default function TransactionLedgerGrid({
                           className={styles.rowSelectionCheckboxInput}
                           checked={isRowChecked}
                           onChange={() => onToggleSelectRow(singleRowItem.id)}
+                          aria-label={`Select transaction ${singleRowItem.description || ""}`}
                         />
                       </td>
-                      <td className={styles.calendarDateCellText}>{singleRowItem.date}</td>
-                      <td className={styles.descriptiveDetailsCellText}>{singleRowItem.description}</td>
+                      <td className={styles.calendarDateCellText}>{singleRowItem.date || "N/A"}</td>
+                      <td className={styles.descriptiveDetailsCellText} title={singleRowItem.description}>
+                        {singleRowItem.description || "Untitled Transaction"}
+                      </td>
                       <td>
                         <span className={styles.categoryLabelBadgeToken}>
-                          {singleRowItem.category}
+                          {singleRowItem.category || "Unassigned"}
                         </span>
                       </td>
                       <td className={styles.numericAmountCellTextPositioner}>
@@ -131,6 +151,7 @@ export default function TransactionLedgerGrid({
                               style={{ color: "var(--color-primary, #6366f1)" }}
                               onClick={() => onSendReminder(singleRowItem)}
                               title="Send debt reminder link"
+                              aria-label={`Send debt reminder for ${singleRowItem.description}`}
                             >
                               <FiBell size={13} />
                             </button>
@@ -148,6 +169,7 @@ export default function TransactionLedgerGrid({
                             className={styles.rowUtilityIconButtonNode}
                             onClick={() => onEditRecord(singleRowItem.id)}
                             title="Edit record"
+                            aria-label={`Edit ${singleRowItem.description}`}
                           >
                             <FiEdit2 size={13} />
                           </button>
@@ -156,6 +178,7 @@ export default function TransactionLedgerGrid({
                             className={`${styles.rowUtilityIconButtonNode} ${styles.dangerHoverPillNode}`}
                             onClick={() => onDeleteRecord(singleRowItem.id)}
                             title="Delete record"
+                            aria-label={`Delete ${singleRowItem.description}`}
                           >
                             <FiTrash2 size={13} />
                           </button>
@@ -188,14 +211,15 @@ export default function TransactionLedgerGrid({
 
             {/* COMPACT LIST CONTAINER */}
             <div className={styles.mobileCompactListWrapper}>
-              {validatedRecords.map((singleRowItem) => {
+              {validatedRecords.map((singleRowItem, index) => {
                 const isIncomeType = singleRowItem.type === "income";
-                const isRowChecked = selectedIds.includes(singleRowItem.id);
+                const isRowChecked = safeSelectedIds.includes(singleRowItem.id);
                 const isDebt = checkIsDebtCategory(singleRowItem.category);
+                const uniqueKey = singleRowItem.id || `mobile-row-${index}`;
 
                 return (
                   <div 
-                    key={singleRowItem.id} 
+                    key={uniqueKey} 
                     className={`${styles.mobileCompactRowItem} ${isRowChecked ? styles.mobileRowChecked : ""}`}
                   >
                     {/* LEFT SECTION: CHECKBOX & FLOW ICON */}
@@ -214,12 +238,12 @@ export default function TransactionLedgerGrid({
                     {/* MIDDLE SECTION: DESCRIPTION & CATEGORY/DATE */}
                     <div className={styles.mobileRowMiddle}>
                       <h4 className={styles.mobileRowTitle} title={singleRowItem.description}>
-                        {singleRowItem.description}
+                        {singleRowItem.description || "Untitled Transaction"}
                       </h4>
                       <div className={styles.mobileRowMetaLine}>
-                        <span className={styles.mobileCategoryTag}>{singleRowItem.category}</span>
+                        <span className={styles.mobileCategoryTag}>{singleRowItem.category || "Unassigned"}</span>
                         <span className={styles.mobileDotDivider}>•</span>
-                        <span className={styles.mobileRowDate}>{singleRowItem.date}</span>
+                        <span className={styles.mobileRowDate}>{singleRowItem.date || "N/A"}</span>
                       </div>
                     </div>
 
@@ -236,6 +260,7 @@ export default function TransactionLedgerGrid({
                             className={styles.mobileMiniActionBtn}
                             onClick={() => onSendReminder(singleRowItem)}
                             title="Send reminder"
+                            aria-label={`Send debt reminder for ${singleRowItem.description}`}
                           >
                             <FiBell size={12} />
                           </button>
@@ -245,6 +270,7 @@ export default function TransactionLedgerGrid({
                           className={styles.mobileMiniActionBtn}
                           onClick={() => onEditRecord(singleRowItem.id)}
                           title="Edit"
+                          aria-label={`Edit ${singleRowItem.description}`}
                         >
                           <FiEdit2 size={12} />
                         </button>
@@ -253,6 +279,7 @@ export default function TransactionLedgerGrid({
                           className={`${styles.mobileMiniActionBtn} ${styles.mobileDeleteMiniBtn}`}
                           onClick={() => onDeleteRecord(singleRowItem.id)}
                           title="Delete"
+                          aria-label={`Delete ${singleRowItem.description}`}
                         >
                           <FiTrash2 size={12} />
                         </button>

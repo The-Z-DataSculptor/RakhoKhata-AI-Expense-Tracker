@@ -2,9 +2,9 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DEPENDENCIES ===
    ========================================================================== */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { FiAlertCircle, FiPlus } from "react-icons/fi";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
@@ -34,7 +34,7 @@ export interface CategoryRecord {
   frequency?: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
   dueDay?: number;
   reminderDays?: number;
-  isFixed?: boolean; // Tracks whether this is a core system-protected category
+  isFixed?: boolean;
 }
 
 type UnassignedTransactionRecord = DrawerTxRecord & {
@@ -42,23 +42,24 @@ type UnassignedTransactionRecord = DrawerTxRecord & {
 };
 /* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: STATE MECHANICS & FETCH PIPELINES ===
+   ========================================================================== */
 export default function CategoriesPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
 
-  // --- STATE MATRIX ---
+  // WHY THIS FIX WAS MADE: Initialized to false to prevent synchronous setState cascading errors in effect bodies
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
 
-  /* ==========================================================================
-     === LIFECYCLE SYNC CORE ENGINE ===
-     ========================================================================== */
+  // Safely validates and maps database frequency strings to type unions
   const toFrequencyUnion = (value: string | null): CategoryRecord["frequency"] => {
     if (!value) return "MONTHLY";
     const allowed = ["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"];
@@ -101,58 +102,73 @@ export default function CategoriesPage() {
   }, [activeWorkspaceId]);
 
   useEffect(() => {
-    if (!activeWorkspaceId) return;
+    let isMounted = true;
+    if (!activeWorkspaceId) {
+      return;
+    }
 
     const initialWorkspaceSync = async () => {
-      setIsLoading(true);
       try {
+        if (isMounted) setIsLoading(true);
         const [catData, txData] = await Promise.all([
           categoryService.getByWorkspace(activeWorkspaceId),
           transactionService.getByWorkspace(activeWorkspaceId)
         ]);
 
-        setTransactions(txData.transactions);
+        if (isMounted) {
+          setTransactions(txData.transactions);
 
-        const mappedCategories: CategoryRecord[] = catData.categories.map((dbCat: Category) => {
-          const txCount = txData.transactions.filter(tx => tx.categoryId === dbCat.id).length;
-          return {
-            id: dbCat.id,
-            workspaceId: dbCat.workspaceId,
-            name: dbCat.name,
-            type: dbCat.type.toLowerCase() as "income" | "expense" | "both",
-            iconSlug: "FiFolder",
-            accentColor: dbCat.color,
-            transactionCount: txCount,
-            isRecurring: dbCat.isRecurring ?? false,
-            frequency: toFrequencyUnion(dbCat.frequency),
-            dueDay: dbCat.dueDay ?? 1,
-            reminderDays: dbCat.reminderDays ?? 3,
-            isFixed: dbCat.isFixed ?? false,
-          };
-        });
+          const mappedCategories: CategoryRecord[] = catData.categories.map((dbCat: Category) => {
+            const txCount = txData.transactions.filter(tx => tx.categoryId === dbCat.id).length;
+            return {
+              id: dbCat.id,
+              workspaceId: dbCat.workspaceId,
+              name: dbCat.name,
+              type: dbCat.type.toLowerCase() as "income" | "expense" | "both",
+              iconSlug: "FiFolder",
+              accentColor: dbCat.color,
+              transactionCount: txCount,
+              isRecurring: dbCat.isRecurring ?? false,
+              frequency: toFrequencyUnion(dbCat.frequency),
+              dueDay: dbCat.dueDay ?? 1,
+              reminderDays: dbCat.reminderDays ?? 3,
+              isFixed: dbCat.isFixed ?? false,
+            };
+          });
 
-        setCategories(mappedCategories);
+          setCategories(mappedCategories);
+        }
       } catch (error: unknown) {
         console.error("Category Sync Failure:", error);
-        const msg = error instanceof Error ? error.message : "Failed to load category dashboard.";
-        toast.error(msg);
+        if (isMounted) {
+          const msg = error instanceof Error ? error.message : "Failed to load category dashboard.";
+          toast.error(msg);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     initialWorkspaceSync();
+
+    return () => {
+      isMounted = false;
+    };
   }, [activeWorkspaceId]);
+  /* === SECTION 3 END === */
 
   /* ==========================================================================
-     === ACTION HANDLERS ===
+     === SECTION 4: ACTION HANDLERS & COMPUTED DATA ===
      ========================================================================== */
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
+  // WHY THIS FIX WAS MADE: Uses safe transaction deletion and re-creation matching available utility methods 
+  // since transactionService lacks an explicit 'update' route.
   const handleApplyCategory = async (categoryId: string, transactionIds: string[]) => {
-    setIsLoading(true);
+    if (!activeWorkspaceId) return;
     try {
+      setIsLoading(true);
       await Promise.all(
         transactionIds.map(async (id) => {
           const tx = transactions.find(t => t.id === id);
@@ -160,15 +176,14 @@ export default function CategoriesPage() {
 
           await transactionService.delete(id);
           await transactionService.create({
-            originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
+            originalAmount: Number(tx.originalAmount ?? 0),
             originalCurrency: tx.originalCurrency || "USD",
-            baseAmountUSD: Number(tx.baseAmountUSD || 0),
+            baseAmountUSD: Number(tx.baseAmountUSD ?? 0),
             type: tx.type,
             description: tx.description || "Imported Ledger Record Entry",
             date: tx.date,
-            workspaceId: activeWorkspaceId!,
+            workspaceId: activeWorkspaceId,
             categoryId: categoryId,
-            amount: Number(tx.originalAmount ?? tx.amount ?? 0),
           });
         })
       );
@@ -200,7 +215,7 @@ export default function CategoriesPage() {
         name: savedCategory.name,
         type: savedCategory.type.toUpperCase(),
         color: savedCategory.accentColor,
-        workspaceId: activeWorkspaceId,
+        workspaceId: activeWorkspaceId!,
         isFixed: false,
         isRecurring: savedCategory.isRecurring ?? false,
         frequency: savedCategory.frequency || "MONTHLY",
@@ -242,34 +257,45 @@ export default function CategoriesPage() {
     }
   };
 
-  /* ==========================================================================
-     === LIVE COMPUTED DATA MATRICES ===
-     ========================================================================== */
-  // 🚀 IMPROVED: Swapped absolute match for fuzzy .includes() lookup matrix 
-  // to perfectly anchor the fresh "Unassigned (Needs Sorting)" text string label node.
   const unassignedNode = categories.find(c => c.name.toLowerCase().includes("unassigned"));
   const unassignedUUID = unassignedNode ? unassignedNode.id : "";
 
-  const filteredUnassigned: UnassignedTransactionRecord[] = transactions
-    .filter(tx => tx.categoryId === unassignedUUID)
-    .map(tx => ({
-      id: tx.id,
-      date: tx.date.substring(0, 10),
-      merchant: tx.description || "Imported Statement Entry",
-      amount: Number(tx.baseAmountUSD ?? tx.amount ?? 0),
-      workspaceId: tx.workspaceId
-    }));
+  // WHY THIS FIX WAS MADE: Safely handles date parsing with explicit type checking, avoiding 'never' type and toISOString errors.
+  const filteredUnassigned: UnassignedTransactionRecord[] = useMemo(() => {
+    return transactions
+      .filter(tx => tx.categoryId === unassignedUUID)
+      .map(tx => {
+        let safeDateStr = "";
+        const rawDate = tx.date as unknown;
+        if (typeof rawDate === "string") {
+          safeDateStr = rawDate.substring(0, 10);
+        } else if (rawDate instanceof Date) {
+          safeDateStr = rawDate.toISOString().substring(0, 10);
+        } else {
+          safeDateStr = new Date().toISOString().substring(0, 10);
+        }
 
-  // 🚀 IMPROVED: Blocks the core "Unassigned (Needs Sorting)" container 
-  // from appearing as a target option inside the bulk re-assignment drawer.
-  const categoryOptions: CategoryOption[] = categories
-    .filter(cat => !cat.name.toLowerCase().includes("unassigned"))
-    .map((cat) => ({
-      id: cat.id,
-      name: cat.name
-    }));
+        return {
+          id: tx.id,
+          date: safeDateStr,
+          merchant: tx.description || "Imported Statement Entry",
+          amount: Number(tx.baseAmountUSD ?? 0),
+          workspaceId: tx.workspaceId
+        };
+      });
+  }, [transactions, unassignedUUID]);
 
-  const calculateLiveStats = (): CategoryStatData => {
+  const categoryOptions: CategoryOption[] = useMemo(() => {
+    return categories
+      .filter(cat => !cat.name.toLowerCase().includes("unassigned"))
+      .map((cat) => ({
+        id: cat.id,
+        name: cat.name
+      }));
+  }, [categories]);
+
+  // Memoizes live statistical calculations to optimize CPU performance across renders.
+  const liveStatsData = useMemo((): CategoryStatData => {
     let topExp = { name: "N/A", amountWorkspace: 0 };
     let topInc = { name: "N/A", amountWorkspace: 0 };
     let habit = { name: "N/A", count: 0 };
@@ -284,9 +310,9 @@ export default function CategoriesPage() {
 
       let txAmountWorkspace: number;
       if (tx.originalCurrency === workspaceCurrency) {
-        txAmountWorkspace = Number(tx.originalAmount);
+        txAmountWorkspace = Number(tx.originalAmount || 0);
       } else {
-        txAmountWorkspace = convertAmount(Number(tx.baseAmountUSD), "USD", workspaceCurrency);
+        txAmountWorkspace = convertAmount(Number(tx.baseAmountUSD || 0), "USD", workspaceCurrency);
       }
 
       if (!categorySums[catName]) categorySums[catName] = { amountWorkspace: 0, count: 0 };
@@ -321,17 +347,19 @@ export default function CategoriesPage() {
       habitTrackerName: habit.name,
       habitTrackerCount: habit.count,
     };
-  };
+  }, [transactions, categories, workspaceCurrency, convertAmount]);
 
-  // Pin special categories to the absolute front of the line!
-  const orderedCategories = [...categories].sort((a, b) => {
-    if (a.isFixed && !b.isFixed) return -1; // Move fixed items to front
-    if (!a.isFixed && b.isFixed) return 1;  // Push custom items back
-    return 0;                               // Keep natural order otherwise
-  });
+  const orderedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      if (a.isFixed && !b.isFixed) return -1;
+      if (!a.isFixed && b.isFixed) return 1;
+      return 0;
+    });
+  }, [categories]);
+  /* === SECTION 4 END === */
 
   /* ==========================================================================
-     === RENDER UI ===
+     === SECTION 5: RENDER UI ===
      ========================================================================== */
   if (isLoading) {
     return (
@@ -370,7 +398,7 @@ export default function CategoriesPage() {
 
       <div className={styles.statsWrapperDeck}>
         <CategoryStats
-          statsData={calculateLiveStats()}
+          statsData={liveStatsData}
           sourceCurrency={workspaceCurrency}
         />
       </div>
@@ -411,3 +439,4 @@ export default function CategoriesPage() {
     </div>
   );
 }
+/* === SECTION 5 END === */

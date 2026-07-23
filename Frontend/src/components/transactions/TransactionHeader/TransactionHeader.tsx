@@ -4,16 +4,14 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
-/* === SECTION 1: IMPORTS & DATA CONTRACTS === */
 import React, { useState, useEffect, useRef } from "react";
 import { FiPlus, FiUpload, FiCamera, FiFileText, FiChevronDown, FiZap } from "react-icons/fi";
 import styles from "./TransactionHeader.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-/* === SECTION 2: TYPES, INTERFACES & UTILITIES === */
 interface TransactionHeaderProps {
   onAddTransactionClick: () => void;
   onImportClick: () => void; 
@@ -26,7 +24,6 @@ interface TransactionHeaderProps {
 /* ==========================================================================
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
-/* === SECTION 3: CORE LOGIC ENGINE & HANDLERS === */
 export default function TransactionHeader({ 
   onAddTransactionClick, 
   onImportClick, 
@@ -38,7 +35,7 @@ export default function TransactionHeader({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Safe fallback calculation for record counters
-  const safeCount = totalCount !== undefined && totalCount !== null ? totalCount : 0;
+  const safeCount = Math.max(0, Number(totalCount) || 0);
   const entryLabelText = safeCount === 1 ? "1 entry tracked" : `${safeCount.toLocaleString()} entries tracked`;
 
   // Dismisses dropdown menu when user clicks anywhere outside the container
@@ -65,12 +62,11 @@ export default function TransactionHeader({
     onCameraScannerSelect();
     setIsDropdownOpen(false);
   };
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: EXPORTS / RENDER COMPONENT ===
-   ========================================================================== */
-/* === SECTION 4: EXPORTS / RENDER COMPONENT === */
+  /* ==========================================================================
+     === SECTION 4: EXPORTS / RENDER COMPONENT ===
+     ========================================================================== */
   return (
     <header className={styles.glassFloatingDeck}>
       
@@ -103,7 +99,7 @@ export default function TransactionHeader({
             <span>Add Transaction</span>
           </button>
 
-          {/* SECONDARY ACTIONS GRID: EQUAL-WIDTH ON MOBILE */}
+          {/* SECONDARY ACTIONS GRID */}
           <div className={styles.secondaryActionsGrid}>
             
             {/* AI RECEIPT SCANNER DROPDOWN MODULE */}
@@ -125,7 +121,7 @@ export default function TransactionHeader({
               </button>
 
               {isDropdownOpen && (
-                <div className={styles.dropdownMenu} role="menu">
+                <div className={styles.dropdownMenu} role="menu" aria-label="AI Scanner Options">
                   <button
                     type="button"
                     className={styles.dropdownItem}

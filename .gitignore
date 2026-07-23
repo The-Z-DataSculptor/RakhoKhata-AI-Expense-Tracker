@@ -1,10 +1,14 @@
-# ==========================================================================
-# === RAKHOKHATA MASTER MONOREPO GITIGNORE CONFIGURATION ===
-# ==========================================================================
+# .gitignore
 
-# 📦 Dependencies & Package Rooms (Matches any node_modules in Frontend or Backend)
+# ==========================================================================
+# === SECTION 1: DEPENDENCIES & PACKAGE MANAGERS ===
+# ==========================================================================
+# WHY THIS FIX WAS MADE: Ignore all node_modules directories across all monorepo 
+# packages and applications to prevent committing heavy third-party vendor code.
 **/node_modules/
 node_modules/
+
+# Yarn Plug'n'Play and berry cache exclusions
 /.pnp
 .pnp.*
 .yarn/*
@@ -12,8 +16,42 @@ node_modules/
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+# === SECTION 1 END ===
 
-# 🏗️ Next.js, Build Targets & Compilers
+# ==========================================================================
+# === SECTION 2: ENVIRONMENT SECRETS & CRYPTOGRAPHIC KEYS ===
+# ==========================================================================
+# WHY THIS FIX WAS MADE: Use a comprehensive wildcard pattern (.env*) to block 
+# ALL environment file variations (staging, production, vault, etc.) while 
+# explicitly whitelisting template files (.env.example).
+.env*
+!.env.example
+!.env.template
+
+# WHY THIS FIX WAS MADE: Broadened key extension matching to catch all common 
+# private key formats, certificates, and SSH credentials before they leak.
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+id_rsa
+id_ed25519
+
+# WHY THIS FIX WAS MADE: Exclude local SQLite database files and database 
+# dumps from git tracking to prevent leaking local PII or test records.
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.dump
+*.sql
+# === SECTION 2 END ===
+
+# ==========================================================================
+# === SECTION 3: BUILD OUTPUTS, COMPILERS & CACHES ===
+# ==========================================================================
+# Next.js build and static export artifacts
 **/.next/
 .next/
 **/out/
@@ -22,29 +60,49 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 
-# 🗄️ Database ORM Artifacts (Prisma 7 Local Client Engines)
+# WHY THIS FIX WAS MADE: Prevent committing generated ORM client binaries, 
+# native C++ nodes, or cross-platform compiled database engine artifacts.
 **/generated/
+*.so.node
+*.dylib
+*.dll.node
+# === SECTION 3 END ===
 
-# 🧪 Testing & Coverage Metrics
+# ==========================================================================
+# === SECTION 4: LOGS, DIAGNOSTICS & RUNTIME DATA ===
+# ==========================================================================
+# Test coverage reports
 **/coverage/
 
-# 🔐 Local Environment Secrets & Configuration Tokens
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.pem
-
-# 🐛 Debugging System Registries & Log Output Logs
+# WHY THIS FIX WAS MADE: Added catch-all wildcard (*.log) to ensure application 
+# runtime logs and error traces are omitted alongside package manager logs.
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# ☁️ Vercel & Cloud Deployments
+# Vercel & cloud deployment telemetry
 .vercel
+# === SECTION 4 END ===
 
-# 🖥️ System & OS Metadata Cache Modules
+# ==========================================================================
+# === SECTION 5: IDE, OS & SYSTEM METADATA ===
+# ==========================================================================
+# WHY THIS FIX WAS MADE: Ignore IDE project settings (.vscode, .idea) to prevent 
+# developer workspace conflicts and eliminate local pathing disclosures.
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+
+# Operating system cache files
 .DS_Store
+.DS_Store?
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+# === SECTION 5 END ===

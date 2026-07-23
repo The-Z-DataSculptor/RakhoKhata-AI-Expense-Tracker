@@ -33,7 +33,9 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
 
   const [activeHoverIndex, setActiveHoverIndex] = useState<number | null>(null);
 
-  if (!data || data.length === 0) {
+  const safeData = Array.isArray(data) ? data : [];
+
+  if (safeData.length === 0) {
     return (
       <div className={styles.focusCardContainer}>
         <div className={styles.focusCardHeader}>
@@ -47,7 +49,7 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
     );
   }
 
-  const activeTotalOutflow = data.reduce((sum, item) => sum + item.value, 0);
+  const activeTotalOutflow = safeData.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
 
   const handlePieSegmentHoverEnter = (_: unknown, index: number) => {
     setActiveHoverIndex(index);
@@ -61,11 +63,13 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
   let dynamicDisplayValue = activeTotalOutflow;
   let dynamicDisplayPercentage = "100";
 
-  if (activeHoverIndex !== null && data[activeHoverIndex]) {
-    const hoveredItem = data[activeHoverIndex];
-    dynamicDisplayLabel = hoveredItem.name;
-    dynamicDisplayValue = hoveredItem.value;
-    const percent = activeTotalOutflow > 0 ? (hoveredItem.value / activeTotalOutflow) * 100 : 0;
+  // WHY THIS FIX WAS MADE: Verifies that the hovered index actually exists in safeData
+  // to avoid reading properties of undefined if data length changes dynamically.
+  if (activeHoverIndex !== null && activeHoverIndex < safeData.length && safeData[activeHoverIndex]) {
+    const hoveredItem = safeData[activeHoverIndex];
+    dynamicDisplayLabel = hoveredItem.name || "Category";
+    dynamicDisplayValue = Number(hoveredItem.value) || 0;
+    const percent = activeTotalOutflow > 0 ? (dynamicDisplayValue / activeTotalOutflow) * 100 : 0;
     dynamicDisplayPercentage = percent.toFixed(0);
   }
 
@@ -82,7 +86,7 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={safeData}
                 cx="50%"
                 cy="50%"
                 innerRadius={68}
@@ -93,10 +97,10 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
                 stroke="var(--bg-surface)"
                 strokeWidth={3}
               >
-                {data.map((entry, index) => (
+                {safeData.map((entry, index) => (
                   <Cell
-                    key={`slice-${index}`}
-                    fill={entry.color}
+                    key={`slice-${index}-${entry.name || 'cat'}`}
+                    fill={entry.color || "var(--color-primary)"}
                     style={{
                       cursor: 'pointer',
                       filter: activeHoverIndex !== null && activeHoverIndex !== index
@@ -123,15 +127,16 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
 
         <div className={styles.customLegendPanel}>
           <ul className={styles.legendListContainer}>
-            {data.map((category, index) => {
+            {safeData.map((category, index) => {
+              const val = Number(category.value) || 0;
               const percentage = activeTotalOutflow > 0
-                ? ((category.value / activeTotalOutflow) * 100).toFixed(0)
+                ? ((val / activeTotalOutflow) * 100).toFixed(0)
                 : "0";
               const isActive = activeHoverIndex === index;
 
               return (
                 <li
-                  key={`legend-${index}`}
+                  key={`legend-${index}-${category.name || 'cat'}`}
                   className={`${styles.legendListItem} ${isActive ? styles.activeLegendRow : ''}`}
                   onMouseEnter={() => setActiveHoverIndex(index)}
                   onMouseLeave={handlePieSegmentHoverLeave}
@@ -139,13 +144,13 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
                   <div className={styles.legendLeftContent}>
                     <span
                       className={styles.colorIdentityBadge}
-                      style={{ backgroundColor: category.color }}
+                      style={{ backgroundColor: category.color || "var(--color-primary)" }}
                     />
-                    <span className={styles.categoryNameText}>{category.name}</span>
+                    <span className={styles.categoryNameText}>{category.name || "Unassigned"}</span>
                   </div>
                   <div className={styles.legendRightContent}>
                     <span className={styles.absoluteCurrencyText}>
-                      {formatAmount(category.value, sourceCurrency)}
+                      {formatAmount(val, sourceCurrency)}
                     </span>
                     <span className={styles.percentageSplitText}>{percentage}%</span>
                   </div>
@@ -158,3 +163,4 @@ export default React.memo(function ExpenseDonutChart({ data, sourceCurrency }: E
     </div>
   );
 });
+/* === SECTION 3 END === */

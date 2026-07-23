@@ -17,15 +17,30 @@ import { toast } from "sonner";
 
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
 import styles from "./page.module.css";
+
+/*
+ * WHY an environment variable is used for the backend URL:
+ * Hardcoding "localhost:5000" would cause the app to fail in any environment
+ * that is not local development. Using NEXT_PUBLIC_API_URL (which is available
+ * at build time) makes the frontend work in staging, production, and Docker
+ * without code changes.
+ */
+const BACKEND_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 
+/** Three possible labels for the animated market trend display */
 type MarketTrend = "STABLE_GROWTH" | "CORRECTIVE_RECOVERY" | "HIGH_VOLATILITY_BURST";
 
-interface LoginSuccessResponse {
+/**
+ * Minimal shape of a successful login response from the backend.
+ * Used to safely extract the onboarding status after authentication.
+ */
+interface LoginSuccessPayload {
   message: string;
   user: {
     id: string;
@@ -34,8 +49,15 @@ interface LoginSuccessResponse {
   };
 }
 
-const emptySubscribe = () => (): void => {};
+/**
+ * Stable empty subscribe function for useSyncExternalStore.
+ * Used only to signal "client side" to the hook.
+ */
+const noopSubscribe = () => (): void => {};
 
+/**
+ * Converts a MarketTrend enum value into a human‑readable label.
+ */
 function marketTrendLabel(trend: MarketTrend): string {
   switch (trend) {
     case "STABLE_GROWTH":
@@ -55,13 +77,13 @@ function marketTrendLabel(trend: MarketTrend): string {
    ========================================================================== */
 
 export default function LoginPage() {
-  // UI state
+  // ----- UI state -----
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
 
-  // React Hook Form
+  // ----- Form handling via React Hook Form + Zod -----
   const {
     register,
     handleSubmit,
@@ -71,60 +93,68 @@ export default function LoginPage() {
     mode: "onBlur",
   });
 
-  // Canvas state
+  // ----- Canvas animation state -----
   const [marketVolatility, setMarketVolatility] = useState(12);
   const [marketTrend, setMarketTrend] = useState<MarketTrend>("STABLE_GROWTH");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastMousePos = useRef({ x: 0, y: 0 });
-  const lastMouseTime = useRef<number>(0);
+  const lastMouseTime = useRef<number>(0);   // initialised to 0 – safe because first event sets it
 
   const currentAmplitude = useRef(20);
   const targetAmplitude = useRef(20);
 
-  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  /*
+   * useSyncExternalStore ensures that `isClient` is `false` during SSR and
+   * becomes `true` only after hydration.  This prevents any canvas or window
+   * access on the server.
+   */
+  const isClient = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
 
   // ---------------------------------------------------------------------------
   // FORM SUBMISSION
   // ---------------------------------------------------------------------------
   const handleLoginSubmit = async (data: LoginFormData) => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${BACKEND_API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
       });
 
-      const result = (await response.json()) as LoginSuccessResponse | { error: string };
+      const result: unknown = await response.json();
 
       if (!response.ok) {
         const errorMessage =
-          "error" in result
-            ? result.error
+          typeof result === "object" && result !== null && "error" in result
+            ? (result as { error: string }).error
             : "Authentication failed. Please verify credentials.";
         throw new Error(errorMessage);
       }
 
+      // At this point we know the request succeeded – try to extract user data
+      const payload = result as LoginSuccessPayload;
       toast.success("Welcome back! Loading your session...");
 
-      // Route user depending on their onboarding completion status
-      const targetDestination =
-        "user" in result && result.user.isOnboardingCompleted
-          ? "/dashboard"
-          : "/onboarding";
+      // Navigate based on onboarding status
+      const targetPath =
+        payload.user?.isOnboardingCompleted ? "/dashboard" : "/onboarding";
 
-      // Hard navigation ensures new HTTP-only session cookies hydrate cleanly
+      // Hard navigation ensures the new HttpOnly session cookie is fully set
       setTimeout(() => {
-        window.location.href = targetDestination;
+        window.location.href = targetPath;
       }, 500);
-
     } catch (error: unknown) {
       console.error("Login Error:", error);
       const message =
         error instanceof Error
           ? error.message
-          : "An unexpected error occurred. Please check your backend connection.";
+          : "An unexpected error occurred. Please check your internet connection.";
       toast.error(message);
     }
   };
@@ -132,18 +162,22 @@ export default function LoginPage() {
   // ---------------------------------------------------------------------------
   // FORGOT PASSWORD FLOW
   // ---------------------------------------------------------------------------
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+  const handleForgotPasswordSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
+
+    // 1. Sanitise and validate the email input
     const trimmedEmail = forgotEmail.trim();
-    if (!trimmedEmail) {
-      toast.error("Please provide a valid account email address.");
+    if (trimmedEmail.length === 0) {
+      toast.error("Please provide a valid email address.");
       return;
     }
 
     setIsForgotSubmitting(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/forgot-password",
+        `${BACKEND_API_URL}/api/auth/forgot-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -157,14 +191,14 @@ export default function LoginPage() {
         const errorMessage =
           typeof result === "object" && result !== null && "error" in result
             ? (result as { error: string }).error
-            : "Failed to process recovery transmission.";
+            : "Failed to process password reset request.";
         throw new Error(errorMessage);
       }
 
       const successMessage =
         typeof result === "object" && result !== null && "message" in result
           ? (result as { message: string }).message
-          : "Recovery transmission dispatched safely.";
+          : "Recovery email dispatched.";
 
       toast.success(successMessage);
       setShowForgotModal(false);
@@ -174,7 +208,7 @@ export default function LoginPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Network failure communicating with recovery cluster.";
+          : "Network error while sending recovery email.";
       toast.error(message);
     } finally {
       setIsForgotSubmitting(false);
@@ -185,6 +219,7 @@ export default function LoginPage() {
   // CANVAS ANIMATION
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    // Only run the canvas animation on the client
     if (!isClient) return;
 
     const canvas = canvasRef.current;
@@ -193,6 +228,7 @@ export default function LoginPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Resize the canvas to fill its parent container
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
@@ -206,30 +242,48 @@ export default function LoginPage() {
     let lastStateUpdate = 0;
     let animFrameId: number;
 
+    /*
+     * WHY refs are used for amplitude / wave offset:
+     * These values are mutated every frame; keeping them in refs avoids
+     * triggering React re‑renders on every animation step.  The state
+     * update (`setMarketVolatility`, `setMarketTrend`) is deliberately
+     * throttled to once every 100 ms.
+     */
     const animate = () => {
       if (document.hidden) {
+        // Don't waste CPU when the page is not visible
         animFrameId = requestAnimationFrame(animate);
         return;
       }
 
+      // Read CSS variables so the canvas respects the current theme
       const rootStyles = getComputedStyle(document.documentElement);
-      const bg = rootStyles.getPropertyValue("--background").trim() || "#0A061B";
-      const primary = rootStyles.getPropertyValue("--color-primary").trim() || "#613bbf";
-      const success = rootStyles.getPropertyValue("--color-success").trim() || "#16a34a";
+      const bg =
+        rootStyles.getPropertyValue("--background").trim() || "#0A061B";
+      const primary =
+        rootStyles.getPropertyValue("--color-primary").trim() || "#613bbf";
+      const success =
+        rootStyles.getPropertyValue("--color-success").trim() || "#16a34a";
 
-      ctx.fillStyle = bg.startsWith("#") ? `${bg}26` : "rgba(255,255,255,0.15)";
+      // Fade background
+      ctx.fillStyle = bg.startsWith("#")
+        ? `${bg}26`
+        : "rgba(255, 255, 255, 0.15)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       waveOffset += 0.04;
 
+      // Smoothly animate amplitude toward target
       currentAmplitude.current +=
         (targetAmplitude.current - currentAmplitude.current) * 0.08;
       if (targetAmplitude.current > 20) {
-        targetAmplitude.current -= 0.5;
+        targetAmplitude.current -= 0.5; // slowly decay
       }
 
       const amplitude = Math.round(currentAmplitude.current);
       const now = Date.now();
+
+      // Throttle state updates to avoid excessive re‑renders
       if (now - lastStateUpdate > 100) {
         setMarketVolatility(amplitude);
         if (amplitude > 60) {
@@ -242,6 +296,7 @@ export default function LoginPage() {
         lastStateUpdate = now;
       }
 
+      // Draw the main wave line
       ctx.beginPath();
       ctx.lineWidth = 3;
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
@@ -260,8 +315,10 @@ export default function LoginPage() {
       }
       ctx.stroke();
 
+      // Pulsing dot that travels along the wave
       const nodeX = (waveOffset * 40) % canvas.width;
-      const nodeBaseline = canvas.height * 0.6 - (nodeX / canvas.width) * 120;
+      const nodeBaseline =
+        canvas.height * 0.6 - (nodeX / canvas.width) * 120;
       const nodeSine =
         Math.sin(nodeX * 0.015 + waveOffset) +
         Math.sin(nodeX * 0.005 - waveOffset * 0.5);
@@ -276,6 +333,7 @@ export default function LoginPage() {
 
     animate();
 
+    // Cleanup: remove resize listener and cancel animation frame
     return () => {
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animFrameId);
@@ -283,11 +341,13 @@ export default function LoginPage() {
   }, [isClient]);
 
   // ---------------------------------------------------------------------------
-  // MOUSE INTERACTION
+  // MOUSE INTERACTION (controls canvas amplitude)
   // ---------------------------------------------------------------------------
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const now = Date.now();
     const deltaTime = now - lastMouseTime.current;
+
+    // Ignore updates that are too close together (< 16 ms ≈ 60 fps)
     if (deltaTime < 16) return;
 
     const dx = e.clientX - lastMousePos.current.x;
@@ -305,6 +365,7 @@ export default function LoginPage() {
     lastMousePos.current = { x: e.clientX, y: e.clientY };
     lastMouseTime.current = now;
   };
+/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: RENDER COMPONENT ===
@@ -321,7 +382,8 @@ export default function LoginPage() {
           <div className={styles.formHeader}>
             <h1 className={styles.mainTitle}>Welcome Back</h1>
             <p className={styles.subtext}>
-              Log in to RakhoKhata to manage your finances and track your goals.
+              Log in to RakhoKhata to manage your finances and track your
+              goals.
             </p>
           </div>
 
@@ -332,7 +394,7 @@ export default function LoginPage() {
                 className={styles.registrationForm}
                 noValidate
               >
-                {/* Email */}
+                {/* Email input */}
                 <div className={styles.inputControlGroup}>
                   <label htmlFor="email" className={styles.fieldLabel}>
                     Email Address
@@ -355,7 +417,7 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                {/* Password */}
+                {/* Password input */}
                 <div className={styles.inputControlGroup}>
                   <div className={styles.labelForgotRow}>
                     <label htmlFor="password" className={styles.fieldLabel}>
@@ -376,7 +438,9 @@ export default function LoginPage() {
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       {...register("password")}
-                      className={`${styles.primaryInputField} ${styles.passwordInput} ${
+                      className={`${styles.primaryInputField} ${
+                        styles.passwordInput
+                      } ${
                         errors.password ? styles.inputErrorState : ""
                       }`}
                       aria-invalid={errors.password ? "true" : "false"}
@@ -412,7 +476,7 @@ export default function LoginPage() {
               <div className={styles.authSeparatorContainer}>or</div>
 
               <a
-                href="http://localhost:5000/api/auth/google"
+                href={`${BACKEND_API_URL}/api/auth/google`}
                 className={styles.googleOAuthHighwayButton}
               >
                 <svg
@@ -549,7 +613,9 @@ export default function LoginPage() {
                   className={styles.modalSubmitButton}
                   disabled={isForgotSubmitting}
                 >
-                  {isForgotSubmitting ? "Processing Link..." : "Send Reset Link"}
+                  {isForgotSubmitting
+                    ? "Processing Link..."
+                    : "Send Reset Link"}
                 </button>
               </div>
             </form>
@@ -559,3 +625,4 @@ export default function LoginPage() {
     </div>
   );
 }
+/* === SECTION 4 END === */

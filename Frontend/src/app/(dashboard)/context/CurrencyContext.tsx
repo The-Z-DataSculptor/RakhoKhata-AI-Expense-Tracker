@@ -14,8 +14,23 @@ import React, {
 import { getExchangeRates } from "@/utils/exchangeRate";
 import { toast } from "sonner";
 
-// Fallback exchange rates used when the API is unavailable.
-// These values are approximate and provide a reasonable baseline.
+// ----- Dynamic Backend URL (same pattern used across the app) -----
+/**
+ * WHY an environment variable is used:
+ * Hardcoding "localhost:5000" would break the app in any non‑local environment.
+ * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
+ * work in staging, production, and Docker without code changes.
+ */
+const BACKEND_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// ----- Fallback exchange rates used when the API is unavailable -----
+/**
+ * WHY fallback rates are needed:
+ * If the backend proxy is unreachable and no cache exists, the app would
+ * otherwise crash. These hard‑coded rates keep the UI working with
+ * approximate values until a fresh connection can be re‑established.
+ */
 const FALLBACK_RATES: Record<string, number> = {
   USD: 1,
   PKR: 278,
@@ -82,16 +97,16 @@ interface CurrencyProviderProps {
   children: React.ReactNode;
   initialCurrency?: string; // Allows the server-side layout to seed the workspace currency
 }
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
-   ========================================================================== */
 
 // Create the context with an undefined default – consumers must be inside a provider
 const CurrencyContext = createContext<CurrencyContextType | undefined>(
   undefined
 );
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: PROVIDER & HANDLERS ===
+   ========================================================================== */
 
 export function CurrencyProvider({
   children,
@@ -104,7 +119,9 @@ export function CurrencyProvider({
   const [rates, setRates] = useState<Record<string, number>>(FALLBACK_RATES);
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(true);
 
-  // Load fresh exchange rates when the component mounts
+  // ---------------------------------------------------------------------------
+  // 1. Load fresh exchange rates on mount
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     let cancelled = false;
     const fetchRates = async () => {
@@ -128,7 +145,9 @@ export function CurrencyProvider({
     };
   }, []);
 
-  // Allows the dashboard layout to synchronise the currency after workspace hydration
+  // ---------------------------------------------------------------------------
+  // 2. Allow the dashboard layout to synchronise the currency after workspace hydration
+  // ---------------------------------------------------------------------------
   const initializeWorkspaceCurrency = useCallback(
     (incomingCurrency: string) => {
       if (incomingCurrency) {
@@ -138,7 +157,9 @@ export function CurrencyProvider({
     []
   );
 
-  // Change the currency for the active workspace and persist it to the backend
+  // ---------------------------------------------------------------------------
+  // 3. Change the currency for the active workspace and persist it to the backend
+  // ---------------------------------------------------------------------------
   const setCurrencyWithWorkspace = useCallback(
     async (newCurrency: string, workspaceId: string) => {
       const formattedCurrency = newCurrency.toUpperCase();
@@ -162,7 +183,7 @@ export function CurrencyProvider({
 
         // Save the new currency to the backend workspace record
         const response = await fetch(
-          `http://localhost:5000/api/workspaces/${workspaceId}`,
+          `${BACKEND_API_URL}/api/workspaces/${workspaceId}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -188,7 +209,9 @@ export function CurrencyProvider({
     []
   );
 
-  // Convert an amount from one currency to another using the live (or fallback) rates
+  // ---------------------------------------------------------------------------
+  // 4. Convert an amount from one currency to another
+  // ---------------------------------------------------------------------------
   const convertAmount = useCallback(
     (amount: number, from: string, to: string): number => {
       if (amount === 0 || from === to) return amount;
@@ -204,8 +227,10 @@ export function CurrencyProvider({
     [rates]
   );
 
-  // Format an amount as a string in the currently selected currency.
-  // If the source currency matches the display currency, no conversion is performed.
+  // ---------------------------------------------------------------------------
+  // 5. Format an amount as a string in the currently selected currency.
+  //    If the source currency matches the display currency, no conversion is performed.
+  // ---------------------------------------------------------------------------
   const formatAmount = useCallback(
     (amount: number, sourceCurrency?: string): string => {
       const finalAmount =

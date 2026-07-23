@@ -1,10 +1,7 @@
 // src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BudgetDonutGrid, type BudgetItem } from "@/components/budgets/BudgetDonutGrid/BudgetDonutGrid";
 import { type TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import { CreateBudgetModal } from "@/components/forms/CreateBudgetModal/CreateBudgetModal";
@@ -18,44 +15,57 @@ import { toast } from "sonner";
 import styles from "./page.module.css";
 
 import { Budget as ApiBudget, Category as ApiCategory } from "@/utils/api";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
 interface ExtendedBudget extends ApiBudget {
   spentAmount?: number;
 }
-/* === SECTION 2 END === */
+
+const getMonthDays = (): number => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+};
+
+const getScalingFactor = (period: TimePeriod): number => {
+  const monthDays = getMonthDays();
+  switch (period) {
+    case "7d": return 7 / monthDays;
+    case "14d": return 14 / monthDays;
+    case "30d": return 1;
+    case "all": return 1;
+    default: return 1;
+  }
+};
+
+const formatShortDisplay = (date: Date): string => {
+  return isNaN(date.getTime())
+    ? "N/A"
+    : date.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" });
+};
 
 export default function BudgetsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
 
-  // --- STATE MATRIX ---
   const [activeRange, setActiveRange] = useState<TimePeriod>("30d");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBudget, setEditingBudget] = useState<ExtendedBudget | null>(null);
   const [budgets, setBudgets] = useState<ExtendedBudget[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  const formatShortDisplay = (date: Date): string => {
-    return date.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" });
-  };
-
-  /* ==========================================================================
-     === LIFECYCLE SYNC CORE ENGINE ===
-     ========================================================================== */
   useEffect(() => {
     let isMounted = true;
 
-    if (!activeWorkspaceId) return;
+    if (!activeWorkspaceId) {
+      return;
+    }
 
     const fetchLiveBudgetData = async () => {
       try {
+        if (isMounted) setIsLoading(true);
         const [budgetsData, categoriesData] = await Promise.all([
           budgetService.getByWorkspace(activeWorkspaceId),
           categoryService.getByWorkspace(activeWorkspaceId)
@@ -84,11 +94,11 @@ export default function BudgetsPage() {
     };
   }, [activeWorkspaceId, refreshKey]);
 
-  /* ==========================================================================
-     === ACTION HANDLERS ===
-     ========================================================================== */
   const handleSaveBudgetSubmit = async (formData: NewBudgetFormData) => {
+    if (isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       const matchedCategory = categories.find(
         (cat) => cat.name.toLowerCase() === formData.categoryName.toLowerCase()
       );
@@ -98,7 +108,6 @@ export default function BudgetsPage() {
         return;
       }
 
-      // Only send enterprise fields
       const basePayload = {
         originalAmount: formData.originalAmount,
         originalCurrency: formData.originalCurrency,
@@ -112,6 +121,10 @@ export default function BudgetsPage() {
         await budgetService.update(editingBudget.id, basePayload);
         toast.success("Budget tracking rule updated successfully!");
       } else {
+        if (!activeWorkspaceId) {
+          toast.error("Active workspace context missing.");
+          return;
+        }
         await budgetService.create({
           ...basePayload,
           workspaceId: activeWorkspaceId,
@@ -125,6 +138,8 @@ export default function BudgetsPage() {
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Internal system crash saving metrics.";
       toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -141,55 +156,39 @@ export default function BudgetsPage() {
     }
   };
 
-  /* ==========================================================================
-     === DATA RENDERING COMPILATION PASS ===
-     ========================================================================== */
-  const getMonthDays = (): number => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  };
-
-  const getScalingFactor = (period: TimePeriod): number => {
-    const monthDays = getMonthDays();
-    switch (period) {
-      case "7d": return 7 / monthDays;
-      case "14d": return 14 / monthDays;
-      case "30d": return 1;
-      case "all": return 1;
-      default: return 1;
-    }
-  };
-
-  const computedBudgetItems: BudgetItem[] = budgets.map((budget) => {
-    const originalLimit = Number(budget.originalAmount);
-    const limitCurrency = budget.originalCurrency || "USD";
-
-    // Use the original amount directly if the display currency matches, else convert from base USD
-    const limitInWorkspaceCurrency =
-      limitCurrency === workspaceCurrency
-        ? originalLimit
-        : convertAmount(Number(budget.baseAmountUSD), "USD", workspaceCurrency);
-
-    const spentInWorkspaceCurrency = Number(budget.spentAmount || 0);
-
+  // Convert spent from USD to workspace currency (spentAmount is now in USD)
+  const computedBudgetItems: BudgetItem[] = useMemo(() => {
     const scale = getScalingFactor(activeRange);
 
-    const scaledLimit = Math.round(limitInWorkspaceCurrency * scale * 100) / 100;
-    const scaledSpent = Math.round(spentInWorkspaceCurrency * scale * 100) / 100;
+    return budgets.map((budget) => {
+      const originalLimit = Number(budget.originalAmount || 0);
+      const limitCurrency = budget.originalCurrency || "USD";
 
-    return {
-      id: budget.id,
-      categoryName: budget.category?.name || "Unknown Label",
-      spentAmount: scaledSpent,
-      limitAmount: scaledLimit,
-      startDate: formatShortDisplay(new Date(budget.startDate)),
-      endDate: formatShortDisplay(new Date(budget.endDate)),
-    };
-  });
+      const limitInWorkspaceCurrency =
+        limitCurrency === workspaceCurrency
+          ? originalLimit
+          : convertAmount(Number(budget.baseAmountUSD || 0), "USD", workspaceCurrency);
 
-  /* ==========================================================================
-     === RENDER (JSX) ===
-     ========================================================================== */
+      // spentAmount is USD from backend, convert to workspace currency
+      const spentInWorkspaceCurrency = convertAmount(Number(budget.spentAmount || 0), "USD", workspaceCurrency);
+
+      const scaledLimit = Math.round(limitInWorkspaceCurrency * scale * 100) / 100;
+      const scaledSpent = Math.round(spentInWorkspaceCurrency * scale * 100) / 100;
+
+      const startDateObj = budget.startDate ? new Date(budget.startDate) : new Date();
+      const endDateObj = budget.endDate ? new Date(budget.endDate) : new Date();
+
+      return {
+        id: budget.id,
+        categoryName: budget.category?.name || "Unknown Label",
+        spentAmount: scaledSpent,
+        limitAmount: scaledLimit,
+        startDate: formatShortDisplay(startDateObj),
+        endDate: formatShortDisplay(endDateObj),
+      };
+    });
+  }, [budgets, activeRange, workspaceCurrency, convertAmount]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
@@ -263,6 +262,7 @@ export default function BudgetsPage() {
         )}
       </main>
 
+      {/* ✅ Only expense categories are shown */}
       <CreateBudgetModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -270,13 +270,13 @@ export default function BudgetsPage() {
           setEditingBudget(null);
         }}
         onSubmit={handleSaveBudgetSubmit}
-        categories={categories}
+        categories={categories.filter(cat => cat.type === "EXPENSE")}
         initialData={
           editingBudget
             ? {
                 id: editingBudget.id,
                 categoryName: editingBudget.category?.name || "",
-                limitAmount: Number(editingBudget.originalAmount),
+                limitAmount: Number(editingBudget.originalAmount || 0),
                 startDate: editingBudget.startDate,
                 endDate: editingBudget.endDate,
               }

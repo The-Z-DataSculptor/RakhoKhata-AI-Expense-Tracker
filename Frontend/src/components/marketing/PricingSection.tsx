@@ -1,53 +1,48 @@
 // src/components/PricingSection.tsx
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & MODULE CONSTANTS ===
    ========================================================================== */
 import React from "react";
 import Link from "next/link";
-// Import the CSS module for local scoped styling
 import styles from "./PricingSection.module.css";
 
-/* === SECTION 1 END === */
-
-
-/* ==========================================================================
-   === SECTION 2: DATA STRUCTURES (THE FEATURE LISTS) ===
-   ========================================================================== */
-// This section houses the raw data arrays for our features. 
-// Keeping this out of the JSX layout makes the code much cleaner and easier to maintain later!
-
-const freeFeatures = [
+// WHY THIS FIX WAS MADE: Defining static arrays outside the component scope prevents 
+// re-allocating memory for feature lists on every render cycle.
+const FREE_FEATURES = [
   "Up to 700 transaction entries every single month",
   "Up to 3 individual multi-purpose Workspaces",
   "Free Workspace sharing with family & co-workers",
   "Password-Locked Asset Vault (Hide balances from family)",
   "Automated Email Renewal alerts for subscriptions (Netflix)",
   "Live multi-currency conversion tools",
-  "Basic read-only email snapshot links"
-];
+  "Basic read-only email snapshot links",
+] as const;
 
-const proFeatures = [
+const PRO_FEATURES = [
   "Everything in Free, plus:",
   "Unlimited Workspaces & transaction entries forever",
   "Smart OCR Receipt Scanner (Snap photos to auto-log)",
   "AI Hands-Free Voice Logging inputs",
   "Interactive Shared Split Ledgers (Read/Write via WhatsApp & Email)",
-  "Advanced multi-day automated debt tracking pipelines"
-];
+  "Advanced multi-day automated debt tracking pipelines",
+] as const;
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
+// Static marketing component props
 /* === SECTION 2 END === */
-
 
 /* ==========================================================================
    === SECTION 3: MAIN RENDERING LAYOUT COMPONENT ===
    ========================================================================== */
 export default function PricingSection() {
   return (
-    // Added id="pricing" for smooth scroll navigation
-    <section id="pricing" className={styles.pricingWrapper}>
+    <section id="pricing" className={styles.pricingWrapper} aria-label="Pricing Plans">
       
-      {/* HEADER ZONE: Holds the main titles guiding the client */}
+      {/* HEADER ZONE */}
       <div className={styles.headerBlock}>
         <h1 className={styles.mainTitle}>Choose Your Financial Freedom Plan</h1>
         <p className={styles.subTitle}>
@@ -58,11 +53,12 @@ export default function PricingSection() {
       {/* THE ASYMMETRIC GRID: Houses the 40% / 60% Split Layout cards */}
       <div className={styles.splitGridLayout}>
         
-        {/* --- CARD A START: FREE TIER (40% Width) --- */}
-        {/* Educational Note: This card acts as the structural baseline anchors */}
+        {/* --- CARD A: FREE TIER --- */}
         <div className={styles.freeCard}>
           <div className={styles.cardHeader}>
-            <span className={styles.tierBadgeFree}>🟢 Personal Habit</span>
+            <span className={styles.tierBadgeFree}>
+              <span aria-hidden="true">🟢</span> Personal Habit
+            </span>
             <h2 className={styles.cardTitle}>Free</h2>
             <div className={styles.priceContainer}>
               <span className={styles.currencySymbol}>$</span>
@@ -76,36 +72,33 @@ export default function PricingSection() {
 
           <hr className={styles.divider} />
 
-          {/* Feature List Rendering Loop */}
+          {/* WHY THIS FIX WAS MADE: Uses string content as unique map keys instead of array indices
+              to maintain proper React DOM reconciliation standards and adds aria-hidden to decorative icons. */}
           <ul className={styles.featureList}>
-            {freeFeatures.map((feature, index) => (
-              <li key={index} className={styles.featureItem}>
-                {/* Clean, descriptive inline text checkmarks */}
-                <span className={styles.checkmarkIconCheck}>✓</span>
+            {FREE_FEATURES.map((feature) => (
+              <li key={feature} className={styles.featureItem}>
+                <span className={styles.checkmarkIconCheck} aria-hidden="true">✓</span>
                 <span className={styles.featureText}>{feature}</span>
               </li>
             ))}
           </ul>
 
-          {/* 🚀 CONNECTED: Links directly to /signup */}
           <Link href="/signup" className={styles.freeButton}>
             Get Started Free
           </Link>
         </div>
-        {/* --- CARD A END: FREE TIER --- */}
 
-
-        {/* --- CARD B START: PRO TIER (60% Width & Elevated Status) --- */}
-        {/* Educational Note: This card uses premium gradient shadows and extra space to look powerful */}
+        {/* --- CARD B: PRO TIER --- */}
         <div className={styles.proCard}>
           
-          {/* Floating Premium Badge Action */}
           <div className={styles.floatingBadge}>
-            ⚡ Power Automation Hub
+            <span aria-hidden="true">⚡</span> Power Automation Hub
           </div>
 
           <div className={styles.cardHeader}>
-            <span className={styles.tierBadgePro}>🟣 Automation Core</span>
+            <span className={styles.tierBadgePro}>
+              <span aria-hidden="true">🟣</span> Automation Core
+            </span>
             <h2 className={styles.cardTitle}>Pro Upgrade</h2>
             <div className={styles.priceContainer}>
               <span className={styles.currencySymbol}>$</span>
@@ -119,23 +112,19 @@ export default function PricingSection() {
 
           <hr className={styles.divider} />
 
-          {/* Feature List Rendering Loop */}
           <ul className={styles.featureListPro}>
-            {proFeatures.map((feature, index) => (
-              <li key={index} className={styles.featureItem}>
-                {/* Dynamic visual distinction: Pro bullet point matches the primary accent */}
-                <span className={styles.checkmarkIconPro}>✦</span>
+            {PRO_FEATURES.map((feature) => (
+              <li key={feature} className={styles.featureItem}>
+                <span className={styles.checkmarkIconPro} aria-hidden="true">✦</span>
                 <span className={styles.featureTextPro}>{feature}</span>
               </li>
             ))}
           </ul>
 
-          {/* 🚀 CONNECTED: Links directly to /beta */}
           <Link href="/beta" className={styles.proButton}>
             Unlock Power Automation
           </Link>
         </div>
-        {/* --- CARD B END: PRO TIER --- */}
 
       </div>
     </section>

@@ -1,31 +1,30 @@
 // src/app/(marketing)/layout.tsx
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import React from "react";
-// We adjusted the paths relative to the new (marketing) folder position
-import Navbar from "../../components/layout/Navbar"; 
-import Footer from "../../components/layout/Footer"; 
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
 /* === SECTION 1 END === */
 
-
 /* ==========================================================================
-   === SECTION 2: MARKETING WIDE WRAPPER LAYOUT ===
+   === SECTION 2: MARKETING LAYOUT WRAPPER ===
    ========================================================================== */
+/**
+ * Layout shared by all public / marketing pages.
+ *
+ * WHY a separate layout is used:
+ * The (marketing) route group ensures that the Navbar and Footer are
+ * only rendered on public pages, keeping the dashboard clean.
+ */
 export default function MarketingLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      {/* Automatically drops the Navbar onto the homepage and any future public page */}
       <Navbar />
-      
       {children}
-      
-      {/* Automatically drops the Footer onto the bottom of all public pages */}
       <Footer />
     </>
   );

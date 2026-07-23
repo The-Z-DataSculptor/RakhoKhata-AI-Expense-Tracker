@@ -1,19 +1,12 @@
 // src/components/forms/CreateBudgetModal/CreateBudgetModal.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
-   ========================================================================== */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { toast } from "sonner";
 import { Category as ApiCategory } from "@/utils/api";
 import styles from "./CreateBudgetModal.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
 export interface NewBudgetFormData {
   originalAmount: number;
   originalCurrency: string;
@@ -37,81 +30,94 @@ interface CreateBudgetModalProps {
     endDate: string;
   } | null;
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
-   ========================================================================== */
+const getCurrentMonthRange = (): { start: string; end: string } => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  const formatLocalIso = (y: number, m: number, d: number): string => {
+    const mm = String(m + 1).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${y}-${mm}-${dd}`;
+  };
+
+  const startStr = formatLocalIso(year, month, 1);
+  const lastDayNum = new Date(year, month + 1, 0).getDate();
+  const endStr = formatLocalIso(year, month, lastDayNum);
+
+  return { start: startStr, end: endStr };
+};
+
 export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initialData }: CreateBudgetModalProps) {
   const { currency, convertAmount } = useCurrency();
 
-  // --- LOCAL INPUT ENGINE INITIAL STATES ---
   const [categoryName, setCategoryName] = useState<string>("");
   const [limitAmount, setLimitAmount] = useState<string>("");
   const [isCustomPeriod, setIsCustomPeriod] = useState<boolean>(false);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  /**
-   * Utility helper function: Derives calendar parameters for the active month block.
-   * Outputs explicit ISO format strings (YYYY-MM-DD).
-   */
-  const getCurrentMonthRange = (): { start: string; end: string } => {
-    const today = new Date();
-    const activeYear = today.getFullYear();
-    const activeMonth = today.getMonth();
-    
-    const firstDay = new Date(activeYear, activeMonth, 1);
-    const lastDay = new Date(activeYear, activeMonth + 1, 0);
-    
-    const formatIsoDate = (dateObject: Date) => dateObject.toISOString().split("T")[0];
-    return { start: formatIsoDate(firstDay), end: formatIsoDate(lastDay) };
-  };
+  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(isOpen);
+  const [prevInitialData, setPrevInitialData] = useState<typeof initialData>(initialData);
 
-  // Synchronize state contexts safely when incoming parameters fluctuate
-  useEffect(() => {
-    if (!isOpen) return;
+  // Synchronize form state when props change (React 19 compatible)
+  if (isOpen !== prevIsOpen || initialData !== prevInitialData) {
+    setPrevIsOpen(isOpen);
+    setPrevInitialData(initialData);
 
-    const stateLoadTimerId = setTimeout(() => {
-      const currentMonthBoundaries = getCurrentMonthRange();
-
+    if (isOpen) {
       if (initialData) {
-        // Edit mode synchronization routine maps base currency values back to the active screen layer
-        setCategoryName(initialData.categoryName);
-        const dynamicDisplayAmount = convertAmount(initialData.limitAmount, "USD", currency);
-        setLimitAmount(dynamicDisplayAmount.toFixed(2));
-        setStartDate(initialData.startDate.split("T")[0]);
-        setEndDate(initialData.endDate.split("T")[0]);
+        setCategoryName(initialData.categoryName || "");
+        // ✅ FIX: Stored amount is already in workspace currency – no conversion.
+        const rawAmount = Number(initialData.limitAmount || 0);
+        setLimitAmount(rawAmount > 0 ? rawAmount.toFixed(2) : "");
+        setStartDate(initialData.startDate ? initialData.startDate.split("T")[0] : "");
+        setEndDate(initialData.endDate ? initialData.endDate.split("T")[0] : "");
         setIsCustomPeriod(true);
       } else {
-        // Clear inputs safely to maintain data isolation integrity across workspace swaps
+        const range = getCurrentMonthRange();
         setCategoryName("");
         setLimitAmount("");
         setIsCustomPeriod(false);
-        setStartDate(currentMonthBoundaries.start);
-        setEndDate(currentMonthBoundaries.end);
+        setStartDate(range.start);
+        setEndDate(range.end);
       }
-    }, 0);
+    }
+  }
 
-    // Lifecycle clean-up routine terminates execution threads if the form drops from layout visibility
-    return () => clearTimeout(stateLoadTimerId);
-  }, [isOpen, initialData, currency, convertAmount]);
-
-  /** Shuts down the view frame overlay while cleaning input remnants */
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setCategoryName("");
     setLimitAmount("");
     setIsCustomPeriod(false);
     onClose();
-  };
+  }, [onClose]);
 
-  /** Validates boundary limits and commits the transaction parameters down the handler pipe */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        handleClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, handleClose]);
+
   const handleFormSubmission = (e: React.FormEvent) => {
     e.preventDefault();
     
     const sanitizedAmount = limitAmount.trim();
     if (!categoryName || !sanitizedAmount) {
-      toast.error("Please fill out all required form fields before submitting.");
+      toast.error("Please fill out all required form fields.");
+      return;
+    }
+
+    if (isCustomPeriod && startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      toast.error("Start date cannot occur after end date.");
       return;
     }
 
@@ -119,11 +125,10 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
       const originalAmount = parseFloat(sanitizedAmount);
       
       if (isNaN(originalAmount) || originalAmount <= 0) {
-        toast.error("Please allocate a valid positive number for your budget limit.");
+        toast.error("Please enter a valid positive budget limit.");
         return;
       }
 
-      // Compute standard baseline values for remote PostgreSQL currency structure constraints
       const baseAmountUSD = convertAmount(originalAmount, currency, "USD");
 
       onSubmit({
@@ -136,20 +141,15 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
         isCustomPeriod,
       });
       
-      handleClose(); // Terminate view parameters cleanly upon processing success
+      handleClose();
     } catch (error: unknown) {
-      console.error("Failed to secure budget metrics setup:", error);
-      toast.error("Could not allocate budget limit safely. Verify your text inputs.");
+      console.error("Failed to submit budget limit:", error);
+      toast.error("Could not allocate budget limit.");
     }
   };
 
-  // Prevent components from dropping dead DOM footprints onto screen spaces if closed
   if (!isOpen) return null;
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: EXPORTS / RENDER COMPONENT ===
-   ========================================================================== */
   return (
     <div className={styles.modalOverlay} onClick={handleClose} role="dialog" aria-modal="true">
       <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
@@ -160,14 +160,13 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
             type="button" 
             className={styles.closeButton} 
             onClick={handleClose}
-            aria-label="Close dialog layout framework view"
+            aria-label="Close dialog"
           >
             &times;
           </button>
         </div>
 
         <form onSubmit={handleFormSubmission} className={styles.formBody} noValidate>
-          {/* FIELD 1: WORKSPACE CATEGORY SELECTION DROPDOWN */}
           <div className={styles.formGroup}>
             <label htmlFor="budgetCategorySelect" className={styles.formLabel}>Select Workspace Category</label>
             <select
@@ -178,19 +177,18 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
               onChange={(e) => setCategoryName(e.target.value)}
             >
               <option value="" disabled hidden>-- Choose a Category --</option>
-              {categories.length > 0 ? (
+              {Array.isArray(categories) && categories.length > 0 ? (
                 categories.map((cat) => (
                   <option key={cat.id} value={cat.name}>
                     {cat.name} ({cat.type})
                   </option>
                 ))
               ) : (
-                <option value="" disabled>No categories registered in this workspace environment</option>
+                <option value="" disabled>No categories registered in workspace</option>
               )}
             </select>
           </div>
 
-          {/* FIELD 2: BUDGET LIMIT NUMERIC INPUT */}
           <div className={styles.formGroup}>
             <label htmlFor="budgetLimitInput" className={styles.formLabel}>Budget Limit Target</label>
             <div className={styles.currencyInputWrapper}>
@@ -210,11 +208,10 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
             </div>
           </div>
 
-          {/* FIELD 3: DYNAMIC TIMELINE CUSTOMIZATION SLIDER CONTROLS */}
           <div className={styles.toggleRow}>
             <div className={styles.toggleText}>
               <span className={styles.toggleTitle}>Set Custom Dates</span>
-              <p className={styles.toggleDescription}>Manually select custom tracking dates for this budget</p>
+              <p className={styles.toggleDescription}>Manually select custom tracking dates</p>
             </div>
             <label className={styles.switchLabel}>
               <input
@@ -227,7 +224,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
             </label>
           </div>
 
-          {/* HIDDEN DRAWER FIELD CONTAINER GRID: Toggles view properties on checkbox changes */}
           <div className={`${styles.dateSectionContainer} ${isCustomPeriod ? styles.showDateSection : ""}`}>
             <div className={styles.dateGrid}>
               <div className={styles.formGroup}>
@@ -255,7 +251,6 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
             </div>
           </div>
 
-          {/* FORM ACTIONS CONTROL FOOTER */}
           <div className={styles.formActions}>
             <button type="button" className={styles.cancelButton} onClick={handleClose}>
               Cancel
@@ -269,4 +264,3 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
     </div>
   );
 }
-/* === SECTION 4 END === */

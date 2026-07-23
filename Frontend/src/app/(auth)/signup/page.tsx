@@ -2,11 +2,10 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   FiUser,
@@ -30,11 +29,15 @@ import {
   EXTENDED_LANGUAGES,
 } from "@/constants/geoData";
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
+/**
+ * WHY an environment variable is used for the backend URL:
+ * Hardcoding "localhost:5000" would break the app in any non‑local environment.
+ * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
+ * work in staging, production, and Docker without code changes.
+ */
+const BACKEND_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 /** Signup registration flow mode */
 type SignupMethod = "CHOOSE" | "EMAIL";
@@ -76,7 +79,7 @@ interface AiPersona {
   desc: string;
 }
 
-// Static data arrays
+// Static data arrays – defined outside the component to avoid re‑creation
 const OCCUPATIONS: OccupationOption[] = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
@@ -105,15 +108,13 @@ const AI_PERSONAS: AiPersona[] = [
 ];
 
 const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
-/* === SECTION 2 END === */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 2: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 
 export default function SignupPage() {
-  const router = useRouter();
-
   // Mode selection state: "CHOOSE" displays options; "EMAIL" displays standard wizard
   const [signupMethod, setSignupMethod] = useState<SignupMethod>("CHOOSE");
   const [step, setStep] = useState(1);
@@ -133,27 +134,27 @@ export default function SignupPage() {
     aiPersona: "",
   });
 
-  // Auto-detect region from timezone
+  // Auto‑detect region from timezone (runs once on mount)
   useEffect(() => {
     const timer = setTimeout(() => {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (tz.includes("Karachi")) {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (timezone.includes("Karachi")) {
         setFormData((prev) => ({
           ...prev,
           currency: "PKR",
           country: "Pakistan",
           languages: ["Urdu (اُردو)", "English"],
         }));
-      } else if (tz.includes("Europe")) {
+      } else if (timezone.includes("Europe")) {
         setFormData((prev) => ({ ...prev, currency: "EUR" }));
-      } else if (tz.includes("London")) {
+      } else if (timezone.includes("London")) {
         setFormData((prev) => ({
           ...prev,
           currency: "GBP",
           country: "United Kingdom",
           languages: ["English"],
         }));
-      } else if (tz.includes("Calcutta") || tz.includes("Kolkata")) {
+      } else if (timezone.includes("Calcutta") || timezone.includes("Kolkata")) {
         setFormData((prev) => ({
           ...prev,
           currency: "INR",
@@ -165,18 +166,20 @@ export default function SignupPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Country change → auto-sets currency & language
+  // Country change → auto‑sets currency & language
   const handleCountryChange = (selectedCountryName: string) => {
-    const match = WORLD_COUNTRIES.find((c) => c.name === selectedCountryName);
+    const matchedCountry = WORLD_COUNTRIES.find(
+      (c) => c.name === selectedCountryName
+    );
 
     setFormData((prev) => {
       const languagesSet = new Set(prev.languages);
-      if (match) {
-        languagesSet.add(match.defaultLanguage);
+      if (matchedCountry) {
+        languagesSet.add(matchedCountry.defaultLanguage);
         return {
           ...prev,
           country: selectedCountryName,
-          currency: match.defaultCurrency,
+          currency: matchedCountry.defaultCurrency,
           languages: Array.from(languagesSet),
         };
       }
@@ -248,7 +251,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const response = await fetch(`${BACKEND_API_URL}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -265,9 +268,18 @@ export default function SignupPage() {
         throw new Error(errorMessage);
       }
 
-      toast.success("Account created! Please check your email to activate your account.");
-      setTimeout(() => router.push("/login"), 2500);
+      toast.success("Account created! Please check your email to verify your account.");
+      /*
+       * WHY we use a hard navigation here instead of Next.js router.push:
+       * Signup creates a new session and sets an HttpOnly cookie. A full
+       * page reload ensures the browser fully applies the new cookie state,
+       * avoiding potential redirect loops or stale client‑side caches.
+       */
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2500);
     } catch (error: unknown) {
+      console.error("Signup Error:", error);
       const message =
         error instanceof Error
           ? error.message
@@ -276,9 +288,15 @@ export default function SignupPage() {
       setIsSubmitting(false);
     }
   };
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: RENDER HELPERS ===
+   ========================================================================== */
 
   // Step content rendering
   const renderStepContent = () => {
+    // Initial choice screen – Google OAuth vs Email
     if (signupMethod === "CHOOSE") {
       return (
         <div className={styles.stepContainer} suppressHydrationWarning>
@@ -293,7 +311,7 @@ export default function SignupPage() {
           <div className={styles.methodChoiceGrid}>
             {/* Google OAuth Option */}
             <a
-              href="http://localhost:5000/api/auth/google"
+              href={`${BACKEND_API_URL}/api/auth/google`}
               className={`${styles.methodChoiceCard} ${styles.googleChoiceCard}`}
             >
               <div className={`${styles.methodIconBox} ${styles.googleIconBox}`}>
@@ -324,7 +342,7 @@ export default function SignupPage() {
               </div>
               <div className={styles.methodText}>
                 <h4>Continue with Google</h4>
-                <p>1-click fast registration using your Google account.</p>
+                <p>1‑click fast registration using your Google account.</p>
               </div>
               <FiChevronRight className={styles.methodArrow} />
             </a>
@@ -347,7 +365,7 @@ export default function SignupPage() {
               </div>
               <div className={styles.methodText}>
                 <h4>Sign up with Email</h4>
-                <p>Set up a password-protected account step-by-step.</p>
+                <p>Set up a password‑protected account step‑by‑step.</p>
               </div>
               <FiChevronRight className={styles.methodArrow} />
             </button>
@@ -363,6 +381,7 @@ export default function SignupPage() {
       );
     }
 
+    // Email signup wizard steps (1‑4)
     switch (step) {
       case 1:
         return (
@@ -699,7 +718,7 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* DEDICATED MOBILE-ONLY STEP TRACKER CONTAINER */}
+          {/* Mobile‑only step tracker */}
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
               {signupMethod === "CHOOSE" ? (

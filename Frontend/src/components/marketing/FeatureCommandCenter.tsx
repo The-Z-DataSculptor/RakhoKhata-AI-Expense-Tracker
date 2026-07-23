@@ -1,11 +1,11 @@
+// src/components/marketing/FeatureCommandCenter.tsx
 "use client";
 
-import { useState } from "react";
-import styles from "./FeatureCommandCenter.module.css";
-
 /* ==========================================================================
-   === SECTION 1: DATA STRUCTURES ===
+   === SECTION 1: IMPORTS & DATA STRUCTURES ===
    ========================================================================== */
+import React, { useState, useEffect, useRef } from "react";
+import styles from "./FeatureCommandCenter.module.css";
 
 const FEATURES = [
   {
@@ -38,58 +38,77 @@ const FEATURES = [
     title: "Share Securely",
     desc: "Generate temporary links for roommates or partners to view shared expenses.",
   },
-];
-
+] as const;
 /* === SECTION 1 END === */
 
-
 /* ==========================================================================
-   === SECTION 2: MAIN COMPONENT & STATE ===
+   === SECTION 2: MAIN COMPONENT & STATE MECHANICS ===
    ========================================================================== */
-
 export default function FeatureCommandCenter() {
-  // State initialization for active feature tabs and interaction logic
-  const [activeId, setActiveId] = useState("workspaces");
+  const [activeId, setActiveId] = useState<string>("workspaces");
   const [workspaceMode, setWorkspaceMode] = useState<"private" | "business">("private");
-  const [isRecording, setIsRecording] = useState(false);
-  const [voiceText, setVoiceText] = useState("");
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [voiceText, setVoiceText] = useState<string>("");
 
-  const activeFeature = FEATURES.find((f) => f.id === activeId);
-  
-  if (!activeFeature) {
-    return null;
-  }
+  // WHY THIS FIX WAS MADE: Tracks async timer handles using refs to ensure all scheduled timers 
+  // are cleanly cleared on component unmount or tab switches, preventing state leaks.
+  const timerHandleRef = useRef<NodeJS.Timeout | null>(null);
+  const secondaryTimerHandleRef = useRef<NodeJS.Timeout | null>(null);
 
-  /* === SECTION 2.1: INTERACTIVE HELPERS === */
+  const clearTimers = () => {
+    if (timerHandleRef.current) clearTimeout(timerHandleRef.current);
+    if (secondaryTimerHandleRef.current) clearTimeout(secondaryTimerHandleRef.current);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimers();
+    };
+  }, []);
+
+  const activeFeature = FEATURES.find((f) => f.id === activeId) ?? FEATURES[0];
 
   const handleVoiceClick = () => {
     if (isRecording) return;
+    clearTimers();
     setIsRecording(true);
     setVoiceText("");
 
-    // Simulated API delay for voice processing demonstration
-    setTimeout(() => {
+    timerHandleRef.current = setTimeout(() => {
       setVoiceText("Coffee $4.50 at Starbucks");
-      setTimeout(() => {
+      secondaryTimerHandleRef.current = setTimeout(() => {
         setIsRecording(false);
       }, 1500);
     }, 1500);
   };
 
-  /* === SECTION 2.2: RENDER HELPERS === */
+  const handleTabSwitch = (featureId: string) => {
+    clearTimers();
+    setActiveId(featureId);
+    if (featureId === "voice") {
+      setIsRecording(false);
+      setVoiceText("");
+    }
+  };
+  /* === SECTION 2 END === */
 
+  /* ==========================================================================
+     === SECTION 3: RENDER HELPERS ===
+     ========================================================================== */
   const renderControls = () => {
     if (activeId === "workspaces") {
       return (
         <div className={styles.interactiveActionArea}>
           <div className={styles.toggleGroup}>
             <button
+              type="button"
               className={`${styles.toggleButton} ${workspaceMode === "private" ? styles.toggleActive : ""}`}
               onClick={() => setWorkspaceMode("private")}
             >
               🏡 Private Mode
             </button>
             <button
+              type="button"
               className={`${styles.toggleButton} ${workspaceMode === "business" ? styles.toggleActive : ""}`}
               onClick={() => setWorkspaceMode("business")}
             >
@@ -104,13 +123,14 @@ export default function FeatureCommandCenter() {
       return (
         <div className={styles.interactiveActionArea}>
           <button
+            type="button"
             className={`${styles.actionButton} ${isRecording ? styles.actionButtonActive : ""}`}
             onClick={handleVoiceClick}
             disabled={isRecording}
           >
             {isRecording ? (
               <>
-                <span className={styles.pulseDot}></span>
+                <span className={styles.pulseDot} aria-hidden="true"></span>
                 Listening Pulse...
               </>
             ) : (
@@ -246,7 +266,7 @@ export default function FeatureCommandCenter() {
           </div>
           <div className={styles.configToggleLine}>
             <span>Enforce Authentication</span>
-            <span className={styles.textMutedLabel}>Bypassed</span>
+            <span className={styles.textMutedLabel}>Active</span>
           </div>
         </div>
       );
@@ -254,14 +274,14 @@ export default function FeatureCommandCenter() {
 
     return null;
   };
+  /* === SECTION 3 END === */
 
-  /* === SECTION 3: MAIN JSX RENDER LAYOUT === */
-
+  /* ==========================================================================
+     === SECTION 4: MAIN JSX RENDER LAYOUT ===
+     ========================================================================== */
   return (
-    // Added id="features" to enable navigation anchor linking
-    <section id="features" className={styles.commandSection}>
+    <section id="features" className={styles.commandSection} aria-label="Capabilities Command Center">
       
-      {/* COMPONENT SUMMARY HEADER */}
       <div className={styles.sectionHeader}>
         <div className={styles.sectionBadge}>System Orchestration</div>
         <h2 className={styles.sectionHeading}>Platform Capabilities Hub</h2>
@@ -270,37 +290,33 @@ export default function FeatureCommandCenter() {
         </p>
       </div>
 
-      {/* CORE DESKTOP VIEWPORT GRID MAP */}
       <div className={styles.centerContainer}>
         
-        {/* COLUMN 1: SIDEBAR OPTION SELECTORS */}
-        <div className={styles.tabsSidebar}>
+        {/* COLUMN 1: SIDEBAR TABS */}
+        <div className={styles.tabsSidebar} role="tablist" aria-label="Feature navigation tabs">
           {FEATURES.map((feature) => (
             <button
               key={feature.id}
+              type="button"
+              role="tab"
+              aria-selected={activeId === feature.id}
               className={`${styles.tabCardButton} ${activeId === feature.id ? styles.tabCardActive : ""}`}
-              onClick={() => {
-                setActiveId(feature.id);
-                if (feature.id === "voice") {
-                  setIsRecording(false);
-                  setVoiceText("");
-                }
-              }}
+              onClick={() => handleTabSwitch(feature.id)}
             >
               <div className={styles.tabCardLabel}>{feature.label}</div>
             </button>
           ))}
         </div>
 
-        {/* COLUMN 2: ACTIVE DESCRIPTION MODULE & CTA TRIGGER */}
-        <div className={styles.featureExplanationFrame}>
+        {/* COLUMN 2: EXPLANATION MODULE */}
+        <div className={styles.featureExplanationFrame} role="tabpanel">
           <h3 className={styles.displayTitle}>{activeFeature.title}</h3>
           <p className={styles.displayDescription}>{activeFeature.desc}</p>
           {renderControls()}
         </div>
 
         {/* COLUMN 3: DEVICE PREVIEW FRAMEWORK */}
-        <div className={styles.mockupColumn}>
+        <div className={styles.mockupColumn} aria-hidden="true">
           <div className={styles.phoneContainer}>
             <div className={styles.phoneScreen}>
               <div className={styles.screenHeaderRow}>
@@ -321,4 +337,4 @@ export default function FeatureCommandCenter() {
     </section>
   );
 }
-/* === SECTION 3 END === */
+/* === SECTION 4 END === */

@@ -4,7 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & DEPENDENCIES ===
    ========================================================================== */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { investmentService, vaultAuthService } from "@/utils/api";
@@ -77,13 +77,18 @@ export default function InvestmentVaultPage() {
   const [isVaultUnlocked, setIsVaultUnlocked] = useState<boolean>(false);
   const [hasDatabasePin, setHasDatabasePin] = useState<boolean>(true);
   const [assets, setAssets] = useState<HydratedAsset[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  // WHY THIS FIX WAS MADE: Added page-level saving lock state to prevent re-entrant 
+  // execution of handleSaveInvestment if invoked multiple times before react renders state updates.
+  const [isSavingAsset, setIsSavingAsset] = useState<boolean>(false);
 
   const [editingAsset, setEditingAsset] = useState<HydratedAsset | null>(null);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState<boolean>(false);
 
+  // Verify whether the vault requires PIN authentication on initial mount
   useEffect(() => {
     let isMounted = true;
     const verifySecurityStatus = async () => {
@@ -103,12 +108,16 @@ export default function InvestmentVaultPage() {
     return () => { isMounted = false; };
   }, [refreshKey]);
 
+  // Fetch vault holdings securely when workspace and lock state are validated
   useEffect(() => {
     let isMounted = true;
-    if (!activeWorkspaceId || (hasDatabasePin && !isVaultUnlocked)) return;
+    if (!activeWorkspaceId || (hasDatabasePin && !isVaultUnlocked)) {
+      return;
+    }
 
     const fetchVaultHoldings = async () => {
       try {
+        if (isMounted) setIsLoading(true);
         const response = await investmentService.getByWorkspace(activeWorkspaceId);
 
         if (isMounted) {
@@ -124,23 +133,29 @@ export default function InvestmentVaultPage() {
             const rawData: unknown = item.strategyNote;
 
             try {
-              let currentData: unknown = rawData;
-              while (typeof currentData === 'string') {
-                if (!currentData.trim().startsWith('{') && !currentData.trim().startsWith('"') && !currentData.trim().startsWith('[')) {
-                  break;
+              if (typeof rawData === 'string' && rawData.trim()) {
+                let currentData: unknown = rawData;
+                let parseDepth = 0;
+                
+                while (typeof currentData === 'string' && parseDepth < 3) {
+                  const trimmed = currentData.trim();
+                  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+                    break;
+                  }
+                  currentData = JSON.parse(currentData) as unknown;
+                  parseDepth++;
                 }
-                currentData = JSON.parse(currentData) as unknown;
-              }
 
-              if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
-                const safeData = currentData as Record<string, unknown>;
-                parsedDetails.displayName = (safeData.displayName as string) || "";
-                parsedDetails.displayIcon = (safeData.displayIcon as string) || "💰";
-                parsedDetails.rawNote = (safeData.rawNote as string) || "";
-                parsedDetails.changeLog = (safeData.changeLog as InvestmentHistoryNode[]) || [];
+                if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
+                  const safeData = currentData as Record<string, unknown>;
+                  parsedDetails.displayName = typeof safeData.displayName === 'string' ? safeData.displayName : "";
+                  parsedDetails.displayIcon = typeof safeData.displayIcon === 'string' ? safeData.displayIcon : "💰";
+                  parsedDetails.rawNote = typeof safeData.rawNote === 'string' ? safeData.rawNote : "";
+                  parsedDetails.changeLog = Array.isArray(safeData.changeLog) ? (safeData.changeLog as InvestmentHistoryNode[]) : [];
+                }
               }
             } catch (jsonError) {
-              console.error("Failed to parse strategy note:", jsonError);
+              console.error("Failed to parse strategy note safely:", jsonError);
             }
 
             const rawQuantity = Number(item.quantity) || 0;
@@ -155,7 +170,7 @@ export default function InvestmentVaultPage() {
               localizedTotalInvested = convertAmount(baseAmountUSD, "USD", currency);
             }
 
-            const localizedUnitPrice = rawQuantity > 0 ? (localizedTotalInvested / rawQuantity) : 0;
+            const localizedUnitPrice = rawQuantity > 0 ? Number((localizedTotalInvested / rawQuantity).toFixed(4)) : 0;
 
             return {
               id: item.id,
@@ -194,36 +209,39 @@ export default function InvestmentVaultPage() {
     return () => { isMounted = false; };
   }, [activeWorkspaceId, refreshKey, isVaultUnlocked, hasDatabasePin, currency, convertAmount]);
 
-  const handleEditClick = (asset: HydratedAsset) => {
+  const handleEditClick = useCallback((asset: HydratedAsset) => {
     setEditingAsset(asset);
     setIsModalOpen(true);
-  };
+  }, []);
 
   const handleSaveInvestment = async (payload: InvestmentAssetPayload) => {
+    if (isSavingAsset) return;
+
     try {
       if (!activeWorkspaceId) {
         toast.error("No active ledger workspace context found.");
         return;
       }
 
-      // 🚀 FIXED: Enforce absolute naming integrity & lock data format structures
+      setIsSavingAsset(true);
+
       const apiPayload = {
         workspaceId: activeWorkspaceId,
         isCustomProfile: payload.icon === "📦",
-        categoryClass: String(payload.categoryClass),
-        assetSymbol: String(payload.symbol).trim().toUpperCase(),
+        categoryClass: String(payload.categoryClass || "GENERAL"),
+        assetSymbol: String(payload.symbol || "").trim().toUpperCase(),
         quantity: Number(payload.quantityOwned) || 0,
         originalAmount: Number(payload.originalAmount) || 0,
         originalCurrency: String(payload.originalCurrency || currency),
         baseAmountUSD: Number(payload.baseAmountUSD) || 0,
-        name: String(payload.name).trim(),
-        icon: String(payload.icon),
-        userNote: String(payload.userNote).trim(),
+        name: String(payload.name || "Untitled Asset").trim(),
+        icon: String(payload.icon || "💰"),
+        userNote: String(payload.userNote || "").trim(),
         history: payload.history || [],
         strategyNote: JSON.stringify({
-          displayName: String(payload.name).trim(),
-          displayIcon: String(payload.icon),
-          rawNote: String(payload.userNote).trim(),
+          displayName: String(payload.name || "").trim(),
+          displayIcon: String(payload.icon || "💰"),
+          rawNote: String(payload.userNote || "").trim(),
           changeLog: payload.history || []
         })
       };
@@ -242,6 +260,8 @@ export default function InvestmentVaultPage() {
     } catch (error) {
       console.error("Save investment error:", error);
       toast.error("Database ingestion processing crash.");
+    } finally {
+      setIsSavingAsset(false);
     }
   };
 
@@ -257,7 +277,10 @@ export default function InvestmentVaultPage() {
     }
   };
 
-  const globalTotalInvested = assets.reduce((sum, item) => sum + item.totalInvested, 0);
+  const globalTotalInvested = useMemo(() => {
+    return assets.reduce((sum, item) => sum + item.totalInvested, 0);
+  }, [assets]);
+
   const totalPositionsCount = assets.length;
   /* === SECTION 3 END === */
 
@@ -327,15 +350,19 @@ export default function InvestmentVaultPage() {
 
       {isModalOpen && (
         <div className={styles.modalOverlay} onClick={() => {
-          setIsModalOpen(false);
-          setEditingAsset(null);
+          if (!isSavingAsset) {
+            setIsModalOpen(false);
+            setEditingAsset(null);
+          }
         }}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <AddInvestmentForm
               key={editingAsset ? editingAsset.id : 'new'}
               onClose={() => {
-                setIsModalOpen(false);
-                setEditingAsset(null);
+                if (!isSavingAsset) {
+                  setIsModalOpen(false);
+                  setEditingAsset(null);
+                }
               }}
               onSave={handleSaveInvestment}
               initialData={formInitialData}

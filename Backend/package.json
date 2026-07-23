@@ -1,17 +1,28 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "src/index.ts",
+  "description": "Secure financial backend engine for RakhoKhata",
+  "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:studio": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "financial",
+    "backend",
+    "typescript",
+    "express",
+    "prisma"
+  ],
   "author": "",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@google/genai": "^2.12.0",
     "@prisma/adapter-pg": "^7.8.0",
@@ -22,6 +33,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "node-cron": "^4.6.0",
@@ -37,10 +49,12 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
+    "@types/node": "^22.20.1",
     "@types/node-cron": "^3.0.11",
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.20.0",
     "prisma": "^7.8.0",
-    "tsx": "^4.23.0"
+    "tsx": "^4.23.0",
+    "typescript": "^5.7.0"
   }
 }

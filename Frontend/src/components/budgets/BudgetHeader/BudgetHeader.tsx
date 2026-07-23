@@ -30,6 +30,10 @@ export function BudgetHeader({
   onCreateBudgetClick,
   totalBudgets = 0 
 }: BudgetHeaderProps) {
+  // WHY THIS FIX WAS MADE: Sanitizes totalBudgets to guarantee a valid non-negative integer,
+  // preventing negative counts or NaN values from being displayed in the header badge.
+  const safeTotalBudgets = Math.max(0, Math.floor(Number(totalBudgets) || 0));
+
   return (
     <div className={styles.headerContainer}>
       
@@ -37,9 +41,9 @@ export function BudgetHeader({
       <div className={styles.textGroup}>
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>Budgets</h1>
-          {totalBudgets > 0 && (
+          {safeTotalBudgets > 0 && (
             <span className={styles.activeCountBadge}>
-              {totalBudgets} Active
+              {safeTotalBudgets} Active
             </span>
           )}
         </div>

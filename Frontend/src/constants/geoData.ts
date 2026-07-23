@@ -4,19 +4,32 @@
    === SECTION 1: TYPES & DATA CONTRACTS ===
    ========================================================================== */
 
-/** Represents a currency option shown in dropdowns and the navbar. */
+/**
+ * Represents a currency option shown in dropdown menus and the navbar.
+ *
+ * WHY this interface exists:
+ * It guarantees that every currency entry has the same shape, preventing
+ * runtime errors from missing fields.
+ */
 export interface CurrencyConfig {
-  code: string;
-  symbol: string;
-  label: string;
-  flag: string;
+  code: string;   // ISO 4217 currency code (e.g., "PKR", "USD")
+  symbol: string; // Native currency symbol (e.g., "₨", "$")
+  label: string;  // Human‑readable name (e.g., "Pakistani Rupee")
+  flag: string;   // Country flag emoji (e.g., "🇵🇰")
 }
 
-/** Represents a country with its default currency and language for onboarding. */
+/**
+ * Represents a country with its default currency and primary language.
+ *
+ * WHY this interface exists:
+ * During onboarding, the app automatically suggests a currency and language
+ * based on the user's selected country. This contract ensures every country
+ * has the required fallback values.
+ */
 export interface CountryConfig {
-  name: string;
-  defaultCurrency: string;
-  defaultLanguage: string;
+  name: string;           // Full country name (e.g., "Pakistan")
+  defaultCurrency: string; // ISO 4217 code of the country's most common currency
+  defaultLanguage: string; // Display name of the country's primary language
 }
 /* === SECTION 1 END === */
 
@@ -25,7 +38,12 @@ export interface CountryConfig {
    ========================================================================== */
 
 /**
- * All supported currencies with their ISO code, symbol, and country flag.
+ * All supported currencies with their ISO code, symbol, and flag.
+ *
+ * WHY this list is centralised here:
+ * Multiple components (navbar, onboarding wizard, settings page) use the same
+ * list. Keeping it in one place ensures consistency and makes future updates
+ * (adding/removing currencies) trivial.
  */
 export const WORLD_CURRENCIES: CurrencyConfig[] = [
   { code: "PKR", symbol: "₨", label: "Pakistani Rupee", flag: "🇵🇰" },
@@ -71,8 +89,13 @@ export const WORLD_CURRENCIES: CurrencyConfig[] = [
 ];
 
 /**
- * Countries used in onboarding.
+ * Countries used in the onboarding wizard.
  * Each entry provides the most common default currency and language for the region.
+ *
+ * WHY this list is here:
+ * The onboarding flow uses the selected country to automatically set the
+ * user's currency and suggest a language. Centralising this mapping avoids
+ * duplicating the logic across multiple components.
  */
 export const WORLD_COUNTRIES: CountryConfig[] = [
   { name: "Pakistan", defaultCurrency: "PKR", defaultLanguage: "Urdu (اُردو)" },
@@ -140,6 +163,11 @@ export const WORLD_COUNTRIES: CountryConfig[] = [
 
 /**
  * Commonly spoken languages shown as priority options during onboarding.
+ *
+ * WHY they are split into two arrays:
+ * The priority list contains the most frequently used languages for the
+ * target audience. The extended list provides additional choices without
+ * cluttering the initial view.
  */
 export const PRIORITY_LANGUAGES = [
   "English",
@@ -157,11 +185,16 @@ export const PRIORITY_LANGUAGES = [
 
 /**
  * Additional languages accessible through the "More Languages" toggle.
+ *
+ * WHY a separate list:
+ * These languages are less common for the primary user base but are
+ * still important for inclusivity. Grouping them separately keeps the
+ * UI clean while remaining fully accessible.
  */
 export const EXTENDED_LANGUAGES = [
   "Bengali (বাংলা)",
   "Tamil (தமிழ்)",
-  "Telugu (తెలుু)",
+  "Telugu (తెలుగు)",   // FIXED: corrected spelling of Telugu
   "Marathi (मराठी)",
   "Italian (Italiano)",
   "Portuguese (Português)",

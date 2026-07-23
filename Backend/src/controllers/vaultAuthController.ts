@@ -1,94 +1,144 @@
 // Backend/src/controllers/vaultAuthController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-import { Response } from "express";
+import { Response as ExpressResponse } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
+
+// Data contract for setting up or changing a PIN
+interface SetupPinInput {
+  pin: string;
+  currentPin?: string;
+}
+
+// Data contract for verifying a PIN
+interface VerifyPinInput {
+  pin: string;
+}
+
+// Data contract for disabling a PIN
+interface DisablePinInput {
+  pin: string;
+}
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
+// Standard cost factor for bcrypt password/PIN hashing
+const BCRYPT_SALT_ROUNDS = 10;
+
 /**
- * Builds a safe error response object that does not leak internal information.
+ * Standardized JSON error response builder
  */
-function safeError(message: string): { error: string } {
+function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
 
 /**
- * Validates that the provided PIN is exactly 4 numeric digits.
+ * WHY THIS IS NEEDED: Ensures inputs are strictly 4 numeric digits.
+ * Rejects non-numeric characters, spaces, floats, and invalid string lengths.
  */
-function isValidPin(pin: string): boolean {
-  return /^\d{4}$/.test(pin);
+function isValidPinFormat(pin: unknown): pin is string {
+  if (typeof pin !== "string") {
+    return false;
+  }
+  return /^\d{4}$/.test(pin.trim());
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 3: CONTROLLER HANDLERS ===
    ========================================================================== */
 
 /**
  * GET /api/auth/vault/pin-status
- * Checks whether the current user has a vault PIN configured.
+ * Checks whether the logged-in user currently has a vault PIN configured.
  */
 export const checkVaultPinStatus = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
 
+    // WHY THIS FIX WAS MADE: Selects ONLY the vaultPin column to optimize DB query memory overhead.
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { vaultPin: true },
     });
 
     if (!user) {
-      res.status(404).json(safeError("User account not found."));
+      res.status(404).json(buildErrorResponse("User account not found."));
       return;
     }
 
-    const hasPin = user.vaultPin !== null && user.vaultPin !== undefined;
+    const hasPin = Boolean(user.vaultPin);
     res.status(200).json({ hasPin });
   } catch (error: unknown) {
     console.error("Check Vault PIN Error:", error);
-    res.status(500).json(safeError("Unable to verify PIN status."));
+    res.status(500).json(buildErrorResponse("Unable to verify PIN status."));
   }
 };
 
 /**
  * POST /api/auth/vault/pin-setup
- * Creates a new 4‑digit vault PIN for the user.
+ * Configures a new 4-digit PIN, requiring current PIN verification if one is already set.
  */
 export const setupVaultPin = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
 
-    const { pin } = req.body as Record<string, unknown>;
+    const { pin, currentPin } = req.body as SetupPinInput;
 
-    if (!pin || typeof pin !== "string" || !isValidPin(pin)) {
-      res.status(400).json(safeError("PIN must be exactly 4 digits."));
+    // 1. Validate new PIN format
+    if (!isValidPinFormat(pin)) {
+      res.status(400).json(buildErrorResponse("New PIN must be exactly 4 digits."));
       return;
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPin = await bcrypt.hash(pin, salt);
+    // 2. Fetch user to verify account existence and current PIN status
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, vaultPin: true },
+    });
+
+    if (!user) {
+      res.status(404).json(buildErrorResponse("User account not found."));
+      return;
+    }
+
+    // WHY THIS FIX WAS MADE: If a PIN is already configured, force the user to prove ownership by validating currentPin.
+    if (user.vaultPin) {
+      if (!currentPin || !isValidPinFormat(currentPin)) {
+        res.status(400).json(buildErrorResponse("Current PIN is required to change vault settings."));
+        return;
+      }
+
+      const isCurrentPinValid = await bcrypt.compare(currentPin, user.vaultPin);
+      if (!isCurrentPinValid) {
+        res.status(401).json(buildErrorResponse("Incorrect current PIN."));
+        return;
+      }
+    }
+
+    // 3. Hash the new PIN and update database
+    const hashedPin = await bcrypt.hash(pin, BCRYPT_SALT_ROUNDS);
 
     await prisma.user.update({
       where: { id: userId },
@@ -101,29 +151,29 @@ export const setupVaultPin = async (
     });
   } catch (error: unknown) {
     console.error("Setup Vault PIN Error:", error);
-    res.status(500).json(safeError("Failed to set up vault PIN."));
+    res.status(500).json(buildErrorResponse("Failed to set up vault PIN."));
   }
 };
 
 /**
  * POST /api/auth/vault/pin-verify
- * Verifies the entered 4‑digit PIN against the stored hash.
+ * Verifies a 4-digit PIN against the user's stored bcrypt hash.
  */
 export const verifyVaultPin = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
 
-    const { pin } = req.body as Record<string, unknown>;
+    const { pin } = req.body as VerifyPinInput;
 
-    if (!pin || typeof pin !== "string" || !isValidPin(pin)) {
-      res.status(400).json(safeError("PIN must be exactly 4 digits."));
+    if (!isValidPinFormat(pin)) {
+      res.status(400).json(buildErrorResponse("PIN must be exactly 4 digits."));
       return;
     }
 
@@ -133,18 +183,18 @@ export const verifyVaultPin = async (
     });
 
     if (!user) {
-      res.status(404).json(safeError("User account not found."));
+      res.status(404).json(buildErrorResponse("User account not found."));
       return;
     }
 
-    const storedHash = user.vaultPin;
-    if (!storedHash) {
-      res.status(400).json(safeError("No vault PIN has been set up."));
+    if (!user.vaultPin) {
+      res.status(400).json(buildErrorResponse("No vault PIN has been configured."));
       return;
     }
 
-    const isValid = await bcrypt.compare(pin, storedHash);
-    if (!isValid) {
+    // Compare provided PIN against stored hash
+    const isMatch = await bcrypt.compare(pin, user.vaultPin);
+    if (!isMatch) {
       res.status(401).json({
         success: false,
         error: "Incorrect PIN.",
@@ -154,30 +204,60 @@ export const verifyVaultPin = async (
 
     res.status(200).json({
       success: true,
-      message: "Vault unlocked.",
+      message: "Vault unlocked successfully.",
     });
   } catch (error: unknown) {
     console.error("Verify Vault PIN Error:", error);
-    res.status(500).json(safeError("PIN verification failed."));
+    res.status(500).json(buildErrorResponse("PIN verification failed."));
   }
 };
 
 /**
  * POST /api/auth/vault/pin-disable
- * Removes the vault PIN, disabling the lock.
+ * Removes the vault PIN after verifying the user's current PIN for security.
  */
 export const disableVaultPin = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
 
-    // Delete the PIN by setting it to null
+    const { pin } = req.body as DisablePinInput;
+
+    // WHY THIS FIX WAS MADE: Prevents unauthorized removal of vault locks by requiring the valid PIN.
+    if (!isValidPinFormat(pin)) {
+      res.status(400).json(buildErrorResponse("Valid 4-digit PIN is required to disable vault lock."));
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, vaultPin: true },
+    });
+
+    if (!user) {
+      res.status(404).json(buildErrorResponse("User account not found."));
+      return;
+    }
+
+    if (!user.vaultPin) {
+      res.status(400).json(buildErrorResponse("No vault PIN is currently configured."));
+      return;
+    }
+
+    // Verify PIN before disabling lock
+    const isPinCorrect = await bcrypt.compare(pin, user.vaultPin);
+    if (!isPinCorrect) {
+      res.status(401).json(buildErrorResponse("Incorrect PIN. Vault remains locked."));
+      return;
+    }
+
+    // Remove PIN protection
     await prisma.user.update({
       where: { id: userId },
       data: { vaultPin: null },
@@ -185,11 +265,11 @@ export const disableVaultPin = async (
 
     res.status(200).json({
       success: true,
-      message: "Vault PIN has been removed.",
+      message: "Vault PIN has been successfully removed.",
     });
   } catch (error: unknown) {
     console.error("Disable Vault PIN Error:", error);
-    res.status(500).json(safeError("Failed to disable vault PIN."));
+    res.status(500).json(buildErrorResponse("Failed to disable vault PIN."));
   }
 };
 /* === SECTION 3 END === */

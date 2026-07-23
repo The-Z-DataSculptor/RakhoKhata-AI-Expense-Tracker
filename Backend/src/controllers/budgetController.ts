@@ -1,39 +1,59 @@
 // Backend/src/controllers/budgetController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & CONTRACTS ===
    ========================================================================== */
-import { Response } from "express";
+import { Response as ExpressResponse } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
-/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: TYPES & HELPER UTILITIES ===
    ========================================================================== */
 
-/**
- * Reusable helper that creates a safe error object
- * without exposing internal details.
- */
-function buildSafeError(message: string): { error: string } {
+interface CreateBudgetInput {
+  originalAmount: number;
+  originalCurrency?: string;
+  baseAmountUSD?: number;
+  startDate: string;
+  endDate: string;
+  categoryId: string;
+  workspaceId: string;
+}
+
+interface UpdateBudgetInput {
+  originalAmount?: number;
+  originalCurrency?: string;
+  baseAmountUSD?: number;
+  startDate?: string;
+  endDate?: string;
+  categoryId?: string;
+}
+
+function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
-/* === SECTION 2 END === */
+
+function isValidDate(dateString: string): boolean {
+  const parsedDate = new Date(dateString);
+  return !isNaN(parsedDate.getTime());
+}
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 3: CONTROLLER HANDLERS ===
    ========================================================================== */
 
-// ---------------------------------------------------------------------------
-// CREATE BUDGET
-// ---------------------------------------------------------------------------
 export const createBudget = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json(buildErrorResponse("Authentication required."));
+      return;
+    }
+
     const {
       originalAmount,
       originalCurrency,
@@ -42,65 +62,61 @@ export const createBudget = async (
       endDate,
       categoryId,
       workspaceId,
-    } = req.body as Record<string, unknown>;
+    } = req.body as CreateBudgetInput;
 
-    // ----- Authentication & input checks -----
-    if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access."));
+    if (!originalAmount || !startDate || !endDate || !categoryId || !workspaceId) {
+      res.status(400).json(buildErrorResponse("Missing required budget parameters."));
       return;
     }
 
-    const parsedAmount = parseFloat(String(originalAmount));
-    if (
-      isNaN(parsedAmount) ||
-      !startDate ||
-      !endDate ||
-      !categoryId ||
-      !workspaceId
-    ) {
-      res
-        .status(400)
-        .json(
-          buildSafeError("Missing or invalid required budget parameters.")
-        );
+    const parsedAmount = Number(originalAmount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      res.status(400).json(buildErrorResponse("Budget amount must be a positive number."));
       return;
     }
 
-    // ----- Ownership verification -----
-    const workspaceCheck = await prisma.workspace.findUnique({
-      where: { id: String(workspaceId) },
-    });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json(buildSafeError("Access denied."));
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      res.status(400).json(buildErrorResponse("Invalid start or end date format."));
       return;
     }
 
-    const categoryCheck = await prisma.category.findUnique({
-      where: { id: String(categoryId) },
-    });
-    if (!categoryCheck || categoryCheck.workspaceId !== String(workspaceId)) {
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Target category does not exist in this workspace."
-          )
-        );
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start >= end) {
+      res.status(400).json(buildErrorResponse("Start date must be strictly before end date."));
       return;
     }
 
-    // ----- Create budget record -----
+    const [workspace, category] = await Promise.all([
+      prisma.workspace.findFirst({
+        where: { id: String(workspaceId), userId: userId },
+      }),
+      prisma.category.findFirst({
+        where: { id: String(categoryId), workspaceId: String(workspaceId) },
+      }),
+    ]);
+
+    if (!workspace) {
+      res.status(403).json(buildErrorResponse("Access denied to the specified workspace."));
+      return;
+    }
+
+    if (!category) {
+      res.status(400).json(buildErrorResponse("Category does not exist in this workspace."));
+      return;
+    }
+
+    const targetCurrency = (originalCurrency || workspace.currency || "PKR").toUpperCase();
+    const usdAmount = baseAmountUSD && !isNaN(Number(baseAmountUSD)) ? Number(baseAmountUSD) : parsedAmount;
+
     const budget = await prisma.budget.create({
       data: {
         originalAmount: parsedAmount,
-        originalCurrency: (
-          String(originalCurrency || workspaceCheck.currency || "USD")
-        ).toUpperCase(),
-        baseAmountUSD: parseFloat(
-          String(baseAmountUSD ?? originalAmount)
-        ),
-        startDate: new Date(String(startDate)),
-        endDate: new Date(String(endDate)),
+        originalCurrency: targetCurrency,
+        baseAmountUSD: usdAmount,
+        startDate: start,
+        endDate: end,
         categoryId: String(categoryId),
         workspaceId: String(workspaceId),
       },
@@ -111,115 +127,125 @@ export const createBudget = async (
     });
 
     res.status(201).json({
-      message: "Spending threshold watch rule deployed successfully!",
+      message: "Budget limit established successfully!",
       budget,
     });
   } catch (error: unknown) {
-    console.error("Create Budget Controller Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Internal server error establishing budget limit parameters."
-        )
-      );
+    console.error("Create Budget Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error creating budget."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// GET WORKSPACE BUDGETS (WITH SPENDING)
-// ---------------------------------------------------------------------------
 export const getWorkspaceBudgets = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.query.workspaceId
-      ? String(req.query.workspaceId)
-      : undefined;
+    const workspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
 
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access."));
-      return;
-    }
-    if (!targetWorkspaceId) {
-      res
-        .status(400)
-        .json(buildSafeError("Workspace query parameter is required."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
 
-    // Verify workspace ownership
-    const workspaceCheck = await prisma.workspace.findUnique({
-      where: { id: targetWorkspaceId },
-      select: { id: true, currency: true, userId: true },
+    if (!workspaceId) {
+      res.status(400).json(buildErrorResponse("Workspace ID query parameter is required."));
+      return;
+    }
+
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: workspaceId, userId: userId },
+      select: { id: true, currency: true },
     });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json(buildSafeError("Access denied."));
+
+    if (!workspace) {
+      res.status(403).json(buildErrorResponse("Access denied to specified workspace."));
       return;
     }
 
-    const workspaceCurrency = workspaceCheck.currency || "USD";
-
-    // Fetch all budgets for the workspace
     const budgets = await prisma.budget.findMany({
-      where: { workspaceId: targetWorkspaceId },
+      where: { workspaceId },
       include: { category: true },
       orderBy: { createdAt: "desc" },
     });
 
-    // Compute spent amounts by aggregating transaction originalAmount
-    const budgetsWithSpentData = await Promise.all(
-      budgets.map(async (budget) => {
-        const spentSum = await prisma.transaction.aggregate({
-          where: {
-            categoryId: budget.categoryId,
-            workspaceId: targetWorkspaceId,
-            date: {
-              gte: budget.startDate,
-              lte: budget.endDate,
-            },
-          },
-          _sum: { originalAmount: true },
-        });
+    if (budgets.length === 0) {
+      res.status(200).json({ budgets: [] });
+      return;
+    }
 
-        return {
-          ...budget,
-          spentAmount: spentSum._sum.originalAmount || 0,
-          originalAmount: budget.originalAmount,
-          originalCurrency: budget.originalCurrency || workspaceCurrency,
-          baseAmountUSD: budget.baseAmountUSD,
-        };
-      })
-    );
+    const categoryIds = Array.from(new Set(budgets.map((b) => b.categoryId)));
+    const minStartDate = new Date(Math.min(...budgets.map((b) => b.startDate.getTime())));
+    const maxEndDate = new Date(Math.max(...budgets.map((b) => b.endDate.getTime())));
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        workspaceId,
+        categoryId: { in: categoryIds },
+        type: "EXPENSE",
+        date: {
+          gte: minStartDate,
+          lte: maxEndDate,
+        },
+      },
+      select: {
+        categoryId: true,
+        baseAmountUSD: true,   // ✅ Use USD equivalent for consistent summing
+        date: true,
+      },
+    });
+
+    const budgetsWithSpentData = budgets.map((budget) => {
+      const matchingSpentUSD = transactions
+        .filter((tx) => {
+          const txDate = new Date(tx.date).getTime();
+          return (
+            tx.categoryId === budget.categoryId &&
+            txDate >= budget.startDate.getTime() &&
+            txDate <= budget.endDate.getTime()
+          );
+        })
+        .reduce((sum, tx) => sum + Number(tx.baseAmountUSD || 0), 0);
+
+      return {
+        id: budget.id,
+        originalAmount: Number(budget.originalAmount),
+        originalCurrency: budget.originalCurrency || workspace.currency,
+        baseAmountUSD: Number(budget.baseAmountUSD),
+        // ✅ spentAmount is now in USD
+        spentAmount: Math.round((matchingSpentUSD + Number.EPSILON) * 100) / 100,
+        startDate: budget.startDate,
+        endDate: budget.endDate,
+        category: budget.category,
+        workspaceId: budget.workspaceId,
+        createdAt: budget.createdAt,
+        updatedAt: budget.updatedAt,
+      };
+    });
 
     res.status(200).json({ budgets: budgetsWithSpentData });
   } catch (error: unknown) {
-    console.error("Fetch Budgets Controller Error:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error."));
+    console.error("Get Workspace Budgets Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error fetching budgets."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// UPDATE BUDGET
-// ---------------------------------------------------------------------------
 export const updateBudget = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     const budgetId = req.params.id as string;
 
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
+
     if (!budgetId) {
-      res.status(400).json(buildSafeError("Budget ID is required."));
+      res.status(400).json(buildErrorResponse("Budget ID parameter is required."));
       return;
     }
 
@@ -230,61 +256,80 @@ export const updateBudget = async (
       startDate,
       endDate,
       categoryId,
-    } = req.body as Record<string, unknown>;
+    } = req.body as UpdateBudgetInput;
 
-    // Verify budget ownership
     const existingBudget = await prisma.budget.findUnique({
       where: { id: budgetId },
       include: { workspace: true },
     });
+
     if (!existingBudget || existingBudget.workspace.userId !== userId) {
-      res.status(403).json(buildSafeError("Access denied."));
+      res.status(403).json(buildErrorResponse("Access denied or budget not found."));
       return;
     }
 
-    // If a new category is provided, verify it belongs to the same workspace
-    if (categoryId) {
-      const categoryCheck = await prisma.category.findUnique({
-        where: { id: String(categoryId) },
-      });
-      if (
-        !categoryCheck ||
-        categoryCheck.workspaceId !== existingBudget.workspaceId
-      ) {
-        res
-          .status(400)
-          .json(
-            buildSafeError("Invalid category for this workspace.")
-          );
+    const updatePayload: Record<string, unknown> = {};
+
+    if (originalAmount !== undefined) {
+      const parsedAmount = Number(originalAmount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        res.status(400).json(buildErrorResponse("Budget amount must be a positive number."));
         return;
+      }
+      updatePayload.originalAmount = parsedAmount;
+    }
+
+    if (baseAmountUSD !== undefined) {
+      const parsedUSD = Number(baseAmountUSD);
+      if (!isNaN(parsedUSD)) {
+        updatePayload.baseAmountUSD = parsedUSD;
       }
     }
 
-    // Build update object – only include defined fields
-    const updateData: Record<string, unknown> = {};
-
-    if (originalAmount !== undefined) {
-      updateData.originalAmount = parseFloat(String(originalAmount));
-    }
     if (originalCurrency !== undefined) {
-      updateData.originalCurrency = String(originalCurrency);
+      updatePayload.originalCurrency = String(originalCurrency).toUpperCase();
     }
-    if (baseAmountUSD !== undefined) {
-      updateData.baseAmountUSD = parseFloat(String(baseAmountUSD));
-    }
+
+    let newStart = existingBudget.startDate;
+    let newEnd = existingBudget.endDate;
+
     if (startDate !== undefined) {
-      updateData.startDate = new Date(String(startDate));
+      if (!isValidDate(startDate)) {
+        res.status(400).json(buildErrorResponse("Invalid start date format."));
+        return;
+      }
+      newStart = new Date(startDate);
+      updatePayload.startDate = newStart;
     }
+
     if (endDate !== undefined) {
-      updateData.endDate = new Date(String(endDate));
+      if (!isValidDate(endDate)) {
+        res.status(400).json(buildErrorResponse("Invalid end date format."));
+        return;
+      }
+      newEnd = new Date(endDate);
+      updatePayload.endDate = newEnd;
     }
+
+    if (newStart >= newEnd) {
+      res.status(400).json(buildErrorResponse("Start date must be strictly before end date."));
+      return;
+    }
+
     if (categoryId !== undefined) {
-      updateData.categoryId = String(categoryId);
+      const categoryMatch = await prisma.category.findFirst({
+        where: { id: String(categoryId), workspaceId: existingBudget.workspaceId },
+      });
+      if (!categoryMatch) {
+        res.status(400).json(buildErrorResponse("Category does not exist in this workspace."));
+        return;
+      }
+      updatePayload.categoryId = String(categoryId);
     }
 
     const updatedBudget = await prisma.budget.update({
       where: { id: budgetId },
-      data: updateData,
+      data: updatePayload,
       include: { category: true },
     });
 
@@ -293,30 +338,26 @@ export const updateBudget = async (
       budget: updatedBudget,
     });
   } catch (error: unknown) {
-    console.error("Update Budget Controller Error:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error updating budget."));
+    console.error("Update Budget Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error updating budget."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// DELETE BUDGET
-// ---------------------------------------------------------------------------
 export const deleteBudget = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     const targetId = req.params.id as string;
 
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access."));
+      res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
+
     if (!targetId) {
-      res.status(400).json(buildSafeError("Budget ID is missing."));
+      res.status(400).json(buildErrorResponse("Budget ID is required."));
       return;
     }
 
@@ -324,8 +365,9 @@ export const deleteBudget = async (
       where: { id: targetId },
       include: { workspace: true },
     });
+
     if (!budgetTarget || budgetTarget.workspace.userId !== userId) {
-      res.status(403).json(buildSafeError("Access denied."));
+      res.status(403).json(buildErrorResponse("Access denied or budget not found."));
       return;
     }
 
@@ -333,10 +375,7 @@ export const deleteBudget = async (
 
     res.status(200).json({ message: "Budget deleted successfully." });
   } catch (error: unknown) {
-    console.error("Delete Budget Controller Exception:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error."));
+    console.error("Delete Budget Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error deleting budget."));
   }
 };
-/* === SECTION 3 END === */

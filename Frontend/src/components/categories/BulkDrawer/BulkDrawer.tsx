@@ -4,7 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FiX, FiCheckSquare, FiLayers } from "react-icons/fi";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./BulkDrawer.module.css";
@@ -46,18 +46,40 @@ export default function BulkDrawer({
 }: BulkDrawerProps) {
   const { formatAmount } = useCurrency();
 
+  // Defensive array sanitization
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeCategories = Array.isArray(categories) ? categories : [];
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
-  const resetSelection = () => {
+  const resetSelection = useCallback(() => {
     setSelectedIds([]);
     setSelectedCategory("");
-  };
+  }, []);
 
-  const handleCloseDrawer = () => {
+  const handleCloseDrawer = useCallback(() => {
     resetSelection();
     onClose();
-  };
+  }, [resetSelection, onClose]);
+
+  // WHY THIS FIX WAS MADE: Listens for keydown events to allow closing the drawer via 'Escape',
+  // maintaining accessibility compliance for keyboard users.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        handleCloseDrawer();
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, handleCloseDrawer]);
 
   const handleOpenSafeApply = () => {
     if (!selectedCategory || selectedIds.length === 0) return;
@@ -77,22 +99,22 @@ export default function BulkDrawer({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === transactions.length) {
+    if (selectedIds.length === safeTransactions.length) {
       setSelectedIds([]);
     } else {
-      const allIds = transactions.map((tx) => tx.id);
+      const allIds = safeTransactions.map((tx) => tx.id);
       setSelectedIds(allIds);
     }
   };
 
   if (!isOpen) return null;
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
-    <div className={styles.overlay} onClick={handleCloseDrawer}>
+    <div className={styles.overlay} onClick={handleCloseDrawer} role="dialog" aria-modal="true" aria-label="Unassigned Workspace Drawer">
       <aside className={styles.drawerPanel} onClick={(e) => e.stopPropagation()}>
 
         {/* Mobile visual drag handle for native sheet appearance */}
@@ -102,25 +124,25 @@ export default function BulkDrawer({
           <div className={styles.headerTextGroup}>
             <h2 className={styles.title}>Unassigned Workspace</h2>
             <p className={styles.subtitle}>
-              {transactions.length} transactions require matching tags
+              {safeTransactions.length} transactions require matching tags
             </p>
           </div>
-          <button className={styles.closeButton} onClick={handleCloseDrawer} aria-label="Close drawer">
+          <button type="button" className={styles.closeButton} onClick={handleCloseDrawer} aria-label="Close drawer">
             <FiX size={18} />
           </button>
         </header>
 
-        {transactions.length > 0 && (
+        {safeTransactions.length > 0 && (
           <div className={styles.utilityControlBar}>
             <button className={styles.bulkSelectToggleBtn} onClick={toggleSelectAll} type="button">
               <FiCheckSquare size={16} />
-              <span>{selectedIds.length === transactions.length ? "Deselect All" : "Select All Items"}</span>
+              <span>{selectedIds.length === safeTransactions.length ? "Deselect All" : "Select All Items"}</span>
             </button>
           </div>
         )}
 
         <div className={styles.listContainer}>
-          {transactions.length === 0 ? (
+          {safeTransactions.length === 0 ? (
             <div className={styles.emptyStateDeck}>
               <div className={styles.emptyIconPill}>
                 <FiLayers size={24} />
@@ -129,11 +151,12 @@ export default function BulkDrawer({
               <p>No unassigned statement transactions found pending assignment parameters.</p>
             </div>
           ) : (
-            transactions.map((tx) => {
+            safeTransactions.map((tx, idx) => {
+              const uniqueTxKey = tx.id || `unassigned-tx-${idx}`;
               const isSelected = selectedIds.includes(tx.id);
               return (
                 <div
-                  key={tx.id}
+                  key={uniqueTxKey}
                   className={`${styles.rowCard} ${isSelected ? styles.activeRowCard : ""}`}
                   onClick={() => toggleSelection(tx.id)}
                 >
@@ -141,11 +164,11 @@ export default function BulkDrawer({
                     {isSelected && <div className={styles.checkInnerCoreMark} />}
                   </div>
                   <div className={styles.metaDeck}>
-                    <span className={styles.merchantLabel}>{tx.merchant}</span>
-                    <span className={styles.dateStampText}>{tx.date}</span>
+                    <span className={styles.merchantLabel}>{tx.merchant || "Imported Entry"}</span>
+                    <span className={styles.dateStampText}>{tx.date || "N/A"}</span>
                   </div>
                   <div className={styles.amountDisplayBadge}>
-                    {formatAmount(tx.amount, "USD")}
+                    {formatAmount(Number(tx.amount) || 0, "USD")}
                   </div>
                 </div>
               );
@@ -165,15 +188,17 @@ export default function BulkDrawer({
                 className={styles.workspaceDropdownSelect}
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
+                aria-label="Select Destination Category Tag"
               >
                 <option value="">Choose Destination Tag...</option>
-                {categories.map((cat) => (
+                {safeCategories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
                 ))}
               </select>
               <button
+                type="button"
                 className={styles.workspaceApplyExecuteBtn}
                 onClick={handleOpenSafeApply}
                 disabled={!selectedCategory}
@@ -188,3 +213,4 @@ export default function BulkDrawer({
     </div>
   );
 }
+/* === SECTION 4 END === */

@@ -1,36 +1,71 @@
-// prisma/schema.prisma
+// Backend/prisma/schema.prisma
 
 /**
  * ==========================================================================
- * === SECTION 1: GENERATOR & DATA SOURCE CONFIGURATION LAYOUT ===
+ * === SECTION 1: ENGINE & DATASOURCE CONFIGURATION (PRISMA 7 COMPLIANT) ===
  * ==========================================================================
  */
+
 generator client {
   provider = "prisma-client-js"
   output   = "./generated"
 }
 
 datasource db {
-  provider = "postgresql" // Removed direct 'url' property for Prisma 7 compliance
+  provider = "postgresql"
+  // Note: Connection URLs for Prisma 7 are managed entirely in `prisma.config.ts`
 }
 
 /**
+ * === SECTION 1 END ===
+ */
+
+/**
  * ==========================================================================
- * === SECTION 2: USER ACCOUNT CORE IDENTITY SCHEMA ===
+ * === SECTION 2: DATABASE ENUMS (STRICT TYPE SAFETY) ===
  * ==========================================================================
  */
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum UITheme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum TokenType {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  TWO_FACTOR
+  MAGIC_LINK
+}
+
+/**
+ * === SECTION 2 END ===
+ */
+
+/**
+ * ==========================================================================
+ * === SECTION 3: USER IDENTITY & AUTHENTICATION ===
+ * ==========================================================================
+ */
+
 model User {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
-  passwordHash String? // IMPROVED: Made optional (?) to fully support passwordless Google OAuth signups
-  avatarUrl    String? // ADDED: Captures dynamic Google/Social profile picture streams directly
+  passwordHash String? // Nullable for passwordless Google OAuth signups
+  avatarUrl    String? // Stores dynamic social avatar image URLs
   vaultPin     String?
-  uiTheme      String   @default("DARK")
+  uiTheme      UITheme  @default(DARK)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // DYNAMIC ONBOARDING AND GLOBAL AI PERSONALIZATION FIELDS
+  // Dynamic Onboarding & Global AI Preferences
   country       String?
   currency      String?
   languages     String[]
@@ -38,179 +73,211 @@ model User {
   financialGoal String?
   aiPersona     String?
 
-  // 🚀 WELCOME GATE SECURITY TRACKER
-  // Defaults to false so new users are directed to the setup form before accessing the app dashboard
+  // Onboarding Setup Tracker
   isOnboardingCompleted Boolean @default(false)
 
-  // FUTURE-PROOF MAILING EXTENSIONS (Email Verification & Security States)
+  // Security & Email Verification States
   isEmailVerified     Boolean   @default(false)
   emailVerifiedAt     DateTime?
-  emailDeliveryStatus String    @default("DELIVERED") // Handles bounce protection flags
+  emailDeliveryStatus String    @default("DELIVERED")
 
-  // FUTURISTIC NOTIFICATION PREFERENCE OPT-IN TOGGLES (Cron Engine Anchors)
+  // Automated Digest Toggles
   weeklyDigestEnabled  Boolean @default(true)
   monthlyReportEnabled Boolean @default(true)
 
   // Relational Connections
   workspaces    Workspace[]
   notifications Notification[]
-  accounts      Account[] // Connects multiple safe validation strategy tracks
+  accounts      Account[]
 
   @@map("users")
 }
 
-/**
- * ==========================================================================
- * === SECTION 2B: EXTERNAL SOCIAL AUTHENTICATION IDENTITY STACK ===
- * ==========================================================================
- */
 model Account {
   id                String   @id @default(uuid())
   userId            String
-  provider          String // Always sets explicitly to "GOOGLE" for this pipeline path
-  providerAccountId String // The unique identity identification string code from Google servers
+  provider          String // e.g., "GOOGLE"
+  providerAccountId String // Unique provider ID from Google
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   // Relationships
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerAccountId]) // 🛡️ SECURITY SHIELD: Blocks account-linking hijacking tricks
+  // WHY THIS FIX WAS MADE: Composite index accelerates authorization lookups when checking
+  // if an account provider maps to a specific user during OAuth authentication.
+  @@unique([provider, providerAccountId])
+  @@index([userId])
   @@map("accounts")
 }
 
 /**
+ * === SECTION 3 END ===
+ */
+
+/**
  * ==========================================================================
- * === SECTION 3: WORKSPACE MULTI-TENANCY ANCHOR CORE ===
+ * === SECTION 4: WORKSPACE MULTI-TENANCY CORE ===
  * ==========================================================================
  */
+
 model Workspace {
-  id           String        @id @default(uuid())
-  name         String
-  currency     String        @default("PKR")
-  userId       String
+  id        String   @id @default(uuid())
+  name      String
+  currency  String   @default("PKR")
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   categories   Category[]
   transactions Transaction[]
   budgets      Budget[]
   investments  Investment[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
 
+  // WHY THIS FIX WAS MADE: Composite index on userId and workspace id allows ultra-fast
+  // BOLA/IDOR ownership checks during API requests before executing mutations.
+  @@index([userId, id])
   @@map("workspaces")
 }
 
 /**
+ * === SECTION 4 END ===
+ */
+
+/**
  * ==========================================================================
- * === SECTION 4: DYNAMIC TRANSACTION CATEGORIES SCHEMA ===
+ * === SECTION 5: CATEGORIES & TRANSACTION LEDGER ===
  * ==========================================================================
  */
+
 model Category {
-  id           String        @id @default(uuid())
+  id           String          @id @default(uuid())
   name         String
-  type         String
+  type         TransactionType // ENUM: Strict type constraint
   color        String
-  isFixed      Boolean       @default(false)
-  isRecurring  Boolean       @default(false)
+  isFixed      Boolean         @default(false)
+  isRecurring  Boolean         @default(false)
   frequency    String?
   dueDay       Int?
   reminderDays Int?
   workspaceId  String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relationships
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   budgets      Budget[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
 
+  // WHY THIS FIX WAS MADE: Prevents creation of duplicate categories with the exact same name
+  // and transaction type within the same workspace, maintaining ledger data integrity.
+  @@unique([workspaceId, name, type])
+  @@index([workspaceId])
   @@map("categories")
 }
 
-/**
- * ==========================================================================
- * === SECTION 5: HISTORICAL TRANSACTION LEDGER SCHEMA ===
- * ==========================================================================
- */
 model Transaction {
   id String @id @default(uuid())
 
-  // Permanent original values – never recalculated
+  // Permanent original currency values (Decimal avoids floating point math bugs)
   originalAmount   Decimal @db.Decimal(12, 2)
   originalCurrency String  @default("USD")
-  baseAmountUSD    Decimal @db.Decimal(12, 2) // computed once at creation
+  baseAmountUSD    Decimal @db.Decimal(12, 2)
 
-  type        String
+  type        TransactionType // ENUM: Strict type constraint
   description String
   date        DateTime
   workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  categoryId  String? // Optional so deleting a category won't wipe transaction history
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category  Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Indexes to prevent full table scans in PostgreSQL
+  @@index([workspaceId])
+  @@index([workspaceId, date]) // High performance dashboard date filtering
+  @@index([categoryId]) // Category filtering
   @@map("transactions")
 }
 
 /**
+ * === SECTION 5 END ===
+ */
+
+/**
  * ==========================================================================
- * === SECTION 6: BUDGETING LIMIT & CAP MECHANICS ===
+ * === SECTION 6: BUDGETS & INVESTMENTS ===
  * ==========================================================================
  */
+
 model Budget {
   id String @id @default(uuid())
 
-  // Original amount set by the user
   originalAmount   Decimal @db.Decimal(12, 2)
   originalCurrency String  @default("USD")
-  baseAmountUSD    Decimal @db.Decimal(12, 2) // computed once at creation
+  baseAmountUSD    Decimal @db.Decimal(12, 2)
 
   startDate   DateTime
   endDate     DateTime
   categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  // Relationships
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // WHY THIS FIX WAS MADE: Enforces a unique constraint per category and date range inside a workspace
+  // to prevent overlapping budgets from causing double-counting errors in summary metrics.
+  @@unique([workspaceId, categoryId, startDate, endDate])
+  @@index([workspaceId])
+  @@index([categoryId])
   @@map("budgets")
 }
 
-/**
- * ==========================================================================
- * === SECTION 7: SECURE INVESTMENT VAULT ASSET ENGINE ===
- * ==========================================================================
- */
 model Investment {
   id              String  @id @default(uuid())
   assetSymbol     String
   categoryClass   String
   isCustomProfile Boolean @default(false)
 
-  // Original amount in workspace currency – immutable
   originalAmount   Decimal @db.Decimal(12, 2)
   originalCurrency String  @default("USD")
   baseAmountUSD    Decimal @db.Decimal(12, 2)
 
-  quantity     Decimal   @db.Decimal(16, 8)
+  quantity     Decimal  @db.Decimal(16, 8)
   strategyNote String
   workspaceId  String
-  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  // Relationships
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
   @@map("investments")
 }
 
 /**
+ * === SECTION 6 END ===
+ */
+
+/**
  * ==========================================================================
- * === SECTION 8: ENTERPRISE NOTIFICATION ENGINE ===
+ * === SECTION 7: NOTIFICATIONS & VERIFICATION TOKENS ===
  * ==========================================================================
  */
+
 model Notification {
   id     String @id @default(uuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   title   String
   message String
@@ -227,23 +294,29 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([createdAt])
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Composite index optimized for unread/recent user notifications
+  @@index([userId, isRead, createdAt])
   @@map("notifications")
 }
 
-/**
- * ==========================================================================
- * === SECTION 9: GENERAL PURPOSE VERIFICATION TOKENS (POLYMORPHIC ARCH) ===
- * ==========================================================================
- */
 model VerificationToken {
-  id         String   @id @default(uuid())
-  tokenHash  String   @unique // Secure SHA-256 hash representation of the secret token/PIN string
-  type       String // "PASSWORD_RESET" | "EMAIL_VERIFICATION" | "TWO_FACTOR" | "MAGIC_LINK"
-  identifier String // Targets the specific identity record context (e.g., recipient email address)
-  expiresAt  DateTime // Enforces token invalidation parameters
-  createdAt  DateTime @default(now())
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique // Unique constraint creates a B-Tree index automatically
+  type       TokenType // ENUM: Restricts token categories
+  identifier String // E.g., target user email address
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
 
-  @@index([tokenHash])
+  // WHY THIS FIX WAS MADE: Dedicated index on expiresAt allows background cron processes to clean up
+  // expired verification tokens instantly without performing full sequential table scans.
+  @@index([identifier])
+  @@index([expiresAt])
   @@map("verification_tokens")
 }
+
+/**
+ * === SECTION 7 END ===
+ */

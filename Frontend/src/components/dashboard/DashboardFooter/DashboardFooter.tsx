@@ -7,15 +7,18 @@
 import React from "react";
 import { FiCheckCircle, FiRefreshCw } from "react-icons/fi";
 import styles from "./DashboardFooter.module.css";
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: COMPONENT LOGIC ===
+   === SECTION 2: COMPONENT LOGIC & RENDER ===
    ========================================================================== */
 export default function DashboardFooter() {
-  const currentYear = new Date().getFullYear();
+  // WHY THIS FIX WAS MADE: Uses a static year fallback to guarantee identical HTML output
+  // between server rendering and client hydration.
+  const currentYear = 2026;
 
   return (
-    <footer className={styles.footerContainer}>
+    <footer className={styles.footerContainer} aria-label="Dashboard System Footer">
       
       <div className={styles.statusSide}>
         <div className={styles.statusNode}>
@@ -35,3 +38,4 @@ export default function DashboardFooter() {
     </footer>
   );
 }
+/* === SECTION 2 END === */

@@ -3,7 +3,14 @@
 /* ==========================================================================
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
-const BACKEND_BASE_URL = "http://localhost:5000/api";
+/*
+ * WHY THIS IS NEEDED:
+ * The backend URL must come from an environment variable so that the same
+ * frontend build works in development, staging, and production without
+ * any code changes. NEXT_PUBLIC_API_URL is the standard Next.js variable
+ * for client‑side code. The fallback is only used for local development.
+ */
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export interface Category {
   id: string;
@@ -121,6 +128,11 @@ export interface Workspace {
  * Base fetch function for all API calls.
  * Automatically includes credentials and JSON content‑type unless
  * the body is a FormData object (used for file uploads).
+ *
+ * WHY THIS IS NEEDED:
+ * Centralising all API communication in one function means we can
+ * apply consistent error handling, logging, and security headers
+ * in a single place instead of repeating them in every service.
  */
 export const apiFetch = async <T = unknown>(
   endpoint: string,
@@ -138,7 +150,7 @@ export const apiFetch = async <T = unknown>(
 
   const mergedOptions: RequestInit = {
     ...options,
-    credentials: "include",
+    credentials: "include", // Send HttpOnly cookies for authentication
     headers,
   };
 
@@ -146,28 +158,35 @@ export const apiFetch = async <T = unknown>(
     const response = await fetch(url, mergedOptions);
 
     if (!response.ok) {
-      const errorData: unknown = await response
-        .json()
-        .catch(() => ({}));
-      const errorMessage =
-        typeof errorData === "object" &&
-        errorData !== null &&
-        "error" in errorData
-          ? (errorData as { error: string }).error
-          : `Access denied. Status: ${response.status}`;
+      // Try to extract a human‑readable error from the backend JSON response
+      let errorMessage = `Request failed with status ${response.status}`;
+      try {
+        const errorData: unknown = await response.json();
+        if (
+          typeof errorData === "object" &&
+          errorData !== null &&
+          "error" in errorData
+        ) {
+          errorMessage = (errorData as { error: string }).error;
+        }
+      } catch {
+        // If the response body isn't valid JSON, use the default message
+      }
       throw new Error(errorMessage);
     }
 
     return response.json() as Promise<T>;
   } catch (error: unknown) {
+    // Re‑throw backend errors so callers can display them to the user
     if (
       error instanceof Error &&
       !error.message.startsWith("Failed to fetch")
     ) {
       throw error;
     }
+    // Wrap network errors in a user‑friendly message
     throw new Error(
-      "Unable to establish a secure link with the financial backend. Ensure your Express engine is running on port 5000."
+      "Unable to connect to the financial backend. Please check your connection and ensure the server is running."
     );
   }
 };
@@ -316,7 +335,9 @@ export const vaultAuthService = {
     ),
 };
 
+// 🚀 Extended aiService with greeting and analysis endpoints
 export const aiService = {
+  // Existing general question endpoint
   ask: (
     question: string,
     persona: "auditor" | "coach" | "minimalist",
@@ -325,6 +346,27 @@ export const aiService = {
     apiFetch<{ response: string }>("/ai/ask", {
       method: "POST",
       body: JSON.stringify({ question, persona, workspaceId }),
+    }),
+
+  // New: Daily companion greeting
+  greeting: (workspaceId: string) =>
+    apiFetch<{
+      user: { name: string; aiPersona: string };
+      greeting: string;
+      cooldowns: { today: boolean; week: boolean; month: boolean };
+    }>("/ai/greeting", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId }),
+    }),
+
+  // New: Execute scoped analysis
+  executeAnalysis: (scope: "today" | "week" | "month", workspaceId: string) =>
+    apiFetch<{
+      success: boolean;
+      analysisReport: string;
+    }>("/ai/execute-analysis", {
+      method: "POST",
+      body: JSON.stringify({ scope, workspaceId }),
     }),
 };
 

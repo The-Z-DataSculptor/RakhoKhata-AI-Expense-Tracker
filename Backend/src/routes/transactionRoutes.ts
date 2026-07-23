@@ -1,7 +1,7 @@
 // Backend/src/routes/transactionRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Router } from "express";
 import multer from "multer";
@@ -16,56 +16,162 @@ import {
   exportTransactionsExcel,
   exportTransactionsPdf,
 } from "../controllers/exportController";
-import { verifyTokenGuard } from "../middleware/authMiddleware";
+import {
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+} from "../middleware/authMiddleware";
+import {
+  globalApiLimiter,
+  writeActionsLimiter,
+  aiApiLimiter,
+} from "../middleware/rateLimitMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: MIDDLEWARE CONFIGURATION ===
+   === SECTION 2: MIDDLEWARE & MULTER CONFIGURATION ===
    ========================================================================== */
 const router = Router();
 
-// Memory‑only storage for receipt images – no files are written to disk
+// Allowed MIME types for AI receipt scanning
+const ALLOWED_RECEIPT_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "application/pdf",
+];
+
+// WHY THIS FIX WAS MADE: Added fileFilter to reject non-supported files at the multipart boundary before buffering memory.
 const memoryUploadEngine = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10 MB maximum upload size
   },
+  fileFilter: (_req, file, callback) => {
+    if (ALLOWED_RECEIPT_MIME_TYPES.includes(file.mimetype.toLowerCase())) {
+      callback(null, true);
+    } else {
+      callback(
+        new Error("Invalid file type. Only JPEG, PNG, WEBP, HEIC, and PDF files are allowed.")
+      );
+    }
+  },
 });
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: TRANSACTION ROUTES ===
+   === SECTION 3: TRANSACTION & EXPORT ROUTES ===
    ========================================================================== */
 
-// Fetch all transactions for a workspace (workspaceId query parameter required)
-router.get("/", verifyTokenGuard, getWorkspaceTransactions);
+/**
+ * GET /api/transactions
+ * Fetches transactions for a workspace (workspaceId query parameter required).
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `globalApiLimiter` to prevent database query starvation
+ * and `ensureOnboardingCompleted` to enforce profile initialization.
+ */
+router.get(
+  "/",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  globalApiLimiter,
+  getWorkspaceTransactions
+);
 
-// Create a single new transaction
-router.post("/", verifyTokenGuard, createTransaction);
+/**
+ * POST /api/transactions
+ * Creates a single transaction entry.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to block automated script
+ * spam from flooding database tables.
+ */
+router.post(
+  "/",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  createTransaction
+);
 
-// Bulk import multiple transactions
-router.post("/bulk", verifyTokenGuard, bulkCreateTransactions);
+/**
+ * POST /api/transactions/bulk
+ * Imports multiple transactions in a single batch.
+ * 
+ * WHY THIS FIX WAS MADE: Rate limited using `writeActionsLimiter` to prevent database
+ * lock contention during heavy batch writes.
+ */
+router.post(
+  "/bulk",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  bulkCreateTransactions
+);
 
-// Scan a receipt image using AI (accepts multipart form with field "receipt")
+/**
+ * POST /api/transactions/scan
+ * Scans a receipt document/image using Gemini AI vision models.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `aiApiLimiter` BEFORE parsing multipart files to shield server RAM
+ * and Gemini API key quotas from abuse.
+ */
 router.post(
   "/scan",
   verifyTokenGuard,
+  ensureOnboardingCompleted,
+  aiApiLimiter,
   memoryUploadEngine.single("receipt"),
   scanReceipt
 );
 
-// Delete a transaction by its ID
-router.delete("/:id", verifyTokenGuard, deleteTransaction);
+/**
+ * DELETE /api/transactions/:id
+ * Removes a transaction by ID.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to safeguard against bulk deletion spam.
+ */
+router.delete(
+  "/:id",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  deleteTransaction
+);
 
-// Export transactions as Excel
-router.get("/export/excel", verifyTokenGuard, exportTransactionsExcel);
+/**
+ * GET /api/transactions/export/excel
+ * Generates and streams an Excel spreadsheet statement.
+ * 
+ * WHY THIS FIX WAS MADE: Rate limited using `globalApiLimiter` to prevent CPU-intensive spreadsheet
+ * generation from overloading server memory.
+ */
+router.get(
+  "/export/excel",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  globalApiLimiter,
+  exportTransactionsExcel
+);
 
-// Export transactions as PDF
-router.get("/export/pdf", verifyTokenGuard, exportTransactionsPdf);
+/**
+ * GET /api/transactions/export/pdf
+ * Generates and streams a PDF report document.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `globalApiLimiter` to prevent PDF render streaming
+ * from blocking Node.js event loops.
+ */
+router.get(
+  "/export/pdf",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  globalApiLimiter,
+  exportTransactionsPdf
+);
 /* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: EXPORT ===
+   === SECTION 4: EXPORTS ===
    ========================================================================== */
 export default router;
 /* === SECTION 4 END === */

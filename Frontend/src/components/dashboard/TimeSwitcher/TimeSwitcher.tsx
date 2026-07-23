@@ -1,16 +1,27 @@
 // src/components/dashboard/TimeSwitcher/TimeSwitcher.tsx
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React from "react";
 import styles from "./TimeSwitcher.module.css";
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 export type TimePeriod = "7d" | "14d" | "30d" | "all";
 
 interface TimeSwitcherProps {
   activePeriod: TimePeriod;
   onPeriodChange: (period: TimePeriod) => void;
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: MAIN COMPONENT ===
+   ========================================================================== */
 export default React.memo(function TimeSwitcher({ activePeriod, onPeriodChange }: TimeSwitcherProps) {
   const timeOptions: { key: TimePeriod; label: string }[] = [
     { key: "7d", label: "This Week" },
@@ -41,3 +52,4 @@ export default React.memo(function TimeSwitcher({ activePeriod, onPeriodChange }
     </div>
   );
 });
+/* === SECTION 3 END === */

@@ -1,17 +1,28 @@
 // src/components/investments/VaultSummaryCards/VaultSummaryCards.tsx
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./VaultSummaryCards.module.css";
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 interface VaultSummaryCardsProps {
   currency: string;
   totalInvested: number;
   positionsCount: number;
   sourceCurrency: string;
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC & RENDER ===
+   ========================================================================== */
 export function VaultSummaryCards({
   currency,
   totalInvested,
@@ -20,14 +31,21 @@ export function VaultSummaryCards({
 }: VaultSummaryCardsProps) {
   const { formatAmount } = useCurrency();
 
+  // WHY THIS FIX WAS MADE: Defensively converts and bounds input values to prevent
+  // passing negative or NaN values to currency formatting context routines.
+  const safeTotalInvested = Math.max(0, Number(totalInvested) || 0);
+  const safePositionsCount = Math.max(0, Math.floor(Number(positionsCount) || 0));
+  const displayCurrency = currency ? currency.trim().toUpperCase() : "USD";
+  const displaySourceCurrency = sourceCurrency ? sourceCurrency.trim().toUpperCase() : "USD";
+
   return (
-    <section className={styles.summaryGridWrapper}>
+    <section className={styles.summaryGridWrapper} aria-label="Vault Financial Overview">
       {/* CARD 1: TOTAL INVESTED */}
       <div className={styles.splitLevelPremiumCard}>
         <div className={styles.upperMetricsCanvas}>
           <span className={styles.cardSectionLabel}>Total Money Invested</span>
           <h2 className={styles.hugePrimaryMetricsText}>
-            {formatAmount(totalInvested, sourceCurrency)}
+            {formatAmount(safeTotalInvested, displaySourceCurrency)}
           </h2>
         </div>
         <div className={styles.lowerInsightsPocket}>
@@ -37,7 +55,7 @@ export function VaultSummaryCards({
           </div>
           <div className={styles.pocketDataColumn}>
             <span className={styles.pocketSublabel}>Positions</span>
-            <span className={styles.pocketPrimaryValue}>🪙 {positionsCount}</span>
+            <span className={styles.pocketPrimaryValue}>🪙 {safePositionsCount}</span>
           </div>
         </div>
       </div>
@@ -47,7 +65,7 @@ export function VaultSummaryCards({
         <div className={styles.upperMetricsCanvas}>
           <span className={styles.cardSectionLabel}>Portfolio Currency</span>
           <h2 className={`${styles.hugePrimaryMetricsText} ${styles.gainTextColor}`}>
-            {currency}
+            {displayCurrency}
           </h2>
         </div>
         <div className={styles.lowerInsightsPocket}>
@@ -66,7 +84,7 @@ export function VaultSummaryCards({
       <div className={styles.splitLevelPremiumCard}>
         <div className={styles.upperMetricsCanvas}>
           <span className={styles.cardSectionLabel}>Asset Types</span>
-          <h2 className={styles.hugePrimaryMetricsText}>{positionsCount}</h2>
+          <h2 className={styles.hugePrimaryMetricsText}>{safePositionsCount}</h2>
         </div>
         <div className={styles.lowerInsightsPocket}>
           <div className={styles.pocketDataColumn}>
@@ -82,3 +100,4 @@ export function VaultSummaryCards({
     </section>
   );
 }
+/* === SECTION 3 END === */

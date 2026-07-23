@@ -1,8 +1,14 @@
 /* src/app/globals.css */
 
 /* ==========================================================================
-   === SECTION 1: GLOBAL LAYOUT TOKENS & MECHANICS ===
+   === SECTION 1: GLOBAL LAYOUT TOKENS ===
    ========================================================================== */
+/*
+ * WHY a separate CSS file with custom properties:
+ * All colour, spacing, and typography values are centralised here.
+ * Any component can use `var(--color-primary)` and automatically adapt
+ * to light/dark mode without writing any extra code.
+ */
 :root {
   /* Typography & Component Labels */
   --font-navbar: var(--font-mulish), sans-serif;
@@ -14,12 +20,16 @@
 
   /* Universal Constants */
   --text-on-primary: #ffffff;
-  --accent-radial: radial-gradient(circle, rgba(147, 51, 234, 0.05) 0%, transparent 70%);
+  --accent-radial: radial-gradient(
+    circle,
+    rgba(147, 51, 234, 0.05) 0%,
+    transparent 70%
+  );
 }
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: LIGHT MODE THEME COLOR SCHEME ===
+   === SECTION 2: LIGHT THEME ===
    ========================================================================== */
 :root[data-theme="light"] {
   /* Layout Canvas (Clean Light System) */
@@ -63,7 +73,7 @@
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: DARK MODE THEME COLOR SCHEME ===
+   === SECTION 3: DARK THEME ===
    ========================================================================== */
 :root[data-theme="dark"] {
   /* Layout Canvas (Deep Modern Dark System) */
@@ -136,7 +146,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }

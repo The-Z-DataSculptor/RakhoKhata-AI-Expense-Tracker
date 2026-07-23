@@ -2,60 +2,83 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import styles from "../login/page.module.css"; // Reuses login layout
-/* === SECTION 1 END === */
+import styles from "../login/page.module.css"; // Reuses login layout styles
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
+/**
+ * WHY an environment variable is used for the backend URL:
+ * Hardcoding "localhost:5000" would break the app in any non‑local environment.
+ * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
+ * work in staging, production, and Docker without code changes.
+ */
+const BACKEND_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-/** Validates that the password meets minimum requirements */
+/**
+ * Checks whether a password meets the minimum length requirement.
+ * The backend performs additional validation (complexity, history, etc.).
+ */
 function isValidPassword(password: string): boolean {
   return password.length >= 8;
 }
-/* === SECTION 2 END === */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 2: RESET PASSWORD FORM COMPONENT ===
    ========================================================================== */
 
-/** Inner form component – must be wrapped in Suspense because of useSearchParams */
+/**
+ * Inner form component that reads the reset token from the URL and
+ * allows the user to set a new password.
+ *
+ * WHY it is separated: the component uses `useSearchParams()` which must be
+ * wrapped in a `<Suspense>` boundary. Placing it in its own component
+ * makes this boundary explicit and avoids Next.js compilation errors.
+ */
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Extract the token from the query string (e.g., ?token=abc123)
   const token = searchParams.get("token");
 
+  // Local form state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Alert the user if the token is missing
+  // Show a warning if the page was opened without a valid token
   useEffect(() => {
     if (!token) {
-      toast.error("Invalid link. Missing your security token.");
+      toast.error("Invalid or expired reset link. Please request a new one.");
     }
   }, [token]);
 
+  /**
+   * Handles the password reset form submission.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. Validate the token presence
     if (!token) {
       toast.error("Your reset link is invalid or has expired.");
       return;
     }
 
+    // 2. Validate the new password length
     if (!isValidPassword(newPassword)) {
       toast.error("Password must be at least 8 characters long.");
       return;
     }
 
+    // 3. Check that the two passwords match
     if (newPassword !== confirmPassword) {
       toast.error("Passwords do not match.");
       return;
@@ -64,7 +87,7 @@ function ResetPasswordForm() {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/reset-password",
+        `${BACKEND_API_URL}/api/auth/reset-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -83,6 +106,7 @@ function ResetPasswordForm() {
       }
 
       toast.success("Password changed successfully! Redirecting...");
+      // Wait briefly so the user can read the success message
       await new Promise((resolve) => setTimeout(resolve, 1000));
       router.push("/login");
     } catch (error: unknown) {
@@ -96,10 +120,10 @@ function ResetPasswordForm() {
       setIsSubmitting(false);
     }
   };
-/* === SECTION 3 END === */
+/* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 4: RENDER COMPONENT ===
+   === SECTION 3: RENDER ===
    ========================================================================== */
   return (
     <div className={styles.formContainerContent}>
@@ -115,6 +139,7 @@ function ResetPasswordForm() {
         className={styles.registrationForm}
         noValidate
       >
+        {/* New Password field */}
         <div className={styles.inputControlGroup}>
           <label htmlFor="newPassword" className={styles.fieldLabel}>
             New Password
@@ -141,6 +166,7 @@ function ResetPasswordForm() {
           </div>
         </div>
 
+        {/* Confirm Password field */}
         <div className={styles.inputControlGroup}>
           <label htmlFor="confirmPassword" className={styles.fieldLabel}>
             Confirm Password
@@ -177,7 +203,10 @@ function ResetPasswordForm() {
   );
 }
 
-/** Page wrapper with Suspense boundary for useSearchParams */
+/**
+ * Page wrapper that provides the `<Suspense>` boundary required by
+ * `useSearchParams()` and applies the shared login page layout.
+ */
 export default function ResetPasswordPage() {
   return (
     <div className={styles.fullScreenMasterLayout} suppressHydrationWarning>
@@ -227,4 +256,4 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

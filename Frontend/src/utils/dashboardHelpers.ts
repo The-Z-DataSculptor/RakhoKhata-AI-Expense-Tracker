@@ -63,12 +63,20 @@ export interface CashFlowDataPoint {
    === SECTION 2: DATE UTILITIES ===
    ========================================================================== */
 
-/** Returns the first and last day of the current calendar month. */
+/**
+ * Returns the first and last day of the current calendar month.
+ * ⚠️ Important: All dates are calculated using the user's local timezone.
+ * This means that for users in different timezones the "month" boundaries
+ * may differ from the UTC timestamps stored in the database.
+ * In a future update we may want to make this timezone‑configurable.
+ */
 function getCurrentMonthRange(): { start: Date; end: Date } {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
+  // First day of the month (local time)
   const start = new Date(year, month, 1);
+  // Last day of the month (local time) – day 0 of next month is the last day
   const end = new Date(year, month + 1, 0);
   return { start, end };
 }
@@ -78,7 +86,7 @@ function getPeriodDateRange(period: TimePeriod): {
   start: Date;
   end: Date;
 } | null {
-  if (period === "all") return null;
+  if (period === "all") return null; // No range filter needed
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -97,8 +105,10 @@ function getPeriodDateRange(period: TimePeriod): {
     default:
       dayEnd = 30;
   }
+  // Make sure we don't exceed the actual number of days in the month
   const lastDay = new Date(year, month + 1, 0).getDate();
   const actualEnd = Math.min(dayEnd, lastDay);
+  // Set the end time to the very end of that day
   const end = new Date(year, month, actualEnd, 23, 59, 59);
   return { start, end };
 }
@@ -109,6 +119,7 @@ function getPeriodDaysAndMonthDays(period: TimePeriod): {
   monthDays: number;
 } {
   const { start, end } = getCurrentMonthRange();
+  // Calculate total days in the month (inclusive)
   const monthDays =
     Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
@@ -165,11 +176,17 @@ export function filterTransactionsByPeriod(
   period: TimePeriod
 ): Transaction[] {
   const range = getPeriodDateRange(period);
-  if (!range) return transactions;
+  if (!range) return transactions; // "all" period – return everything
   return filterTransactionsByDateRange(transactions, range.start, range.end);
 }
 
-/** Checks whether a transaction belongs to a fixed/recurring bill. */
+/**
+ * Checks whether a transaction belongs to a fixed/recurring bill.
+ * 🔍 This is a best‑guess heuristic:
+ *   - A transaction is considered "fixed" if its category is marked as fixed/recurring,
+ *     OR if the category name or description contains the word "bill".
+ *   - In the future, we may want to replace this with a proper flag on each transaction.
+ */
 function isFixedExpense(tx: Transaction): boolean {
   return Boolean(
     tx.category?.isRecurring ||
@@ -184,6 +201,7 @@ export function computeMetrics(
   transactions: Transaction[],
   period: TimePeriod
 ): DashboardMetrics {
+  // Get the current month's date range (for the "projected" values)
   const { start, end } = getCurrentMonthRange();
   const monthTxs = filterTransactionsByDateRange(transactions, start, end);
 
@@ -208,6 +226,7 @@ export function computeMetrics(
 
   const monthSafe = Math.max(0, monthIncome - (monthFixed + monthFlexible));
 
+  // Variables for the actual (scaled) and projected values
   let actualIncome: number,
     actualExpenses: number,
     actualFixed: number,
@@ -246,6 +265,7 @@ export function computeMetrics(
     projectedSafe = totalSafe;
   } else {
     const { periodDays, monthDays } = getPeriodDaysAndMonthDays(period);
+    // Scale the month totals to the selected period length
     const scale = periodDays / monthDays;
     const round = (n: number) => Math.round(n * 100) / 100;
     actualIncome = round(monthIncome * scale);
@@ -253,6 +273,7 @@ export function computeMetrics(
     actualFixed = round(monthFixed * scale);
     actualFlexible = round(monthFlexible * scale);
     actualSafe = round(monthSafe * scale);
+    // Projected values are simply the full month totals
     projectedIncome = monthIncome;
     projectedExpenses = monthExpenses;
     projectedFixed = monthFixed;
@@ -302,11 +323,13 @@ export function computeCategoryBreakdown(
 
   return Array.from(categoryMap.values()).sort((a, b) => b.value - a.value);
 }
+/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: CASH FLOW TIME‑SERIES ===
    ========================================================================== */
 
+/** Calculates the ISO week number for a given date. */
 function getWeekNumber(date: Date): number {
   const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
   const days = Math.floor(
@@ -315,6 +338,7 @@ function getWeekNumber(date: Date): number {
   return Math.ceil((days + firstDayOfYear.getDay() + 1) / 7);
 }
 
+/** Sorts the keys of a grouped map according to the chosen time bucket. */
 function sortGroupKeys(
   groups: Map<string, { income: number; expenses: number }>,
   groupBy: "day" | "week" | "month"
@@ -343,7 +367,7 @@ function sortGroupKeys(
       (a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b)
     );
   }
-  // week
+  // groupBy === "week" – sort by numeric week number
   return keys.sort(
     (a, b) =>
       parseInt(a.replace("Week ", ""), 10) -
@@ -357,7 +381,7 @@ export function computeCashFlowData(
 ): CashFlowDataPoint[] {
   const range = getPeriodDateRange(period);
 
-  // Helper: aggregate into groups
+  // Helper: aggregate transactions into groups by day/week/month
   const aggregate = (
     txs: Transaction[],
     groupBy: "day" | "week" | "month"
@@ -401,7 +425,7 @@ export function computeCashFlowData(
   };
 
   if (!range) {
-    // "all" – group by month
+    // "all" period – group by month
     if (transactions.length === 0) return [];
     const dates = transactions.map((tx) => new Date(tx.date));
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
@@ -449,6 +473,7 @@ export function computeCashFlowData(
   );
   if (filtered.length === 0) return [];
 
+  // Choose the grouping granularity
   const groupBy: "day" | "week" | "month" =
     period === "30d" ? "week" : "day";
   const groups = aggregate(filtered, groupBy);

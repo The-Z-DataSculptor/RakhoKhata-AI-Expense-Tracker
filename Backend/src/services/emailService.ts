@@ -5,7 +5,7 @@
    ========================================================================== */
 import { Resend } from "resend";
 
-// Resend‑specific response shape (simplified)
+// Resend API response contract
 interface ResendSendResponse {
   data?: { id: string } | null;
   error?: { message: string; name: string } | null;
@@ -16,30 +16,74 @@ interface ResendSendResponse {
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 
-// The Resend client – initialised even if the API key is missing to avoid crashes,
-// but all send functions will log an error and return false in that case.
 const resendApiKey = process.env.RESEND_API_KEY;
+
+// Initialize Resend client safely
 const resend = new Resend(resendApiKey || "MOCK_KEY_TO_PREVENT_CRASH");
 
-// Sandbox sender – must be verified in Resend’s dashboard during development
-const SANDBOX_SENDER = "RakhoKhata <onboarding@resend.dev>";
+// WHY THIS FIX WAS MADE: Configurable sender address via environment variable (EMAIL_FROM)
+// with a safe fallback for local development testing on the Resend sandbox domain.
+const DEFAULT_SENDER =
+  process.env.EMAIL_FROM || "RakhoKhata <onboarding@resend.dev>";
 
 /**
- * Builds a safe error object for internal logging; never exposed to clients.
+ * WHY THIS FIX WAS MADE: Escapes special HTML characters in user inputs to prevent
+ * HTML injection / XSS attacks inside email clients.
  */
-function logError(message: string, detail: unknown): void {
-  console.error(message, detail);
+function escapeHtml(text: string): string {
+  if (!text) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /**
- * Checks if the Resend API key is configured and logs a warning if not.
+ * WHY THIS FIX WAS MADE: Sanitizes URL parameters to prevent javascript: URI injection in email buttons.
+ */
+function sanitizeUrl(urlStr: string): string {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+    return "#";
+  } catch {
+    return "#";
+  }
+}
+
+/**
+ * WHY THIS FIX WAS MADE: Masks recipient email addresses in server console logs to prevent PII leaks.
+ */
+function maskEmail(email: string): string {
+  if (!email || !email.includes("@")) return "***";
+  const [local, domain] = email.split("@");
+  const maskedLocal =
+    local.length > 2
+      ? `${local[0]}***${local[local.length - 1]}`
+      : "***";
+  return `${maskedLocal}@${domain}`;
+}
+
+/**
+ * Verifies if Resend API key is present before attempting network delivery.
  */
 function isResendConfigured(): boolean {
   if (!resendApiKey) {
-    console.warn("⚠️ RESEND_API_KEY is missing. All email sending will be skipped.");
+    console.warn("⚠️ RESEND_API_KEY is missing. Email dispatch skipped.");
     return false;
   }
   return true;
+}
+
+/**
+ * Simple email syntax check to avoid sending requests with invalid recipient addresses.
+ */
+function isValidEmail(email: string): boolean {
+  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 /* === SECTION 2 END === */
 
@@ -48,8 +92,7 @@ function isResendConfigured(): boolean {
    ========================================================================== */
 
 /**
- * Sends a password reset email to the user.
- * Returns `true` on success, `false` on failure.
+ * Sends a password reset email containing a secure multi-use token link.
  */
 export async function sendPasswordResetEmail(
   recipientEmail: string,
@@ -58,50 +101,59 @@ export async function sendPasswordResetEmail(
 ): Promise<boolean> {
   if (!isResendConfigured()) return false;
 
+  if (!isValidEmail(recipientEmail)) {
+    console.error("❌ Invalid recipient email provided for password reset.");
+    return false;
+  }
+
+  // Escape dynamic variables to stop HTML injection
+  const safeName = escapeHtml(userName);
+  const safeLink = sanitizeUrl(resetLink);
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
       <h2 style="color: #6366f1; margin-bottom: 20px;">Reset Your RakhoKhata Password</h2>
-      <p>Hi <strong>${userName}</strong>,</p>
-      <p>We received a request to reset the password for your account. No worries, these things happen!</p>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>We received a request to reset the password for your account.</p>
       <p>Click the secure button below to choose a new password. This link will expire in <strong>15 minutes</strong>:</p>
       
       <div style="margin: 30px 0; text-align: center;">
-        <a href="${resetLink}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+        <a href="${safeLink}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
           Reset My Password
         </a>
       </div>
       
-      <p style="font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link directly into your web browser:</p>
-      <p style="font-size: 12px; color: #6366f1; word-break: break-all;">${resetLink}</p>
+      <p style="font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="font-size: 12px; color: #6366f1; word-break: break-all;">${safeLink}</p>
       
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-      <p style="font-size: 12px; color: #9ca3af;">If you did not request this change, please ignore this message. Your account remains entirely secure.</p>
+      <p style="font-size: 12px; color: #9ca3af;">If you did not request this change, please ignore this message.</p>
     </div>
   `;
 
   try {
     const response: ResendSendResponse = await resend.emails.send({
-      from: SANDBOX_SENDER,
-      to: [recipientEmail],
+      from: DEFAULT_SENDER,
+      to: [recipientEmail.trim()],
       subject: "🔒 Reset your RakhoKhata Password",
       html: htmlContent,
     });
 
     if (response.error) {
-      logError("❌ Resend API Transport Error:", response.error);
+      console.error("❌ Resend API Transport Error:", response.error);
       return false;
     }
 
-    console.log(`✉️ Password reset email dispatched. Ticket ID: ${response.data?.id}`);
+    console.log(`✉️ Password reset email dispatched to [${maskEmail(recipientEmail)}]. ID: ${response.data?.id}`);
     return true;
   } catch (error: unknown) {
-    logError("❌ Critical fault inside password reset pipeline:", error);
+    console.error("❌ Critical fault inside password reset email pipeline:", error);
     return false;
   }
 }
 
 /**
- * Sends a welcome email with an email verification link.
+ * Sends an account email verification message during user registration.
  */
 export async function sendVerificationEmail(
   recipientEmail: string,
@@ -110,49 +162,57 @@ export async function sendVerificationEmail(
 ): Promise<boolean> {
   if (!isResendConfigured()) return false;
 
+  if (!isValidEmail(recipientEmail)) {
+    console.error("❌ Invalid recipient email provided for account verification.");
+    return false;
+  }
+
+  const safeName = escapeHtml(userName);
+  const safeLink = sanitizeUrl(verifyLink);
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
       <h2 style="color: #6366f1; margin-bottom: 20px;">Welcome to RakhoKhata! 🚀</h2>
-      <p>Hi <strong>${userName}</strong>,</p>
-      <p>Thank you for creating an account with us. Before you can use your financial workspaces, please confirm your email address by clicking the button below:</p>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>Thank you for creating an account. Please confirm your email address by clicking the button below:</p>
       
       <div style="margin: 30px 0; text-align: center;">
-        <a href="${verifyLink}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+        <a href="${safeLink}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
           Verify My Email
         </a>
       </div>
       
-      <p style="font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link into your web browser:</p>
-      <p style="font-size: 12px; color: #6366f1; word-break: break-all;">${verifyLink}</p>
+      <p style="font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="font-size: 12px; color: #6366f1; word-break: break-all;">${safeLink}</p>
       
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-      <p style="font-size: 12px; color: #9ca3af;">If you didn't sign up for this account, you can safely ignore this email.</p>
+      <p style="font-size: 12px; color: #9ca3af;">If you didn't sign up for this account, you can safely ignore this message.</p>
     </div>
   `;
 
   try {
     const response: ResendSendResponse = await resend.emails.send({
-      from: SANDBOX_SENDER,
-      to: [recipientEmail],
+      from: DEFAULT_SENDER,
+      to: [recipientEmail.trim()],
       subject: "👋 Verify your RakhoKhata Account",
       html: htmlContent,
     });
 
     if (response.error) {
-      logError("❌ Resend Verification Transport Error:", response.error);
+      console.error("❌ Resend Verification Transport Error:", response.error);
       return false;
     }
 
-    console.log(`✉️ Welcome verification email sent. Ticket ID: ${response.data?.id}`);
+    console.log(`✉️ Verification email sent to [${maskEmail(recipientEmail)}]. ID: ${response.data?.id}`);
     return true;
   } catch (error: unknown) {
-    logError("❌ Critical fault inside verification pipeline:", error);
+    console.error("❌ Critical fault inside verification email pipeline:", error);
     return false;
   }
 }
 
 /**
- * Sends an immediate security alert when sensitive account settings are changed.
+ * Sends an automated security alert when profile security parameters are modified.
  */
 export async function sendSecurityAlertEmail(
   recipientEmail: string,
@@ -161,47 +221,55 @@ export async function sendSecurityAlertEmail(
 ): Promise<boolean> {
   if (!isResendConfigured()) return false;
 
+  if (!isValidEmail(recipientEmail)) {
+    console.error("❌ Invalid recipient email provided for security alert.");
+    return false;
+  }
+
+  const safeName = escapeHtml(userName);
+  const safeChangeLabel = escapeHtml(changeLabel);
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
       <h2 style="color: #dc2626; margin-bottom: 20px;">⚠️ Security Alert</h2>
-      <p>Hi <strong>${userName}</strong>,</p>
+      <p>Hi <strong>${safeName}</strong>,</p>
       <p>This is an automated safety alert for your RakhoKhata account.</p>
-      <p>We wanted to let you know that your <strong>${changeLabel}</strong> was recently changed.</p>
+      <p>We wanted to let you know that your <strong>${safeChangeLabel}</strong> was recently updated.</p>
       
       <div style="margin: 25px 0; padding: 15px; background-color: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px;">
         <p style="margin: 0; font-size: 13px; color: #991b1b; font-weight: bold;">
-          If you did NOT make this change, please contact our support team immediately to protect your account.
+          If you did NOT make this change, please contact support immediately to lock your account.
         </p>
       </div>
       
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-      <p style="font-size: 12px; color: #9ca3af;">This is a security notification sent to protect your personal account profile information.</p>
+      <p style="font-size: 12px; color: #9ca3af;">This security notification was generated automatically.</p>
     </div>
   `;
 
   try {
     const response: ResendSendResponse = await resend.emails.send({
-      from: SANDBOX_SENDER,
-      to: [recipientEmail],
-      subject: `⚠️ Security Alert: ${changeLabel} changed`,
+      from: DEFAULT_SENDER,
+      to: [recipientEmail.trim()],
+      subject: `⚠️ Security Alert: ${safeChangeLabel} changed`,
       html: htmlContent,
     });
 
     if (response.error) {
-      logError("❌ Resend Security Alert Transport Error:", response.error);
+      console.error("❌ Resend Security Alert Transport Error:", response.error);
       return false;
     }
 
-    console.log(`✉️ Security alert email sent. Ticket ID: ${response.data?.id}`);
+    console.log(`✉️ Security alert email sent to [${maskEmail(recipientEmail)}]. ID: ${response.data?.id}`);
     return true;
   } catch (error: unknown) {
-    logError("❌ Critical fault inside security alert pipeline:", error);
+    console.error("❌ Critical fault inside security alert email pipeline:", error);
     return false;
   }
 }
 
 /**
- * Sends a bill reminder email for an upcoming recurring payment.
+ * Sends a bill reminder notification email for upcoming recurring obligations.
  */
 export async function sendBillReminderEmail(
   recipientEmail: string,
@@ -212,43 +280,53 @@ export async function sendBillReminderEmail(
 ): Promise<boolean> {
   if (!isResendConfigured()) return false;
 
+  if (!isValidEmail(recipientEmail)) {
+    console.error("❌ Invalid recipient email provided for bill reminder.");
+    return false;
+  }
+
+  const safeName = escapeHtml(userName);
+  const safeCategory = escapeHtml(categoryName);
+  const safeDueDay = Math.max(1, Math.min(31, Math.floor(dueDay)));
+  const safeDaysLeft = Math.max(0, Math.floor(daysLeft));
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
       <h2 style="color: #f59e0b; margin-bottom: 20px;">📅 Upcoming Bill Reminder</h2>
-      <p>Hi <strong>${userName}</strong>,</p>
-      <p>This is a quick heads-up from RakhoKhata to let you know that your monthly payment for <strong>${categoryName}</strong> is coming up.</p>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>This is a quick heads-up that your payment for <strong>${safeCategory}</strong> is due soon.</p>
       
       <div style="margin: 25px 0; padding: 15px; background-color: #fef8e6; border-left: 4px solid #f59e0b; border-radius: 4px;">
         <p style="margin: 0; font-size: 15px; color: #b45309;">
-          <strong>Bill:</strong> ${categoryName}<br>
-          <strong>Due Date:</strong> Day ${dueDay} of this month<br>
-          <strong>Time Left:</strong> ${daysLeft === 1 ? "Tomorrow!" : `In ${daysLeft} days`}
+          <strong>Bill:</strong> ${safeCategory}<br>
+          <strong>Due Date:</strong> Day ${safeDueDay} of this month<br>
+          <strong>Time Left:</strong> ${safeDaysLeft === 1 ? "Tomorrow!" : `In ${safeDaysLeft} days`}
         </p>
       </div>
       
-      <p>Log into your app dashboard to check your funds and mark it down once paid so your budget sheets stay completely balanced.</p>
+      <p>Log in to your dashboard to record this payment and keep your financial sheets balanced.</p>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-      <p style="font-size: 12px; color: #9ca3af;">You received this automated reminder because you set up bill notifications for this category.</p>
+      <p style="font-size: 12px; color: #9ca3af;">You received this email because bill reminders are enabled for this category.</p>
     </div>
   `;
 
   try {
     const response: ResendSendResponse = await resend.emails.send({
-      from: SANDBOX_SENDER,
-      to: [recipientEmail],
-      subject: `🔔 Reminder: Your ${categoryName} payment is due soon!`,
+      from: DEFAULT_SENDER,
+      to: [recipientEmail.trim()],
+      subject: `🔔 Reminder: ${safeCategory} payment is due soon!`,
       html: htmlContent,
     });
 
     if (response.error) {
-      logError("❌ Resend Bill Reminder Transport Error:", response.error);
+      console.error("❌ Resend Bill Reminder Transport Error:", response.error);
       return false;
     }
 
-    console.log(`✉️ Bill reminder email sent for category [${categoryName}]`);
+    console.log(`✉️ Bill reminder sent to [${maskEmail(recipientEmail)}] for category [${safeCategory}].`);
     return true;
   } catch (error: unknown) {
-    logError("❌ Critical fault inside bill reminder pipeline:", error);
+    console.error("❌ Critical fault inside bill reminder email pipeline:", error);
     return false;
   }
 }

@@ -1,27 +1,28 @@
 // src/app/layout.tsx
+/* ==========================================================================
+   === SECTION 1: IMPORTS & METADATA ===
+   ========================================================================== */
 import type { Metadata } from "next";
 import { Mulish } from "next/font/google";
-// Removed: Script import – replaced with a regular <script> tag for React 19 compatibility
 import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
 import ToastProvider from "@/components/providers/ToastProvider";
 import "./globals.css";
 
-/* ==========================================================================
-   === SECTION 1: FONTS & METADATA CONFIGURATION ===
-   ========================================================================== */
+// ----- Load the Mulish font with a CSS variable so it can be used everywhere -----
 const mulish = Mulish({
   subsets: ["latin"],
   weight: ["200", "300", "400", "500", "600", "700"],
   variable: "--font-mulish",
 });
 
+// ----- Basic SEO metadata used by Next.js for <head> tags -----
 export const metadata: Metadata = {
-  title: "RakhoKhata - Your Premium Expense Ledger",
+  title: "RakhoKhata – Your Premium Expense Ledger",
   description: "Track your personal and business expenses with precision.",
-  
   openGraph: {
-    title: "RakhoKhata - Your Premium Expense Ledger",
-    description: "Track personal and business expenses with isolated workspace precision.",
+    title: "RakhoKhata – Your Premium Expense Ledger",
+    description:
+      "Track personal and business expenses with isolated workspace precision.",
     url: "https://rakhokhata.com",
     siteName: "RakhoKhata",
     images: [
@@ -35,66 +36,70 @@ export const metadata: Metadata = {
     locale: "en_US",
     type: "website",
   },
-
   twitter: {
     card: "summary_large_image",
-    title: "RakhoKhata - Your Premium Expense Ledger",
-    description: "Track personal and business expenses with isolated workspace precision.",
+    title: "RakhoKhata – Your Premium Expense Ledger",
+    description:
+      "Track personal and business expenses with isolated workspace precision.",
     images: ["/og-banner.png"],
   },
 };
 /* === SECTION 1 END === */
 
-
 /* ==========================================================================
-   === SECTION 2: THEME INLINE INITIALIZER SCRIPT ===
+   === SECTION 2: THEME INITIALISATION SCRIPT ===
    ========================================================================== */
+/**
+ * WHY this script exists:
+ * Without it, the page would render with the default (light) colour scheme
+ * before React hydrates, causing an ugly flash of light colours for dark‑mode
+ * users. This inline script runs **before** the first paint and immediately
+ * sets the `data-theme` attribute on `<html>`, so the correct CSS variables
+ * are applied from the very first frame.
+ */
 const themeInitializerScript = `
 (function () {
   try {
-    const savedTheme = localStorage.getItem("theme");
-    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var savedTheme = localStorage.getItem("theme");
+    var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-    if (savedTheme === "dark" || (!savedTheme && systemDark)) {
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
       document.documentElement.setAttribute("data-theme", "dark");
     } else {
       document.documentElement.setAttribute("data-theme", "light");
     }
   } catch (error) {
-    console.error("Theme initialization failed:", error);
+    // localStorage may be disabled – fall back to light theme
+    document.documentElement.setAttribute("data-theme", "light");
   }
 })();
 `;
 /* === SECTION 2 END === */
 
-
 /* ==========================================================================
-   === SECTION 3: ROOT STRUCTURAL LAYOUT ===
+   === SECTION 3: ROOT LAYOUT COMPONENT ===
    ========================================================================== */
+/**
+ * WHY providers are placed here:
+ * The `CurrencyProvider` and `ToastProvider` must wrap every page so that
+ * any component in the app can display amounts in the user's chosen currency
+ * and trigger toast notifications. Placing them in the root layout guarantees
+ * they are available everywhere.
+ */
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={mulish.variable} suppressHydrationWarning>
       <body>
-        
-        {/* 
-          FIXED: Replaced Next.js <Script> with a standard <script> tag 
-          to avoid React 19.3 warnings about script tags inside components.
-          The script runs before hydration, setting the theme correctly.
-        */}
+        {/* Inline script – must be a regular <script> tag for React 19 compatibility */}
         <script
           dangerouslySetInnerHTML={{ __html: themeInitializerScript }}
           suppressHydrationWarning
         />
-        
-        {/* Wrapping children inside both state contexts so currency and notifications run everywhere */}
+
         <CurrencyProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          <ToastProvider>{children}</ToastProvider>
         </CurrencyProvider>
       </body>
     </html>

@@ -1,41 +1,49 @@
 // src/app/(dashboard)/layout.tsx
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React from "react";
-import { cookies } from "next/headers";     // Next.js native tool to read browser cookies on the server
-import { redirect } from "next/navigation"; // Next.js native tool to handle immediate server-side redirection
+import { cookies } from "next/headers";      // Read HttpOnly cookies on the server
+import { redirect } from "next/navigation";   // Server‑side redirects
 import Sidebar from "@/components/layout/Sidebar";
-import DashboardNavbar from "@/components/layout/DashboardNavbar"; 
-import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext"; 
-import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext"; 
+import DashboardNavbar from "@/components/layout/DashboardNavbar";
+import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
+import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext";
 import styles from "./layout.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPESCRIPT INTERFACES & DYNAMIC ROUTING ===
-   ========================================================================== */
+// Base URL for internal server‑to‑server API calls
+const API_URL =
+  process.env.INTERNAL_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
-
-// 🚀 DYNAMIC API ROUTER: Uses localhost for local dev, respects env overrides for Docker
-const API_URL =
-  typeof window === "undefined"
-    ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000")
-    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
-/* === SECTION 2 END === */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 3: MAIN COMPONENT RENDER ===
+   === SECTION 2: SERVER‑SIDE AUTH & DATA FETCHING ===
    ========================================================================== */
-export default async function DashboardLayout({ children }: DashboardLayoutProps) {
-  // 1. Retrieve the secure browser cookie storage box on the server
+/**
+ * DashboardLayout
+ *
+ * WHY this layout is used instead of a client‑side check:
+ * The dashboard must be protected.  By verifying the session token directly
+ * on the server (reading the cookie via `next/headers` and calling the
+ * Express `/auth/me` endpoint), we ensure that no dashboard content is ever
+ * sent to unauthenticated users.  If the token is missing or invalid, the
+ * user is immediately redirected to `/login` – they never see a flash of
+ * the dashboard.
+ */
+export default async function DashboardLayout({
+  children,
+}: DashboardLayoutProps) {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("token")?.value;
 
-  // 2. Security Gate A: If no token cookie exists, block rendering and boot to login immediately
+  // 1. No cookie → force login
   if (!sessionToken) {
     redirect("/login");
   }
@@ -44,74 +52,71 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   let activeWorkspace = null;
 
   try {
-    // 3. Handshake: Dispatch a server-to-server request to your protected Express API endpoint
-    const response = await fetch(`${API_URL}/api/auth/me`, {
+    // 2. Verify the session token against the backend
+    const authResponse = await fetch(`${API_URL}/api/auth/me`, {
       method: "GET",
-      headers: {
-        Cookie: `token=${sessionToken}`, 
-      },
-      cache: "no-store", // Disables internal caching so user state profiles match the DB perfectly
+      headers: { Cookie: `token=${sessionToken}` },
+      cache: "no-store",
     });
 
-    const result = await response.json();
-    
-    // 4. Security Gate B: If the Express backend rejects the cookie configuration, force immediate re-login
-    if (!response.ok) {
+    const authResult = await authResponse.json();
+
+    // If the backend rejects the session, treat it as expired / invalid
+    if (!authResponse.ok) {
       redirect("/login");
     }
 
-    // Capture the clean database user record payload
-    userData = result.user;
+    userData = authResult.user;
 
-    // 5. DATA LINK LAYER: Fetch workspaces directly on the server to catch their default currency choice
+    // 3. Fetch the user's workspaces to obtain the default currency
     const workspaceResponse = await fetch(`${API_URL}/api/workspaces`, {
       method: "GET",
-      headers: {
-        Cookie: `token=${sessionToken}`,
-      },
+      headers: { Cookie: `token=${sessionToken}` },
       cache: "no-store",
     });
 
     if (workspaceResponse.ok) {
       const workspaceResult = await workspaceResponse.json();
-      // Default to their primary workspace (usually the first array index item like "Personal")
-      if (workspaceResult.workspaces && workspaceResult.workspaces.length > 0) {
-        activeWorkspace = workspaceResult.workspaces[0];
+      if (
+        workspaceResult.workspaces &&
+        workspaceResult.workspaces.length > 0
+      ) {
+        activeWorkspace = workspaceResult.workspaces[0]; // first workspace is the default
       }
     }
-
   } catch (error) {
-    console.error("Dashboard Server Layout Token Bridge Exception:", error);
-    // Safety Fallback: If your Express backend server goes offline mid-session, safeguard application privacy
+    console.error(
+      "Dashboard Server Layout Token Bridge Exception:",
+      error
+    );
+    // If the backend is completely unreachable, protect the app
     redirect("/login");
   }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: RENDER ===
+   ========================================================================== */
   return (
-    <CurrencyProvider initialCurrency={activeWorkspace?.currency || "USD"}>
+    <CurrencyProvider
+      initialCurrency={activeWorkspace?.currency || "USD"}
+    >
       <WorkspaceProvider>
         <div className={styles.dashboardShell}>
-          
-          {/* PERSISTENT SIDEBAR NAVIGATION */}
           <Sidebar user={userData} />
 
-          {/* RIGHT SIDE VIEWPORT ENGINE BLOCK */}
           <div className={styles.mainContentArea}>
-            
-            {/* INTERACTIVE STICKY TOP TOOLBAR */}
-            <DashboardNavbar 
-              user={userData} 
+            <DashboardNavbar
+              user={userData}
               currentWorkspaceId={activeWorkspace?.id}
             />
 
-            {/* INJECTED CORE APP CONTENT */}
             <main className={styles.pageInjectionViewport}>
               <div className={styles.scrollAnchorWrapper}>
                 {children}
               </div>
             </main>
-
           </div>
-
         </div>
       </WorkspaceProvider>
     </CurrencyProvider>

@@ -1,14 +1,30 @@
-// src/controllers/transactionController.ts
+// Backend/src/controllers/transactionController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-import { Response } from "express";
+import { Response as ExpressResponse } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { GoogleGenAI } from "@google/genai";
 
-// Data contracts for inbound transaction entries
+// Maximum allowed transactions per fetch query to prevent server OOM crashes
+const MAX_TRANSACTIONS_FETCH_LIMIT = 500;
+
+// Maximum allowed entries per bulk import batch payload
+const MAX_BULK_IMPORT_BATCH_SIZE = 500;
+
+// Allowed file MIME types for AI receipt scanning
+const ALLOWED_RECEIPT_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "application/pdf",
+];
+
+// Data contract for inbound transaction items during bulk import
 interface InboundTransactionInput {
   originalAmount: string | number;
   originalCurrency: string;
@@ -19,25 +35,25 @@ interface InboundTransactionInput {
   categoryId: string;
 }
 
-// Shape for a single transaction creation request body
+// Data contract for single transaction creation request body
 interface CreateTransactionRequestBody {
-  originalAmount: string;
+  originalAmount: string | number;
   originalCurrency: string;
-  baseAmountUSD: string;
-  type: string;
-  description: string;
+  baseAmountUSD: string | number;
+  type: "INCOME" | "EXPENSE";
+  description?: string;
   date: string;
   workspaceId: string;
   categoryId: string;
 }
 
-// Shape for the bulk import request body
+// Data contract for bulk import request body
 interface BulkImportRequestBody {
   workspaceId: string;
   transactions: InboundTransactionInput[];
 }
 
-// Minimal file interface (avoids dependency on Express.Multer namespace)
+// File interface matching Multer upload buffers
 interface MulterFile {
   buffer: Buffer;
   mimetype: string;
@@ -45,12 +61,12 @@ interface MulterFile {
   size?: number;
 }
 
-// Request with Multer file (for receipt scanning)
+// Express Request extension with uploaded Multer file handle
 interface AuthenticatedRequestWithFile extends AuthenticatedRequest {
   file?: MulterFile;
 }
 
-// Metrics extracted from receipt by AI
+// Struct for structured JSON output extracted by Gemini AI from receipt images
 interface ExtractedReceiptMetrics {
   merchant: string;
   date: string;
@@ -60,26 +76,51 @@ interface ExtractedReceiptMetrics {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
 /**
- * Build a standardised error object that never exposes internal details.
+ * Standardized JSON error response builder
  */
-function safeError(message: string): { error: string } {
+function buildSafeError(message: string): { error: string } {
   return { error: message };
 }
 
 /**
- * Check that a transaction type string is strictly "INCOME" or "EXPENSE".
+ * WHY THIS IS NEEDED: Prevents HTTP query parameter array injection attacks.
+ * Safely extracts a single string parameter from query or route parameters.
  */
-function isValidTransactionType(type: string): type is "INCOME" | "EXPENSE" {
+function extractSingleString(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+  return undefined;
+}
+
+/**
+ * WHY THIS IS NEEDED: Prevents NaN propagation and falsy evaluation bugs on 0 amounts.
+ * Parses raw input into a valid non-negative number ($ \ge 0 $).
+ */
+function parseNonNegativeNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  const num = typeof value === "number" ? value : parseFloat(String(value));
+  if (isNaN(num) || num < 0) {
+    return undefined;
+  }
+  return num;
+}
+
+/**
+ * Validates whether a transaction type string matches schema enums strictly.
+ */
+function isValidTransactionType(type: unknown): type is "INCOME" | "EXPENSE" {
   return type === "INCOME" || type === "EXPENSE";
 }
 
 /**
- * Safely parse a date string into a Date object.
- * Returns null if the string is invalid.
+ * Safely parses string inputs into valid Date instances. Returns null on invalid formats.
  */
 function parseDateSafely(dateStr: string): Date | null {
   const d = new Date(dateStr);
@@ -88,81 +129,88 @@ function parseDateSafely(dateStr: string): Date | null {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 3: CONTROLLER HANDLERS ===
    ========================================================================== */
 
-// ---------------------------------------------------------------------------
-// CREATE SINGLE TRANSACTION
-// ---------------------------------------------------------------------------
+/**
+ * POST /api/transactions
+ * Creates a single transaction entry after verifying workspace and category ownership.
+ */
 export const createTransaction = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
     const body = req.body as CreateTransactionRequestBody;
-    const {
-      originalAmount,
-      originalCurrency,
-      baseAmountUSD,
-      type,
-      description,
-      date,
-      workspaceId,
-      categoryId,
-    } = body;
 
-    // Check required fields
+    const sanitizedWorkspaceId = extractSingleString(body.workspaceId);
+    const sanitizedCategoryId = extractSingleString(body.categoryId);
+    const sanitizedCurrency = extractSingleString(body.originalCurrency)?.toUpperCase();
+    const sanitizedDescription = body.description ? String(body.description).trim() : "";
+
+    const parsedOriginalAmount = parseNonNegativeNumber(body.originalAmount);
+    const parsedBaseAmountUSD = parseNonNegativeNumber(body.baseAmountUSD);
+
+    // 1. Validate required parameter presence
     if (
-      !originalAmount ||
-      !originalCurrency ||
-      baseAmountUSD === undefined ||
-      !type ||
-      !date ||
-      !workspaceId ||
-      !categoryId
+      parsedOriginalAmount === undefined ||
+      parsedBaseAmountUSD === undefined ||
+      !sanitizedCurrency ||
+      !isValidTransactionType(body.type) ||
+      !body.date ||
+      !sanitizedWorkspaceId ||
+      !sanitizedCategoryId
     ) {
-      res.status(400).json(safeError("Missing required transaction parameters."));
+      res.status(400).json(buildSafeError("Missing or invalid transaction parameters."));
       return;
     }
 
-    if (!isValidTransactionType(type)) {
-      res.status(400).json(safeError("Type must be INCOME or EXPENSE."));
-      return;
-    }
-
-    // Validate the date
-    const parsedDate = parseDateSafely(date);
+    // 2. Validate transaction date format
+    const parsedDate = parseDateSafely(String(body.date));
     if (!parsedDate) {
-      res.status(400).json(safeError("Invalid date format."));
+      res.status(400).json(buildSafeError("Invalid date format provided."));
       return;
     }
 
-    // Verify workspace ownership
-    const workspaceCheck = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
+    // WHY THIS FIX WAS MADE: Verifies workspace ownership BEFORE creating records (BOLA Protection).
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: sanitizedWorkspaceId, userId: userId },
+      select: { id: true },
     });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json(safeError("Access denied."));
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
       return;
     }
 
-    // Create the transaction
+    // WHY THIS FIX WAS MADE: Verifies that category belongs to target workspace to prevent cross-tenant category injection.
+    const categoryMatch = await prisma.category.findFirst({
+      where: { id: sanitizedCategoryId, workspaceId: sanitizedWorkspaceId },
+      select: { id: true },
+    });
+
+    if (!categoryMatch) {
+      res.status(400).json(buildSafeError("Target category does not exist in this workspace."));
+      return;
+    }
+
+    // 3. Create transaction entry
     const transaction = await prisma.transaction.create({
       data: {
-        originalAmount: parseFloat(originalAmount),
-        originalCurrency: originalCurrency.toUpperCase(),
-        baseAmountUSD: parseFloat(baseAmountUSD),
-        type,
-        description: description || "",
+        originalAmount: parsedOriginalAmount,
+        originalCurrency: sanitizedCurrency,
+        baseAmountUSD: parsedBaseAmountUSD,
+        type: body.type,
+        description: sanitizedDescription,
         date: parsedDate,
-        workspaceId,
-        categoryId,
+        workspaceId: sanitizedWorkspaceId,
+        categoryId: sanitizedCategoryId,
       },
       include: { category: true },
     });
@@ -173,156 +221,189 @@ export const createTransaction = async (
     });
   } catch (error: unknown) {
     console.error("Create Transaction Error:", error);
-    res.status(500).json(safeError("Internal server error."));
+    res.status(500).json(buildSafeError("Internal server error logging transaction."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// BULK IMPORT TRANSACTIONS
-// ---------------------------------------------------------------------------
+/**
+ * POST /api/transactions/bulk
+ * Imports a batch of transactions using a single atomic database query.
+ */
 export const bulkCreateTransactions = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
     const { workspaceId, transactions } = req.body as BulkImportRequestBody;
+    const sanitizedWorkspaceId = extractSingleString(workspaceId);
 
-    if (
-      !workspaceId ||
-      !Array.isArray(transactions) ||
-      transactions.length === 0
-    ) {
+    // 1. Validate payload structure and batch constraints
+    if (!sanitizedWorkspaceId || !Array.isArray(transactions) || transactions.length === 0) {
+      res.status(400).json(buildSafeError("Missing workspace ID or batch transactions array."));
+      return;
+    }
+
+    // WHY THIS FIX WAS MADE: Restricts batch import size to prevent payload memory exhaustion DoS.
+    if (transactions.length > MAX_BULK_IMPORT_BATCH_SIZE) {
       res.status(400).json(
-        safeError("Missing workspace ID or batch transactions array.")
+        buildSafeError(`Batch size exceeds maximum limit of ${MAX_BULK_IMPORT_BATCH_SIZE} entries per import.`)
       );
       return;
     }
 
     // Verify workspace ownership
-    const workspaceCheck = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: sanitizedWorkspaceId, userId: userId },
+      select: { id: true },
     });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json(safeError("Access denied."));
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
       return;
     }
 
-    // Validate each entry
+    // 2. Validate individual batch items in memory before touching database
+    const preparedRecords: Array<{
+      originalAmount: number;
+      originalCurrency: string;
+      baseAmountUSD: number;
+      type: "INCOME" | "EXPENSE";
+      description: string;
+      date: Date;
+      workspaceId: string;
+      categoryId: string;
+    }> = [];
+
+    const referencedCategoryIds = new Set<string>();
+
     for (let i = 0; i < transactions.length; i++) {
       const entry = transactions[i];
-      if (
-        entry.originalAmount === undefined ||
-        entry.originalAmount === null ||
-        isNaN(Number(entry.originalAmount))
-      ) {
-        res.status(400).json(
-          safeError(`Row ${i + 1}: invalid or missing originalAmount.`)
-        );
+      const rowNum = i + 1;
+
+      const parsedAmount = parseNonNegativeNumber(entry.originalAmount);
+      if (parsedAmount === undefined) {
+        res.status(400).json(buildSafeError(`Row ${rowNum}: invalid or missing originalAmount.`));
         return;
       }
-      if (!entry.originalCurrency || String(entry.originalCurrency).trim() === "") {
-        res.status(400).json(
-          safeError(`Row ${i + 1}: missing originalCurrency.`)
-        );
+
+      const parsedUsd = parseNonNegativeNumber(entry.baseAmountUSD);
+      if (parsedUsd === undefined) {
+        res.status(400).json(buildSafeError(`Row ${rowNum}: invalid or missing baseAmountUSD.`));
         return;
       }
-      if (
-        entry.baseAmountUSD === undefined ||
-        entry.baseAmountUSD === null ||
-        isNaN(Number(entry.baseAmountUSD))
-      ) {
-        res.status(400).json(
-          safeError(`Row ${i + 1}: invalid or missing baseAmountUSD.`)
-        );
+
+      const currency = extractSingleString(entry.originalCurrency)?.toUpperCase();
+      if (!currency) {
+        res.status(400).json(buildSafeError(`Row ${rowNum}: missing originalCurrency.`));
         return;
       }
-      if (!entry.type || (entry.type !== "INCOME" && entry.type !== "EXPENSE")) {
-        res.status(400).json(
-          safeError(`Row ${i + 1}: type must be INCOME or EXPENSE.`)
-        );
+
+      if (!isValidTransactionType(entry.type)) {
+        res.status(400).json(buildSafeError(`Row ${rowNum}: type must be INCOME or EXPENSE.`));
         return;
       }
-      if (!entry.date || String(entry.date).trim() === "") {
-        res.status(400).json(safeError(`Row ${i + 1}: missing date.`));
-        return;
-      }
+
       const parsedDate = parseDateSafely(String(entry.date));
       if (!parsedDate) {
-        res.status(400).json(safeError(`Row ${i + 1}: invalid date format.`));
+        res.status(400).json(buildSafeError(`Row ${rowNum}: invalid date format.`));
         return;
       }
-      if (!entry.categoryId || String(entry.categoryId).trim() === "") {
-        res.status(400).json(safeError(`Row ${i + 1}: missing categoryId.`));
+
+      const categoryId = extractSingleString(entry.categoryId);
+      if (!categoryId) {
+        res.status(400).json(buildSafeError(`Row ${rowNum}: missing categoryId.`));
         return;
       }
+
+      referencedCategoryIds.add(categoryId);
+
+      preparedRecords.push({
+        originalAmount: parsedAmount,
+        originalCurrency: currency,
+        baseAmountUSD: parsedUsd,
+        type: entry.type,
+        description: entry.description ? String(entry.description).trim() : "",
+        date: parsedDate,
+        workspaceId: sanitizedWorkspaceId,
+        categoryId: categoryId,
+      });
     }
 
-    // Insert all in a single transaction
-    const insertedCount = await prisma.$transaction(async (tx) => {
-      let count = 0;
-      for (const entry of transactions) {
-        await tx.transaction.create({
-          data: {
-            originalAmount: Number(entry.originalAmount),
-            originalCurrency: entry.originalCurrency.toUpperCase(),
-            baseAmountUSD: Number(entry.baseAmountUSD),
-            type: entry.type,
-            description: entry.description || "",
-            date: parseDateSafely(entry.date) as Date, // already validated
-            workspaceId,
-            categoryId: entry.categoryId,
-          },
-        });
-        count++;
-      }
-      return count;
+    // WHY THIS FIX WAS MADE: Verifies in ONE batch query that all referenced category IDs belong to this workspace.
+    const validCategories = await prisma.category.findMany({
+      where: {
+        id: { in: Array.from(referencedCategoryIds) },
+        workspaceId: sanitizedWorkspaceId,
+      },
+      select: { id: true },
+    });
+
+    if (validCategories.length !== referencedCategoryIds.size) {
+      res.status(400).json(
+        buildSafeError("One or more referenced category IDs do not exist in this workspace.")
+      );
+      return;
+    }
+
+    // WHY THIS FIX WAS MADE: Replaced sequential loop queries with single createMany query (Eliminates N+1 DB bottleneck).
+    const batchResult = await prisma.transaction.createMany({
+      data: preparedRecords,
     });
 
     res.status(201).json({
-      message: `Successfully imported ${insertedCount} transactions.`,
+      message: `Successfully imported ${batchResult.count} transactions.`,
+      count: batchResult.count,
     });
   } catch (error: unknown) {
     console.error("Bulk Import Pipeline Crash:", error);
-    res.status(500).json(safeError("Internal server error during bulk import."));
+    res.status(500).json(buildSafeError("Internal server error during bulk import."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// AI RECEIPT SCANNER
-// ---------------------------------------------------------------------------
+/**
+ * POST /api/transactions/scan-receipt
+ * Uses Gemini AI vision models to parse receipt images and extract transaction metrics.
+ */
 export const scanReceipt = async (
   req: AuthenticatedRequestWithFile,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
     const uploadedFile = req.file;
-    if (!uploadedFile) {
-      res.status(400).json(safeError("No receipt image or document uploaded."));
+    if (!uploadedFile || !uploadedFile.buffer) {
+      res.status(400).json(buildSafeError("No receipt image or document file uploaded."));
+      return;
+    }
+
+    // WHY THIS FIX WAS MADE: Validates file MIME type to block malicious file uploads.
+    if (!ALLOWED_RECEIPT_MIME_TYPES.includes(uploadedFile.mimetype.toLowerCase())) {
+      res.status(400).json(
+        buildSafeError("Invalid file type. Please upload a JPEG, PNG, WEBP, or PDF document.")
+      );
       return;
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json(safeError("AI service configuration missing."));
+      res.status(500).json(buildSafeError("AI receipt scanner service is not configured on server."));
       return;
     }
 
-    // Initialize AI client
+    // Initialize Google Gemini AI client
     const aiClient = new GoogleGenAI({ apiKey });
 
-    // Prepare the image payload for Gemini
     const receiptImagePart = {
       inlineData: {
         data: uploadedFile.buffer.toString("base64"),
@@ -330,17 +411,16 @@ export const scanReceipt = async (
       },
     };
 
-    // Detailed system prompt for extraction
     const extractionPrompt = `
 You are an elite financial receipt parser.
 Analyze the provided receipt image and extract the following JSON fields:
 - merchant: vendor name (clean up noise, e.g., "MCDONALDS STORE #4322" → "McDonald's")
-- date: transaction date in YYYY-MM-DD (assume 2026 if missing)
-- totalAmount: final total as a number (ignore individual items)
-- currency: three‑letter ISO code. If you see "Rs", "Rs.", "PR", or "PKR" output "PKR". If "$" output "USD". Default to "PKR" otherwise.
+- date: transaction date in YYYY-MM-DD format
+- totalAmount: final numerical total amount
+- currency: three-letter ISO currency code. Map "Rs", "Rs.", "PKR" → "PKR", "$" → "USD". Default to "PKR" if unknown.
 `;
 
-    // Call Gemini 3.1 Flash-Lite
+    // Query Gemini 3.1 Flash-Lite vision endpoint
     const aiResponse = await aiClient.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: [extractionPrompt, receiptImagePart],
@@ -351,20 +431,19 @@ Analyze the provided receipt image and extract the following JSON fields:
 
     const rawText = aiResponse.text;
     if (!rawText) {
-      res.status(500).json(safeError("AI engine returned empty response."));
+      res.status(500).json(buildSafeError("AI engine returned empty text response."));
       return;
     }
 
-    // Extract JSON object from response
+    // Extract JSON payload from model output
     const jsonMatch = rawText.match(/{[\s\S]*}/);
     if (!jsonMatch) {
-      res.status(500).json(safeError("Failed to parse AI response."));
+      res.status(500).json(buildSafeError("Failed to parse AI model response output."));
       return;
     }
 
     const parsedData: unknown = JSON.parse(jsonMatch[0]);
 
-    // Verify the extracted data has required fields
     if (
       parsedData &&
       typeof parsedData === "object" &&
@@ -373,47 +452,48 @@ Analyze the provided receipt image and extract the following JSON fields:
     ) {
       res.status(200).json(parsedData as ExtractedReceiptMetrics);
     } else {
-      res.status(500).json(safeError("AI returned incomplete receipt data."));
+      res.status(500).json(buildSafeError("AI model returned incomplete receipt data fields."));
     }
   } catch (error: unknown) {
     console.error("AI Scan Engine Crash:", error);
-    // Do not expose internal error details to the client
-    res.status(500).json(safeError("Receipt scanning failed. Please try again later."));
+    res.status(500).json(buildSafeError("Receipt scanning failed. Please try again later."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// FETCH WORKSPACE TRANSACTIONS
-// ---------------------------------------------------------------------------
+/**
+ * GET /api/transactions?workspaceId=...
+ * Fetches transactions for a workspace with explicit result bounds.
+ */
 export const getWorkspaceTransactions = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetWorkspaceId = req.query.workspaceId
-      ? String(req.query.workspaceId)
-      : undefined;
+    const targetWorkspaceId = extractSingleString(req.query.workspaceId);
 
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
     if (!targetWorkspaceId) {
-      res.status(400).json(safeError("Workspace ID is required."));
+      res.status(400).json(buildSafeError("Workspace ID query parameter is required."));
       return;
     }
 
-    // Verify workspace ownership
-    const workspaceCheck = await prisma.workspace.findUnique({
-      where: { id: targetWorkspaceId },
+    // Verify workspace access (BOLA Authorization Shield)
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: targetWorkspaceId, userId: userId },
+      select: { id: true },
     });
-    if (!workspaceCheck || workspaceCheck.userId !== userId) {
-      res.status(403).json(safeError("Access denied."));
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
       return;
     }
 
+    // WHY THIS FIX WAS MADE: Enforces MAX_TRANSACTIONS_FETCH_LIMIT limit to prevent server memory exhaustion.
     const transactions = await prisma.transaction.findMany({
       where: { workspaceId: targetWorkspaceId },
       include: {
@@ -432,49 +512,46 @@ export const getWorkspaceTransactions = async (
         },
       },
       orderBy: { date: "desc" },
+      take: MAX_TRANSACTIONS_FETCH_LIMIT,
     });
 
     res.status(200).json({ transactions });
   } catch (error: unknown) {
     console.error("Fetch Transactions Error:", error);
-    res.status(500).json(safeError("Internal server error."));
+    res.status(500).json(buildSafeError("Internal server error fetching workspace transactions."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// DELETE TRANSACTION
-// ---------------------------------------------------------------------------
+/**
+ * DELETE /api/transactions/:id
+ * Removes a transaction record after verifying ownership.
+ */
 export const deleteTransaction = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: ExpressResponse
 ): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const targetId = req.params.id ? String(req.params.id) : undefined;
+    const targetId = extractSingleString(req.params.id);
 
     if (!userId) {
-      res.status(401).json(safeError("Authentication required."));
+      res.status(401).json(buildSafeError("Authentication required."));
       return;
     }
 
     if (!targetId) {
-      res.status(400).json(safeError("Transaction ID is required."));
+      res.status(400).json(buildSafeError("Transaction ID parameter is required."));
       return;
     }
 
-    // Verify ownership
+    // Verify transaction exists and user owns the parent workspace
     const transactionTarget = await prisma.transaction.findUnique({
       where: { id: targetId },
       include: { workspace: true },
     });
 
-    if (!transactionTarget) {
-      res.status(404).json(safeError("Transaction not found."));
-      return;
-    }
-
-    if (transactionTarget.workspace.userId !== userId) {
-      res.status(403).json(safeError("Access denied."));
+    if (!transactionTarget || transactionTarget.workspace.userId !== userId) {
+      res.status(403).json(buildSafeError("Access denied or transaction not found."));
       return;
     }
 
@@ -483,7 +560,7 @@ export const deleteTransaction = async (
     res.status(200).json({ message: "Transaction deleted successfully." });
   } catch (error: unknown) {
     console.error("Delete Transaction Error:", error);
-    res.status(500).json(safeError("Internal server error."));
+    res.status(500).json(buildSafeError("Internal server error deleting transaction."));
   }
 };
 /* === SECTION 3 END === */

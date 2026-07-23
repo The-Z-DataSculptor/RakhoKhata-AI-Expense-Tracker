@@ -1,12 +1,13 @@
 // Backend/src/controllers/authController.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & CONFIGURATION ===
    ========================================================================== */
-import { Request, Response } from "express";
+import { Request, Response as ExpressResponse } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { encrypt } from "paseto-ts/v4";
+import { TransactionType, Prisma } from "../../prisma/generated/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import {
@@ -18,208 +19,257 @@ import {
   SHARED_DEFAULT_PERSONAL_CATEGORIES,
   SHARED_DEFAULT_BUSINESS_CATEGORIES,
 } from "./workspaceController";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
-
-// ----- Google OAuth response shapes -----
-interface GoogleTokenResponse {
-  access_token?: string;
-  error?: string;
-  error_description?: string;
-}
-
-interface GoogleUserInfo {
-  sub: string;
-  email: string;
-  name?: string;
-  picture?: string;
-}
-
-// ----- Internal helper types -----
-interface ProfileUpdateFields {
-  name?: string;
-  email?: string;
-  country?: string;
-  currency?: string;
-  languages?: string[];
-  occupation?: string;
-  financialGoal?: string;
-  aiPersona?: string;
-}
-
-// ----- PASETO secret & key generation -----
-const PASETO_SECRET =
-  process.env.PASETO_SECRET ||
-  "k4.local.abcdefghijklmnopqrstuvwxyz01234567890123456789";
+// Environment variables with fallback safeguards
+const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL ||
-  "http://localhost:5000/api/auth/google/callback";
+  process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback";
+
+// External API timeout limit (10 seconds)
+const EXTERNAL_API_TIMEOUT_MS = 10000;
+
+// Central cookie settings for session tokens
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+};
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: HELPER FUNCTIONS & TYPES ===
+   ========================================================================== */
+
+interface RegisterRequestBody {
+  fullName?: unknown;
+  email?: unknown;
+  password?: unknown;
+  country?: unknown;
+  currency?: unknown;
+  languages?: unknown;
+  occupation?: unknown;
+  financialGoal?: unknown;
+  aiPersona?: unknown;
+}
+
+interface UpdateProfileRequestBody {
+  name?: unknown;
+  country?: unknown;
+  currency?: unknown;
+  languages?: unknown;
+  occupation?: unknown;
+  financialGoal?: unknown;
+  aiPersona?: unknown;
+}
 
 /**
- * Generates the 52‑character PASERK key required by paseto‑ts.
+ * Returns a secure 52-character PASERK key for PASETO encryption.
  */
 function getPasetoKey(): string {
-  const hash = crypto.createHash("sha256").update(PASETO_SECRET).digest();
+  const secret = process.env.PASETO_SECRET;
+
+  // WHY THIS FIX WAS MADE: Throws a hard server error in production if the signing secret 
+  // is omitted, preventing the use of predictable development fallback keys.
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!");
+    }
+    const devFallback = "dev_secret_key_must_be_at_least_32_characters_long_for_security";
+    const devHash = crypto.createHash("sha256").update(devFallback).digest();
+    return `k4.local.${devHash.toString("base64url")}`;
+  }
+
+  const hash = crypto.createHash("sha256").update(secret).digest();
   return `k4.local.${hash.toString("base64url")}`;
 }
 
-// Central cookie configuration – always HttpOnly, SameSite Lax
-const COOKIE_OPTIONS: {
-  httpOnly: boolean;
-  secure: boolean;
-  sameSite: "lax";
-  maxAge: number;
-} = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-};
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
-   ========================================================================== */
+/**
+ * Creates an encrypted PASETO token for authenticated users.
+ */
+async function generateSessionToken(userId: string, email: string): Promise<string> {
+  const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
+  return await encrypt(getPasetoKey(), {
+    userId,
+    email,
+    exp: expirationTime,
+  });
+}
 
 /**
- * Helper: builds a safe error object to avoid leaking internals.
+ * Helper to standardise JSON error responses.
  */
-function buildSafeError(message: string): { error: string } {
+function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
 
-// ---------------------------------------------------------------------------
-// REGISTER USER
-// ---------------------------------------------------------------------------
-export const registerUser = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const {
-      fullName,
-      email,
-      password,
-      country,
-      currency,
-      languages,
-      occupation,
-      financialGoal,
-      aiPersona,
-    } = req.body as Record<string, unknown>;
+/**
+ * WHY THIS IS NEEDED: Prevents HTTP parameter array injection attacks by validating string types.
+ */
+function extractSingleString(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+  return undefined;
+}
 
-    // ----- Input validation -----
-    if (!fullName || !email || !password) {
-      res.status(400).json(buildSafeError("Please fill in all required fields."));
+/**
+ * WHY THIS IS NEEDED: Safely extracts optional string parameters, returning null if empty or undefined.
+ */
+function extractOptionalString(value: unknown): string | null {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+  return null;
+}
+
+/**
+ * WHY THIS FIX WAS MADE: Maps raw default category strings into valid Prisma TransactionType Enums.
+ * Fixes TypeScript build error where raw strings like "EXPENSE" were rejected by Prisma's enum schema.
+ */
+function formatDefaultCategories(
+  categories: Array<{ name: string; type: string; color: string; isFixed?: boolean }>
+) {
+  return categories.map((cat) => ({
+    name: cat.name,
+    type: cat.type as TransactionType,
+    color: cat.color,
+    isFixed: Boolean(cat.isFixed),
+  }));
+}
+
+/**
+ * Network fetch with automatic timeout protection.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {}
+): Promise<globalThis.Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), EXTERNAL_API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: AUTHENTICATION CONTROLLERS ===
+   ========================================================================== */
+
+/**
+ * POST /api/auth/register
+ * Registers a new local user, creates default workspaces with typed categories, and sends verification email.
+ */
+export const registerUser = async (req: Request, res: ExpressResponse): Promise<void> => {
+  try {
+    const body = req.body as RegisterRequestBody;
+
+    const fullName = extractSingleString(body.fullName);
+    const rawEmail = extractSingleString(body.email);
+    const password = typeof body.password === "string" ? body.password : "";
+
+    // 1. Input validation
+    if (!fullName || !rawEmail || !password) {
+      res.status(400).json(buildErrorResponse("Full name, email, and password are required."));
       return;
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
+    if (password.length < 8) {
+      res.status(400).json(buildErrorResponse("Password must be at least 8 characters long."));
+      return;
+    }
 
-    // Check for existing user
+    const normalizedEmail = rawEmail.toLowerCase();
+
+    // 2. Check existing user
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
+
     if (existingUser) {
-      res
-        .status(400)
-        .json(buildSafeError("A user with this email already exists."));
+      res.status(400).json(buildErrorResponse("An account with this email already exists."));
       return;
     }
 
-    // ----- Hash password -----
+    // 3. Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(String(password), salt);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const baseCurrency = extractSingleString(body.currency) || "PKR";
+    const sanitizedLanguages = Array.isArray(body.languages)
+      ? body.languages.map((lang) => String(lang).trim()).filter(Boolean)
+      : [];
 
-    const baseCurrency = String(currency || "PKR");
-
-    // ----- Create user with default workspaces -----
-    const newUser = await prisma.user.create({
-      data: {
-        name: String(fullName),
-        email: normalizedEmail,
-        passwordHash: hashedPassword,
-        country: country ? String(country) : null,
-        currency: baseCurrency,
-        languages: Array.isArray(languages) ? languages : [],
-        occupation: String(occupation || "prefer_not_to_say"),
-        financialGoal: String(financialGoal || "zen_master"),
-        aiPersona: String(aiPersona || "supportive_coach"),
-        isOnboardingCompleted: true,
-        workspaces: {
-          create: [
-            {
-              name: "Personal",
-              currency: baseCurrency,
-              categories: { create: SHARED_DEFAULT_PERSONAL_CATEGORIES },
-            },
-            {
-              name: "Business",
-              currency: baseCurrency,
-              categories: { create: SHARED_DEFAULT_BUSINESS_CATEGORIES },
-            },
-          ],
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        uiTheme: true,
-        country: true,
-        currency: true,
-        languages: true,
-        occupation: true,
-        financialGoal: true,
-        aiPersona: true,
-        isOnboardingCompleted: true,
-        createdAt: true,
-        workspaces: true,
-      },
-    });
-
-    // ----- Send verification email (fire‑and‑forget) -----
+    // 4. Verification token variables
     const rawVerifyToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(rawVerifyToken)
-      .digest("hex");
-    const validationDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const tokenHash = crypto.createHash("sha256").update(rawVerifyToken).digest("hex");
+    const tokenExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await prisma.verificationToken.create({
-      data: {
-        tokenHash,
-        type: "EMAIL_VERIFICATION",
-        identifier: newUser.email,
-        expiresAt: validationDeadline,
-      },
+    // WHY THIS FIX WAS MADE: Uses Prisma interactive transaction with explicit typing 
+    // to prevent schema mismatches on newly added user and verification token attributes.
+    const newUser = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: fullName,
+          email: normalizedEmail,
+          passwordHash: hashedPassword,
+          country: extractOptionalString(body.country),
+          currency: baseCurrency,
+          languages: sanitizedLanguages,
+          occupation: extractOptionalString(body.occupation) || "prefer_not_to_say",
+          financialGoal: extractOptionalString(body.financialGoal) || "zen_master",
+          aiPersona: extractOptionalString(body.aiPersona) || "supportive_coach",
+          isOnboardingCompleted: true,
+          workspaces: {
+            create: [
+              {
+                name: "Personal",
+                currency: baseCurrency,
+                categories: { create: formatDefaultCategories(SHARED_DEFAULT_PERSONAL_CATEGORIES) },
+              },
+              {
+                name: "Business",
+                currency: baseCurrency,
+                categories: { create: formatDefaultCategories(SHARED_DEFAULT_BUSINESS_CATEGORIES) },
+              },
+            ],
+          },
+        },
+        include: {
+          workspaces: true,
+        },
+      });
+
+      await tx.verificationToken.create({
+        data: {
+          tokenHash,
+          type: "EMAIL_VERIFICATION",
+          identifier: createdUser.email,
+          expiresAt: tokenExpiration,
+        },
+      });
+
+      return createdUser;
     });
 
-    const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerifyToken}`;
-    sendVerificationEmail(newUser.email, newUser.name, verificationUrl).catch(
-      (err: unknown) => console.error("Async Verification Dispatch Error:", err)
+    // 5. Async verification email dispatch
+    const verificationUrl = `${APP_FRONTEND_URL}/verify-email?token=${rawVerifyToken}`;
+    sendVerificationEmail(newUser.email, newUser.name, verificationUrl).catch((err: unknown) =>
+      console.error("Async Verification Email Failure:", err)
     );
 
-    // ----- Create PASETO token & set cookie -----
-    const expirationTime = new Date(
-      Date.now() + COOKIE_OPTIONS.maxAge
-    ).toISOString();
-    const token = await encrypt(getPasetoKey(), {
-      userId: newUser.id,
-      email: newUser.email,
-      exp: expirationTime,
-    });
-
+    // 6. Generate PASETO session token
+    const token = await generateSessionToken(newUser.id, newUser.email);
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(201).json({
-      message:
-        "User registered successfully! Please check your email to verify your account.",
+      message: "Registration successful! Please check your email to verify your account.",
       user: {
         id: newUser.id,
         name: newUser.name,
@@ -237,77 +287,54 @@ export const registerUser = async (
       workspaces: newUser.workspaces,
     });
   } catch (error: unknown) {
-    console.error("Signup Error:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error during registration."));
+    console.error("Register Controller Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error during registration."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// LOGIN USER
-// ---------------------------------------------------------------------------
-export const loginUser = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * POST /api/auth/login
+ * Authenticates a user with email and password.
+ */
+export const loginUser = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
-    const { email, password } = req.body as Record<string, unknown>;
+    const rawEmail = extractSingleString(req.body.email);
+    const password = typeof req.body.password === "string" ? req.body.password : "";
 
-    if (!email || !password) {
-      res
-        .status(400)
-        .json(buildSafeError("Please enter both email and password."));
+    if (!rawEmail || !password) {
+      res.status(400).json(buildErrorResponse("Please provide both email and password."));
       return;
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedEmail = rawEmail.toLowerCase();
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
+
     if (!user) {
-      res
-        .status(401)
-        .json(buildSafeError("Invalid email or password credentials."));
+      res.status(401).json(buildErrorResponse("Invalid email or password."));
       return;
     }
 
-    // If the account was created via Google, there is no password hash
     if (!user.passwordHash) {
       res.status(400).json(
-        buildSafeError(
-          "This account was registered using Google Sign-In. Please click the 'Sign in with Google' option."
-        )
+        buildErrorResponse("This account was created with Google Sign-In. Please click 'Sign in with Google'.")
       );
       return;
     }
 
-    const isPasswordMatch = await bcrypt.compare(
-      String(password),
-      user.passwordHash
-    );
-    if (!isPasswordMatch) {
-      res
-        .status(401)
-        .json(buildSafeError("Invalid email or password credentials."));
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      res.status(401).json(buildErrorResponse("Invalid email or password."));
       return;
     }
 
-    // Create PASETO token
-    const expirationTime = new Date(
-      Date.now() + COOKIE_OPTIONS.maxAge
-    ).toISOString();
-    const token = await encrypt(getPasetoKey(), {
-      userId: user.id,
-      email: user.email,
-      exp: expirationTime,
-    });
-
+    const token = await generateSessionToken(user.id, user.email);
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(200).json({
-      message: "Login successful! Welcome back to RakhoKhata.",
+      message: "Login successful!",
       user: {
         id: user.id,
         name: user.name,
@@ -324,27 +351,19 @@ export const loginUser = async (
     });
   } catch (error: unknown) {
     console.error("Login Controller Error:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error during login verification."));
+    res.status(500).json(buildErrorResponse("Internal server error during login."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// GET ME (PROFILE)
-// ---------------------------------------------------------------------------
-export const getMe = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
+/**
+ * GET /api/auth/me
+ * Retrieves profile data for the authenticated user.
+ */
+export const getMe = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res
-        .status(401)
-        .json(
-          buildSafeError("Unauthorized access. Valid profile identifier missing.")
-        );
+      res.status(401).json(buildErrorResponse("Unauthorized. Session invalid."));
       return;
     }
 
@@ -368,83 +387,55 @@ export const getMe = async (
     });
 
     if (!user) {
-      res
-        .status(404)
-        .json(
-          buildSafeError("Active database account record could not be found.")
-        );
+      res.status(404).json(buildErrorResponse("User profile not found."));
       return;
     }
 
-    res
-      .status(200)
-      .json({ message: "Authenticated identity verified successfully.", user });
+    res.status(200).json({ message: "Profile retrieved successfully.", user });
   } catch (error: unknown) {
-    console.error("Profile Fetch Controller Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError("Internal server error during profile verification.")
-      );
+    console.error("GetMe Controller Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error fetching profile."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// LOGOUT
-// ---------------------------------------------------------------------------
-export const logoutUser = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * POST /api/auth/logout
+ * Clears authentication session cookie.
+ */
+export const logoutUser = async (_req: Request, res: ExpressResponse): Promise<void> => {
   try {
-    // Clear the cookie by setting maxAge to 0
     res.cookie("token", "", { ...COOKIE_OPTIONS, maxAge: 0 });
-    res
-      .status(200)
-      .json({ message: "Logged out successfully. Secure session revoked." });
+    res.status(200).json({ message: "Logged out successfully." });
   } catch (error: unknown) {
-    console.error("Logout Controller Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError("Internal server error during session teardown.")
-      );
+    console.error("Logout Controller Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error during logout."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// UPDATE PROFILE
-// ---------------------------------------------------------------------------
-export const updateProfile = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
+/**
+ * PUT /api/auth/profile
+ * Updates basic user preferences.
+ */
+export const updateProfile = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized"));
+      res.status(401).json(buildErrorResponse("Unauthorized"));
       return;
     }
 
-    // Only allow specific fields to be updated
-    const allowedFields: Array<keyof ProfileUpdateFields> = [
-      "name",
-      "email",
-      "country",
-      "currency",
-      "languages",
-      "occupation",
-      "financialGoal",
-      "aiPersona",
-    ];
-    const updateData: ProfileUpdateFields = {};
+    const body = req.body as UpdateProfileRequestBody;
+    const updateData: Prisma.UserUpdateInput = {};
 
-    for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
-        // We trust the client values; validation should be added if needed
-        updateData[field] = req.body[field];
-      }
+    if (body.name !== undefined) updateData.name = extractSingleString(body.name) || "";
+    if (body.country !== undefined) updateData.country = extractOptionalString(body.country);
+    if (body.currency !== undefined) updateData.currency = extractSingleString(body.currency) || "PKR";
+    if (body.languages !== undefined && Array.isArray(body.languages)) {
+      updateData.languages = body.languages.map((lang) => String(lang).trim()).filter(Boolean);
     }
+    if (body.occupation !== undefined) updateData.occupation = extractOptionalString(body.occupation);
+    if (body.financialGoal !== undefined) updateData.financialGoal = extractOptionalString(body.financialGoal);
+    if (body.aiPersona !== undefined) updateData.aiPersona = extractOptionalString(body.aiPersona);
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -466,218 +457,170 @@ export const updateProfile = async (
       },
     });
 
-    res
-      .status(200)
-      .json({ message: "Profile updated successfully", user: updatedUser });
+    res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
   } catch (error: unknown) {
     console.error("Update Profile Error:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error updating profile."));
+    res.status(500).json(buildErrorResponse("Internal server error updating profile."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// CHANGE PASSWORD
-// ---------------------------------------------------------------------------
-export const changePassword = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
+/**
+ * POST /api/auth/change-password
+ * Changes user password after verifying current password.
+ */
+export const changePassword = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized"));
+      res.status(401).json(buildErrorResponse("Unauthorized"));
       return;
     }
 
-    const { currentPassword, newPassword } = req.body as Record<
-      string,
-      unknown
-    >;
+    const currentPassword = typeof req.body.currentPassword === "string" ? req.body.currentPassword : "";
+    const newPassword = typeof req.body.newPassword === "string" ? req.body.newPassword : "";
+
     if (!currentPassword || !newPassword) {
-      res
-        .status(400)
-        .json(buildSafeError("Current and new password are required."));
+      res.status(400).json(buildErrorResponse("Current password and new password are required."));
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      res.status(400).json(buildErrorResponse("New password must be at least 8 characters long."));
       return;
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      res.status(404).json(buildSafeError("User not found."));
+      res.status(404).json(buildErrorResponse("User not found."));
       return;
     }
 
-    // Google‑only users have no password
     if (!user.passwordHash) {
-      res.status(400).json(
-        buildSafeError(
-          "This account uses Google Auth and does not have a local password."
-        )
-      );
+      res.status(400).json(buildErrorResponse("This account uses Google OAuth and does not have a local password."));
       return;
     }
 
-    const isMatch = await bcrypt.compare(
-      String(currentPassword),
-      user.passwordHash
-    );
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isMatch) {
-      res
-        .status(401)
-        .json(buildSafeError("Current password is incorrect."));
+      res.status(401).json(buildErrorResponse("Current password is incorrect."));
       return;
     }
 
     const salt = await bcrypt.genSalt(10);
-    const newHash = await bcrypt.hash(String(newPassword), salt);
+    const newHash = await bcrypt.hash(newPassword, salt);
 
     await prisma.user.update({
       where: { id: userId },
       data: { passwordHash: newHash },
     });
 
-    // Fire‑and‑forget security notification
-    sendSecurityAlertEmail(user.email, user.name, "Account Password").catch(
-      (err: unknown) =>
-        console.error("Async Security Warning Failure:", err)
+    sendSecurityAlertEmail(user.email, user.name, "Account Password Changed").catch((err: unknown) =>
+      console.error("Async Security Alert Failure:", err)
     );
 
-    res.status(200).json({ message: "Password changed successfully." });
+    res.status(200).json({ message: "Password updated successfully." });
   } catch (error: unknown) {
     console.error("Change Password Error:", error);
-    res
-      .status(500)
-      .json(buildSafeError("Internal server error changing password."));
+    res.status(500).json(buildErrorResponse("Internal server error updating password."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// PASSWORD RESET REQUEST
-// ---------------------------------------------------------------------------
-export const requestPasswordReset = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * POST /api/auth/request-password-reset
+ * Sends password reset email if account exists without revealing account existence.
+ */
+export const requestPasswordReset = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
-    const { email } = req.body as Record<string, unknown>;
-    if (!email) {
-      res
-        .status(400)
-        .json(buildSafeError("Email address parameter is required."));
+    const rawEmail = extractSingleString(req.body.email);
+    if (!rawEmail) {
+      res.status(400).json(buildErrorResponse("Email address is required."));
       return;
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    const normalizedEmail = rawEmail.toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-    // Always return a generic message to prevent user enumeration
+    const genericResponse = {
+      message: "If an account exists with that email, a password reset link has been sent.",
+    };
+
     if (!user) {
-      res.status(200).json({
-        message:
-          "If that account exists, a recovery link has been dispatched.",
-      });
+      res.status(200).json(genericResponse);
       return;
     }
+
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: user.email, type: "PASSWORD_RESET" },
+    }).catch(() => {});
 
     const rawResetToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(rawResetToken)
-      .digest("hex");
-    const expirationDeadline = new Date(Date.now() + 15 * 60 * 1000);
+    const tokenHash = crypto.createHash("sha256").update(rawResetToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.verificationToken.create({
       data: {
         tokenHash,
         type: "PASSWORD_RESET",
         identifier: user.email,
-        expiresAt: expirationDeadline,
+        expiresAt,
       },
     });
 
-    const recoveryLink = `http://localhost:3000/reset-password?token=${rawResetToken}`;
+    const recoveryLink = `${APP_FRONTEND_URL}/reset-password?token=${rawResetToken}`;
     await sendPasswordResetEmail(user.email, user.name, recoveryLink);
 
-    res.status(200).json({
-      message:
-        "If that account exists, a recovery link has been dispatched.",
-    });
+    res.status(200).json(genericResponse);
   } catch (error: unknown) {
-    console.error("Request Password Reset System Failure:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Internal server error processing identity token request."
-        )
-      );
+    console.error("Request Password Reset Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error handling reset request."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// RESET PASSWORD (CONFIRM TOKEN)
-// ---------------------------------------------------------------------------
-export const resetForgottenPassword = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * POST /api/auth/reset-password
+ * Resets user password using a valid token.
+ */
+export const resetForgottenPassword = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
-    const { token, newPassword } = req.body as Record<string, unknown>;
-    if (!token || !newPassword) {
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Missing required token or new password."
-          )
-        );
+    const rawToken = extractSingleString(req.body.token);
+    const newPassword = typeof req.body.newPassword === "string" ? req.body.newPassword : "";
+
+    if (!rawToken || !newPassword) {
+      res.status(400).json(buildErrorResponse("Token and new password are required."));
       return;
     }
 
-    const computedHash = crypto
-      .createHash("sha256")
-      .update(String(token))
-      .digest("hex");
+    if (newPassword.length < 8) {
+      res.status(400).json(buildErrorResponse("New password must be at least 8 characters long."));
+      return;
+    }
+
+    const computedHash = crypto.createHash("sha256").update(rawToken).digest("hex");
 
     const tokenRecord = await prisma.verificationToken.findUnique({
       where: { tokenHash: computedHash },
     });
 
     if (!tokenRecord || tokenRecord.type !== "PASSWORD_RESET") {
-      res
-        .status(400)
-        .json(buildSafeError("Invalid or corrupt recovery link."));
+      res.status(400).json(buildErrorResponse("Invalid or expired password reset link."));
       return;
     }
 
     if (new Date() > tokenRecord.expiresAt) {
-      // Clean up expired token
-      await prisma.verificationToken
-        .delete({ where: { id: tokenRecord.id } })
-        .catch(() => {});
-      res
-        .status(400)
-        .json(buildSafeError("Recovery link expired. Please request a new one."));
+      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+      res.status(400).json(buildErrorResponse("Reset link has expired. Please request a new one."));
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: tokenRecord.identifier },
-    });
+    const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
     if (!user) {
-      res
-        .status(404)
-        .json(buildSafeError("Target user account no longer exists."));
+      res.status(404).json(buildErrorResponse("User account not found."));
       return;
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(String(newPassword), salt);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Atomic update: change password and delete the token
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
@@ -688,81 +631,48 @@ export const resetForgottenPassword = async (
       }),
     ]);
 
-    res
-      .status(200)
-      .json({
-        message:
-          "Password updated successfully! You can now log into your account.",
-      });
+    res.status(200).json({ message: "Password updated successfully! You can now log in." });
   } catch (error: unknown) {
-    console.error("Execute Password Update Controller Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Internal server error applying account credentials updates."
-        )
-      );
+    console.error("Reset Password Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error resetting password."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// VERIFY EMAIL
-// ---------------------------------------------------------------------------
-export const verifyEmail = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * POST /api/auth/verify-email
+ * Verifies email address using a valid verification token.
+ */
+export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
-    const { token } = req.body as Record<string, unknown>;
-    if (!token) {
-      res
-        .status(400)
-        .json(buildSafeError("Missing account verification token."));
+    const rawToken = extractSingleString(req.body.token);
+    if (!rawToken) {
+      res.status(400).json(buildErrorResponse("Verification token is required."));
       return;
     }
 
-    const computedHash = crypto
-      .createHash("sha256")
-      .update(String(token))
-      .digest("hex");
+    const computedHash = crypto.createHash("sha256").update(rawToken).digest("hex");
 
     const tokenRecord = await prisma.verificationToken.findUnique({
       where: { tokenHash: computedHash },
     });
 
     if (!tokenRecord || tokenRecord.type !== "EMAIL_VERIFICATION") {
-      res
-        .status(400)
-        .json(buildSafeError("Invalid or corrupt email verification link."));
+      res.status(400).json(buildErrorResponse("Invalid or expired verification link."));
       return;
     }
 
     if (new Date() > tokenRecord.expiresAt) {
-      await prisma.verificationToken
-        .delete({ where: { id: tokenRecord.id } })
-        .catch(() => {});
-      res
-        .status(400)
-        .json(
-          buildSafeError(
-            "Verification window expired. Please log in to request a fresh link."
-          )
-        );
+      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+      res.status(400).json(buildErrorResponse("Verification link expired. Please log in to resend."));
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: tokenRecord.identifier },
-    });
+    const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
     if (!user) {
-      res
-        .status(404)
-        .json(buildSafeError("User account no longer exists."));
+      res.status(404).json(buildErrorResponse("User account not found."));
       return;
     }
 
-    // Atomic: mark email as verified and delete token
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
@@ -776,80 +686,80 @@ export const verifyEmail = async (
       }),
     ]);
 
-    res
-      .status(200)
-      .json({
-        message:
-          "Email verification successful! Your profile workspace layers are fully activated.",
-      });
+    res.status(200).json({ message: "Email verified successfully! Your account is activated." });
   } catch (error: unknown) {
-    console.error("Process Email Verification Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Internal server error handling account verification requirements."
-        )
-      );
+    console.error("Verify Email Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error verifying email."));
   }
 };
+/* === SECTION 3 END === */
 
-// ---------------------------------------------------------------------------
-// GOOGLE OAUTH REDIRECT
-// ---------------------------------------------------------------------------
-export const redirectToGoogle = (req: Request, res: Response): void => {
+/* ==========================================================================
+   === SECTION 4: GOOGLE OAUTH CONTROLLERS ===
+   ========================================================================== */
+
+/**
+ * GET /api/auth/google
+ * Redirects user to Google OAuth endpoint with a state token.
+ */
+export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Google OAuth configuration keys are missing on the server."
-        )
-      );
+    res.status(500).json(buildErrorResponse("Google OAuth credentials missing on server."));
     return;
   }
 
+  const stateToken = crypto.randomBytes(16).toString("hex");
+  res.cookie("oauth_state", stateToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 10 * 60 * 1000, // 10 minutes
+  });
+
   const rootAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth";
-  const queryOptions = {
+  const queryOptions = new URLSearchParams({
     redirect_uri: GOOGLE_CALLBACK_URL,
     client_id: GOOGLE_CLIENT_ID,
     access_type: "offline",
     response_type: "code",
     prompt: "consent",
+    state: stateToken,
     scope: [
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/userinfo.email",
     ].join(" "),
-  };
+  });
 
-  res.redirect(
-    `${rootAuthUrl}?${new URLSearchParams(queryOptions).toString()}`
-  );
+  res.redirect(`${rootAuthUrl}?${queryOptions.toString()}`);
 };
 
-// ---------------------------------------------------------------------------
-// GOOGLE OAUTH CALLBACK
-// ---------------------------------------------------------------------------
-export const handleGoogleCallback = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const codeToken = req.query.code as string | undefined;
+/**
+ * GET /api/auth/google/callback
+ * Handles Google OAuth callback code exchange and provisions user sessions.
+ */
+export const handleGoogleCallback = async (req: Request, res: ExpressResponse): Promise<void> => {
+  const code = extractSingleString(req.query.code);
+  const state = extractSingleString(req.query.state);
+  const storedState = extractSingleString(req.cookies?.oauth_state);
 
-  if (!codeToken) {
-    res
-      .status(400)
-      .send("Authorization validation callback token is missing.");
+  res.clearCookie("oauth_state");
+
+  if (!state || !storedState || state !== storedState) {
+    res.status(400).send("OAuth authentication failed: Invalid state parameter.");
+    return;
+  }
+
+  if (!code) {
+    res.status(400).send("Authorization code missing from Google callback.");
     return;
   }
 
   try {
-    // Exchange authorization code for access token
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    const tokenResponse = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        code: codeToken,
+        code,
         client_id: GOOGLE_CLIENT_ID!,
         client_secret: GOOGLE_CLIENT_SECRET!,
         redirect_uri: GOOGLE_CALLBACK_URL,
@@ -857,36 +767,33 @@ export const handleGoogleCallback = async (
       }),
     });
 
-    const tokenBundle: GoogleTokenResponse = await tokenResponse.json();
+    const tokenBundle = (await tokenResponse.json()) as { access_token?: string };
     if (!tokenResponse.ok || !tokenBundle.access_token) {
-      console.error("Google Token Exchange Crash:", tokenBundle);
-      res
-        .status(500)
-        .send("Authentication mapping failed during Google token handshake.");
+      console.error("Google Token Exchange Failed:", tokenBundle);
+      res.status(500).send("Google authentication handshake failed.");
       return;
     }
 
-    // Fetch user profile from Google
-    const userInfoResponse = await fetch(
-      "https://www.googleapis.com/oauth2/v3/userinfo",
-      {
-        headers: { Authorization: `Bearer ${tokenBundle.access_token}` },
-      }
-    );
-    const profileData: GoogleUserInfo = await userInfoResponse.json();
-    if (!userInfoResponse.ok || !profileData.email) {
-      res
-        .status(500)
-        .send(
-          "Identity lookup breakdown extracting user credentials from Google."
-        );
+    const profileResponse = await fetchWithTimeout("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${tokenBundle.access_token}` },
+    });
+
+    const profile = (await profileResponse.json()) as {
+      sub?: string;
+      email?: string;
+      name?: string;
+      picture?: string;
+    };
+
+    if (!profileResponse.ok || !profile.email || !profile.sub) {
+      res.status(500).send("Failed to retrieve profile data from Google.");
       return;
     }
 
-    const { sub: googleUserId, email, name, picture } = profileData;
+    const { sub: googleUserId, email, name, picture } = profile;
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Look for an existing user linked with this Google account
+    // WHY THIS FIX WAS MADE: Queries user by checking connected accounts relation to safely handle OAuth sign-ins.
     let activeUser = await prisma.user.findFirst({
       where: {
         accounts: {
@@ -899,13 +806,11 @@ export const handleGoogleCallback = async (
     });
 
     if (!activeUser) {
-      // Check if a user with this email already exists
       const existingEmailUser = await prisma.user.findUnique({
         where: { email: normalizedEmail },
       });
 
       if (existingEmailUser) {
-        // Link the Google account to the existing user
         await prisma.account.create({
           data: {
             userId: existingEmailUser.id,
@@ -913,6 +818,7 @@ export const handleGoogleCallback = async (
             providerAccountId: googleUserId,
           },
         });
+
         if (!existingEmailUser.avatarUrl && picture) {
           await prisma.user.update({
             where: { id: existingEmailUser.id },
@@ -921,13 +827,13 @@ export const handleGoogleCallback = async (
         }
         activeUser = existingEmailUser;
       } else {
-        // Create a brand new user within a transaction
+        // WHY THIS FIX WAS MADE: Atomically provisions the user and links their Google account within a transaction.
         activeUser = await prisma.$transaction(async (tx) => {
           const newUser = await tx.user.create({
             data: {
               name: name || "RakhoKhata User",
               email: normalizedEmail,
-              passwordHash: null, // Google‑only account
+              passwordHash: null,
               avatarUrl: picture || null,
               isEmailVerified: true,
               emailVerifiedAt: new Date(),
@@ -941,16 +847,12 @@ export const handleGoogleCallback = async (
                   {
                     name: "Personal",
                     currency: "PKR",
-                    categories: {
-                      create: SHARED_DEFAULT_PERSONAL_CATEGORIES,
-                    },
+                    categories: { create: formatDefaultCategories(SHARED_DEFAULT_PERSONAL_CATEGORIES) },
                   },
                   {
                     name: "Business",
                     currency: "PKR",
-                    categories: {
-                      create: SHARED_DEFAULT_BUSINESS_CATEGORIES,
-                    },
+                    categories: { create: formatDefaultCategories(SHARED_DEFAULT_BUSINESS_CATEGORIES) },
                   },
                 ],
               },
@@ -970,65 +872,50 @@ export const handleGoogleCallback = async (
       }
     }
 
-    // Create PASETO session token
-    const expirationTime = new Date(
-      Date.now() + COOKIE_OPTIONS.maxAge
-    ).toISOString();
-    const token = await encrypt(getPasetoKey(), {
-      userId: activeUser.id,
-      email: activeUser.email,
-      exp: expirationTime,
-    });
-
-    res.cookie("token", token, COOKIE_OPTIONS);
-
-    // Redirect based on onboarding status
-    if (!activeUser.isOnboardingCompleted) {
-      res.redirect("http://localhost:3000/onboarding");
-    } else {
-      res.redirect("http://localhost:3000/dashboard");
-    }
-  } catch (error: unknown) {
-    console.error(
-      "Critical System Interception Failure inside Google Auth Callback:",
-      error
-    );
-    res
-      .status(500)
-      .send("Internal authentication framework transaction server error.");
-  }
-};
-
-// ---------------------------------------------------------------------------
-// COMPLETE ONBOARDING
-// ---------------------------------------------------------------------------
-export const completeOnboarding = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      res
-        .status(401)
-        .json(buildSafeError("Unauthorized access profile indicator missing."));
+    // WHY THIS FIX WAS MADE: Ensures activeUser is guaranteed non-null before generating session tokens.
+    if (!activeUser) {
+      res.status(500).send("Authentication failed to provision user record.");
       return;
     }
 
-    const { country, currency, languages, occupation, financialGoal, aiPersona } =
-      req.body as Record<string, unknown>;
-    const targetCurrency = String(currency || "PKR");
+    const token = await generateSessionToken(activeUser.id, activeUser.email);
+    res.cookie("token", token, COOKIE_OPTIONS);
+
+    const redirectPath = activeUser.isOnboardingCompleted ? "/dashboard" : "/onboarding";
+    res.redirect(`${APP_FRONTEND_URL}${redirectPath}`);
+  } catch (error: unknown) {
+    console.error("Google Callback Controller Error:", error);
+    res.status(500).send("Internal server error processing Google authentication.");
+  }
+};
+
+/**
+ * POST /api/auth/complete-onboarding
+ * Completes user onboarding preferences and syncs default workspace currencies.
+ */
+export const completeOnboarding = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json(buildErrorResponse("Unauthorized. Missing user session."));
+      return;
+    }
+
+    const body = req.body as Record<string, unknown>;
+    const targetCurrency = extractSingleString(body.currency) || "PKR";
 
     const updatedUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.update({
         where: { id: userId },
         data: {
-          country: country ? String(country) : null,
+          country: extractOptionalString(body.country),
           currency: targetCurrency,
-          languages: Array.isArray(languages) ? languages : [],
-          occupation: String(occupation || "prefer_not_to_say"),
-          financialGoal: String(financialGoal || "zen_master"),
-          aiPersona: String(aiPersona || "supportive_coach"),
+          languages: Array.isArray(body.languages)
+            ? body.languages.map((lang) => String(lang).trim()).filter(Boolean)
+            : [],
+          occupation: extractOptionalString(body.occupation) || "prefer_not_to_say",
+          financialGoal: extractOptionalString(body.financialGoal) || "zen_master",
+          aiPersona: extractOptionalString(body.aiPersona) || "supportive_coach",
           isOnboardingCompleted: true,
         },
         select: {
@@ -1047,79 +934,45 @@ export const completeOnboarding = async (
         },
       });
 
-      // Sync workspace currency with user's choice
       await tx.workspace.updateMany({
-        where: { userId: userId },
+        where: { userId },
         data: { currency: targetCurrency },
       });
 
       return user;
     });
 
-    res
-      .status(200)
-      .json({ message: "Onboarding completed successfully!", user: updatedUser });
+    res.status(200).json({ message: "Onboarding completed successfully!", user: updatedUser });
   } catch (error: unknown) {
-    console.error("Complete Onboarding Controller Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Internal server error applying onboarding profile configurations."
-        )
-      );
+    console.error("Complete Onboarding Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error completing onboarding."));
   }
 };
 
-// ---------------------------------------------------------------------------
-// LIVE EXCHANGE RATES PROXY
-// ---------------------------------------------------------------------------
-export const getExchangeRates = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+/**
+ * GET /api/auth/exchange-rates
+ * Proxies external ExchangeRate API requests.
+ */
+export const getExchangeRates = async (_req: Request, res: ExpressResponse): Promise<void> => {
   try {
     const apiKey = process.env.EXCHANGERATE_API_KEY;
     if (!apiKey) {
-      console.error(
-        "EXCHANGERATE_API_KEY environment variable missing on backend."
-      );
-      res
-        .status(500)
-        .json(
-          buildSafeError(
-            "Exchange registry credential configurations missing on the host server."
-          )
-        );
+      res.status(500).json(buildErrorResponse("Exchange rate service is not configured on the server."));
       return;
     }
 
-    const response = await fetch(
-      `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`
-    );
+    const response = await fetchWithTimeout(`https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`);
 
     if (!response.ok) {
-      res
-        .status(response.status)
-        .json(
-          buildSafeError(
-            "Failed to extract fresh metric states from currency registry server."
-          )
-        );
+      res.status(response.status).json(buildErrorResponse("Failed to fetch exchange rates from provider."));
       return;
     }
 
-    const data: unknown = await response.json();
+    const data = await response.json();
     res.status(200).json(data);
   } catch (error: unknown) {
-    console.error("Exchange Rate Proxy Controller Exception:", error);
-    res
-      .status(500)
-      .json(
-        buildSafeError(
-          "Internal server error handling cross‑border rate synchronization."
-        )
-      );
+    console.error("Exchange Rate Proxy Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error fetching exchange rates."));
   }
 };
-/* === SECTION 3 END === */
+/* === SECTION 4 END === */

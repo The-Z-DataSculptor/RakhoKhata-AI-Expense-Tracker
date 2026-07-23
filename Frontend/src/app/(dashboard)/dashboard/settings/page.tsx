@@ -2,7 +2,7 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & STATIC DATA ===
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
@@ -20,15 +20,12 @@ import {
   FiGlobe,
   FiTarget,
   FiCpu,
-  FiChevronDown
+  FiChevronDown,
 } from "react-icons/fi";
 import { toast } from "sonner";
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: GLOBAL DATA ===
-   ========================================================================== */
+// ----- Static reference data (centralised so all dropdowns share the same lists) -----
 const CURRENCIES = [
   "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
   "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
@@ -89,22 +86,20 @@ const AI_PERSONAS = [
   { id: "forensic_detective", emoji: "🕵️‍♂️", label: "Forensic Detective", desc: "Hyper-analytical. Finds hidden leaks." },
   { id: "silent_accountant", emoji: "📊", label: "Silent Accountant", desc: "Pure business. Raw mathematical logic." },
 ];
-/* === SECTION 2 END === */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 2: COMPONENT STATE & HANDLERS ===
    ========================================================================== */
 export default function SettingsPage() {
   const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace } = useWorkspace();
 
-  // --- USER PROFILE STATE ---
+  // ----- UI / loading states -----
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // Tab State
   const [activeTab, setActiveTab] = useState<"general" | "location" | "vibe" | "ai" | "security">("general");
 
-  // --- PROFILE FORM STATES ---
+  // ----- Profile fields -----
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("");
@@ -114,92 +109,110 @@ export default function SettingsPage() {
   const [financialGoal, setFinancialGoal] = useState("");
   const [aiPersona, setAiPersona] = useState("");
 
-  // --- PASSWORD CHANGE STATE ---
+  // ----- Password change fields -----
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // --- WORKSPACE RENAME STATE ---
+  // ----- Workspace rename / delete -----
   const [renameInput, setRenameInput] = useState<string>(activeWorkspace ? activeWorkspace.name : "");
   const [isWorkspaceSaving, setIsWorkspaceSaving] = useState<boolean>(false);
   const [, setRefreshKey] = useState(0);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // --- VAULT SECURITY STATES ---
+  // ----- Vault security -----
   const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // --- FETCH USER PROFILE ---
+  // ---------------------------------------------------------------------------
+  // PROFILE DATA FETCHING
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+    const loadProfile = async () => {
       setIsProfileLoading(true);
       try {
         const response = await userService.getProfile();
-        const user = response.user;
-        setName(user.name || "");
-        setEmail(user.email || "");
-        setCountry(user.country || "");
-        setCurrency(user.currency || "");
-        setLanguages(user.languages || []);
-        setOccupation(user.occupation || "");
-        setFinancialGoal(user.financialGoal || "");
-        setAiPersona(user.aiPersona || "");
+        if (!cancelled) {
+          const user = response.user;
+          setName(user.name || "");
+          setEmail(user.email || "");
+          setCountry(user.country || "");
+          setCurrency(user.currency || "");
+          setLanguages(user.languages || []);
+          setOccupation(user.occupation || "");
+          setFinancialGoal(user.financialGoal || "");
+          setAiPersona(user.aiPersona || "");
+        }
       } catch {
-        toast.error("Could not load your profile data.");
+        if (!cancelled) toast.error("Could not load your profile data.");
       } finally {
-        setIsProfileLoading(false);
-      }
-    })();
-  }, []);
-
-  // --- VAULT PIN STATUS ---
-  useEffect(() => {
-    let cancelled = false;
-    const loadStatus = async () => {
-      try {
-        const status = await vaultAuthService.checkStatus();
-        if (!cancelled) setIsVaultSecurityEnabled(status.hasPin);
-      } catch {
-        // keep previous state
-      } finally {
-        if (!cancelled) setIsSecurityLoading(false);
+        if (!cancelled) setIsProfileLoading(false);
       }
     };
-    loadStatus();
+    loadProfile();
     return () => { cancelled = true; };
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // VAULT PIN STATUS
+  // ---------------------------------------------------------------------------
   const fetchVaultPinStatus = async () => {
     try {
       const status = await vaultAuthService.checkStatus();
       setIsVaultSecurityEnabled(status.hasPin);
     } catch {
-      // ignore
+      // keep existing state
     } finally {
       setIsSecurityLoading(false);
     }
   };
 
-  // --- SAVE ACTIONS ---
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      try {
+        const status = await vaultAuthService.checkStatus();
+        if (!cancelled) setIsVaultSecurityEnabled(status.hasPin);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setIsSecurityLoading(false);
+      }
+    };
+    init();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // SAVE ACTIONS
+  // ---------------------------------------------------------------------------
+  const refetchProfile = async () => {
+    const response = await userService.getProfile();
+    const user = response.user;
+    setName(user.name || "");
+    setEmail(user.email || "");
+    setCountry(user.country || "");
+    setCurrency(user.currency || "");
+    setLanguages(user.languages || []);
+    setOccupation(user.occupation || "");
+    setFinancialGoal(user.financialGoal || "");
+    setAiPersona(user.aiPersona || "");
+  };
+
   const handleSaveBasicInfo = async () => {
-    if (!name.trim() || !email.trim()) return toast.error("Name and email are required.");
+    if (!name.trim() || !email.trim()) {
+      toast.error("Name and email are required.");
+      return;
+    }
     setIsSaving(true);
     try {
       await userService.updateProfile({ name, email });
-      toast.success("Profile updated successfully!");
-      const response = await userService.getProfile();
-      const user = response.user;
-      setName(user.name || "");
-      setEmail(user.email || "");
-      setCountry(user.country || "");
-      setCurrency(user.currency || "");
-      setLanguages(user.languages || []);
-      setOccupation(user.occupation || "");
-      setFinancialGoal(user.financialGoal || "");
-      setAiPersona(user.aiPersona || "");
+      await refetchProfile();
+      toast.success("Profile updated!");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update profile.";
       toast.error(message);
@@ -210,17 +223,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ country, currency, languages });
-      toast.success("Location & Language settings updated!");
-      const response = await userService.getProfile();
-      const user = response.user;
-      setName(user.name || "");
-      setEmail(user.email || "");
-      setCountry(user.country || "");
-      setCurrency(user.currency || "");
-      setLanguages(user.languages || []);
-      setOccupation(user.occupation || "");
-      setFinancialGoal(user.financialGoal || "");
-      setAiPersona(user.aiPersona || "");
+      await refetchProfile();
+      toast.success("Location & language updated!");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update location.";
       toast.error(message);
@@ -231,17 +235,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ occupation, financialGoal });
+      await refetchProfile();
       toast.success("Financial profile updated!");
-      const response = await userService.getProfile();
-      const user = response.user;
-      setName(user.name || "");
-      setEmail(user.email || "");
-      setCountry(user.country || "");
-      setCurrency(user.currency || "");
-      setLanguages(user.languages || []);
-      setOccupation(user.occupation || "");
-      setFinancialGoal(user.financialGoal || "");
-      setAiPersona(user.aiPersona || "");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update profile.";
       toast.error(message);
@@ -252,17 +247,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ aiPersona });
+      await refetchProfile();
       toast.success("AI personality updated!");
-      const response = await userService.getProfile();
-      const user = response.user;
-      setName(user.name || "");
-      setEmail(user.email || "");
-      setCountry(user.country || "");
-      setCurrency(user.currency || "");
-      setLanguages(user.languages || []);
-      setOccupation(user.occupation || "");
-      setFinancialGoal(user.financialGoal || "");
-      setAiPersona(user.aiPersona || "");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update AI persona.";
       toast.error(message);
@@ -270,10 +256,18 @@ export default function SettingsPage() {
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) return toast.error("Please fill in all password fields.");
-    if (newPassword !== confirmPassword) return toast.error("New passwords do not match.");
-    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters.");
-    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
     setIsChangingPassword(true);
     try {
       await userService.changePassword(currentPassword, newPassword);
@@ -285,16 +279,18 @@ export default function SettingsPage() {
     } finally { setIsChangingPassword(false); }
   };
 
-  // --- WORKSPACE HANDLERS ---
+  // ---------------------------------------------------------------------------
+  // WORKSPACE ACTIONS
+  // ---------------------------------------------------------------------------
   const handleRenameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!renameInput.trim() || !activeWorkspace) return;
     setIsWorkspaceSaving(true);
     try {
       await workspaceService.update(activeWorkspace.id, { name: renameInput.trim() });
-      toast.success("Workspace renamed successfully!");
-      setRefreshKey(prev => prev + 1);
-      window.location.reload();
+      toast.success("Workspace renamed!");
+      setRefreshKey((prev) => prev + 1);
+      window.location.reload(); // Refresh to reflect new name everywhere
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to rename workspace.";
       toast.error(message);
@@ -303,21 +299,21 @@ export default function SettingsPage() {
 
   const handleDeleteClick = async (targetWorkspaceId: string) => {
     if (targetWorkspaceId === activeWorkspaceId) {
-      alert("You cannot delete the workspace you are currently using.");
+      toast.error("You cannot delete the active workspace.");
       return;
     }
-    const userConfirmed = confirm("Are you sure you want to delete this workspace?");
-    if (userConfirmed) {
-      try {
-        setDeletingId(targetWorkspaceId);
-        await deleteWorkspace(targetWorkspaceId);
-      } catch (error: unknown) {
-        console.error("Workspace delete error:", error);
-      } finally { setDeletingId(null); }
-    }
+    if (!window.confirm("Are you sure you want to delete this workspace?")) return;
+    try {
+      setDeletingId(targetWorkspaceId);
+      await deleteWorkspace(targetWorkspaceId);
+    } catch (error: unknown) {
+      console.error("Workspace delete error:", error);
+    } finally { setDeletingId(null); }
   };
 
-  // --- VAULT SECURITY HANDLERS ---
+  // ---------------------------------------------------------------------------
+  // VAULT SECURITY HANDLERS
+  // ---------------------------------------------------------------------------
   const handleSecurityToggle = () => {
     setPinModalMode(isVaultSecurityEnabled ? "DISABLE" : "SETUP");
     setIsPinModalOpen(true);
@@ -332,13 +328,21 @@ export default function SettingsPage() {
     await fetchVaultPinStatus();
   };
 
-  // --- HELPERS ---
+  // ---------------------------------------------------------------------------
+  // LANGUAGE TOGGLING
+  // ---------------------------------------------------------------------------
   const toggleLanguage = (lang: string) => {
-    setLanguages(prev => prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]);
+    setLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
   };
   const allLanguages = [...PRIORITY_LANGUAGES, ...EXTENDED_LANGUAGES];
+/* === SECTION 2 END === */
 
-  // --- RENDER ---
+/* ==========================================================================
+   === SECTION 3: RENDER COMPONENT ===
+   ========================================================================== */
+  // Show a loading skeleton while the profile is being fetched
   if (isProfileLoading) {
     return (
       <div className={styles.settingsCanvasDeck}>
@@ -352,8 +356,7 @@ export default function SettingsPage() {
 
   return (
     <div className={styles.settingsCanvasDeck}>
-
-      {/* HEADER */}
+      {/* ----- Header ----- */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.mainHeadline}>Settings</h1>
@@ -364,8 +367,7 @@ export default function SettingsPage() {
       </header>
 
       <div className={styles.cardsStackDeck}>
-
-        {/* WORKSPACE CONTROL CARD */}
+        {/* ----- Workspace Card ----- */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame}>
@@ -380,6 +382,7 @@ export default function SettingsPage() {
           </div>
 
           <div className={styles.cardBodyContent}>
+            {/* Rename form */}
             <form onSubmit={handleRenameSubmit} className={styles.renameFormBlock}>
               <div className={styles.inputFieldGroup}>
                 <label className={styles.fieldLabelText}>Change Current Workspace Name</label>
@@ -402,6 +405,7 @@ export default function SettingsPage() {
 
             <div className={styles.dividerSplitLine} />
 
+            {/* Workspace list */}
             <div className={styles.directoryEntriesListWrapper}>
               <h3 className={styles.subSectionLabel}>All Your Workspaces ({workspaces.length})</h3>
               <div className={styles.entriesGridList}>
@@ -436,11 +440,10 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* PROFILE SETTINGS WITH RESPONSIVE NAVIGATION */}
-        <section className={styles.settingsCardNode} style={{ padding: 0, overflow: 'hidden' }}>
+        {/* ----- Profile Settings (tabbed) ----- */}
+        <section className={styles.settingsCardNode} style={{ padding: 0, overflow: "hidden" }}>
           <div className={styles.modernSettingsContainer}>
-            
-            {/* MOBILE DROPDOWN SELECTOR (< 768px ONLY) */}
+            {/* Mobile dropdown (visible only on small screens) */}
             <div className={styles.mobileTabSelectorWrapper}>
               <label htmlFor="mobile-settings-tab" className={styles.mobileTabSelectorLabel}>
                 Settings Category
@@ -449,7 +452,9 @@ export default function SettingsPage() {
                 <select
                   id="mobile-settings-tab"
                   value={activeTab}
-                  onChange={(e) => setActiveTab(e.target.value as "general" | "location" | "vibe" | "ai" | "security")}
+                  onChange={(e) =>
+                    setActiveTab(e.target.value as "general" | "location" | "vibe" | "ai" | "security")
+                  }
                   className={styles.mobileTabSelectElement}
                 >
                   <option value="general">👤 Identity Details</option>
@@ -462,53 +467,48 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Sidebar Tabs Menu (DESKTOP ONLY) */}
+            {/* Desktop sidebar tabs */}
             <div className={styles.settingsSidebar}>
-              <button 
-                onClick={() => setActiveTab("general")} 
+              <button
+                onClick={() => setActiveTab("general")}
                 className={`${styles.tabButton} ${activeTab === "general" ? styles.tabButtonActive : ""}`}
               >
-                <FiUser className={styles.tabIcon} /> 
+                <FiUser className={styles.tabIcon} />
                 <span className={styles.tabText}>Identity</span>
               </button>
-              
-              <button 
-                onClick={() => setActiveTab("location")} 
+              <button
+                onClick={() => setActiveTab("location")}
                 className={`${styles.tabButton} ${activeTab === "location" ? styles.tabButtonActive : ""}`}
               >
-                <FiGlobe className={styles.tabIcon} /> 
+                <FiGlobe className={styles.tabIcon} />
                 <span className={styles.tabText}>Localization</span>
               </button>
-              
-              <button 
-                onClick={() => setActiveTab("vibe")} 
+              <button
+                onClick={() => setActiveTab("vibe")}
                 className={`${styles.tabButton} ${activeTab === "vibe" ? styles.tabButtonActive : ""}`}
               >
-                <FiTarget className={styles.tabIcon} /> 
+                <FiTarget className={styles.tabIcon} />
                 <span className={styles.tabText}>Financial Vibe</span>
               </button>
-              
-              <button 
-                onClick={() => setActiveTab("ai")} 
+              <button
+                onClick={() => setActiveTab("ai")}
                 className={`${styles.tabButton} ${activeTab === "ai" ? styles.tabButtonActive : ""}`}
               >
-                <FiCpu className={styles.tabIcon} /> 
+                <FiCpu className={styles.tabIcon} />
                 <span className={styles.tabText}>AI Persona</span>
               </button>
-
-              <button 
-                onClick={() => setActiveTab("security")} 
+              <button
+                onClick={() => setActiveTab("security")}
                 className={`${styles.tabButton} ${activeTab === "security" ? styles.tabButtonActive : ""}`}
               >
-                <FiLock className={styles.tabIcon} /> 
+                <FiLock className={styles.tabIcon} />
                 <span className={styles.tabText}>Password</span>
               </button>
             </div>
 
-            {/* Content Area for Active Tab */}
+            {/* Active tab content */}
             <div className={styles.settingsContentArea}>
-              
-              {/* TAB 1: IDENTITY */}
+              {/* Identity */}
               {activeTab === "general" && (
                 <div className={styles.animateFadeIn}>
                   <div className={styles.panelHeader}>
@@ -546,7 +546,7 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* TAB 2: LOCALIZATION */}
+              {/* Localization */}
               {activeTab === "location" && (
                 <div className={styles.animateFadeIn}>
                   <div className={styles.panelHeader}>
@@ -568,8 +568,7 @@ export default function SettingsPage() {
                       </select>
                     </div>
                   </div>
-                  
-                  <div className={styles.inputFieldGroup} style={{ marginTop: '1.5rem' }}>
+                  <div className={styles.inputFieldGroup} style={{ marginTop: "1.5rem" }}>
                     <label className={styles.fieldLabelText}>Languages you speak</label>
                     <div className={styles.tagsGrid}>
                       {allLanguages.map((lang) => (
@@ -584,7 +583,6 @@ export default function SettingsPage() {
                       ))}
                     </div>
                   </div>
-
                   <div className={styles.actionFooter}>
                     <button onClick={handleSaveLocation} disabled={isSaving} className={styles.saveActionSubmitBtn}>
                       {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
@@ -594,27 +592,26 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* TAB 3: FINANCIAL VIBE */}
+              {/* Financial Vibe */}
               {activeTab === "vibe" && (
                 <div className={styles.animateFadeIn}>
                   <div className={styles.panelHeader}>
                     <h3 className={styles.panelTitle}>Financial Vibe</h3>
                     <p className={styles.panelDescription}>Tell us about your work style and primary objectives.</p>
                   </div>
-                  <div className={styles.inputFieldGroup} style={{ marginBottom: '1.5rem' }}>
+                  <div className={styles.inputFieldGroup} style={{ marginBottom: "1.5rem" }}>
                     <label className={styles.fieldLabelText}>Occupation Style</label>
                     <select value={occupation} onChange={(e) => setOccupation(e.target.value)} className={styles.selectInput}>
                       <option value="">Select an occupation...</option>
                       {OCCUPATIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                     </select>
                   </div>
-
                   <div className={styles.inputFieldGroup}>
                     <label className={styles.fieldLabelText}>Primary Financial Goal</label>
                     <div className={styles.richCardsGrid}>
                       {FINANCIAL_GOALS.map((g) => (
-                        <div 
-                          key={g.id} 
+                        <div
+                          key={g.id}
                           onClick={() => setFinancialGoal(g.id)}
                           className={`${styles.richCard} ${financialGoal === g.id ? styles.richCardActive : ""}`}
                         >
@@ -627,7 +624,6 @@ export default function SettingsPage() {
                       ))}
                     </div>
                   </div>
-
                   <div className={styles.actionFooter}>
                     <button onClick={handleSaveVibe} disabled={isSaving} className={styles.saveActionSubmitBtn}>
                       {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
@@ -637,18 +633,17 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* TAB 4: AI PERSONA */}
+              {/* AI Persona */}
               {activeTab === "ai" && (
                 <div className={styles.animateFadeIn}>
                   <div className={styles.panelHeader}>
                     <h3 className={styles.panelTitle}>AI Companion</h3>
                     <p className={styles.panelDescription}>Select the personality tone for your financial AI assistant.</p>
                   </div>
-                  
                   <div className={styles.richCardsGrid}>
                     {AI_PERSONAS.map((p) => (
-                      <div 
-                        key={p.id} 
+                      <div
+                        key={p.id}
                         onClick={() => setAiPersona(p.id)}
                         className={`${styles.richCard} ${aiPersona === p.id ? styles.richCardActive : ""}`}
                       >
@@ -660,7 +655,6 @@ export default function SettingsPage() {
                       </div>
                     ))}
                   </div>
-
                   <div className={styles.actionFooter}>
                     <button onClick={handleSaveAIPersona} disabled={isSaving} className={styles.saveActionSubmitBtn}>
                       {isSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiCheck size={14} />}
@@ -670,14 +664,14 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* TAB 5: PASSWORD */}
+              {/* Password */}
               {activeTab === "security" && (
                 <div className={styles.animateFadeIn}>
                   <div className={styles.panelHeader}>
                     <h3 className={styles.panelTitle}>Change Password</h3>
                     <p className={styles.panelDescription}>Update your master account credentials securely.</p>
                   </div>
-                  <div className={styles.inputFieldGroup} style={{ marginBottom: '1rem' }}>
+                  <div className={styles.inputFieldGroup} style={{ marginBottom: "1rem" }}>
                     <label className={styles.fieldLabelText}>Current Password</label>
                     <input
                       type="password"
@@ -710,9 +704,9 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className={styles.actionFooter}>
-                    <button 
-                      onClick={handleChangePassword} 
-                      disabled={isChangingPassword} 
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={isChangingPassword}
                       className={styles.saveActionSubmitBtn}
                       style={{ backgroundColor: "var(--color-danger, #dc2626)" }}
                     >
@@ -722,65 +716,83 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         </section>
 
-        {/* VAULT SECURITY CARD */}
+        {/* ----- Vault Security Card ----- */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
-            <div className={styles.iconIndicatorFrame} style={{ color: 'var(--color-success, #16a34a)', backgroundColor: 'rgba(22, 163, 74, 0.08)', borderColor: 'rgba(22, 163, 74, 0.2)' }}>
+            <div
+              className={styles.iconIndicatorFrame}
+              style={{
+                color: "var(--color-success, #16a34a)",
+                backgroundColor: "rgba(22, 163, 74, 0.08)",
+                borderColor: "rgba(22, 163, 74, 0.2)",
+              }}
+            >
               <FiShield size={18} />
             </div>
             <div>
               <h2 className={styles.cardTitle}>Investment Vault Security</h2>
               <p className={styles.cardContextExplanation}>
-                Protect your crypto and stock details by adding a secret 4-digit password screen.
+                Protect your crypto and stock details by adding a secret 4‑digit password screen.
               </p>
             </div>
           </div>
-
           <div className={styles.cardBodyContent}>
             <div className={styles.placeholderControlRowFlexDeck}>
               <div className={styles.metaInformationLeftTextBlock}>
                 <span className={styles.rowControlHeadline}>Password Screen Lock</span>
                 <span className={styles.rowControlSecondaryExplanation}>
-                  {isSecurityLoading ? "Analyzing secure validation state tokens..." : 
-                   isVaultSecurityEnabled ? "Your password lock is active. Your investments are safe and hidden behind a lock screen." : 
-                   "Your password lock is turned off. Anyone who opens this app can see your investments."}
+                  {isSecurityLoading
+                    ? "Analyzing secure validation state tokens..."
+                    : isVaultSecurityEnabled
+                      ? "Your password lock is active. Your investments are safe and hidden behind a lock screen."
+                      : "Your password lock is turned off. Anyone who opens this app can see your investments."}
                 </span>
               </div>
-
               <div className={styles.vaultActionCluster}>
                 {isVaultSecurityEnabled && !isSecurityLoading && (
                   <button
                     type="button"
                     onClick={handleChangePinClick}
                     className={styles.saveActionSubmitBtn}
-                    style={{ backgroundColor: 'var(--bg-surface, #ffffff)', color: 'var(--text-primary, #10043f)', border: '1px solid var(--border-color, #e5e1f4)' }}
+                    style={{
+                      backgroundColor: "var(--bg-surface, #ffffff)",
+                      color: "var(--text-primary, #10043f)",
+                      border: "1px solid var(--border-color, #e5e1f4)",
+                    }}
                   >
                     Change PIN
                   </button>
                 )}
-
                 <button
                   type="button"
                   onClick={handleSecurityToggle}
                   disabled={isSecurityLoading}
                   className={styles.saveActionSubmitBtn}
-                  style={{ backgroundColor: isVaultSecurityEnabled ? 'var(--color-danger, #dc2626)' : 'var(--color-success, #16a34a)' }}
+                  style={{
+                    backgroundColor: isVaultSecurityEnabled
+                      ? "var(--color-danger, #dc2626)"
+                      : "var(--color-success, #16a34a)",
+                  }}
                 >
-                  {isSecurityLoading ? <FiLoader className={styles.loadingSpinnerAnimation} /> : isVaultSecurityEnabled ? "Turn Off Lock" : "Turn On Lock"}
+                  {isSecurityLoading ? (
+                    <FiLoader className={styles.loadingSpinnerAnimation} />
+                  ) : isVaultSecurityEnabled ? (
+                    "Turn Off Lock"
+                  ) : (
+                    "Turn On Lock"
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </section>
-
       </div>
 
-      {/* PIN SETUP MODAL */}
+      {/* PIN Setup / Change Modal */}
       <PinSetupModal
         key={`pin-modal-${pinModalMode}-${isPinModalOpen}`}
         isOpen={isPinModalOpen}
@@ -788,7 +800,6 @@ export default function SettingsPage() {
         onClose={() => setIsPinModalOpen(false)}
         onSuccess={handlePinSetupSuccess}
       />
-
     </div>
   );
 }

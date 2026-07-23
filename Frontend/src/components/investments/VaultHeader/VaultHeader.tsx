@@ -28,7 +28,7 @@ export function VaultHeader({ onAddAssetClick, onSetupPinClick, hasPinEnabled = 
   return (
     <header className={styles.headerLayoutRow}>
       
-      {/* LEFT SIDE: TITLES WITH MODERN STRATIFIED WEIGHTS */}
+      {/* LEFT SIDE: TITLES */}
       <div className={styles.titleMetaBlock}>
         <h1 className={styles.mainTitleHeading}>Investment Vault</h1>
         <p className={styles.subtextMetaDescription}>
@@ -57,15 +57,14 @@ export function VaultHeader({ onAddAssetClick, onSetupPinClick, hasPinEnabled = 
             strokeWidth="2.5" 
             strokeLinecap="round" 
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             {hasPinEnabled ? (
-              /* Completely closed solid padlock for active state */
               <>
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </>
             ) : (
-              /* Open padlock for setup state */
               <>
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
@@ -93,6 +92,7 @@ export function VaultHeader({ onAddAssetClick, onSetupPinClick, hasPinEnabled = 
             strokeWidth="3" 
             strokeLinecap="round" 
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>

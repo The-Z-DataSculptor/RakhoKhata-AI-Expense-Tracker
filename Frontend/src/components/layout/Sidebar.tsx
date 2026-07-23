@@ -4,20 +4,15 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS AND DEPENDENCIES ===
    ========================================================================== */
-// 🚀 FIXED: Added useEffect and useRef to manage external screen click event captures
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Cookies from "js-cookie"; // Used to destroy sessions by removing the cookie from browser memory
-import { toast } from "sonner";    // Notification popups to give visual feedback to the user
+import Cookies from "js-cookie";
+import { toast } from "sonner";
 
-// Import our custom Workspace Context Hook to read live backend ledger environments
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
-
-// Import the standalone modal form that allows users to type in new workspace names
 import CreateWorkspaceModal from "@/components/forms/CreateWorkspaceModal/CreateWorkspaceModal";
 
-// Import clear, minimal icons from the popular Feather Icons library
 import { 
   FiGrid, 
   FiActivity, 
@@ -75,24 +70,26 @@ export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const { workspaces, activeWorkspace, switchWorkspace, renderIcon, isLoading } = useWorkspace();
   
-  // --- VISUAL UI STATE ENGINE INTERFACES ---
+  // Defensive array checks for safe workspace mapping
+  const safeWorkspaces = Array.isArray(workspaces) ? workspaces : [];
+
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);      
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);                  
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);                
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);      
 
-  // 🚀 FIXED: Anchors to monitor click coordinate boundaries outside the structural layout containers
   const workspaceDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fallbacks
   const accountName = user?.name || "RakhoKhata User";
   const accountEmail = user?.email || "Cloud Synced";
 
-  const coreItems = NAVIGATION_ITEMS.filter(item => item.group === "core");
-  const growthItems = NAVIGATION_ITEMS.filter(item => item.group === "growth");
-  const intelligenceItems = NAVIGATION_ITEMS.filter(item => item.group === "intelligence");
+  // WHY THIS FIX WAS MADE: Memoizing navigation arrays prevents unnecessary array filtering
+  // computations on every single render cycle during state updates.
+  const coreItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "core"), []);
+  const growthItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "growth"), []);
+  const intelligenceItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "intelligence"), []);
 
   const containerClassName = `
     ${styles.sidebarContainer} 
@@ -100,46 +97,55 @@ export default function Sidebar({ user }: SidebarProps) {
     ${isMobileOpen ? styles.mobileSidebarActive : ""}
   `.trim();
 
-  // Simple clean toggles to open menus while making sure they don't overlay and overlap each other
-  const toggleWorkspaceDropdown = () => {
-    setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen);
-    if (isProfileMenuOpen) setIsProfileMenuOpen(false);
-  };
+  const toggleWorkspaceDropdown = useCallback(() => {
+    setIsWorkspaceMenuOpen(prev => !prev);
+    setIsProfileMenuOpen(false);
+  }, []);
 
-  const toggleProfileDropdown = () => {
-    setIsProfileMenuOpen(!isProfileMenuOpen);
-    if (isWorkspaceMenuOpen) setIsWorkspaceMenuOpen(false);
-  };
+  const toggleProfileDropdown = useCallback(() => {
+    setIsProfileMenuOpen(prev => !prev);
+    setIsWorkspaceMenuOpen(false);
+  }, []);
 
-  // 🚀 FIXED: Global window mouse hook checks for container boundary leaks to close items on outside blur
+  // WHY THIS FIX WAS MADE: Listens for Escape key presses and click-outside events
+  // to cleanly dismiss open menus and meet accessibility standards.
   useEffect(() => {
     const handleGlobalClickAway = (event: MouseEvent) => {
-      // Close workspace list if click originates outside its wrapper
       if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(event.target as Node)) {
         setIsWorkspaceMenuOpen(false);
       }
-      // Close user profile settings card if click originates outside its wrapper
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsWorkspaceMenuOpen(false);
+        setIsProfileMenuOpen(false);
+        setIsMobileOpen(false);
+      }
+    };
+
     document.addEventListener("mousedown", handleGlobalClickAway);
-    return () => document.removeEventListener("mousedown", handleGlobalClickAway);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleGlobalClickAway);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
-  // AUTH SESSION TERMINATION ROUTINE
   const handleSignOutAction = () => {
     setIsProfileMenuOpen(false);
     Cookies.remove("token", { path: "/" });
     toast.success("Logged out successfully. See you soon!");
     window.location.href = "/login";
   };
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <>
       {/* MOBILE HEADER BAR */}
@@ -148,9 +154,11 @@ export default function Sidebar({ user }: SidebarProps) {
           Rakho<span className={styles.logoAccent}>Khata</span>
         </div>
         <button 
+          type="button"
           className={styles.mobileMenuToggleTrigger}
           onClick={() => setIsMobileOpen(!isMobileOpen)}
           aria-label="Toggle system navigation drawer"
+          aria-expanded={isMobileOpen}
         >
           {isMobileOpen ? <FiX size={22} /> : <FiMenu size={22} />}
         </button>
@@ -173,6 +181,7 @@ export default function Sidebar({ user }: SidebarProps) {
         
         {/* DESKTOP SIDEBAR SHRINK TRIGGER ARROW PIN */}
         <button 
+          type="button"
           className={styles.desktopCollapsePinButton}
           onClick={() => setIsCollapsed(!isCollapsed)}
           aria-label={isCollapsed ? "Expand side navigation" : "Collapse side navigation"}
@@ -186,12 +195,13 @@ export default function Sidebar({ user }: SidebarProps) {
             Rakho<span className={styles.logoAccent}>Khata</span>
           </div>
 
-          {/* 🚀 FIXED: Attached workspaceDropdownRef here to monitor workspace click bounds */}
           <div className={styles.workspaceWrapper} ref={workspaceDropdownRef}>
             <button 
+              type="button"
               className={styles.workspaceSelectorTrigger}
               onClick={toggleWorkspaceDropdown}
               aria-label="Toggle workspace environment selector"
+              aria-expanded={isWorkspaceMenuOpen}
             >
               <span className={styles.activeWorkspaceIcon}>
                 {activeWorkspace && !isLoading ? renderIcon(activeWorkspace.iconName || "folder", 14) : <FiFolder size={14} />}
@@ -204,16 +214,18 @@ export default function Sidebar({ user }: SidebarProps) {
 
             {/* DROP-DOWN DRAWER CONTEXT OPTIONS INDEX */}
             {isWorkspaceMenuOpen && (
-              <div className={styles.workspaceDropdownMenu}>
+              <div className={styles.workspaceDropdownMenu} role="menu">
                 <div className={styles.workspaceScrollArea}>
                   {isLoading ? (
                     <div className={styles.loadingPlaceholderText}>Fetching active ledgers...</div>
                   ) : (
-                    workspaces.map((ws) => {
+                    safeWorkspaces.map((ws) => {
                       const isSelected = activeWorkspace?.id === ws.id;
                       return (
                         <button 
                           key={ws.id}
+                          type="button"
+                          role="menuitem"
                           onClick={() => { switchWorkspace(ws.id); setIsWorkspaceMenuOpen(false); }}
                           className={isSelected ? styles.selectedWorkspaceOption : ""}
                         >
@@ -228,8 +240,8 @@ export default function Sidebar({ user }: SidebarProps) {
 
                 <div className={styles.dropdownDivider} />
 
-                {/* ACTION TRIGGER: Triggers the new create modal screen */}
                 <button 
+                  type="button"
                   className={styles.createWorkspaceBtn}
                   onClick={() => {
                     setIsWorkspaceMenuOpen(false);
@@ -245,9 +257,8 @@ export default function Sidebar({ user }: SidebarProps) {
         </div>
 
         {/* --- BLOCK B: PRIMARY ROUTE NAV HIGHLIGHT LINERS --- */}
-        <nav className={styles.navNavigationStack}>
+        <nav className={styles.navNavigationStack} aria-label="Main Navigation">
           
-          {/* CORE FLOW VIEW LABELS */}
           <div className={styles.navGroupSection}>
             {coreItems.map((item) => {
               const isLinkActive = pathname === item.href;
@@ -266,7 +277,6 @@ export default function Sidebar({ user }: SidebarProps) {
             })}
           </div>
 
-          {/* ASSET INVESTMENT ACCELERATORS */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Wealth Management</div>
             {growthItems.map((item) => {
@@ -286,7 +296,6 @@ export default function Sidebar({ user }: SidebarProps) {
             })}
           </div>
 
-          {/* AI COMPUTE LAYER */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Core Intelligence</div>
             {intelligenceItems.map((item) => {
@@ -309,13 +318,10 @@ export default function Sidebar({ user }: SidebarProps) {
         </nav>
 
         {/* --- BLOCK C: BOTTOM USER DRAWER ACCOUNT MANAGER --- */}
-        {/* 🚀 FIXED: Attached profileDropdownRef here to monitor user deck click bounds */}
         <div className={styles.profileMasterSectionWrapper} ref={profileDropdownRef}>
           
-          {/* PROFILE CONTROL POP-UP ELEMENT DECK */}
           {isProfileMenuOpen && (
-            <div className={styles.profilePopoverMenuDeck}>
-              
+            <div className={styles.profilePopoverMenuDeck} role="menu">
               {!isCollapsed && (
                 <div className={styles.popoverMetaUserBlock}>
                   <p className={styles.popoverUserLabelTitle}>{accountName}</p>
@@ -329,6 +335,7 @@ export default function Sidebar({ user }: SidebarProps) {
                 href="/dashboard/settings" 
                 className={styles.popoverInteractButtonRow}
                 onClick={() => setIsProfileMenuOpen(false)}
+                role="menuitem"
               >
                 <FiSettings size={14} />
                 <span>Account Settings</span>
@@ -336,22 +343,22 @@ export default function Sidebar({ user }: SidebarProps) {
 
               <button 
                 type="button" 
+                role="menuitem"
                 className={`${styles.popoverInteractButtonRow} ${styles.popoverSignOutActionLink}`}
                 onClick={handleSignOutAction}
               >
                 <FiLogOut size={14} />
                 <span>Sign Out Account</span>
               </button>
-
             </div>
           )}
 
-          {/* SYSTEM USER DECK TRIGGER BUTTON BANNER */}
           <button 
             type="button"
             className={`${styles.accountProfileFooterSection} ${isProfileMenuOpen ? styles.footerSectionActiveTrigger : ""}`}
             onClick={toggleProfileDropdown}
             aria-label="Toggle profile management settings layout popover window"
+            aria-expanded={isProfileMenuOpen}
           >
             <div className={styles.userProfileIdentificationCard}>
               <div className={styles.userAvatarIndicatorBubble}>

@@ -23,7 +23,7 @@ export interface MetricItem {
 
 export interface MetricCardProps {
   metrics: MetricItem[];
-  sourceCurrency: string; // workspace currency for formatting
+  sourceCurrency: string;
 }
 /* === SECTION 2 END === */
 
@@ -33,13 +33,15 @@ export interface MetricCardProps {
 export default React.memo(function MetricCard({ metrics, sourceCurrency }: MetricCardProps) {
   const { formatAmount } = useCurrency();
 
-  if (!metrics || metrics.length === 0) {
+  const safeMetrics = Array.isArray(metrics) ? metrics : [];
+
+  if (safeMetrics.length === 0) {
     return <div className={styles.emptySlateText}>No financial data available right now.</div>;
   }
 
   return (
     <div className={styles.metricGridContainer}>
-      {metrics.map((item, index) => {
+      {safeMetrics.map((item, index) => {
         let cardIcon = <FiActivity size={18} />;
         if (item.iconType === "inflow") {
           cardIcon = <FiTrendingUp size={18} />;
@@ -64,14 +66,17 @@ export default React.memo(function MetricCard({ metrics, sourceCurrency }: Metri
         const firstWord = extractedFirstWord || "";
         const remainingWords = restWordsArray.join(" ");
 
-        // Build subtext with projected value if available
-        let displaySubtext = item.subtext;
+        let displaySubtext = item.subtext || "";
         if (item.projectedValue !== undefined && item.projectedValue !== null) {
-          displaySubtext = `${item.subtext} · Projected monthly: ${formatAmount(item.projectedValue, sourceCurrency)}`;
+          displaySubtext = `${displaySubtext} · Projected monthly: ${formatAmount(Number(item.projectedValue) || 0, sourceCurrency)}`;
         }
 
+        // WHY THIS FIX WAS MADE: Uses composite keys (title + index) to prevent React key collision
+        // errors when items share duplicate title labels.
+        const uniqueKey = `metric-${index}-${item.title || 'item'}`;
+
         return (
-          <article key={item.title} className={`${styles.metricCardBase} ${cardStyleClass}`}>
+          <article key={uniqueKey} className={`${styles.metricCardBase} ${cardStyleClass}`}>
             <header className={styles.cardHeaderRow}>
               <div className={styles.metaLabelGroup}>
                 <span className={styles.cardIndexMarker}>{displayIndex}</span>
@@ -87,7 +92,7 @@ export default React.memo(function MetricCard({ metrics, sourceCurrency }: Metri
 
             <div className={styles.cardBodyContent}>
               <h2 className={styles.metricValueDisplay}>
-                {formatAmount(item.value, sourceCurrency)}
+                {formatAmount(Number(item.value) || 0, sourceCurrency)}
               </h2>
             </div>
 
@@ -102,3 +107,4 @@ export default React.memo(function MetricCard({ metrics, sourceCurrency }: Metri
     </div>
   );
 });
+/* === SECTION 3 END === */

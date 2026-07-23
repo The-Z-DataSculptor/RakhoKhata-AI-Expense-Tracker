@@ -42,21 +42,26 @@ interface CustomTooltipProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: COMPONENT LOGIC & HELPERS ===
    ========================================================================== */
 const CustomChartTooltip = ({ active, payload, label, formatAmount, sourceCurrency }: CustomTooltipProps) => {
-  if (!active || !payload || payload.length < 2) {
+  // WHY THIS FIX WAS MADE: Defensively checks array lengths and properties to avoid
+  // runtime type errors if recharts passes sparse payload entries.
+  if (!active || !Array.isArray(payload) || payload.length === 0) {
     return null;
   }
 
-  const incomeValue = payload[0]?.value || 0;
-  const expenseValue = payload[1]?.value || 0;
+  const incomeEntry = payload.find((item) => item.dataKey === "Income");
+  const expenseEntry = payload.find((item) => item.dataKey === "Expenses");
+
+  const incomeValue = Number(incomeEntry?.value) || 0;
+  const expenseValue = Number(expenseEntry?.value) || 0;
   const netSavings = incomeValue - expenseValue;
   const isProfitable = netSavings >= 0;
 
   return (
-    <div className={styles.customTooltip}>
-      <p className={styles.tooltipLabel}>{label}</p>
+    <div className={styles.customTooltip} role="tooltip">
+      <p className={styles.tooltipLabel}>{label || "Date"}</p>
 
       <div className={styles.tooltipItem} style={{ color: 'var(--color-success)' }}>
         <span>Income:</span>
@@ -86,7 +91,9 @@ const CustomChartTooltip = ({ active, payload, label, formatAmount, sourceCurren
 export default function CashFlowChart({ data, sourceCurrency }: CashFlowChartProps) {
   const { formatAmount } = useCurrency();
 
-  if (!data || data.length === 0) {
+  const safeData = Array.isArray(data) ? data : [];
+
+  if (safeData.length === 0) {
     return (
       <div className={styles.chartContainer}>
         <div className={styles.chartHeader}>
@@ -115,7 +122,7 @@ export default function CashFlowChart({ data, sourceCurrency }: CashFlowChartPro
       <div className={styles.responsiveWrapperContainer}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={data}
+            data={safeData}
             margin={{ top: 10, right: 15, left: 10, bottom: 0 }}
           >
             <defs>
@@ -149,7 +156,7 @@ export default function CashFlowChart({ data, sourceCurrency }: CashFlowChartPro
               dx={-5}
               width={85}
               style={{ fontSize: '12px', fontFamily: 'var(--font-navbar)' }}
-              tickFormatter={(value) => formatAmount(value, sourceCurrency)}
+              tickFormatter={(value) => formatAmount(Number(value) || 0, sourceCurrency)}
             />
 
             <Tooltip

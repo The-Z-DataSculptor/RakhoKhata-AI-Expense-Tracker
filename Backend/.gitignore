@@ -1,5 +1,88 @@
-node_modules
-# Keep environment variables out of version control
-.env
+# Backend/.gitignore
 
-/generated/prisma
+# ==========================================================================
+# === SECTION 1: SECRETS & ENVIRONMENT VARIABLES ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Wildcard matching ensures all environment variable files
+# (.env.production, .env.local, .env.staging, etc.) are strictly excluded while permitting template files.
+.env
+.env.*
+!.env.example
+
+# WHY THIS FIX WAS MADE: Excludes local private keys, SSL certificates, and SSH identity tokens
+# to prevent catastrophic credential leaks in version control history.
+*.pem
+*.key
+*.crt
+*.pfx
+id_rsa
+id_rsa.pub
+
+# WHY THIS FIX WAS MADE: Prevents local database backups and storage dumps from leaking user data.
+*.sql
+*.sqlite
+*.db
+*.dump
+
+# === SECTION 1 END ===
+
+# ==========================================================================
+# === SECTION 2: DEPENDENCIES & GENERATED CODE ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Trailing slashes explicitly restrict exclusions to directories,
+# preventing Git from tracking heavy node_modules binaries across nested subfolders.
+node_modules/
+
+# WHY THIS FIX WAS MADE: Unanchored path matching ensures generated Prisma ORM client files
+# are ignored regardless of whether they build to prisma/generated or src/prisma/generated.
+**/generated/prisma/
+prisma/generated/
+src/prisma/generated/
+
+# === SECTION 2 END ===
+
+# ==========================================================================
+# === SECTION 3: BUILD ARTIFACTS & COMPILATION OUTPUT ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Compiled JavaScript output should be produced by build pipelines
+# rather than committed to source control, avoiding merge conflicts and stale assets.
+dist/
+build/
+out/
+.tsbuildinfo
+
+# === SECTION 3 END ===
+
+# ==========================================================================
+# === SECTION 4: LOGS, OS METADATA & IDE SETTINGS ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Prevents runtime log files, test coverage reports, editor settings,
+# and operating system hidden files from cluttering code reviews and build context.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+coverage/
+.nyc_output/
+
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj*
+*.sln
+*.swp
+
+# WHY THIS FIX WAS MADE: Allows upload directory structure to exist without tracking user files.
+public/uploads/*
+!public/uploads/.gitkeep
+
+# === SECTION 4 END ===

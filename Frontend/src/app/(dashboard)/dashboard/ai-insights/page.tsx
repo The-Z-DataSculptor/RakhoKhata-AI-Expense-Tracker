@@ -4,7 +4,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { AiChatConsole } from "@/components/ai-insights/AiChatConsole/AiChatConsole";
 import { AiResponseCard } from "@/components/ai-insights/AiResponseCard/AiResponseCard";
 import { AiLeakWarnings } from "@/components/ai-insights/AiLeakWarnings/AiLeakWarnings";
@@ -45,29 +45,46 @@ export default function AiInsightsPage() {
   // --- LOCAL DATA STATES (Used strictly for visual Warnings list) ---
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  // WHY THIS FIX WAS MADE: Initialized to false to eliminate synchronous setState calls inside effect guard bodies
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
 
-  // Fetch real data when workspace changes
+  // Maintains a ref to track the latest active request token, preventing race conditions
+  const activeRequestRef = useRef<number>(0);
+
+  // Fetch real data safely with unmount safeguards when workspace changes
   useEffect(() => {
-    if (!activeWorkspaceId) return;
+    let isMounted = true;
+    if (!activeWorkspaceId) {
+      return;
+    }
 
     const fetchData = async () => {
-      setIsDataLoading(true);
+      if (isMounted) setIsDataLoading(true);
       try {
         const [txData, budgetData] = await Promise.all([
           transactionService.getByWorkspace(activeWorkspaceId),
           budgetService.getByWorkspace(activeWorkspaceId),
         ]);
-        setTransactions(txData.transactions || []);
-        setBudgets(budgetData.budgets || []);
+        if (isMounted) {
+          setTransactions(txData.transactions || []);
+          setBudgets(budgetData.budgets || []);
+        }
       } catch {
-        toast.error("Could not load your data. Please try again.");
+        if (isMounted) {
+          toast.error("Could not load your data. Please try again.");
+        }
       } finally {
-        setIsDataLoading(false);
+        if (isMounted) {
+          setIsDataLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [activeWorkspaceId]);
 
   // --- COMPUTE WARNINGS FROM REAL DATA (Client UI decoration only) ---
@@ -79,7 +96,7 @@ export default function AiInsightsPage() {
       if (tx.type !== "EXPENSE") return;
       const catName = tx.category?.name || "Uncategorized";
       const amount = convertAmount(
-        Number(tx.originalAmount),
+        Number(tx.originalAmount || 0),
         tx.originalCurrency || "USD",
         currency
       );
@@ -93,9 +110,8 @@ export default function AiInsightsPage() {
       if (!catName) return;
       const spent = categorySpent[catName] || 0;
 
-      // 🚀 FIXED: Replaced budget.limitAmount with budget.originalAmount to match API definitions
       const limit = convertAmount(
-        Number(budget.originalAmount),
+        Number(budget.originalAmount || 0),
         budget.originalCurrency || "USD",
         currency
       );
@@ -122,28 +138,38 @@ export default function AiInsightsPage() {
     return warningList;
   }, [transactions, budgets, convertAmount, currency, formatAmount]);
 
-  // --- HANDLE USER QUESTION (100% backend driven!) ---
-  const handleQuerySubmit = async (question: string) => {
+  // --- HANDLE USER QUESTION (100% backend driven with race condition protection) ---
+  const handleQuerySubmit = useCallback(async (question: string) => {
     if (!activeWorkspaceId) return;
+    
+    const requestId = ++activeRequestRef.current;
     setIsCardVisible(true);
     setIsLoading(true);
     setAiResponse("");
 
     try {
       const response = await aiService.ask(question, activePersona, activeWorkspaceId);
-      setAiResponse(response.response);
-    } catch (error: unknown) {
-      console.error("AI Request Error:", error);
-      let errorMessage = "Failed to get AI response.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
+      
+      // Ensures stale out-of-order responses are discarded if a newer request was sent
+      if (requestId === activeRequestRef.current) {
+        setAiResponse(response.response);
       }
-      setAiResponse(`Error: ${errorMessage}`);
-      toast.error(errorMessage);
+    } catch (error: unknown) {
+      if (requestId === activeRequestRef.current) {
+        console.error("AI Request Error:", error);
+        let errorMessage = "Failed to get AI response.";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        setAiResponse(`Error: ${errorMessage}`);
+        toast.error(errorMessage);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === activeRequestRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [activeWorkspaceId, activePersona]);
 
   // --- RENDER ---
   return (

@@ -1,6 +1,62 @@
+# Frontend/.dockerignore
+
+# ==========================================================================
+# === SECTION 1: DEPENDENCIES & PACKAGE MANAGERS ===
+# ==========================================================================
+# WHY THIS FIX IS NECESSARY: Prevents transferring host operating system binaries 
+# into the Docker container. Dependencies must be installed inside the container environment.
 node_modules
+.npm
+.yarn
+.pnpm-store
+# === SECTION 1 END ===
+
+# ==========================================================================
+# === SECTION 2: SECURITY & ENVIRONMENT SECRETS ===
+# ==========================================================================
+# WHY THIS FIX IS NECESSARY: Catch-all wildcard pattern ensures NO environment file 
+# containing API keys, database credentials, or secret tokens can leak into build artifacts.
+.env
+.env*
+!.env.example
+
+# WHY THIS FIX IS NECESSARY: Blocks private cryptographic keys and auth configurations 
+# from being bundled into container image layers.
+*.pem
+*.key
+*.crt
+.npmrc
+.yarnrc
+# === SECTION 2 END ===
+
+# ==========================================================================
+# === SECTION 3: FRAMEWORK BUILD OUTPUTS & CACHES ===
+# ==========================================================================
+# WHY THIS FIX IS NECESSARY: Prevents stale host build outputs from interfering with 
+# fresh multi-stage Next.js production builds inside the container.
 .next
+out
+build
+dist
+.cache
+coverage
+# === SECTION 3 END ===
+
+# ==========================================================================
+# === SECTION 4: VERSION CONTROL & SYSTEM JUNK ===
+# ==========================================================================
+# WHY THIS FIX IS NECESSARY: Speeds up Docker build context evaluation by omitting 
+# git history, OS files, and developer documentation.
 .git
-.env*.local
-Dockerfile
+.gitignore
+.gitattributes
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 README.md
+# === SECTION 4 END ===

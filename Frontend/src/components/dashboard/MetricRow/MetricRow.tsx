@@ -1,18 +1,25 @@
 // src/components/dashboard/MetricRow/MetricRow.tsx
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS ===
+   ========================================================================== */
 import React from "react";
 import { TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 import MetricCard, { MetricItem } from "@/components/dashboard/MetricCard/MetricCard";
 import styles from "./MetricRow.module.css";
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: TYPES & INTERFACES ===
+   ========================================================================== */
 interface MetricRowProps {
   metrics: {
     totalIncome: number;
     fixedExpenses: number;
     flexibleExpenses: number;
     safeToSpend: number;
-    projected: {
+    projected?: {
       totalIncome: number;
       fixedExpenses: number;
       flexibleExpenses: number;
@@ -21,11 +28,31 @@ interface MetricRowProps {
   };
   periodLabel: string;
   activePeriod: TimePeriod;
-  sourceCurrency: string;   // workspace currency
+  sourceCurrency: string;
 }
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC & RENDER ===
+   ========================================================================== */
 export default function MetricRow({ metrics, periodLabel, activePeriod, sourceCurrency }: MetricRowProps) {
   
+  // WHY THIS FIX WAS MADE: Defensively handles null/undefined metrics or projected objects
+  // to avoid unhandled TypeError property access crashes.
+  const safeMetrics = metrics || {
+    totalIncome: 0,
+    fixedExpenses: 0,
+    flexibleExpenses: 0,
+    safeToSpend: 0,
+  };
+
+  const safeProjected = safeMetrics.projected || {
+    totalIncome: 0,
+    fixedExpenses: 0,
+    flexibleExpenses: 0,
+    safeToSpend: 0,
+  };
+
   const getBillsTitle = () => {
     switch (activePeriod) {
       case "7d": return "This Week's Bills";
@@ -65,31 +92,31 @@ export default function MetricRow({ metrics, periodLabel, activePeriod, sourceCu
   const financialMetricsCollection: MetricItem[] = [
     {
       title: getBillsTitle(),
-      value: metrics.fixedExpenses,
-      subtext: `Fixed costs ${periodLabel}`,
+      value: Number(safeMetrics.fixedExpenses) || 0,
+      subtext: `Fixed costs ${periodLabel || 'overall'}`,
       iconType: "bill",
-      projectedValue: metrics.projected.fixedExpenses,
+      projectedValue: Number(safeProjected.fixedExpenses) || 0,
     },
     {
       title: getIncomeTitle(),
-      value: metrics.totalIncome,
-      subtext: `Income ${periodLabel}`,
+      value: Number(safeMetrics.totalIncome) || 0,
+      subtext: `Income ${periodLabel || 'overall'}`,
       iconType: "inflow",
-      projectedValue: metrics.projected.totalIncome,
+      projectedValue: Number(safeProjected.totalIncome) || 0,
     },
     {
       title: getExpenseTitle(),
-      value: metrics.flexibleExpenses,
-      subtext: `Flexible spending ${periodLabel}`,
+      value: Number(safeMetrics.flexibleExpenses) || 0,
+      subtext: `Flexible spending ${periodLabel || 'overall'}`,
       iconType: "outflow",
-      projectedValue: metrics.projected.flexibleExpenses,
+      projectedValue: Number(safeProjected.flexibleExpenses) || 0,
     },
     {
       title: getSafeTitle(),
-      value: metrics.safeToSpend,
-      subtext: activePeriod === "all" ? "Remaining overall" : `Remaining ${periodLabel}`,
+      value: Number(safeMetrics.safeToSpend) || 0,
+      subtext: activePeriod === "all" ? "Remaining overall" : `Remaining ${periodLabel || 'overall'}`,
       iconType: "safe",
-      projectedValue: metrics.projected.safeToSpend,
+      projectedValue: Number(safeProjected.safeToSpend) || 0,
     },
   ];
 
@@ -99,3 +126,4 @@ export default function MetricRow({ metrics, periodLabel, activePeriod, sourceCu
     </div>
   );
 }
+/* === SECTION 3 END === */

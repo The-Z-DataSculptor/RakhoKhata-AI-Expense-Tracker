@@ -2,19 +2,28 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & ENVIRONMENT CONFIG ===
    ========================================================================== */
 import React, { useState, useRef, useEffect } from "react";
-import { 
-  FiArrowUpRight, 
-  FiArrowDownLeft, 
-  FiFileText, 
-  FiGrid, 
-  FiChevronDown 
+import {
+  FiArrowUpRight,
+  FiArrowDownLeft,
+  FiFileText,
+  FiGrid,
+  FiChevronDown,
 } from "react-icons/fi";
 import { toast } from "sonner";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./TransactionFooter.module.css";
+
+/*
+ * WHY a fallback is necessary:
+ * NEXT_PUBLIC_API_URL is only set when you have a .env.local file.
+ * Without it the variable is undefined, causing `API_BASE_URL` to be "".
+ * The fallback ensures export requests always go to the backend (port 5000),
+ * never to the Next.js dev server.
+ */
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -28,18 +37,24 @@ interface TransactionFooterProps {
 }
 
 type DownloadType = "idle" | "pdf" | "excel";
-
-type ExportScope = "today" | "week" | "month" | "3months" | "6months" | "year" | "all";
+type ExportScope =
+  | "today"
+  | "week"
+  | "month"
+  | "3months"
+  | "6months"
+  | "year"
+  | "all";
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: COMPONENT LOGIC & EXPORT HANDLERS ===
    ========================================================================== */
-export default function TransactionFooter({ 
-  totalIncome, 
-  totalExpenses, 
+export default function TransactionFooter({
+  totalIncome,
+  totalExpenses,
   sourceCurrency,
-  activeWorkspaceId 
+  activeWorkspaceId,
 }: TransactionFooterProps) {
   const [downloadType, setDownloadType] = useState<DownloadType>("idle");
   const { formatAmount } = useCurrency();
@@ -48,11 +63,10 @@ export default function TransactionFooter({
   const [pdfScope, setPdfScope] = useState<ExportScope>("all");
   const [excelScope, setExcelScope] = useState<ExportScope>("all");
 
-  // Floating dropdown open/close states
+  // Floating dropdown states
   const [isPdfMenuOpen, setIsPdfMenuOpen] = useState(false);
   const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
 
-  // References for outside-click tracking handlers
   const pdfRef = useRef<HTMLDivElement>(null);
   const excelRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +82,7 @@ export default function TransactionFooter({
     all: "All Transactions",
   };
 
-  // Close floating menus cleanly if user clicks elsewhere on the page
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (pdfRef.current && !pdfRef.current.contains(event.target as Node)) {
@@ -82,28 +96,38 @@ export default function TransactionFooter({
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  // 🚀 FIXED: Pointing directly to the logically correct /api/transactions highway prefix
-  const handleExecutePDFExport = async (scope: ExportScope) => {
+  /**
+   * Triggers a PDF export for the given time scope.
+   * Uses `window.location.href` to force a file download from the backend.
+   */
+  const handleExecutePDFExport = (scope: ExportScope) => {
     if (!activeWorkspaceId) {
       toast.error("Please select an active workspace before exporting.");
       return;
     }
-    
+
     setIsPdfMenuOpen(false);
     setDownloadType("pdf");
-    
+
     try {
-      window.location.href = `http://localhost:5000/api/transactions/export/pdf?workspaceId=${activeWorkspaceId}&scope=${scope}`;
+      const workspaceIdEncoded = encodeURIComponent(activeWorkspaceId);
+      const scopeEncoded = encodeURIComponent(scope);
+      const downloadUrl = `${API_BASE_URL}/api/transactions/export/pdf?workspaceId=${workspaceIdEncoded}&scope=${scopeEncoded}`;
+
+      window.location.href = downloadUrl;
       toast.success(`Compiling your [${scopeLabels[scope]}] PDF document...`);
     } catch (error) {
-      console.error("PDF Download pipeline initialization error:", error);
-      toast.error("Could not generate PDF statement. Check server link connection.");
+      console.error("PDF Export error:", error);
+      toast.error("Could not generate PDF statement.");
     } finally {
       setTimeout(() => setDownloadType("idle"), 1200);
     }
   };
 
-  const handleExecuteExcelExport = async (scope: ExportScope) => {
+  /**
+   * Triggers an Excel export for the given time scope.
+   */
+  const handleExecuteExcelExport = (scope: ExportScope) => {
     if (!activeWorkspaceId) {
       toast.error("Please select an active workspace before exporting.");
       return;
@@ -111,24 +135,29 @@ export default function TransactionFooter({
 
     setIsExcelMenuOpen(false);
     setDownloadType("excel");
-    
+
     try {
-      window.location.href = `http://localhost:5000/api/transactions/export/excel?workspaceId=${activeWorkspaceId}&scope=${scope}`;
+      const workspaceIdEncoded = encodeURIComponent(activeWorkspaceId);
+      const scopeEncoded = encodeURIComponent(scope);
+      const downloadUrl = `${API_BASE_URL}/api/transactions/export/excel?workspaceId=${workspaceIdEncoded}&scope=${scopeEncoded}`;
+
+      window.location.href = downloadUrl;
       toast.success(`Compiling your [${scopeLabels[scope]}] Excel spreadsheet...`);
     } catch (error) {
-      console.error("Excel Download pipeline initialization error:", error);
-      toast.error("Could not generate Excel sheet. Check server link connection.");
+      console.error("Excel Export error:", error);
+      toast.error("Could not generate Excel sheet.");
     } finally {
       setTimeout(() => setDownloadType("idle"), 1200);
     }
   };
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.footerDeckContainer}>
+      {/* Total Income */}
       <div className={styles.metaStatNode}>
         <div className={`${styles.iconBadgeTrack} ${styles.incomeIcon}`}>
           <FiArrowUpRight size={18} />
@@ -136,11 +165,12 @@ export default function TransactionFooter({
         <div>
           <p className={styles.statLabel}>Total Income</p>
           <p className={`${styles.statValue} ${styles.incomeColor}`}>
-            +{formatAmount(totalIncome, sourceCurrency)}
+            +{formatAmount(Number(totalIncome) || 0, sourceCurrency)}
           </p>
         </div>
       </div>
 
+      {/* Total Expenses */}
       <div className={styles.metaStatNode}>
         <div className={`${styles.iconBadgeTrack} ${styles.expenseIcon}`}>
           <FiArrowDownLeft size={18} />
@@ -148,42 +178,49 @@ export default function TransactionFooter({
         <div>
           <p className={styles.statLabel}>Total Expenses</p>
           <p className={`${styles.statValue} ${styles.expenseColor}`}>
-            -{formatAmount(totalExpenses, sourceCurrency)}
+            -{formatAmount(Number(totalExpenses) || 0, sourceCurrency)}
           </p>
         </div>
       </div>
 
+      {/* Export action buttons */}
       <div className={styles.actionButtonBlock}>
-        
-        {/* ==========================================
-           === PDF SPLIT DOWNLOAD CONSOLE COMPONENT ===
-           ========================================== */}
+        {/* PDF Split Button */}
         <div className={styles.splitButtonWrapper} ref={pdfRef}>
           <button
+            type="button"
             className={styles.mainActionBtn}
             onClick={() => handleExecutePDFExport(pdfScope)}
             disabled={isDownloading}
           >
             <FiFileText size={16} />
             <span>
-              {downloadType === "pdf" ? "Exporting PDF..." : `Export as PDF (${scopeLabels[pdfScope]})`}
+              {downloadType === "pdf"
+                ? "Exporting PDF..."
+                : `Export as PDF (${scopeLabels[pdfScope]})`}
             </span>
           </button>
           <button
+            type="button"
             className={styles.dropdownArrowTrigger}
             onClick={() => setIsPdfMenuOpen((prev) => !prev)}
             disabled={isDownloading}
             aria-label="Open timeline scope selection menu for PDF"
+            aria-expanded={isPdfMenuOpen}
           >
-            <FiChevronDown size={14} className={isPdfMenuOpen ? styles.rotateArrowUp : ""} />
+            <FiChevronDown
+              size={14}
+              className={isPdfMenuOpen ? styles.rotateArrowUp : ""}
+            />
           </button>
 
           {isPdfMenuOpen && (
-            <ul className={styles.floatingRangeMenu}>
+            <ul className={styles.floatingRangeMenu} role="menu">
               {(Object.keys(scopeLabels) as ExportScope[]).map((scope) => (
-                <li key={scope}>
+                <li key={scope} role="none">
                   <button
                     type="button"
+                    role="menuitem"
                     className={pdfScope === scope ? styles.activeScopeItem : ""}
                     onClick={() => {
                       setPdfScope(scope);
@@ -198,35 +235,45 @@ export default function TransactionFooter({
           )}
         </div>
 
-        {/* ==========================================
-           === EXCEL SPLIT DOWNLOAD CONSOLE COMPONENT ===
-           ========================================== */}
-        <div className={`${styles.splitButtonWrapper} ${styles.excelThemeOverride}`} ref={excelRef}>
+        {/* Excel Split Button */}
+        <div
+          className={`${styles.splitButtonWrapper} ${styles.excelThemeOverride}`}
+          ref={excelRef}
+        >
           <button
+            type="button"
             className={styles.mainActionBtn}
             onClick={() => handleExecuteExcelExport(excelScope)}
             disabled={isDownloading}
           >
             <FiGrid size={16} />
             <span>
-              {downloadType === "excel" ? "Exporting..." : `Export to Excel (${scopeLabels[excelScope]})`}
+              {downloadType === "excel"
+                ? "Exporting..."
+                : `Export to Excel (${scopeLabels[excelScope]})`}
             </span>
           </button>
           <button
+            type="button"
             className={styles.dropdownArrowTrigger}
             onClick={() => setIsExcelMenuOpen((prev) => !prev)}
             disabled={isDownloading}
             aria-label="Open timeline scope selection menu for Excel"
+            aria-expanded={isExcelMenuOpen}
           >
-            <FiChevronDown size={14} className={isExcelMenuOpen ? styles.rotateArrowUp : ""} />
+            <FiChevronDown
+              size={14}
+              className={isExcelMenuOpen ? styles.rotateArrowUp : ""}
+            />
           </button>
 
           {isExcelMenuOpen && (
-            <ul className={styles.floatingRangeMenu}>
+            <ul className={styles.floatingRangeMenu} role="menu">
               {(Object.keys(scopeLabels) as ExportScope[]).map((scope) => (
-                <li key={scope}>
+                <li key={scope} role="none">
                   <button
                     type="button"
+                    role="menuitem"
                     className={excelScope === scope ? styles.activeScopeItem : ""}
                     onClick={() => {
                       setExcelScope(scope);
@@ -240,7 +287,6 @@ export default function TransactionFooter({
             </ul>
           )}
         </div>
-
       </div>
     </div>
   );

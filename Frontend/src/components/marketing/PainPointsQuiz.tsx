@@ -18,32 +18,31 @@ type QuizOption = {
   fix: string;
 };
 
-// UPDATED: These now reflect the actual features built into the dashboard
 const QUIZ_OPTIONS: QuizOption[] = [
   {
-    id: 'workspaces',
-    label: 'Mixing personal expenses with my business spending is a mess.',
-    feature: 'Multi-Workspace Engine',
-    fix: 'Keep personal, freelance, and business transactions completely separate. Switch between them in one click.'
+    id: "workspaces",
+    label: "Mixing personal expenses with my business spending is a mess.",
+    feature: "Multi-Workspace Engine",
+    fix: "Keep personal, freelance, and business transactions completely separate. Switch between them in one click.",
   },
   {
-    id: 'budgets',
-    label: 'I keep accidentally spending too much on certain categories.',
-    feature: 'Visual Budget Pacing',
-    fix: 'Set custom limits and instantly see if your spending is normal or pacing too fast for the month.'
+    id: "budgets",
+    label: "I keep accidentally spending too much on certain categories.",
+    feature: "Visual Budget Pacing",
+    fix: "Set custom limits and instantly see if your spending is normal or pacing too fast for the month.",
   },
   {
-    id: 'ai-insights',
-    label: 'I do not have time to analyze where my money is leaking.',
-    feature: 'AI Money Coach',
-    fix: 'Your personal AI auditor scans your ledger to find wasted money and overspending automatically.'
+    id: "ai-insights",
+    label: "I do not have time to analyze where my money is leaking.",
+    feature: "AI Money Coach",
+    fix: "Your personal AI auditor scans your ledger to find wasted money and overspending automatically.",
   },
   {
-    id: 'vault',
-    label: 'I want to track investments, but keep them private on my phone.',
-    feature: 'Secure Investment Vault',
-    fix: 'Lock your sensitive crypto and stock details behind a secure, custom 4-digit PIN screen.'
-  }
+    id: "vault",
+    label: "I want to track investments, but keep them private on my phone.",
+    feature: "Secure Investment Vault",
+    fix: "Lock your sensitive crypto and stock details behind a secure, custom 4-digit PIN screen.",
+  },
 ];
 /* === SECTION 2 END === */
 
@@ -53,10 +52,8 @@ const QUIZ_OPTIONS: QuizOption[] = [
 export default function PainPointsQuizSection() {
   const [selectedOption, setSelectedOption] = useState<QuizOption | null>(null);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
-  
-  const getActiveFocus = () => {
-    return selectedOption?.id ?? hoveredOption;
-  };
+
+  const activeFocus = selectedOption?.id ?? hoveredOption;
 
   const handleSelect = (option: QuizOption) => {
     setSelectedOption(option);
@@ -74,20 +71,18 @@ export default function PainPointsQuizSection() {
     setSelectedOption(null);
     setHoveredOption(null);
   };
+  /* === SECTION 3 END === */
 
-  const activeFocus = getActiveFocus();
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
-    <section className={styles.sectionContainer}>
+    <section className={styles.sectionContainer} aria-label="Interactive Problem Solver">
       <div className={styles.layoutGridContainer}>
         
         {/* LEFT COLUMN: INTERACTIVE QUIZ CARD */}
         <div className={styles.leftColumn}>
-          <div className={`${styles.quizCard} ${selectedOption ? styles.quizCardActive : ''}`}>
+          <div className={`${styles.quizCard} ${selectedOption ? styles.quizCardActive : ""}`}>
             {!selectedOption ? (
               <>
                 <div className={styles.metaRow}>
@@ -96,16 +91,19 @@ export default function PainPointsQuizSection() {
                 <h3 className={styles.cardHeading}>What is your biggest money headache right now?</h3>
                 <p className={styles.cardSubtext}>Pick a problem below to see how the RakhoKhata dashboard solves it.</p>
                 
-                <div className={styles.optionsStack}>
+                {/* WHY THIS FIX WAS MADE: Added ARIA attributes for screen reader accessibility */}
+                <div className={styles.optionsStack} role="group" aria-label="Money pain points list">
                   {QUIZ_OPTIONS.map((opt) => (
                     <button 
                       key={opt.id} 
-                      className={`${styles.optionButton} ${activeFocus === opt.id ? styles.optionButtonActive : ''}`}
+                      type="button"
+                      className={`${styles.optionButton} ${activeFocus === opt.id ? styles.optionButtonActive : ""}`}
                       onClick={() => handleSelect(opt)}
                       onMouseEnter={() => handleHoverStart(opt.id)}
                       onMouseLeave={handleHoverEnd}
+                      aria-pressed={activeFocus === opt.id}
                     >
-                      <span className={styles.bullet}>→</span>
+                      <span className={styles.bullet} aria-hidden="true">→</span>
                       <span className={styles.buttonText}>{opt.label}</span>
                     </button>
                   ))}
@@ -113,7 +111,7 @@ export default function PainPointsQuizSection() {
               </>
             ) : (
               <>
-                <div className={styles.resultView}>
+                <div className={styles.resultView} role="region" aria-live="polite">
                   <div className={styles.metaRow}>
                     <span className={styles.successBadge}>Solution Found</span>
                   </div>
@@ -125,8 +123,8 @@ export default function PainPointsQuizSection() {
                     <p className={styles.fixDescription}>{selectedOption.fix}</p>
                   </div>
 
-                  <button className={styles.resetButtonBox} onClick={handleReset}>
-                    <span className={styles.resetBullet}>←</span> Look at other problems
+                  <button type="button" className={styles.resetButtonBox} onClick={handleReset}>
+                    <span className={styles.resetBullet} aria-hidden="true">←</span> Look at other problems
                   </button>
                 </div>
               </>
@@ -150,9 +148,9 @@ export default function PainPointsQuizSection() {
             <div className={styles.matrixGridContainer}>
               
               {/* QUADRANT 1: WORKSPACES */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'workspaces' ? styles.quadrantHighlighted : ''}`}>
+              <div className={`${styles.quadrantBox} ${activeFocus === "workspaces" ? styles.quadrantHighlighted : ""}`}>
                 <div className={styles.quadMetaHeader}>
-                  <span className={styles.quadIconCode}>✦</span>
+                  <span className={styles.quadIconCode} aria-hidden="true">✦</span>
                   <span className={styles.quadTitleLabel}>Q1 // Workspaces</span>
                 </div>
                 
@@ -160,7 +158,7 @@ export default function PainPointsQuizSection() {
                   <div className={styles.mockWorkspaceActive}>
                     <span className={styles.mockWsDotBusiness}></span>
                     <span className={styles.mockWsName}>Business Profile</span>
-                    <span className={styles.mockWsCheck}>✓</span>
+                    <span className={styles.mockWsCheck} aria-hidden="true">✓</span>
                   </div>
                   <div className={styles.mockWorkspaceInactive}>
                     <span className={styles.mockWsDotPersonal}></span>
@@ -170,9 +168,9 @@ export default function PainPointsQuizSection() {
               </div>
 
               {/* QUADRANT 2: BUDGETS */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'budgets' ? styles.quadrantHighlighted : ''}`}>
+              <div className={`${styles.quadrantBox} ${activeFocus === "budgets" ? styles.quadrantHighlighted : ""}`}>
                 <div className={styles.quadMetaHeader}>
-                  <span className={styles.quadIconCode}>↻</span>
+                  <span className={styles.quadIconCode} aria-hidden="true">↻</span>
                   <span className={styles.quadTitleLabel}>Q2 // Budget Pacing</span>
                 </div>
                 
@@ -182,16 +180,16 @@ export default function PainPointsQuizSection() {
                     <span className={styles.mockBudgetAmount}>$12k / $30k</span>
                   </div>
                   <div className={styles.mockBudgetTrack}>
-                    <div className={styles.mockBudgetFill} style={{ width: '40%' }}></div>
+                    <div className={styles.mockBudgetFill} style={{ width: "40%" }}></div>
                   </div>
                   <span className={styles.mockBudgetStatus}>Pacing Normal</span>
                 </div>
               </div>
 
               {/* QUADRANT 3: AI INSIGHTS */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'ai-insights' ? styles.quadrantHighlighted : ''}`}>
+              <div className={`${styles.quadrantBox} ${activeFocus === "ai-insights" ? styles.quadrantHighlighted : ""}`}>
                 <div className={styles.quadMetaHeader}>
-                  <span className={styles.quadIconCode}>⚡</span>
+                  <span className={styles.quadIconCode} aria-hidden="true">⚡</span>
                   <span className={styles.quadTitleLabel}>Q3 // AI Insights</span>
                 </div>
                 
@@ -204,14 +202,14 @@ export default function PainPointsQuizSection() {
               </div>
 
               {/* QUADRANT 4: INVESTMENT VAULT */}
-              <div className={`${styles.quadrantBox} ${activeFocus === 'vault' ? styles.quadrantHighlighted : ''}`}>
+              <div className={`${styles.quadrantBox} ${activeFocus === "vault" ? styles.quadrantHighlighted : ""}`}>
                 <div className={styles.quadMetaHeader}>
-                  <span className={styles.quadIconCode}>⚿</span>
+                  <span className={styles.quadIconCode} aria-hidden="true">⚿</span>
                   <span className={styles.quadTitleLabel}>Q4 // Secure Vault</span>
                 </div>
                 
                 <div className={styles.mockVaultLayout}>
-                  <div className={styles.mockVaultLockIcon}>🔒</div>
+                  <div className={styles.mockVaultLockIcon} aria-hidden="true">🔒</div>
                   <span className={styles.mockVaultTitle}>Vault Locked</span>
                   <div className={styles.mockPinDots}>
                     <span className={styles.mockPinDotFilled}></span>

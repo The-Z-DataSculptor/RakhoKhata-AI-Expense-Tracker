@@ -1,6 +1,81 @@
-node_modules
-dist
-.git
+# Backend/.dockerignore
+
+# ==========================================================================
+# === SECTION 1: SECRETS & ENVIRONMENT CONFIGURATIONS ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Wildcard coverage ensures that all environment variable variations 
+# (.env.production, .env.local, .env.staging, etc.) are strictly excluded to prevent leaking production secrets.
 .env
-Dockerfile
+.env.*
+!.env.example
+
+# WHY THIS FIX WAS MADE: Excludes local cryptographic keys, certificates, and auth tokens 
+# so they are never bundled into Docker image context layers.
+*.pem
+*.key
+*.crt
+*.pfx
+id_rsa
+id_rsa.pub
+
+# === SECTION 1 END ===
+
+# ==========================================================================
+# === SECTION 2: VERSION CONTROL & DOCKER METADATA ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Excluding .git history and CI/CD directories reduces Docker context size 
+# by hundreds of megabytes and prevents git commit logs from being embedded in production images.
+.git
+.gitignore
+.github
+.gitlab
+.dockerignore
+Dockerfile*
+docker-compose*
+
+# === SECTION 2 END ===
+
+# ==========================================================================
+# === SECTION 3: DEPENDENCIES & BUILD ARTIFACTS ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Dependencies and build targets should be compiled fresh inside multi-stage 
+# Docker containers rather than copied from stale, platform-specific host binaries.
+node_modules/
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.npm/
+.yarn/
+.pnpm-store/
+
+# === SECTION 3 END ===
+
+# ==========================================================================
+# === SECTION 4: LOGS, TESTS & SYSTEM CACHES ===
+# ==========================================================================
+
+# WHY THIS FIX WAS MADE: Prevents local debugging logs, operating system metadata, and test reports 
+# from bloating Docker context uploads and slowing down container deployment times.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+.nyc_output/
+__tests__/
+*.test.ts
+*.spec.ts
 README.md
+LICENSE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# === SECTION 4 END ===

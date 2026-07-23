@@ -2,11 +2,10 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   FiGlobe,
@@ -26,11 +25,15 @@ import {
   EXTENDED_LANGUAGES,
 } from "@/constants/geoData";
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
+/**
+ * WHY an environment variable is used for the backend URL:
+ * Hardcoding "localhost:5000" would break the app in any non‑local environment.
+ * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
+ * work in staging, production, and Docker without code changes.
+ */
+const BACKEND_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 /** Occupation options for the onboarding form */
 interface OccupationOption {
@@ -55,6 +58,7 @@ interface AiPersona {
   desc: string;
 }
 
+// Static data for the wizard – defined outside component to avoid re‑creation on every render
 const OCCUPATIONS: OccupationOption[] = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
@@ -84,7 +88,7 @@ const AI_PERSONAS: AiPersona[] = [
 
 const STEP_TITLES = ["Region", "Goals", "AI Assistant"];
 
-/** Shape of the onboarding form data */
+/** Shape of the onboarding form data – submitted to the backend */
 interface OnboardingFormData {
   country: string;
   currency: string;
@@ -93,16 +97,13 @@ interface OnboardingFormData {
   financialGoal: string;
   aiPersona: string;
 }
-/* === SECTION 2 END === */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 2: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 
 export default function OnboardingPage() {
-  const router = useRouter();
-
-  // Step tracker (1‑3)
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -116,27 +117,29 @@ export default function OnboardingPage() {
     aiPersona: "",
   });
 
-  // Auto‑detect user’s region from timezone
+  // ---------------------------------------------------------------------------
+  // AUTO‑DETECT REGION FROM TIMEZONE (runs once on mount)
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     const timer = setTimeout(() => {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (tz.includes("Karachi")) {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (timezone.includes("Karachi")) {
         setFormData((prev) => ({
           ...prev,
           currency: "PKR",
           country: "Pakistan",
           languages: ["Urdu (اُردو)", "English"],
         }));
-      } else if (tz.includes("Europe")) {
+      } else if (timezone.includes("Europe")) {
         setFormData((prev) => ({ ...prev, currency: "EUR" }));
-      } else if (tz.includes("London")) {
+      } else if (timezone.includes("London")) {
         setFormData((prev) => ({
           ...prev,
           currency: "GBP",
           country: "United Kingdom",
           languages: ["English"],
         }));
-      } else if (tz.includes("Calcutta") || tz.includes("Kolkata")) {
+      } else if (timezone.includes("Calcutta") || timezone.includes("Kolkata")) {
         setFormData((prev) => ({
           ...prev,
           currency: "INR",
@@ -148,36 +151,49 @@ export default function OnboardingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Country change handler (auto‑sets currency & language)
+  // ---------------------------------------------------------------------------
+  // COUNTRY CHANGE – AUTO‑SETS CURRENCY & LANGUAGE
+  // ---------------------------------------------------------------------------
   const handleCountryChange = (selectedCountryName: string) => {
-    const match = WORLD_COUNTRIES.find((c) => c.name === selectedCountryName);
+    const matchedCountry = WORLD_COUNTRIES.find(
+      (country) => country.name === selectedCountryName
+    );
+
     setFormData((prev) => {
       const languagesSet = new Set(prev.languages);
-      if (match) {
-        languagesSet.add(match.defaultLanguage);
+      if (matchedCountry) {
+        languagesSet.add(matchedCountry.defaultLanguage);
         return {
           ...prev,
           country: selectedCountryName,
-          currency: match.defaultCurrency,
+          currency: matchedCountry.defaultCurrency,
           languages: Array.from(languagesSet),
         };
       }
+      // If country is not in our list (or "Private"), just update the name
       return { ...prev, country: selectedCountryName };
     });
   };
 
-  // Language toggling
-  const toggleLanguage = (lang: string) => {
+  // ---------------------------------------------------------------------------
+  // TOGGLE LANGUAGE SELECTION
+  // ---------------------------------------------------------------------------
+  const toggleLanguage = (language: string) => {
     setFormData((prev) => {
-      const current = prev.languages;
-      if (current.includes(lang)) {
-        return { ...prev, languages: current.filter((l) => l !== lang) };
+      const currentLanguages = prev.languages;
+      if (currentLanguages.includes(language)) {
+        return {
+          ...prev,
+          languages: currentLanguages.filter((l) => l !== language),
+        };
       }
-      return { ...prev, languages: [...current, lang] };
+      return { ...prev, languages: [...currentLanguages, language] };
     });
   };
 
-  // Step navigation
+  // ---------------------------------------------------------------------------
+  // STEP NAVIGATION
+  // ---------------------------------------------------------------------------
   const goNext = () => {
     if (step === 1 && !formData.country) {
       toast.error("Please choose your home country before continuing.");
@@ -187,17 +203,19 @@ export default function OnboardingPage() {
       toast.error("Please pick your job style and core financial goal.");
       return;
     }
-    setStep((s) => Math.min(s + 1, 3));
+    setStep((prev) => Math.min(prev + 1, 3));
   };
 
-  const goPrev = () => setStep((s) => Math.max(s - 1, 1));
+  const goPrev = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // Final submission
+  // ---------------------------------------------------------------------------
+  // FINAL SUBMISSION
+  // ---------------------------------------------------------------------------
   const submitForm = async () => {
     setIsSubmitting(true);
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/complete-onboarding",
+        `${BACKEND_API_URL}/api/auth/complete-onboarding`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -216,23 +234,39 @@ export default function OnboardingPage() {
         throw new Error(errorMessage);
       }
 
-      toast.success("Profile customized! Opening your intelligence suite...");
-      setTimeout(() => router.push("/dashboard"), 1500);
+      toast.success("Profile customized! Redirecting...");
+      /*
+       * WHY we use a hard navigation here instead of Next.js router.push:
+       * The onboarding process updates the user's session data (currency, 
+       * onboarding flag). A full page reload ensures the new state is 
+       * completely picked up by the server‑rendered layout, avoiding stale 
+       * client‑side caches.
+       */
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1500);
     } catch (error: unknown) {
       console.error("Onboarding Submit Error:", error);
       const message =
         error instanceof Error
           ? error.message
-          : "Could not synchronize with personalization tables.";
+          : "Could not complete onboarding. Please try again.";
       toast.error(message);
       setIsSubmitting(false);
     }
   };
+/* === SECTION 2 END === */
 
-  // Render step content
+/* ==========================================================================
+   === SECTION 3: RENDER HELPERS ===
+   ========================================================================== */
+
+  /**
+   * Renders the appropriate step content based on the current step number.
+   */
   const renderStepContent = () => {
     switch (step) {
-      case 1:
+      case 1: // Region & Currency
         return (
           <div className={styles.stepContainer}>
             <div className={styles.stepHeader}>
@@ -348,7 +382,7 @@ export default function OnboardingPage() {
           </div>
         );
 
-      case 2:
+      case 2: // Financial Goals
         return (
           <div className={styles.stepContainer}>
             <div className={styles.stepHeader}>
@@ -408,7 +442,7 @@ export default function OnboardingPage() {
           </div>
         );
 
-      case 3:
+      case 3: // AI Persona
         return (
           <div className={styles.stepContainer}>
             <div className={styles.stepHeader}>
@@ -462,7 +496,7 @@ export default function OnboardingPage() {
       <div className={styles.ambientGlow} />
 
       <div className={styles.wizardContainer}>
-        {/* Progress sidebar */}
+        {/* Progress sidebar – visible on desktop */}
         <div className={styles.progressSidebar}>
           <Link href="/login" className={styles.backHomeBtn}>
             ← Abort Setup
@@ -494,7 +528,7 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          {/* DEDICATED MOBILE-ONLY STEP TRACKER CONTAINER */}
+          {/* Mobile‑only step tracker */}
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
               Step {step} of 3: <strong>{STEP_TITLES[step - 1]}</strong>
@@ -524,7 +558,7 @@ export default function OnboardingPage() {
                 <FiChevronLeft /> Back
               </button>
             ) : (
-              <div />
+              <div /> // empty placeholder to keep the footer layout balanced
             )}
 
             {step < 3 ? (

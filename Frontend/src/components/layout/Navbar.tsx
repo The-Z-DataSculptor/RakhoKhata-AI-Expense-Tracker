@@ -2,10 +2,10 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & HELPERS ===
    ========================================================================== */
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import styles from "./Navbar.module.css";
 
@@ -23,12 +23,11 @@ function useIsMounted() {
    === SECTION 2: MAIN NAVIGATION COMPONENT ===
    ========================================================================== */
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isThemeOpen, setIsThemeOpen] = useState<boolean>(false);
 
-  // 🚀 React 19 compliant hydration check (Zero cascading render warnings)
+  const themeRef = useRef<HTMLDivElement>(null);
   const mounted = useIsMounted();
-
   const { activeTheme, changeTheme } = useTheme();
 
   const toggleMenu = () => {
@@ -47,18 +46,44 @@ export default function Navbar() {
     return "💻";
   };
 
+  // WHY THIS FIX WAS MADE: Cleans up theme popovers when clicking outside the trigger bounding container
+  // or pressing the Escape key for enhanced UX.
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (themeRef.current && !themeRef.current.contains(event.target as Node)) {
+        setIsThemeOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsThemeOpen(false);
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   return (
     <div className={styles.navbarWrapper}>
-      <nav className={`${styles.navbar} ${isOpen ? styles.navbarExpanded : ""}`}>
+      <nav className={`${styles.navbar} ${isOpen ? styles.navbarExpanded : ""}`} aria-label="Main Navigation">
         
         <Link href="/" className={styles.logo} onClick={() => setIsOpen(false)}>
           Rakho<span className={styles.logoAccent}>Khata</span>
         </Link>
         
         <button 
+          type="button"
           className={`${styles.hamburger} ${isOpen ? styles.hamburgerActive : ""}`} 
           onClick={toggleMenu}
           aria-label="Toggle navigation menu"
+          aria-expanded={isOpen}
         >
           <span className={styles.bar}></span>
           <span className={styles.bar}></span>
@@ -85,8 +110,9 @@ export default function Navbar() {
         
         <div className={`${styles.authActions} ${isOpen ? styles.authActionsActive : ""}`}>
           
-          <div className={styles.themeContainer}>
+          <div className={styles.themeContainer} ref={themeRef}>
             <button 
+              type="button"
               className={styles.themeTrigger}
               onClick={() => setIsThemeOpen(!isThemeOpen)}
               aria-label="Switch interface color theme scheme"
@@ -98,19 +124,19 @@ export default function Navbar() {
             </button>
 
             {isThemeOpen && (
-              <ul className={styles.themeDropdown}>
+              <ul className={styles.themeDropdown} role="menu">
                 <li>
-                  <button onClick={() => handleThemeChange("light")} className={activeTheme === "light" ? styles.themeActiveOption : ""}>
+                  <button type="button" role="menuitem" onClick={() => handleThemeChange("light")} className={activeTheme === "light" ? styles.themeActiveOption : ""}>
                     <span>☀️</span> Light
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => handleThemeChange("dark")} className={activeTheme === "dark" ? styles.themeActiveOption : ""}>
+                  <button type="button" role="menuitem" onClick={() => handleThemeChange("dark")} className={activeTheme === "dark" ? styles.themeActiveOption : ""}>
                     <span>🌙</span> Dark
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => handleThemeChange("system")} className={activeTheme === "system" ? styles.themeActiveOption : ""}>
+                  <button type="button" role="menuitem" onClick={() => handleThemeChange("system")} className={activeTheme === "system" ? styles.themeActiveOption : ""}>
                     <span>💻</span> System
                   </button>
                 </li>
@@ -124,7 +150,7 @@ export default function Navbar() {
 
           <Link href="/signup" className={styles.signUpButton} onClick={() => setIsOpen(false)}>
             Get Started
-            <span className={styles.buttonArrow}>→</span>
+            <span className={styles.buttonArrow} aria-hidden="true">→</span>
           </Link>
         </div>
 

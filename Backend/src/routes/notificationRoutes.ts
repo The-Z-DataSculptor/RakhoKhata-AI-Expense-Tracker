@@ -1,15 +1,22 @@
 // Backend/src/routes/notificationRoutes.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Router } from "express";
-import { verifyTokenGuard } from "../middleware/authMiddleware";
 import {
   getUserNotifications,
   markAsRead,
   markAllAsRead,
 } from "../controllers/notificationController";
+import {
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+} from "../middleware/authMiddleware";
+import {
+  globalApiLimiter,
+  writeActionsLimiter,
+} from "../middleware/rateLimitMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -17,18 +24,54 @@ import {
    ========================================================================== */
 const router = Router();
 
-// Fetch all notifications for the authenticated user
-router.get("/", verifyTokenGuard, getUserNotifications);
+/**
+ * GET /api/notifications
+ * Fetches unread and recent read notifications for the authenticated user.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `globalApiLimiter` to prevent frontend UI polling
+ * loops from exhausting database connection pools, and `ensureOnboardingCompleted` to enforce account setup.
+ */
+router.get(
+  "/",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  globalApiLimiter,
+  getUserNotifications
+);
 
-// Mark all unread notifications as read
-router.patch("/read-all", verifyTokenGuard, markAllAsRead);
+/**
+ * PATCH /api/notifications/read-all
+ * Marks all unread notifications for the user as read.
+ * 
+ * WHY THIS FIX WAS MADE: Rate limited with `writeActionsLimiter` to prevent automated scripts
+ * from spamming bulk database update transactions.
+ */
+router.patch(
+  "/read-all",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  markAllAsRead
+);
 
-// Mark a single notification as read
-router.patch("/:id/read", verifyTokenGuard, markAsRead);
+/**
+ * PATCH /api/notifications/:id/read
+ * Marks a single notification as read by ID.
+ * 
+ * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to mitigate rapid mutation
+ * spam and lock contention on target database rows.
+ */
+router.patch(
+  "/:id/read",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  markAsRead
+);
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: EXPORT ===
+   === SECTION 3: EXPORTS ===
    ========================================================================== */
 export default router;
 /* === SECTION 3 END === */

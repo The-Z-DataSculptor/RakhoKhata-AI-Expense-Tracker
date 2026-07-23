@@ -2,24 +2,28 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import styles from "../login/page.module.css"; // Reuses login layout styling
+import styles from "../login/page.module.css"; // Reuses login layout
+
+/**
+ * WHY an environment variable is used for the backend URL:
+ * Hardcoding "localhost:5000" would break the app in any non‑local environment.
+ * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
+ * work in staging, production, and Docker without code changes.
+ */
+const BACKEND_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+type VerificationStatus = "loading" | "success" | "error";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
-   ========================================================================== */
-
-type VerificationStatus = "loading" | "success" | "error";
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
+   === SECTION 2: VERIFY EMAIL FORM COMPONENT ===
    ========================================================================== */
 
 /**
@@ -45,7 +49,7 @@ function VerifyEmailForm() {
 
       try {
         const response = await fetch(
-          "http://localhost:5000/api/auth/verify-email",
+          `${BACKEND_API_URL}/api/auth/verify-email`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -83,10 +87,10 @@ function VerifyEmailForm() {
 
     executeVerification();
   }, [token, router]);
-/* === SECTION 3 END === */
+/* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 4: RENDER COMPONENT ===
+   === SECTION 3: RENDER ===
    ========================================================================== */
   return (
     <div className={styles.formContainerContent}>
@@ -164,7 +168,7 @@ export default function VerifyEmailPage() {
         <Suspense
           fallback={
             <div className={styles.formContainerContent}>
-              <p className={styles.subtext}>Loading layout streams...</p>
+              <p className={styles.subtext}>Loading secure verification form...</p>
             </div>
           }
         >
@@ -202,4 +206,4 @@ export default function VerifyEmailPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

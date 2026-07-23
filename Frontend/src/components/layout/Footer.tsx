@@ -13,8 +13,12 @@ import styles from "./Footer.module.css";
    === SECTION 2: FOOTER COMPONENT ===
    ========================================================================== */
 export default function Footer() {
+  // WHY THIS FIX WAS MADE: Uses a static fallback date constant to prevent hydration mismatch 
+  // issues during server-side vs client-side rendering transitions.
+  const currentYear = 2026;
+
   return (
-    <footer className={styles.footerContainer}>
+    <footer className={styles.footerContainer} aria-label="Site Footer">
       <div className={styles.footerInner}>
         
         {/* === BRAND FOCUS === */}
@@ -25,8 +29,8 @@ export default function Footer() {
           <p className={styles.tagline}>Master your wealth with precision, purpose, and effortless clarity.</p>
         </div>
 
-        {/* === TRUST & LEGAL NAVIGATION (🚀 CONNECTED TO /beta) === */}
-        <nav className={styles.navLinks}>
+        {/* === TRUST & LEGAL NAVIGATION === */}
+        <nav className={styles.navLinks} aria-label="Legal Links">
           <Link href="/beta">Privacy Policy</Link>
           <Link href="/beta">Terms of Service</Link>
           <Link href="/contact">Contact Us</Link>
@@ -44,7 +48,7 @@ export default function Footer() {
 
         {/* === FOOTER IDENTIFIER === */}
         <div className={styles.copy}>
-          &copy; {new Date().getFullYear()} Rakho Khata — Crafted for the modern era.
+          &copy; {currentYear} Rakho Khata — Crafted for the modern era.
         </div>
 
       </div>

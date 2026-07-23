@@ -98,15 +98,16 @@ function persistActiveWorkspaceId(id: string): void {
     // localStorage might be disabled or full – not critical
   }
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
-   ========================================================================== */
-
+// Create the context
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(
   undefined
 );
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: PROVIDER LOGIC ===
+   ========================================================================== */
 
 export function WorkspaceProvider({
   children,
@@ -114,8 +115,7 @@ export function WorkspaceProvider({
   children: ReactNode;
 }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspaceId, setActiveWorkspaceId] =
-    useState<string>("");
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isReady, setIsReady] = useState<boolean>(false);
 
@@ -126,9 +126,7 @@ export function WorkspaceProvider({
     const fetchWorkspaces = async () => {
       try {
         setIsLoading(true);
-        const data = await apiFetch<FetchWorkspacesResponse>(
-          "/workspaces"
-        );
+        const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
 
         if (cancelled) return;
 
@@ -140,21 +138,12 @@ export function WorkspaceProvider({
           setWorkspaces(enriched);
 
           // Restore the previously active workspace or default to the first one
-          const savedId = localStorage.getItem(
-            "app_active_workspace_id"
-          );
-          const matched = enriched.find(
-            (ws) => ws.id === savedId
-          );
-          setActiveWorkspaceId(
-            matched ? matched.id : enriched[0].id
-          );
+          const savedId = localStorage.getItem("app_active_workspace_id");
+          const matched = enriched.find((ws) => ws.id === savedId);
+          setActiveWorkspaceId(matched ? matched.id : enriched[0].id);
         }
       } catch (error: unknown) {
-        console.error(
-          "Workspace Pipeline Hydration Exception:",
-          error
-        );
+        console.error("Workspace Pipeline Hydration Exception:", error);
         toast.error(
           "Unable to load financial workspace configuration layers."
         );
@@ -181,18 +170,12 @@ export function WorkspaceProvider({
   };
 
   // ----- Create a new workspace -----
-  const createWorkspace = async (
-    name: string,
-    currency: string = "PKR"
-  ) => {
+  const createWorkspace = async (name: string, currency: string = "PKR") => {
     try {
-      const data = await apiFetch<CreateWorkspaceResponse>(
-        "/workspaces",
-        {
-          method: "POST",
-          body: JSON.stringify({ name, currency }),
-        }
-      );
+      const data = await apiFetch<CreateWorkspaceResponse>("/workspaces", {
+        method: "POST",
+        body: JSON.stringify({ name, currency }),
+      });
 
       const newWorkspace: Workspace = {
         ...data.workspace,
@@ -224,9 +207,7 @@ export function WorkspaceProvider({
         switchWorkspace(remaining[0].id);
       }
 
-      toast.success(
-        "Workspace tracking profile and logs cleared."
-      );
+      toast.success("Workspace tracking profile and logs cleared.");
     } catch (error: unknown) {
       const message =
         error instanceof Error
@@ -274,9 +255,7 @@ export function WorkspaceProvider({
 export function useWorkspace(): WorkspaceContextType {
   const context = useContext(WorkspaceContext);
   if (context === undefined) {
-    throw new Error(
-      "useWorkspace must be used within a WorkspaceProvider"
-    );
+    throw new Error("useWorkspace must be used within a WorkspaceProvider");
   }
   return context;
 }

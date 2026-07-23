@@ -8,9 +8,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { vaultAuthService } from "@/utils/api"; 
 import { toast } from "sonner"; 
 import styles from "./VaultLockScreen.module.css";
-/* ==========================================================================
-   === SECTION 1 END ===
-   ========================================================================== */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
@@ -19,12 +17,10 @@ interface VaultLockScreenProps {
   /** Function that runs when the user successfully enters the correct PIN */
   onUnlock: () => void;
 }
-/* ==========================================================================
-   === SECTION 2 END ===
-   ========================================================================== */
+/* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: COMPONENT LOGIC & HANDLERS ===
    ========================================================================== */
 export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
@@ -33,6 +29,20 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
   const [hasPin, setHasPin] = useState<boolean | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // WHY THIS FIX WAS MADE: Stores scheduled timeout IDs to ensure clean teardown
+  // on component unmount and prevent updates on unmounted components.
+  const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
+
+  const registerTimeout = useCallback((fn: () => void, delayMs: number) => {
+    const timerId = setTimeout(fn, delayMs);
+    timeoutRefs.current.push(timerId);
+    return timerId;
+  }, []);
+
+  const clearAllTimeouts = useCallback(() => {
+    timeoutRefs.current.forEach((id) => clearTimeout(id));
+    timeoutRefs.current = [];
+  }, []);
 
   const focusInput = useCallback((index: number) => {
     const targetInput = inputRefs.current[index];
@@ -53,18 +63,19 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
         if (isMounted) {
           setHasPin(status.hasPin);
           
-          // Defer automated unlock using a macro-task timeout wrapper 
-          // to prevent React from blocking simultaneous state updates during mounts.
           if (!status.hasPin) {
-            setTimeout(() => {
+            registerTimeout(() => {
               if (isMounted) onUnlock();
             }, 10);
           } else {
-            setTimeout(() => focusInput(0), 100);
+            registerTimeout(() => focusInput(0), 100);
           }
         }
       } catch (error: unknown) {
         console.error("Vault status verification error:", error);
+        if (isMounted) {
+          toast.error("Failed to verify vault security status.");
+        }
       }
     };
 
@@ -72,13 +83,16 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
 
     return () => {
       isMounted = false;
+      clearAllTimeouts();
     };
-  }, [focusInput, onUnlock]);
+  }, [focusInput, onUnlock, registerTimeout, clearAllTimeouts]);
 
   /* ==========================================================================
      === SECURITY ENGINE PROCESSOR ===
      ========================================================================== */
   const validatePin = useCallback(async (enteredPin: string) => {
+    if (isProcessing) return;
+
     try {
       setIsProcessing(true);
       const response = await vaultAuthService.verifyPin(enteredPin);
@@ -90,22 +104,22 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     } catch (error: unknown) {
       setIsError(true);
       setDigits(["", "", "", ""]);
-      setTimeout(() => focusInput(0), 50);
+      registerTimeout(() => focusInput(0), 50);
       
       const msg = error instanceof Error ? error.message : "Invalid PIN entered.";
       toast.error(msg);
       
-      setTimeout(() => setIsError(false), 500);
+      registerTimeout(() => setIsError(false), 500);
     } finally {
       setIsProcessing(false);
     }
-  }, [onUnlock, focusInput]);
+  }, [onUnlock, focusInput, isProcessing, registerTimeout]);
 
   /* ==========================================================================
      === KEYBOARD INPUT TRACKERS ===
      ========================================================================== */
   const handleChange = useCallback((index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
+    if (!/^\d*$/.test(value) || isProcessing) return;
 
     const newDigits = [...digits];
     newDigits[index] = value.slice(-1);
@@ -119,7 +133,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
       const compiledPinString = newDigits.join("");
       validatePin(compiledPinString);
     }
-  }, [digits, focusInput, validatePin]);
+  }, [digits, focusInput, validatePin, isProcessing]);
 
   const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && digits[index] === "" && index > 0) {
@@ -127,33 +141,29 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     }
   }, [digits, focusInput]);
 
+  // WHY THIS FIX WAS MADE: Replaced native window.alert with Sonner toast notice
+  // to avoid blocking browser event threads during user interactions.
   const handleForgotPin = useCallback(() => {
-    window.alert(
-      "Please navigate to your profile settings page or contact an administrator to alter secure verification codes."
-    );
+    toast.info("Navigate to account settings or contact workspace admin to reset PIN lock.");
   }, []);
 
-  // If loading status or no PIN exists, return a blank background wrapper 
-  // while the delayed unlock callback processes
   if (hasPin === null || !hasPin) {
     return (
-      <div className={styles.lockScreenContainer}>
+      <div className={styles.lockScreenContainer} role="status" aria-live="polite">
         <div className={styles.lockBoxPanel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
           <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">Verifying vault authorization state...</p>
         </div>
       </div>
     );
   }
-/* ==========================================================================
-   === SECTION 3 END ===
-   ========================================================================== */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER (JSX) ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER (JSX) ===
+     ========================================================================== */
   return (
     <div className={styles.lockScreenContainer}>
-      <div className={styles.lockBoxPanel}>
+      <div className={styles.lockBoxPanel} role="form" aria-label="Vault Authentication Panel">
         
         {/* Top Icon Display Stack */}
         <div className={styles.headerStack}>
@@ -182,7 +192,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
         <div className={`${styles.pinBoxesWrapper} ${isError ? styles.shakeError : ""} ${isProcessing ? styles.processingFade : ""}`}>
           {digits.map((digit, index) => (
             <input
-              key={index}
+              key={`pin-input-${index}`}
               ref={(el) => { inputRefs.current[index] = el; }}
               type="password"
               inputMode="numeric"
@@ -201,7 +211,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
         {/* Footer Helper Actions Area */}
         <div className={styles.footerArea}>
           {isError ? (
-            <p className={styles.errorMessage}>Incorrect PIN. Please try again.</p>
+            <p className={styles.errorMessage} role="alert">Incorrect PIN. Please try again.</p>
           ) : (
             <button 
               type="button" 
@@ -218,6 +228,4 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     </div>
   );
 }
-/* ==========================================================================
-   === SECTION 4 END ===
-   ========================================================================== */
+/* === SECTION 4 END === */

@@ -12,6 +12,13 @@ import { z } from "zod";
 /**
  * Schema for the multi‑step signup form.
  * Validates the core account fields plus optional onboarding data.
+ *
+ * WHY password complexity is enforced here:
+ * The backend also validates password length, but client‑side
+ * validation gives the user instant feedback before submission.
+ *
+ * WHY optional onboarding fields are trimmed:
+ * Extra spaces could cause mismatches or display issues later.
  */
 export const signupSchema = z
   .object({
@@ -37,13 +44,13 @@ export const signupSchema = z
 
     confirmPassword: z.string(),
 
-    // Optional onboarding fields
-    country: z.string().optional(),
+    // Optional onboarding fields – trimmed for cleanliness
+    country: z.string().trim().optional(),
     currency: z.string().default("USD"),
     languages: z.array(z.string()).default([]),
-    occupation: z.string().optional(),
-    financialGoal: z.string().optional(),
-    aiPersona: z.string().optional(),
+    occupation: z.string().trim().optional(),
+    financialGoal: z.string().trim().optional(),
+    aiPersona: z.string().trim().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match. Please verify your entries.",
@@ -58,6 +65,10 @@ export type SignupFormData = z.infer<typeof signupSchema>;
    ========================================================================== */
 /**
  * Schema for the login form.
+ *
+ * WHY the password minimum length is 4:
+ * Existing accounts may have shorter passwords. This lower limit
+ * allows them to log in while still blocking completely empty fields.
  */
 export const loginSchema = z.object({
   email: z

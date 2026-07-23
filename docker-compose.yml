@@ -1,12 +1,33 @@
+# docker-compose.yml
+
+# ==========================================================================
+# === SECTION 1: NETWORKS & VOLUMES ===
+# ==========================================================================
+# WHY THIS FIX WAS MADE: Custom bridge network enforces isolated container-to-container 
+# DNS name resolution (e.g. frontend calling http://backend:5000) and restricts exposure.
+networks:
+  expense_tracker_network:
+    driver: bridge
+
+# WHY THIS FIX WAS MADE: Uses a managed Docker named volume to persist user uploaded 
+# media assets safely without host OS file permission conflicts or path mismatch crashes.
+volumes:
+  backend_uploads_data:
+    driver: local
+# === SECTION 1 END ===
+
+# ==========================================================================
+# === SECTION 2: BACKEND SERVICE DEFINITION ===
+# ==========================================================================
 services:
-  # ---------------------------------------------------------------------------
-  # BACKEND SERVICE (Node.js + Express + Prisma)
-  # ---------------------------------------------------------------------------
   backend:
     build:
       context: ./Backend
       dockerfile: Dockerfile
     container_name: expense_tracker_backend
+    restart: unless-stopped
+    networks:
+      - expense_tracker_network
     ports:
       - "5000:5000"
     env_file:
@@ -15,35 +36,65 @@ services:
       - PORT=5000
       - NODE_ENV=production
     volumes:
-      # Preserve user file uploads across container restarts
-      - ./Backend/public/uploads:/app/public/uploads
-    restart: always
+      # WHY THIS FIX WAS MADE: Switched from relative host paths to the named volume 
+      # 'backend_uploads_data' to guarantee non-root read/write filesystem access.
+      - backend_uploads_data:/app/public/uploads
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
+    # WHY THIS FIX WAS MADE: Caps memory and CPU consumption to protect the host machine 
+    # against memory leaks and CPU starvation Denial-of-Service (DoS) conditions.
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+# === SECTION 2 END ===
 
-  # ---------------------------------------------------------------------------
-  # FRONTEND SERVICE (Next.js Standalone)
-  # ---------------------------------------------------------------------------
+# ==========================================================================
+# === SECTION 3: FRONTEND SERVICE DEFINITION ===
+# ==========================================================================
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:5000
+        # WHY THIS FIX WAS MADE: Uses dynamic environment variable substitution with fallbacks 
+        # so production domain URLs can be injected dynamically at image compilation time.
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000}
     container_name: expense_tracker_frontend
+    restart: unless-stopped
+    networks:
+      - expense_tracker_network
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      # WHY THIS FIX WAS MADE: NEXT_PUBLIC_API_URL handles browser requests, while 
+      # INTERNAL_API_URL handles secure server-side rendering (SSR) inside the docker network.
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000}
       - INTERNAL_API_URL=http://backend:5000
-      - API_URL=http://backend:5000
-      - BACKEND_URL=http://backend:5000
     depends_on:
       backend:
         condition: service_healthy
-    restart: always
+    # WHY THIS FIX WAS MADE: Added explicit healthcheck for the frontend Next.js server 
+    # so container orchestrators can detect hung processes and auto-recover.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+# === SECTION 3 END ===

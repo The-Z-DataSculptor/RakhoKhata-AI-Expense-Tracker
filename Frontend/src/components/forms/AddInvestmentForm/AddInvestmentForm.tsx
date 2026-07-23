@@ -65,11 +65,10 @@ export interface InitialInvestmentData {
 
 interface AddInvestmentFormProps {
   onClose: () => void;
-  onSave: (data: InvestmentAssetPayload) => void;
+  onSave: (data: InvestmentAssetPayload) => Promise<void> | void;
   initialData?: InitialInvestmentData | null;
 }
 
-// Static tracking configuration matrix mapping asset classification behaviors safely
 const INVESTMENT_TYPES: InvestmentTypeOption[] = [
   { id: "crypto", label: "Crypto / Coins", symbolDefault: "BTC", category: "Digital", iconString: "₿" },
   { id: "defi", label: "Staking Pools", symbolDefault: "YLD", category: "Digital", iconString: "⚡" },
@@ -92,18 +91,15 @@ const INVESTMENT_TYPES: InvestmentTypeOption[] = [
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmentFormProps) {
-  // Pull centralized multi-currency formatting calculations out of the active store contexts
   const { convertAmount } = useCurrency();
   const { activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
 
-  // Parse baseline fallback text constants from initial data profiles where available
   const initialName = initialData?.name || "";
   const initialSymbol = initialData?.symbol || "";
   const initialQty = initialData?.quantityOwned?.toString() || "";
   const initialNote = initialData?.userNote || "";
 
-  // Scan cross references on component construction to preserve asset selection indicators
   const matchedTypeOnMount = initialData
     ? INVESTMENT_TYPES.find(item => item.iconString === initialData.icon)
     : null;
@@ -112,11 +108,9 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
   const initialIsCustomMode = Boolean(initialData && !matchedTypeOnMount);
   const initialCustomType = initialIsCustomMode ? (initialData?.categoryClass || "Custom Item") : "";
 
-  // Display raw numerical figures directly without nested operational conversion leaks
   const rawTotalInvested = initialData?.totalInvested || 0;
   const initialMoneyStr = initialData ? rawTotalInvested.toString() : "";
 
-  // --- LOCAL REACTION COMPONENT STATE HOOKS ---
   const [formStep, setFormStep] = useState<number>(1);
   const [assetName, setAssetName] = useState<string>(initialName);
   const [assetSymbol, setAssetSymbol] = useState<string>(initialSymbol || INVESTMENT_TYPES[0].symbolDefault);
@@ -127,8 +121,8 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
   const [totalMoneySpent, setTotalMoneySpent] = useState<string>(initialMoneyStr);
   const [amountReceived, setAmountReceived] = useState<string>(initialQty);
   const [userNote, setUserNote] = useState<string>(initialNote);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  /** Maps the standard shorthand tickers automatically when changing preset type dropdown rows */
   const handleTypeSelect = (typeId: string) => {
     setSelectedType(typeId);
     const matchedOption = INVESTMENT_TYPES.find(item => item.id === typeId);
@@ -137,11 +131,11 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
     }
   };
 
-  /** Validates form step constraints and structures the data object payload for persistence hooks */
-  const handleFormWorkflowSubmit = (e: React.FormEvent) => {
+  const handleFormWorkflowSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // STEP 1: Verify identity fields are within parameters before sliding forward
+    if (isSubmitting) return;
+
     if (formStep === 1) {
       if (!assetName.trim() || !assetSymbol.trim()) {
         toast.error("Please provide a valid name and ticker symbol.");
@@ -151,8 +145,9 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
       return;
     }
 
-    // STEP 2: Process numeric matrix logs defensively
     try {
+      setIsSubmitting(true);
+
       const activeTypeObj = INVESTMENT_TYPES.find(item => item.id === selectedType);
       const finalIconChar = isCustomMode ? "📦" : (activeTypeObj?.iconString || "💰");
       const finalCategoryClass = isCustomMode ? (customType.trim() || "Custom Position") : (activeTypeObj?.category || "Traditional");
@@ -162,30 +157,32 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
 
       if (isNaN(rawMoneySpent) || rawMoneySpent <= 0 || isNaN(finalQuantityOwned) || finalQuantityOwned <= 0) {
         toast.error("Monetary values and quantities owned must be positive numerical digits.");
+        setIsSubmitting(false);
         return;
       }
 
-      // Convert capital values cleanly into USD for normalized portfolio data storage metrics
       const normalizedTotalInvested = convertAmount(rawMoneySpent, workspaceCurrency, "USD");
       const calculatedUnitPrice = finalQuantityOwned > 0 ? (rawMoneySpent / finalQuantityOwned) : 0;
 
       let updatedHistory: InvestmentHistoryNode[] = [];
       const localizedDateString = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const nodeUniqueSuffix = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 7);
 
-      // Generate history log snapshots dynamically based on profile modification contexts
+      // WHY THIS FIX WAS MADE: Store rawMoneySpent in investedAtTime (in local workspace currency, e.g. PKR 10,000)
+      // instead of normalizedTotalInvested (USD $36). This prevents the UI from displaying PKR 36 in Activity History.
       if (initialData) {
         const existingHistory = initialData.history ? [...initialData.history] : [];
         const isBalanceShifted = Math.abs((initialData.totalInvested || 0) - rawMoneySpent) > 0.001 || initialData.quantityOwned !== finalQuantityOwned;
         
         if (isBalanceShifted) {
           const historySnapshot: InvestmentHistoryNode = {
-            id: `node-${Date.now()}-update`,
+            id: `node-${Date.now()}-${nodeUniqueSuffix}`,
             date: localizedDateString,
             title: "Balance Adjusted",
-            note: userNote.trim() || "Asset balances adjusted via secure portfolio manager.",
+            note: userNote.trim() || "Asset balances adjusted.",
             amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
-            investedAtTime: normalizedTotalInvested,
-            valueAtTime: normalizedTotalInvested,
+            investedAtTime: rawMoneySpent,
+            valueAtTime: rawMoneySpent,
             roiAtTime: "0.0% ROI",
             isProfitAtTime: true
           };
@@ -194,21 +191,19 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
           updatedHistory = existingHistory;
         }
       } else {
-        // Build the initial ledger logging timeline baseline node elements
         updatedHistory = [{
-          id: `node-${Date.now()}-initial`,
+          id: `node-${Date.now()}-${nodeUniqueSuffix}`,
           date: localizedDateString,
           title: "Initial Log",
-          note: userNote.trim() || "Asset profile successfully logged in safe vault.",
+          note: userNote.trim() || "Asset profile logged in vault.",
           amountAtTime: `${finalQuantityOwned} ${assetSymbol.trim().toUpperCase()}`,
-          investedAtTime: normalizedTotalInvested,
-          valueAtTime: normalizedTotalInvested,
+          investedAtTime: rawMoneySpent,
+          valueAtTime: rawMoneySpent,
           roiAtTime: "0.0% ROI",
           isProfitAtTime: true
         }];
       }
 
-      // Consolidate properties into a production ready data transfer contract object
       const builtAssetPayload: InvestmentAssetPayload = {
         name: assetName.trim(),
         symbol: assetSymbol.trim().toUpperCase() || "ITEM",
@@ -223,22 +218,22 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         history: updatedHistory
       };
 
-      // Bubble verified payload properties back up to parent execution managers
-      onSave(builtAssetPayload);
+      await onSave(builtAssetPayload);
 
     } catch (error: unknown) {
-      console.error("Investment allocation exception hook event details:", error);
-      toast.error("Could not secure investment entry records. Verify numeric parameter scales.");
+      console.error("Investment allocation exception:", error);
+      toast.error("Could not save investment entry.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: EXPORTS / RENDER COMPONENT ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: EXPORTS / RENDER COMPONENT ===
+     ========================================================================== */
   return (
     <form onSubmit={handleFormWorkflowSubmit} className={styles.formContainer} noValidate>
-      {/* FLOW TIMELINE PROGRESS BAR HEADER */}
       <div className={styles.progressHeader}>
         <div className={`${styles.progressTab} ${formStep >= 1 ? styles.activeTab : ""}`}>
           <span className={styles.tabIndex}>1</span> Identify Asset
@@ -249,7 +244,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         </div>
       </div>
 
-      {/* STEP 1 ARCHITECTURE: IDENTITY PRESETS AND CLASSIFICATIONS */}
       {formStep === 1 && (
         <div className={styles.stepWrapper}>
           <div className={styles.promptSpeechBubble}>
@@ -257,7 +251,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             <p className={styles.speechText}>Define your asset name and shorthand ticker symbol.</p>
           </div>
 
-          {/* ASSET NAME TEXT INPUT */}
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel} htmlFor="assetNameInputField">Asset Name</label>
             <input
@@ -272,7 +265,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             />
           </div>
 
-          {/* TICKER SYMBOL TEXT INPUT */}
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel} htmlFor="assetTickerInputField">Asset Ticker Symbol</label>
             <input
@@ -287,23 +279,21 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             />
           </div>
 
-          {/* MANUAL OVERRIDE OVERLAY SLIDER CONTROL CHANNELS */}
           <div className={styles.customToggleBox}>
             <div className={styles.toggleContext}>
               <span className={styles.toggleMainTitle}>Is this a unique custom profile?</span>
-              <p className={styles.toggleSubtitle}>Enable manual override to record specific collectible variants or off‑market items.</p>
+              <p className={styles.toggleSubtitle}>Enable manual override to record custom assets.</p>
             </div>
             <button
               type="button"
               className={styles.toggleActionBtn}
               onClick={() => setIsCustomMode(!isCustomMode)}
-              aria-label="Toggle custom asset classification mode"
+              aria-label="Toggle custom classification mode"
             >
               {isCustomMode ? <BsToggleOn className={styles.toggleOnIcon} /> : <BsToggleOff className={styles.toggleOffIcon} />}
             </button>
           </div>
 
-          {/* CONDITIONAL SELECTION BLOCK: PRESETS VS CUSTOM INPUT LAYOUT FIELDS */}
           {!isCustomMode ? (
             <div className={styles.inputGroup}>
               <label className={styles.fieldLabel} htmlFor="assetCategoryPresetSelect">Asset Category Class</label>
@@ -342,7 +332,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             </div>
           )}
 
-          {/* STEP 1 NAVIGATION ROUTING ACTION BUTTONS */}
           <div className={styles.actionFooter}>
             <button type="button" onClick={onClose} className={styles.secondaryBtn}>Cancel</button>
             <button type="submit" className={styles.primaryBtn}>
@@ -352,15 +341,13 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
         </div>
       )}
 
-      {/* STEP 2 ARCHITECTURE: MONETARY HOLDINGS QUANTITY AND STRATEGY BALANCES */}
       {formStep === 2 && (
         <div className={styles.stepWrapper}>
           <div className={styles.promptSpeechBubble}>
             <h3 className={styles.speechTitle}>Calculate Investment Metrics</h3>
-            <p className={styles.speechText}>Provide the values below. Your performance yield and progress totals will initialize automatically.</p>
+            <p className={styles.speechText}>Provide the values below to track performance.</p>
           </div>
 
-          {/* CAPITAL SPENT MONETARY INPUT */}
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel} htmlFor="capitalSpentMonetaryInput">Total Invested (Capital Spent)</label>
             <div className={styles.currencyInputWrapper}>
@@ -380,7 +367,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             </div>
           </div>
 
-          {/* QUANTITY OWNED FRACTIONAL VALUE INPUT */}
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel} htmlFor="assetQuantityOwnedInput">Total Quantity Owned</label>
             <div className={styles.currencyInputWrapper}>
@@ -400,7 +386,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             </div>
           </div>
 
-          {/* STRATEGIC NOTE PARSING FIELD */}
           <div className={styles.inputGroup}>
             <label className={styles.fieldLabel} htmlFor="investmentStrategyNotesArea">
               <span className={styles.noteTitleLine}><FaHeart /> Asset Strategy & Progress Note</span>
@@ -416,11 +401,21 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
             />
           </div>
 
-          {/* STEP 2 COMMIT TRIGGERS DECK */}
           <div className={styles.actionFooter}>
-            <button type="button" onClick={() => setFormStep(1)} className={styles.secondaryBtn}>Go Back</button>
-            <button type="submit" className={styles.submitVaultBtn}>
-              Secure Into Vault
+            <button 
+              type="button" 
+              onClick={() => setFormStep(1)} 
+              className={styles.secondaryBtn}
+              disabled={isSubmitting}
+            >
+              Go Back
+            </button>
+            <button 
+              type="submit" 
+              className={styles.submitVaultBtn}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Securing Asset..." : "Secure Into Vault"}
             </button>
           </div>
         </div>

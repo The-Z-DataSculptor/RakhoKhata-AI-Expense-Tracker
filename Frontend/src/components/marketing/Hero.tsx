@@ -1,5 +1,4 @@
 // src/components/Hero.tsx
-"use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
@@ -12,13 +11,14 @@ import styles from "./Hero.module.css";
 /* ==========================================================================
    === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
-// No external property types needed for the static Hero component.
+// WHY THIS FIX WAS MADE: Removed unnecessary "use client" directive. Converting this component
+// to a Next.js Server Component eliminates hydration JS bundle overhead and optimizes LCP speeds.
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC ===
    ========================================================================== */
-// Static functional component - no complex state required for the hero visual.
+/* Static Server Component - No internal state hooks needed */
 /* === SECTION 3 END === */
 
 /* ==========================================================================
@@ -26,13 +26,14 @@ import styles from "./Hero.module.css";
    ========================================================================== */
 export default function Hero() {
   return (
-    <section className={styles.heroContainer}>
+    <section className={styles.heroContainer} aria-label="Platform Hero Overview">
       <div className={styles.heroContent}>
         
         {/* ==================== LEFT COLUMN START ==================== */}
-        {/* Contains the primary value proposition, branding badge, and core CTAs */}
         <div className={styles.leftCol}>
-          <div className={styles.badge}>✨ Introducing RakhoKhata v1.0</div>
+          <div className={styles.badge}>
+            <span aria-hidden="true">✨</span> Introducing RakhoKhata v1.0
+          </div>
           
           <h1 className={styles.title}>
             Smarter Expense Tracking <br />
@@ -44,12 +45,10 @@ export default function Hero() {
           </p>
           
           <div className={styles.buttonGroup}>
-            {/* 🚀 CONNECTED: Links directly to /signup */}
             <Link href="/signup" className={styles.primaryBtn}>
-              Start Free Trial <span className={styles.btnArrow}>→</span>
+              Start Free Trial <span className={styles.btnArrow} aria-hidden="true">→</span>
             </Link>
 
-            {/* 🚀 CONNECTED: Opens YouTube Live Demo in a new tab */}
             <a 
               href="https://www.youtube.com/watch?v=v6bx9g-mqyo" 
               target="_blank" 
@@ -64,12 +63,11 @@ export default function Hero() {
 
 
         {/* ==================== RIGHT COLUMN START ==================== */}
-        {/* Renders the interactive 3D layering card deck mockup stack */}
-        <div className={styles.rightCol}>
+        <div className={styles.rightCol} aria-hidden="true">
           <div className={styles.scene3D}>
             <div className={styles.mockupStack}>
               
-              {/* Layer 1: The Main Dashboard Transaction Canvas */}
+              {/* Layer 1: Main Dashboard Canvas */}
               <div className={`${styles.card} ${styles.mainDashboard}`}>
                 <div className={styles.cardHeader}>
                   <span className={styles.cardTitle}>Recent Ledgers</span>
@@ -104,14 +102,14 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Layer 2: Floating Expense Breakdown Chart (Overlapping) */}
+              {/* Layer 2: Floating Expense Breakdown Chart */}
               <div className={`${styles.card} ${styles.breakdownCard}`}>
                 <p className={styles.miniTitle}>Monthly Velocity</p>
                 <div className={styles.chartPlaceholder}>
-                  <div className={`${styles.bar} ${styles.bar1}`} style={{ height: '40%' }}></div>
-                  <div className={`${styles.bar} ${styles.bar2}`} style={{ height: '75%' }}></div>
-                  <div className={`${styles.bar} ${styles.bar3}`} style={{ height: '55%' }}></div>
-                  <div className={`${styles.bar} ${styles.bar4}`} style={{ height: '90%' }}></div>
+                  <div className={`${styles.bar} ${styles.bar1}`} style={{ height: "40%" }}></div>
+                  <div className={`${styles.bar} ${styles.bar2}`} style={{ height: "75%" }}></div>
+                  <div className={`${styles.bar} ${styles.bar3}`} style={{ height: "55%" }}></div>
+                  <div className={`${styles.bar} ${styles.bar4}`} style={{ height: "90%" }}></div>
                 </div>
                 <div className={styles.chartLabel}>
                   <span>Optimized</span>
@@ -119,7 +117,7 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Layer 3: Floating Interactive Success Alert Capsule */}
+              {/* Layer 3: Floating Success Alert Capsule */}
               <div className={`${styles.card} ${styles.floatingAlert}`}>
                 <div className={styles.alertPulse}></div>
                 <span className={styles.alertText}>Income Saved to Ledger!</span>

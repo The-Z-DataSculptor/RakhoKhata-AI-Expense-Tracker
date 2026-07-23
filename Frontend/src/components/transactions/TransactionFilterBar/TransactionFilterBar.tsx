@@ -10,25 +10,28 @@ import styles from "./TransactionFilterBar.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: TYPES & INTERFACES ===
    ========================================================================== */
 export type TransactionTypeFilter = "all" | "income" | "expense";
 
+/**
+ * A category item with its ID and display name.
+ */
+interface CategoryOption {
+  id: string;
+  name: string;
+}
+
 interface TransactionFilterBarProps {
-  /** Live text query string used to search transactions */
   searchQuery: string;
-  /** Callback triggered when search text changes */
   onSearchChange: (value: string) => void;
-  /** Currently selected flow filter type ("all" | "income" | "expense") */
   selectedType: TransactionTypeFilter;
-  /** Callback triggered when cash flow filter changes */
   onTypeChange: (type: TransactionTypeFilter) => void;
-  /** Array of available category names in the current workspace */
-  availableCategories: string[];
-  /** Currently selected category filter string token */
-  selectedCategory: string;
-  /** Callback triggered when selected category changes */
-  onCategoryChange: (category: string) => void;
+  /** All available categories for filtering – now includes IDs */
+  categories: CategoryOption[];
+  selectedCategory: string;   // category ID or "all"
+  /** Called with the selected category ID (or "all") */
+  onCategoryChange: (categoryId: string) => void;
 }
 /* === SECTION 2 END === */
 
@@ -40,13 +43,13 @@ export default function TransactionFilterBar({
   onSearchChange,
   selectedType,
   onTypeChange,
-  availableCategories,
+  categories,
   selectedCategory,
   onCategoryChange,
 }: TransactionFilterBarProps) {
   
-  // Guard fallback ensuring availableCategories is always a valid string array
-  const validatedCategories = availableCategories || [];
+  // Ensure we always have a valid array
+  const safeCategories = Array.isArray(categories) ? categories : [];
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchChange(e.target.value);
@@ -57,13 +60,14 @@ export default function TransactionFilterBar({
   };
 
   const handleCategorySelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // The value is now a category ID (or "all")
     onCategoryChange(e.target.value);
   };
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: EXPORTS / RENDER COMPONENT ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: EXPORTS / RENDER COMPONENT ===
+     ========================================================================== */
   return (
     <div className={styles.unifiedControlRowContainer}>
       
@@ -129,7 +133,7 @@ export default function TransactionFilterBar({
           </button>
         </div>
 
-        {/* EXPANDED CATEGORY DROPDOWN SELECTOR */}
+        {/* CATEGORY DROPDOWN – now uses IDs as values */}
         <div className={styles.dropdownPickerWrapper}>
           <FiSliders className={styles.dropdownContextIconPin} size={15} />
           <select
@@ -139,9 +143,9 @@ export default function TransactionFilterBar({
             aria-label="Filter ledger records by category value"
           >
             <option value="all">All Categories</option>
-            {validatedCategories.map((categoryItem) => (
-              <option key={categoryItem} value={categoryItem.toLowerCase()}>
-                {categoryItem}
+            {safeCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </select>

@@ -1,9 +1,6 @@
 // src/components/dashboard/AiBuddyConsole/AiBuddyConsole.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
 import React, { useState, useEffect, useCallback } from "react";
 import {
   FiZap,
@@ -12,48 +9,38 @@ import {
   FiStar,
   FiSmile,
   FiCalendar,
-  FiTrendingUp
+  FiTrendingUp,
 } from "react-icons/fi";
-import {
-  FaFire,
-  FaUserSecret,
-  FaCalculator
-} from "react-icons/fa6";
+import { FaFire, FaUserSecret, FaCalculator } from "react-icons/fa6";
 import { toast } from "sonner";
-import { UserProfile } from "@/utils/api";
+import { aiService } from "@/utils/api"; // no longer need UserProfile import
 import styles from "./AiBuddyConsole.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
 interface AiBuddyConsoleProps {
   activeWorkspaceId: string | null;
 }
 
 type TimelineScope = "today" | "week" | "month";
 
+interface GreetingUser {
+  name: string;
+  aiPersona: string;
+}
+
 interface LocalCachePayload {
   dateStamp: string;
   greetingText: string;
-  userProfile: UserProfile;
+  greetingUser: GreetingUser;
   cooldownStates: Record<TimelineScope, boolean>;
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
 export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProps) {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [greetingUser, setGreetingUser] = useState<GreetingUser | null>(null);
   const [displayedText, setDisplayedText] = useState("");
   const [fullTargetText, setFullTargetText] = useState("");
   const [isLoadingGreeting, setIsLoadingGreeting] = useState(true);
   const [isProcessingAnalysis, setIsProcessingAnalysis] = useState(false);
-  
-  // Track remaining daily calls for visual notifications
   const [callsUsedToday, setCallsUsedToday] = useState<number>(0);
-
   const [cooldowns, setCooldowns] = useState<Record<TimelineScope, boolean>>({
     today: false,
     week: false,
@@ -68,53 +55,49 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       .join(" ");
   };
 
-  // Safe Date Marker string helper (e.g., "2026-07-17")
-  const getTodayDateString = useCallback((): string => {
-    return new Date().toISOString().split("T")[0];
-  }, []);
+  const getTodayDateString = useCallback(
+    () => new Date().toISOString().split("T")[0],
+    []
+  );
 
-  /* ==========================================
-     === LOCAL STORAGE TRACKING SHIELDS ===
-     ========================================== */
-
-  // Helper: Reads and cleans call limits to reset on date changes
   const getDailyCallCount = useCallback((): number => {
     if (typeof window === "undefined") return 0;
-    const todayStr = getTodayDateString();
-    const storedDate = localStorage.getItem("rakhokhata_call_date");
-    
-    if (storedDate !== todayStr) {
-      localStorage.setItem("rakhokhata_call_date", todayStr);
-      localStorage.setItem("rakhokhata_daily_calls", "0");
+    try {
+      const todayStr = getTodayDateString();
+      const storedDate = localStorage.getItem("rakhokhata_call_date");
+      if (storedDate !== todayStr) {
+        localStorage.setItem("rakhokhata_call_date", todayStr);
+        localStorage.setItem("rakhokhata_daily_calls", "0");
+        return 0;
+      }
+      return parseInt(localStorage.getItem("rakhokhata_daily_calls") || "0", 10);
+    } catch {
       return 0;
     }
-    
-    return parseInt(localStorage.getItem("rakhokhata_daily_calls") || "0", 10);
   }, [getTodayDateString]);
 
-  // Helper: Increments call usage safely
   const incrementDailyCallCount = useCallback((): number => {
-    const updatedCount = getDailyCallCount() + 1;
-    localStorage.setItem("rakhokhata_daily_calls", updatedCount.toString());
-    setCallsUsedToday(updatedCount);
-    return updatedCount;
+    if (typeof window === "undefined") return 0;
+    try {
+      const updatedCount = getDailyCallCount() + 1;
+      localStorage.setItem("rakhokhata_daily_calls", updatedCount.toString());
+      setCallsUsedToday(updatedCount);
+      return updatedCount;
+    } catch {
+      return 0;
+    }
   }, [getDailyCallCount]);
 
+  // Typewriter effect
   useEffect(() => {
     if (!fullTargetText) return;
-
     const cleanedText = fullTargetText
       .trim()
       .replace(/^["'“‘’”]+/g, "")
       .replace(/["'“‘’”]+$/g, "");
-
     let characterIndex = 0;
-    
     const typewriterInterval = setInterval(() => {
-      if (characterIndex === 0) {
-        setDisplayedText(""); 
-      }
-
+      if (characterIndex === 0) setDisplayedText("");
       if (characterIndex < cleanedText.length) {
         setDisplayedText(cleanedText.slice(0, characterIndex + 1));
         characterIndex++;
@@ -122,142 +105,141 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
         clearInterval(typewriterInterval);
       }
     }, 18);
-
     return () => clearInterval(typewriterInterval);
   }, [fullTargetText]);
 
-  // Fetch or Load Cached Greeting
+  // Fetch greeting via centralized aiService
   useEffect(() => {
+    let isMounted = true;
     const fetchDailyGreeting = async () => {
-      if (!activeWorkspaceId) return;
-      setIsLoadingGreeting(true);
+      if (!activeWorkspaceId) {
+        if (isMounted) setIsLoadingGreeting(false);
+        return;
+      }
+      if (isMounted) setIsLoadingGreeting(true);
 
       const todayStr = getTodayDateString();
       const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
-      const cachedPayload = localStorage.getItem(cacheKey);
-
-      // Initialize Call Limits for state readouts
-      setCallsUsedToday(getDailyCallCount());
+      let cachedPayload: string | null = null;
+      try {
+        cachedPayload = localStorage.getItem(cacheKey);
+      } catch {
+        cachedPayload = null;
+      }
+      if (isMounted) setCallsUsedToday(getDailyCallCount());
 
       if (cachedPayload) {
         try {
           const parsed: LocalCachePayload = JSON.parse(cachedPayload);
-          // If greeting matches today's date, serve from cache immediately
-          if (parsed.dateStamp === todayStr) {
-            setUserProfile(parsed.userProfile);
-            setFullTargetText(parsed.greetingText);
-            setCooldowns(parsed.cooldownStates);
+          if (parsed.dateStamp === todayStr && isMounted) {
+            setGreetingUser(parsed.greetingUser || null);
+            setFullTargetText(parsed.greetingText || "");
+            setCooldowns(
+              parsed.cooldownStates || {
+                today: false,
+                week: false,
+                month: false,
+              }
+            );
             setIsLoadingGreeting(false);
             return;
           }
         } catch {
-          console.warn("Clearing corrupt local cache object.");
-          localStorage.removeItem(cacheKey);
+          try {
+            localStorage.removeItem(cacheKey);
+          } catch {}
         }
       }
 
-      // Cache miss: execute secure database-driven greeting fetch
       try {
-        const response = await fetch("http://localhost:5000/api/ai/greeting", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId: activeWorkspaceId }),
-          credentials: "include",
-        });
+        const result = await aiService.greeting(activeWorkspaceId);
+        if (isMounted) {
+          setGreetingUser(result.user || null);
+          setFullTargetText(result.greeting || "");
+          setCooldowns(
+            result.cooldowns || { today: false, week: false, month: false }
+          );
 
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error);
-
-        setUserProfile(result.user);
-        setFullTargetText(result.greeting);
-        setCooldowns(result.cooldowns || { today: false, week: false, month: false });
-
-        // Save result payload to prevent refresh loops
-        const cacheData: LocalCachePayload = {
-          dateStamp: todayStr,
-          greetingText: result.greeting,
-          userProfile: result.user,
-          cooldownStates: result.cooldowns || { today: false, week: false, month: false }
-        };
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-
+          const cacheData: LocalCachePayload = {
+            dateStamp: todayStr,
+            greetingText: result.greeting || "",
+            greetingUser: result.user,
+            cooldownStates:
+              result.cooldowns || {
+                today: false,
+                week: false,
+                month: false,
+              },
+          };
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          } catch {}
+        }
       } catch (error: unknown) {
         console.error("Failed to generate contextual AI greeting:", error);
-        setFullTargetText(
-          "Secure network link functional. I'm looking over your logs. Click a report scope below to process your ledger grids."
-        );
+        if (isMounted)
+          setFullTargetText(
+            "Secure network link functional. Click a report scope below to process your ledger grids."
+          );
       } finally {
-        setIsLoadingGreeting(false);
+        if (isMounted) setIsLoadingGreeting(false);
       }
     };
 
     fetchDailyGreeting();
+    return () => {
+      isMounted = false;
+    };
   }, [activeWorkspaceId, getDailyCallCount, getTodayDateString]);
 
   const handleTriggerAnalysis = async (scope: TimelineScope) => {
     if (cooldowns[scope] || isProcessingAnalysis) return;
-
-    // Check Daily Shield
     const currentCalls = getDailyCallCount();
     if (currentCalls >= 4) {
-      toast.error("You have reached your limit of 4 AI reports today. Please try again tomorrow!");
+      toast.error(
+        "You have reached your limit of 4 AI reports today. Please try again tomorrow!"
+      );
       return;
     }
-
     setIsProcessingAnalysis(true);
     setFullTargetText(
       "Querying the database... pulling your category rules... checking budgets..."
     );
-
     try {
-      const response = await fetch("http://localhost:5000/api/ai/execute-analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scope,
-          workspaceId: activeWorkspaceId
-        }),
-        credentials: "include",
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-
-      setFullTargetText(result.analysisReport);
-      
-      // Update Cooldown State
+      const result = await aiService.executeAnalysis(scope, activeWorkspaceId!);
+      setFullTargetText(
+        result.analysisReport || "Analysis report generated."
+      );
       const updatedCooldowns = { ...cooldowns, [scope]: true };
       setCooldowns(updatedCooldowns);
-
-      // Cache updated cooldown configurations immediately
       const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
-      const cachedPayload = localStorage.getItem(cacheKey);
-      if (cachedPayload) {
-        try {
+      try {
+        const cachedPayload = localStorage.getItem(cacheKey);
+        if (cachedPayload) {
           const parsed: LocalCachePayload = JSON.parse(cachedPayload);
           parsed.cooldownStates = updatedCooldowns;
           localStorage.setItem(cacheKey, JSON.stringify(parsed));
-        } catch {
-          // Fail silently on cache write issue
         }
-      }
-
-      // Secure Daily Limit count increment
+      } catch {}
       const newCount = incrementDailyCallCount();
-      toast.success(`Analysis loaded successfully. (Daily Usage: ${newCount}/4)`);
-
+      toast.success(
+        `Analysis loaded successfully. (Daily Usage: ${newCount}/4)`
+      );
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Network sync timeout during AI compilation.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Network error during compilation.";
       toast.error(message);
       setFullTargetText(
-        "Could not load analysis. Please check if your backend server is online."
+        "Could not load analysis. Please check your backend connection."
       );
     } finally {
       setIsProcessingAnalysis(false);
     }
   };
 
-  const personaKey = userProfile?.aiPersona || "supportive_coach";
+  const personaKey = greetingUser?.aiPersona || "supportive_coach";
 
   const getPersonaThemeClass = () => {
     if (personaKey === "savage_roaster") return styles.themeRoaster;
@@ -267,9 +249,12 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
   };
 
   const renderPersonaIcon = () => {
-    if (personaKey === "savage_roaster") return <FaFire className={styles.companionBrandIcon} />;
-    if (personaKey === "forensic_detective") return <FaUserSecret className={styles.companionBrandIcon} />;
-    if (personaKey === "silent_accountant") return <FaCalculator className={styles.companionBrandIcon} />;
+    if (personaKey === "savage_roaster")
+      return <FaFire className={styles.companionBrandIcon} />;
+    if (personaKey === "forensic_detective")
+      return <FaUserSecret className={styles.companionBrandIcon} />;
+    if (personaKey === "silent_accountant")
+      return <FaCalculator className={styles.companionBrandIcon} />;
     return <FiSmile className={styles.companionBrandIcon} />;
   };
 
@@ -281,20 +266,31 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
   };
 
   const scopeConfig = {
-    today: { icon: <FiZap />, label: "Today", pulseClass: styles.pulseFirstDelay },
-    week: { icon: <FiCalendar />, label: "Week", pulseClass: styles.pulseSecondDelay },
-    month: { icon: <FiTrendingUp />, label: "Month", pulseClass: styles.pulseThirdDelay },
+    today: {
+      icon: <FiZap />,
+      label: "Today",
+      pulseClass: styles.pulseFirstDelay,
+    },
+    week: {
+      icon: <FiCalendar />,
+      label: "Week",
+      pulseClass: styles.pulseSecondDelay,
+    },
+    month: {
+      icon: <FiTrendingUp />,
+      label: "Month",
+      pulseClass: styles.pulseThirdDelay,
+    },
   };
-  /* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: RENDER ===
-     ========================================================================== */
   return (
-    <div className={`${styles.terminalContainer} ${getPersonaThemeClass()}`}>
+    <div
+      className={`${styles.terminalContainer} ${getPersonaThemeClass()}`}
+      role="region"
+      aria-label="AI Companion Console"
+    >
       <div className={styles.lensGlowOverlay} />
       <div className={styles.lensGlowOverlaySecondary} />
-
       <div className={styles.innerLayout}>
         <div className={styles.companionStatusRow}>
           <div className={styles.companionBadge}>
@@ -310,20 +306,24 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
             <div className={styles.identityMeta}>
               <h4>
                 <FiStar className={styles.sparkleIcon} />
-                {userProfile?.name
-                  ? `${formatTitleCase(userProfile.name)}'s Companion`
+                {greetingUser?.name
+                  ? `${formatTitleCase(greetingUser.name)}'s Companion`
                   : "AI Companion Node"}
               </h4>
               <p>
-                Persona: <span className={styles.highlightText}>{personaKey.replace("_", " ")}</span>
+                Persona:{" "}
+                <span className={styles.highlightText}>
+                  {personaKey.replace("_", " ")}
+                </span>
               </p>
             </div>
           </div>
-
           <div className={styles.livePulseIndicator}>
             <span className={styles.greenPulseDot} />
             <span className={styles.pulseLabel}>
-              {callsUsedToday >= 4 ? "DAILY LIMIT REACHED" : `LIMIT: ${callsUsedToday}/4`}
+              {callsUsedToday >= 4
+                ? "DAILY LIMIT REACHED"
+                : `LIMIT: ${callsUsedToday}/4`}
             </span>
             <span className={styles.pulseBars}>
               <span className={styles.bar}></span>
@@ -332,7 +332,6 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
             </span>
           </div>
         </div>
-
         <div className={styles.displayMonitorArea}>
           {isLoadingGreeting ? (
             <div className={styles.loaderState}>
@@ -348,25 +347,26 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
             </p>
           )}
         </div>
-
         <footer className={styles.actionGridFooter}>
           {(["today", "week", "month"] as TimelineScope[]).map((scope) => {
-            const isLocked = cooldowns[scope] || (callsUsedToday >= 4);
+            const isLocked = cooldowns[scope] || callsUsedToday >= 4;
             const activeScope = scopeConfig[scope];
-
             return (
               <button
                 key={scope}
+                type="button"
                 onClick={() => handleTriggerAnalysis(scope)}
-                disabled={isLocked || isProcessingAnalysis || isLoadingGreeting}
-                className={`${styles.timelineActionButton} ${isLocked ? styles.buttonLockedState : ""} ${
+                disabled={
+                  isLocked || isProcessingAnalysis || isLoadingGreeting
+                }
+                className={`${styles.timelineActionButton} ${
+                  isLocked ? styles.buttonLockedState : ""
+                } ${
                   scope === "today"
                     ? styles.scopeToday
                     : scope === "week"
                     ? styles.scopeWeek
-                    : scope === "month"
-                    ? styles.scopeMonth
-                    : ""
+                    : styles.scopeMonth
                 }`}
               >
                 <div className={styles.btnInnerFlex}>
@@ -379,9 +379,15 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
                     </>
                   ) : (
                     <>
-                      <span className={styles.scopeIconWrapper}>{activeScope.icon}</span>
-                      <span className={styles.btnLabelCapital}>{activeScope.label}</span>
-                      <FiZap className={`${styles.btnIconActive} ${activeScope.pulseClass}`} />
+                      <span className={styles.scopeIconWrapper}>
+                        {activeScope.icon}
+                      </span>
+                      <span className={styles.btnLabelCapital}>
+                        {activeScope.label}
+                      </span>
+                      <FiZap
+                        className={`${styles.btnIconActive} ${activeScope.pulseClass}`}
+                      />
                     </>
                   )}
                 </div>
@@ -394,4 +400,3 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     </div>
   );
 }
-/* === SECTION 4 END === */

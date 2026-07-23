@@ -1,21 +1,82 @@
 // Backend/src/services/notificationService.ts
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA CONTRACTS ===
+   === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import cron from "node-cron";
+import { Prisma } from "../../prisma/generated";
 import { prisma } from "../db";
+
+// Number of records processed per database query iteration to prevent memory exhaustion
+const BATCH_SIZE = 200;
+
+// Maximum records deleted per batch during cleanup to prevent database table locking
+const CLEANUP_BATCH_SIZE = 500;
+
+// WHY THIS WAS ADDED: Explicit type payload for batched category queries to prevent TS inference loops
+type RecurringCategoryPayload = Prisma.CategoryGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    dueDay: true;
+    reminderDays: true;
+    workspace: {
+      select: { userId: true };
+    };
+  };
+}>;
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES, INTERFACES & UTILITIES ===
+   === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
 /**
- * Helper to log error details without exposing to clients.
+ * Standardized internal logger to prevent leaking sensitive system traces.
  */
 function logError(message: string, detail: unknown): void {
   console.error(message, detail);
+}
+
+/**
+ * Calculates whether today is the scheduled reminder date across month boundaries.
+ */
+function isReminderDueOnDate(
+  dueDay: number,
+  reminderDays: number,
+  referenceDate: Date
+): boolean {
+  const targetYear = referenceDate.getUTCFullYear();
+  const targetMonth = referenceDate.getUTCMonth();
+
+  // 1. Calculate reminder date for current month's due date
+  const lastDayCurrentMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const actualDueDayCurrentMonth = Math.min(dueDay, lastDayCurrentMonth);
+  const dueDateCurrentMonth = new Date(Date.UTC(targetYear, targetMonth, actualDueDayCurrentMonth));
+
+  const reminderDateCurrentMonth = new Date(dueDateCurrentMonth);
+  reminderDateCurrentMonth.setUTCDate(reminderDateCurrentMonth.getUTCDate() - reminderDays);
+
+  // 2. Calculate reminder date for next month's due date
+  const lastDayNextMonth = new Date(Date.UTC(targetYear, targetMonth + 2, 0)).getUTCDate();
+  const actualDueDayNextMonth = Math.min(dueDay, lastDayNextMonth);
+  const dueDateNextMonth = new Date(Date.UTC(targetYear, targetMonth + 1, actualDueDayNextMonth));
+
+  const reminderDateNextMonth = new Date(dueDateNextMonth);
+  reminderDateNextMonth.setUTCDate(reminderDateNextMonth.getUTCDate() - reminderDays);
+
+  // 3. Match reference date against calculated targets
+  const matchesCurrentMonthReminder =
+    referenceDate.getUTCFullYear() === reminderDateCurrentMonth.getUTCFullYear() &&
+    referenceDate.getUTCMonth() === reminderDateCurrentMonth.getUTCMonth() &&
+    referenceDate.getUTCDate() === reminderDateCurrentMonth.getUTCDate();
+
+  const matchesNextMonthReminder =
+    referenceDate.getUTCFullYear() === reminderDateNextMonth.getUTCFullYear() &&
+    referenceDate.getUTCMonth() === reminderDateNextMonth.getUTCMonth() &&
+    referenceDate.getUTCDate() === reminderDateNextMonth.getUTCDate();
+
+  return matchesCurrentMonthReminder || matchesNextMonthReminder;
 }
 /* === SECTION 2 END === */
 
@@ -24,75 +85,97 @@ function logError(message: string, detail: unknown): void {
    ========================================================================== */
 
 /**
- * Scans the database for recurring bills due for a reminder today and
- * creates notifications for each one, using an idempotency key to
- * prevent duplicate alerts.
+ * Scans the database using cursor-based batching for recurring bills due for a reminder today.
  */
 export async function generateBillReminders(): Promise<void> {
   const today = new Date();
-  const currentDay = today.getDate();
-  const currentMonth = today.getMonth() + 1; // 1‑12
-  const currentYear = today.getFullYear();
+  const currentMonth = today.getUTCMonth() + 1; // 1-12 UTC
+  const currentYear = today.getUTCFullYear();
 
   console.log(
-    `[Notification Service] Starting daily bill reminder sweep on ${today.toLocaleDateString()}...`
+    `[Notification Service] Starting daily bill reminder sweep on ${today.toUTCString()}...`
   );
 
   try {
-    // 1. Fetch all recurring categories that have reminder settings
-    const recurringCategories = await prisma.category.findMany({
-      where: {
-        isRecurring: true,
-        dueDay: { not: null },
-        reminderDays: { not: null },
-      },
-      include: {
-        workspace: true,
-      },
-    });
-
     let notificationsCreated = 0;
+    let cursor: string | undefined = undefined;
+    let hasMoreRecords = true;
 
-    for (const category of recurringCategories) {
-      // TypeScript knows dueDay and reminderDays are non‑null here
-      const dueDay = category.dueDay as number;
-      const reminderDays = category.reminderDays as number;
-      const userId = category.workspace.userId;
+    while (hasMoreRecords) {
+      // WHY THIS FIX WAS MADE: Constructed queryOptions explicitly with Prisma.CategoryFindManyArgs
+      // to eliminate circular type inference errors on 'recurringCategories'.
+      const queryOptions: Prisma.CategoryFindManyArgs = {
+        where: {
+          isRecurring: true,
+          dueDay: { not: null },
+          reminderDays: { not: null },
+        },
+        select: {
+          id: true,
+          name: true,
+          dueDay: true,
+          reminderDays: true,
+          workspace: {
+            select: { userId: true },
+          },
+        },
+        take: BATCH_SIZE,
+        orderBy: { id: "asc" },
+      };
 
-      // 2. Calculate the target day for the reminder
-      let targetNotificationDay = dueDay - reminderDays;
-      if (targetNotificationDay <= 0) {
-        targetNotificationDay = 1; // Fallback to the first day of the month
+      if (cursor) {
+        queryOptions.skip = 1;
+        queryOptions.cursor = { id: cursor };
       }
 
-      // If today matches the target, create a notification
-      if (currentDay === targetNotificationDay) {
-        const title = `Upcoming Bill: ${category.name}`;
-        const message = `Your recurring payment for ${category.name} is due in ${reminderDays} days (on day ${dueDay} of this month).`;
+      const recurringCategories: RecurringCategoryPayload[] =
+        (await prisma.category.findMany(queryOptions)) as unknown as RecurringCategoryPayload[];
 
-        // 3. Build a globally unique idempotency key
-        const idempotencyKey = `bill_reminder_${category.id}_${userId}_${currentMonth}_${currentYear}`;
+      if (recurringCategories.length === 0) {
+        hasMoreRecords = false;
+        break;
+      }
 
-        try {
-          await prisma.notification.upsert({
-            where: { idempotencyKey },
-            update: {}, // Do nothing if it already exists
-            create: {
-              userId,
-              title,
-              message,
-              sourceType: "BILL_REMINDER",
-              sourceId: category.id,
-              idempotencyKey,
-            },
-          });
-          notificationsCreated++;
-        } catch (dbError: unknown) {
-          logError(
-            `[Notification Service] Failed to upsert reminder for category ${category.id}:`,
-            dbError
-          );
+      for (const category of recurringCategories) {
+        if (category.dueDay === null || category.reminderDays === null) {
+          continue;
         }
+
+        const dueDay = category.dueDay;
+        const reminderDays = category.reminderDays;
+        const userId = category.workspace.userId;
+
+        if (isReminderDueOnDate(dueDay, reminderDays, today)) {
+          const title = `Upcoming Bill: ${category.name}`;
+          const message = `Your recurring payment for ${category.name} is due in ${reminderDays} days (on day ${dueDay} of this month).`;
+          const idempotencyKey = `bill_reminder_${category.id}_${userId}_${currentMonth}_${currentYear}`;
+
+          try {
+            await prisma.notification.upsert({
+              where: { idempotencyKey },
+              update: {},
+              create: {
+                userId,
+                title,
+                message,
+                sourceType: "BILL_REMINDER",
+                sourceId: category.id,
+                idempotencyKey,
+              },
+            });
+            notificationsCreated++;
+          } catch (dbError: unknown) {
+            logError(
+              `[Notification Service] Failed to upsert reminder for category ${category.id}:`,
+              dbError
+            );
+          }
+        }
+      }
+
+      cursor = recurringCategories[recurringCategories.length - 1].id;
+      if (recurringCategories.length < BATCH_SIZE) {
+        hasMoreRecords = false;
       }
     }
 
@@ -105,28 +188,51 @@ export async function generateBillReminders(): Promise<void> {
 }
 
 /**
- * Deletes notifications older than 30 days to keep the table lean.
+ * Deletes notifications older than 30 days in chunks to prevent database table locks.
  */
 export async function cleanupOldNotifications(): Promise<void> {
   const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
 
   try {
-    const deleted = await prisma.notification.deleteMany({
-      where: {
-        createdAt: {
-          lt: thirtyDaysAgo,
-        },
-      },
-    });
+    let totalDeleted = 0;
+    let continueDeleting = true;
 
-    if (deleted.count > 0) {
+    while (continueDeleting) {
+      const recordsToPurge = await prisma.notification.findMany({
+        where: {
+          createdAt: { lt: thirtyDaysAgo },
+        },
+        select: { id: true },
+        take: CLEANUP_BATCH_SIZE,
+      });
+
+      if (recordsToPurge.length === 0) {
+        continueDeleting = false;
+        break;
+      }
+
+      const idsToDelete = recordsToPurge.map((item) => item.id);
+      const deleteResult = await prisma.notification.deleteMany({
+        where: {
+          id: { in: idsToDelete },
+        },
+      });
+
+      totalDeleted += deleteResult.count;
+
+      if (recordsToPurge.length < CLEANUP_BATCH_SIZE) {
+        continueDeleting = false;
+      }
+    }
+
+    if (totalDeleted > 0) {
       console.log(
-        `[Notification Service] Automated cleanup: Purged ${deleted.count} historical notifications.`
+        `[Notification Service] Automated cleanup: Purged ${totalDeleted} historical notifications.`
       );
     }
   } catch (error: unknown) {
-    logError("[Notification Service] Error running cleanup:", error);
+    logError("[Notification Service] Error running notification cleanup:", error);
   }
 }
 /* === SECTION 3 END === */
@@ -136,19 +242,25 @@ export async function cleanupOldNotifications(): Promise<void> {
    ========================================================================== */
 
 /**
- * Starts the background cron jobs that run daily and weekly.
+ * Starts background cron jobs using explicit UTC timezone settings.
  */
 export function initNotificationScheduler(): void {
-  // Daily bill reminder sweep at midnight
-  cron.schedule("0 0 * * *", async () => {
-    await generateBillReminders();
-  });
+  cron.schedule(
+    "0 0 * * *",
+    async () => {
+      await generateBillReminders();
+    },
+    { timezone: "UTC" }
+  );
 
-  // Weekly cleanup of old notifications every Sunday at 1:00 AM
-  cron.schedule("0 1 * * 0", async () => {
-    await cleanupOldNotifications();
-  });
+  cron.schedule(
+    "0 1 * * 0",
+    async () => {
+      await cleanupOldNotifications();
+    },
+    { timezone: "UTC" }
+  );
 
-  console.log("[Notification Service] Background cron schedulers loaded successfully.");
+  console.log("[Notification Service] Background cron schedulers initialized (UTC).");
 }
 /* === SECTION 4 END === */

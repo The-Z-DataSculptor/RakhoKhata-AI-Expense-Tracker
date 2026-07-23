@@ -17,7 +17,6 @@ import styles from "./CategoryForm.module.css";
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 interface CategoryFormProps {
-  // Callback routine used to append or persist the valid category record
   onAddCategory: (newCategory: CategoryRecord) => void;
   initialData?: CategoryRecord | null;
   onCancel?: () => void;
@@ -28,10 +27,8 @@ interface CategoryFormProps {
    === SECTION 3: CORE LOGIC ENGINE & HANDLERS ===
    ========================================================================== */
 export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryFormProps) {
-  // Establish edit operational state based on the presence of existing record payloads
   const isEditMode = Boolean(initialData);
 
-  // Bind strict Zod schemas directly to our form validator engine resolver contract
   const resolver = zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>;
 
   const {
@@ -43,7 +40,7 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormValues>({
     resolver, 
-    mode: "onBlur", // Validates current field data states immediately when input focus is lost
+    mode: "onBlur",
     defaultValues: {
       name: "",
       type: "EXPENSE",
@@ -55,11 +52,9 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     },
   });
 
-  // Track field state choices dynamically to conditionally alter layout panels
   const activeColor = useWatch({ control, name: "color", defaultValue: "#613BBF" });
   const isRecurring = useWatch({ control, name: "isRecurring", defaultValue: false });
 
-  // Keep form fields perfectly in sync whenever incoming dataset properties shift
   useEffect(() => {
     if (initialData) {
       reset({
@@ -69,7 +64,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
         isRecurring: initialData.isRecurring || false,
         frequency: (initialData.frequency as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY") || "MONTHLY",
         dueDay: initialData.dueDay !== undefined && initialData.dueDay !== null ? initialData.dueDay : 1,
-        // Safe null checks ensure 0 same-day alert values populate accurately in edit mode
         reminderDays: initialData.reminderDays !== undefined && initialData.reminderDays !== null ? initialData.reminderDays : 3,
       });
     } else {
@@ -85,16 +79,17 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     }
   }, [initialData, reset]);
 
-  // Main processing logic block executed upon successful form validation pass
   const onSubmit = useCallback(
     async (data: CategoryFormValues) => {
       try {
         const lowerCaseType = data.type.toLowerCase() as "income" | "expense" | "both";
 
-        // Assemble a clean, fully itemized data transfer record contract
+        // WHY THIS FIX WAS MADE: Uses crypto.randomUUID fallback to ensure unique category ID generation.
+        const generatedId = initialData?.id || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `cat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+
         const completeCategoryRecord: CategoryRecord = {
-          id: initialData ? initialData.id : `cat-${Date.now()}`,
-          name: data.name.trim(), // Strip leading/trailing whitespaces to avoid text formatting issues
+          id: generatedId,
+          name: data.name.trim(),
           type: lowerCaseType,
           iconSlug: lowerCaseType === "income" ? "FiBriefcase" : "FiShoppingCart",
           accentColor: data.color,
@@ -106,15 +101,12 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           reminderDays: data.reminderDays !== undefined && data.reminderDays !== null ? data.reminderDays : 3,
         };
 
-        // Dispatch category record out to parent context operations
         onAddCategory(completeCategoryRecord);
 
-        // Display confirmation feedback banners based on execution state context
         if (initialData) {
           toast.success("Category changes saved successfully!");
         } else {
-          toast.success("Custom spending category added!");
-          // Reset form fields back to safe default baseline settings upon creation success
+          toast.success("Custom category added!");
           reset({
             name: "",
             type: "EXPENSE",
@@ -126,17 +118,17 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           });
         }
       } catch (error: unknown) {
-        console.error("Category submission workflow processing error:", error);
-        toast.error("Could not save category. Verify all required field boundaries.");
+        console.error("Category submission error:", error);
+        toast.error("Could not save category.");
       }
     },
     [initialData, onAddCategory, reset]
   );
-/* === SECTION 3 END === */
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: EXPORTS / RENDER COMPONENT ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: EXPORTS / RENDER COMPONENT ===
+     ========================================================================== */
   return (
     <div className={styles.formCard}>
       <h3 className={styles.formTitle}>
@@ -144,7 +136,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
       </h3>
 
       <form onSubmit={handleSubmit(onSubmit)} className={styles.formLayout} noValidate>
-        {/* CATEGORY NAME TEXT INPUT */}
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="categoryNameInput">Category Name</label>
           <input
@@ -159,7 +150,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           {errors.name && <span className={styles.errorMessage}>{errors.name.message}</span>}
         </div>
 
-        {/* TRANSACTION FLOW CLASSIFICATION SELECTION */}
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="categoryTypeSelect">Transaction Type</label>
           <select 
@@ -175,7 +165,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           {errors.type && <span className={styles.errorMessage}>{errors.type.message}</span>}
         </div>
 
-        {/* HEX ACCENT COLOR PICKER COMPONENT CONTROLS */}
         <div className={styles.fieldGroup}>
           <label className={styles.label} htmlFor="categoryColorPicker">Category Color Badge</label>
           <div className={styles.colorPickerWrapper}>
@@ -195,13 +184,12 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
               value={activeColor}
               disabled={isSubmitting}
               onChange={(e) => setValue("color", e.target.value, { shouldValidate: true })}
-              aria-label="Hex color string input text field value"
+              aria-label="Hex color string input"
             />
           </div>
           {errors.color && <span className={styles.errorMessage}>{errors.color.message}</span>}
         </div>
 
-        {/* RECURRING BILL CHECKBOX CONFIGURATION TOGGLES */}
         <div className={styles.fieldGroup}>
           <div className={styles.recurringToggleRow}>
             <label className={styles.label} htmlFor="isCategoryRecurringCheckbox">Recurring Payment?</label>
@@ -218,13 +206,11 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
               </label>
             </div>
           </div>
-          <p className={styles.hintText}>Enable for bills, subscriptions, and other regular payments.</p>
+          <p className={styles.hintText}>Enable for bills, subscriptions, and regular payments.</p>
         </div>
 
-        {/* CONDITIONALLY RENDERED PANEL FOR RECURRING SCHEDULING RULE TARGETS */}
         {isRecurring && (
           <div className={styles.recurringDetailsPanel}>
-            {/* BILL DUE TIMELINE FREQUENCY OPTIONS */}
             <div className={styles.fieldGroup}>
               <label className={styles.label} htmlFor="recurringFrequencySelect">Frequency</label>
               <select 
@@ -242,9 +228,8 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
               {errors.frequency && <span className={styles.errorMessage}>{errors.frequency.message}</span>}
             </div>
 
-            {/* MONTHLY CALENDAR DUE DAY ANCHOR */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label} htmlFor="recurringDueDaySelect">Due Day (of the month)</label>
+              <label className={styles.label} htmlFor="recurringDueDaySelect">Due Day (of month)</label>
               <select
                 id="recurringDueDaySelect"
                 className={styles.selectField}
@@ -254,12 +239,11 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
                 {Array.from({ length: 28 }).map((_, index) => (
                   <option key={index + 1} value={index + 1}>{index + 1}</option>
                 ))}
-                <option value="31">31 (Last day of the month)</option>
+                <option value="31">31 (Last day of month)</option>
               </select>
               {errors.dueDay && <span className={styles.errorMessage}>{errors.dueDay.message}</span>}
             </div>
 
-            {/* SYSTEM ALERTS LEAD TIMELINE SELECTION */}
             <div className={styles.fieldGroup}>
               <label className={styles.label} htmlFor="reminderDaysLeadSelect">Notification Lead Time</label>
               <select
@@ -280,7 +264,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
           </div>
         )}
 
-        {/* MODAL CONTROL ACTION FOOTER BUTTON DECK */}
         <div className={styles.buttonGroup}>
           <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : isEditMode ? "Save Changes" : "Create Category"}

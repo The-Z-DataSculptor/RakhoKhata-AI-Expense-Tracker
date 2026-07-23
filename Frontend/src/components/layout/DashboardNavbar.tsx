@@ -2,10 +2,11 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS ===
+   === SECTION 1: IMPORTS & CONSTANTS ===
    ========================================================================== */
 import React, { useState, useSyncExternalStore, useEffect, useRef } from "react";
 import Image from "next/image"; 
+import { toast } from "sonner";
 import {
   FiSun,
   FiMoon,
@@ -29,6 +30,17 @@ import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { notificationService, userService, Notification } from "@/utils/api"; 
 import { WORLD_CURRENCIES } from "@/constants/geoData"; 
 import styles from "./DashboardNavbar.module.css";
+
+const FINANCE_FACTS = [
+  "The average person spends about 10% of their income on coffee.",
+  "Saving just $5 a day can grow to over $1,800 in a year.",
+  "The world's first ATM was installed in 1967 in London.",
+  "About 90% of millionaires have a budget.",
+  "The word 'budget' comes from the French word 'bougette' meaning a small bag.",
+  "People who track their expenses save 15% more on average.",
+  "Investing $100 a month at 8% return could grow to over $150,000 in 30 years.",
+  "More than 60% of people don't have a budget."
+] as const;
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -48,11 +60,12 @@ interface DashboardNavbarProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: UTILITY FUNCTIONS ===
+   === SECTION 3: UTILITY FUNCTIONS & HELPERS ===
    ========================================================================== */
 function timeAgo(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
+  if (isNaN(date.getTime())) return "Recently";
   const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
   const minutes = Math.round(seconds / 60);
   const hours = Math.round(minutes / 60);
@@ -72,10 +85,13 @@ function getNotificationIcon(sourceType: string) {
     default: return <FiInfo size={18} className={styles.iconSystem} />;
   }
 }
-/* === SECTION 3 END === */
 
 const emptySubscribe = () => () => {};
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: COMPONENT LOGIC & PIPELINES ===
+   ========================================================================== */
 export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardNavbarProps) {
   const { activeTheme, changeTheme } = useTheme();
   const { currency, setCurrencyWithWorkspace } = useCurrency();
@@ -88,24 +104,19 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     () => false
   );
 
-  const [isThemeOpen, setIsThemeOpen] = useState(false);
-  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [isThemeOpen, setIsThemeOpen] = useState<boolean>(false);
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState<boolean>(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState<boolean>(false);
 
-  // Performance-grade State Synchronization pattern
-  const [prevAvatarUrl, setPrevAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
-  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(user?.avatarUrl || null);
-
-  if (user?.avatarUrl !== prevAvatarUrl) {
-    setPrevAvatarUrl(user?.avatarUrl || null);
-    setCurrentAvatarUrl(user?.avatarUrl || null);
-  }
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
+  const currentAvatarUrl = uploadedAvatarUrl ?? user?.avatarUrl ?? null;
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = safeNotifications.filter((n) => !n.isRead).length;
 
   const [dynamicGreeting, setDynamicGreeting] = useState<{
     icon: React.ReactNode;
@@ -113,60 +124,50 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   } | null>(null);
   const [dynamicFact, setDynamicFact] = useState<string>("");
 
+  // WHY THIS FIX WAS MADE: Declared animationFrameId with 'const' directly during requestAnimationFrame 
+  // assignment to satisfy strict ESLint prefer-const immutability requirements while keeping render functions pure.
   useEffect(() => {
-    const timeGreetings = [
-      { hourStart: 5, hourEnd: 11, icon: <FiSunrise size={18} />, text: "Good morning" },
-      { hourStart: 12, hourEnd: 17, icon: <FiSun size={18} />, text: "Good afternoon" },
-      { hourStart: 18, hourEnd: 21, icon: <FiSunset size={18} />, text: "Good evening" },
-      { hourStart: 22, hourEnd: 4, icon: <FiMoon size={18} />, text: "Good night" },
-    ];
-
-    const financeFacts = [
-      "The average person spends about 10% of their income on coffee.",
-      "Saving just $5 a day can grow to over $1,800 in a year.",
-      "The world's first ATM was installed in 1967 in London.",
-      "About 90% of millionaires have a budget.",
-      "The word 'budget' comes from the French word 'bougette' meaning a small bag.",
-      "People who track their expenses save 15% more on average.",
-      "The most common expense in Pakistan is food, followed by transportation.",
-      "Investing $100 a month at 8% return could grow to over $150,000 in 30 years.",
-      "The first credit card was introduced in 1950 by Diners Club.",
-      "More than 60% of people don't have a budget.",
-      "The average household spends about 30% of its income on housing.",
-      "Saving 10% of your income is a good starting point for building wealth.",
-      "The concept of compound interest is called the eighth wonder of the world.",
-      "A typical smartphone costs more than the average monthly rent in many cities.",
-      "The global average savings rate is around 20% of income.",
-    ];
-
-    const timer = setTimeout(() => {
+    const animationFrameId = requestAnimationFrame(() => {
       const hour = new Date().getHours();
-      const greeting = timeGreetings.find(
-        (g) => {
-          if (g.hourStart <= g.hourEnd) {
-            return hour >= g.hourStart && hour < g.hourEnd;
-          } else {
-            return hour >= g.hourStart || hour < g.hourEnd;
-          }
-        }
-      ) || timeGreetings[0];
+      let text = "Good morning";
+      let icon = <FiSunrise size={18} />;
 
-      const randomFact = financeFacts[Math.floor(Math.random() * financeFacts.length)];
+      if (hour >= 12 && hour < 18) {
+        text = "Good afternoon";
+        icon = <FiSun size={18} />;
+      } else if (hour >= 18 && hour < 22) {
+        text = "Good evening";
+        icon = <FiSunset size={18} />;
+      } else if (hour >= 22 || hour < 5) {
+        text = "Good night";
+        icon = <FiMoon size={18} />;
+      }
 
-      setDynamicGreeting({ icon: greeting.icon, text: greeting.text });
-      setDynamicFact(randomFact);
-    }, 0);
+      const randomIndex = Math.floor(Math.random() * FINANCE_FACTS.length);
+      setDynamicGreeting({ icon, text });
+      setDynamicFact(FINANCE_FACTS[randomIndex]);
+    });
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
   }, []);
 
   useEffect(() => {
+    let isMountedFlag = true;
     if (user?.id) {
       notificationService
         .getAll()
-        .then((res) => setNotifications(res.notifications))
+        .then((res) => {
+          if (isMountedFlag) {
+            setNotifications(Array.isArray(res.notifications) ? res.notifications : []);
+          }
+        })
         .catch((err) => console.error("Failed to load notifications:", err));
     }
+    return () => {
+      isMountedFlag = false;
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -191,8 +192,15 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid file format. Please upload an image file.");
+      event.target.value = "";
+      return;
+    }
+
     if (file.size > 3 * 1024 * 1024) {
-      alert("Image is too large. Max size allocation limit is 3MB.");
+      toast.error("Image is too large. Max size allocation limit is 3MB.");
+      event.target.value = "";
       return;
     }
 
@@ -201,15 +209,16 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
 
     try {
       setIsAvatarUploading(true);
-      
       const data = await userService.uploadAvatar(formData);
-      setCurrentAvatarUrl(data.avatarUrl);
+      setUploadedAvatarUrl(data.avatarUrl);
+      toast.success("Profile avatar updated successfully!");
     } catch (error: unknown) {
       console.error("Avatar Upload Exception Loop:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to modify profile image asset.";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsAvatarUploading(false);
+      event.target.value = "";
     }
   };
 
@@ -219,7 +228,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
       await notificationService.markAsRead(id);
     } catch (error) {
-      console.error(error);
+      console.error("Failed to mark as read:", error);
     }
   };
 
@@ -228,7 +237,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       await notificationService.markAllAsRead();
     } catch (error) {
-      console.error(error);
+      console.error("Failed to mark all as read:", error);
     }
   };
 
@@ -251,9 +260,13 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   if (!isMounted) {
     return <header className={styles.topNavbarBlankPlaceholder} />;
   }
+  /* === SECTION 4 END === */
 
+  /* ==========================================================================
+     === SECTION 5: RENDER SYSTEM (JSX) ===
+     ========================================================================== */
   return (
-    <header className={styles.topNavbar} suppressHydrationWarning>
+    <header className={styles.topNavbar} suppressHydrationWarning aria-label="Dashboard Top Bar">
       
       {/* LEFT SECTION: USER GREETING DECK */}
       <div className={styles.welcomeSection}>
@@ -290,6 +303,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
         {/* CURRENCY DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button
+            type="button"
             className={styles.currencyToggleTrigger}
             onClick={() => {
               setIsCurrencyOpen(!isCurrencyOpen);
@@ -311,12 +325,14 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           </button>
 
           {isCurrencyOpen && (
-            <div className={styles.dropdownMenuFrame}>
+            <div className={styles.dropdownMenuFrame} role="menu">
               <div className={styles.dropdownMenuHeader}>Dashboard Currency</div>
               <ul className={styles.dropdownScrollableContainer}>
                 {WORLD_CURRENCIES.map((option) => (
                   <li key={option.code}>
                     <button
+                      type="button"
+                      role="menuitem"
                       onClick={() => {
                         setCurrencyWithWorkspace(option.code, currentWorkspaceId || "");
                         setIsCurrencyOpen(false);
@@ -339,6 +355,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
         {/* NOTIFICATIONS DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button
+            type="button"
             className={`${styles.utilityIconButton} ${isNotificationOpen ? styles.iconButtonActive : ""}`}
             onClick={() => {
               setIsNotificationOpen(!isNotificationOpen);
@@ -346,6 +363,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
               setIsCurrencyOpen(false);
             }}
             aria-label="Notifications"
+            aria-expanded={isNotificationOpen}
           >
             <FiBell size={18} />
             {unreadCount > 0 && (
@@ -356,7 +374,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           </button>
 
           {isNotificationOpen && (
-            <div className={styles.notificationDropdownMenuFrame}>
+            <div className={styles.notificationDropdownMenuFrame} role="menu">
               <div className={styles.notificationHeader}>
                 <div className={styles.notificationTitleRow}>
                   <span className={styles.dropdownMenuHeaderTitle}>Notifications</span>
@@ -365,20 +383,20 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                   )}
                 </div>
                 {unreadCount > 0 && (
-                  <button className={styles.markAllReadBtn} onClick={handleMarkAllAsRead}>
+                  <button type="button" className={styles.markAllReadBtn} onClick={handleMarkAllAsRead}>
                     <FiCheckCircle size={14} /> Mark all read
                   </button>
                 )}
               </div>
 
               <div className={styles.notificationScrollableContainer}>
-                {notifications.length === 0 ? (
+                {safeNotifications.length === 0 ? (
                   <div className={styles.emptyNotificationState}>
                     <FiCheckCircle size={28} className={styles.emptyIcon} />
                     <p>You are all caught up!</p>
                   </div>
                 ) : (
-                  notifications.map((notification) => (
+                  safeNotifications.map((notification) => (
                     <div
                       key={notification.id}
                       className={`${styles.notificationCard} ${!notification.isRead ? styles.notificationCardUnread : ""}`}
@@ -406,6 +424,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
         {/* THEME DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button
+            type="button"
             className={`${styles.utilityIconButton} ${isThemeOpen ? styles.iconButtonActive : ""}`}
             onClick={() => {
               setIsThemeOpen(!isThemeOpen);
@@ -419,11 +438,13 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           </button>
 
           {isThemeOpen && (
-            <div className={styles.themeDropdownMenuFrame}>
+            <div className={styles.themeDropdownMenuFrame} role="menu">
               <div className={styles.dropdownMenuHeader}>Interface Theme</div>
               <ul className={styles.themeOptionsList}>
                 <li>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       changeTheme("light");
                       setIsThemeOpen(false);
@@ -438,6 +459,8 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                 </li>
                 <li>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       changeTheme("dark");
                       setIsThemeOpen(false);
@@ -452,6 +475,8 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                 </li>
                 <li>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
                       changeTheme("system");
                       setIsThemeOpen(false);
@@ -514,9 +539,11 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
 
         {/* MOBILE MENU TOGGLE */}
         <button
+          type="button"
           className={styles.hamburgerMenuIconToggle}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle navigation options menu"
+          aria-expanded={isMobileMenuOpen}
         >
           {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
         </button>
@@ -535,6 +562,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                   {WORLD_CURRENCIES.map((cur) => (
                     <button
                       key={cur.code}
+                      type="button"
                       className={cur.code.toUpperCase() === currency?.toUpperCase() ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
                       onClick={() => {
                         setCurrencyWithWorkspace(cur.code, currentWorkspaceId || "");
@@ -554,6 +582,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                 <p className={styles.mobileLabelHeader}>Interface Theme</p>
                 <div className={styles.mobileButtonLayoutGridRow}>
                   <button
+                    type="button"
                     onClick={() => {
                       changeTheme("light");
                       setIsMobileMenuOpen(false);
@@ -563,6 +592,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                     <FiSun size={14} /> Light
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       changeTheme("dark");
                       setIsMobileMenuOpen(false);
@@ -572,6 +602,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                     <FiMoon size={14} /> Dark
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       changeTheme("system");
                       setIsMobileMenuOpen(false);
@@ -590,3 +621,4 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     </header>
   );
 }
+/* === SECTION 5 END === */

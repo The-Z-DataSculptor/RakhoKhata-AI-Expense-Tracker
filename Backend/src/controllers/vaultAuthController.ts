@@ -35,8 +35,8 @@ const BCRYPT_SALT_ROUNDS = 10;
 /**
  * Standardized JSON error response builder
  */
-function buildErrorResponse(message: string): { error: string } {
-  return { error: message };
+function buildErrorResponse(message: string): { error: string; success: boolean } {
+  return { error: message, success: false };
 }
 
 /**
@@ -70,7 +70,6 @@ export const checkVaultPinStatus = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Selects ONLY the vaultPin column to optimize DB query memory overhead.
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { vaultPin: true },
@@ -104,7 +103,9 @@ export const setupVaultPin = async (
       return;
     }
 
-    const { pin, currentPin } = req.body as SetupPinInput;
+    const body = req.body as SetupPinInput;
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    const currentPin = typeof body.currentPin === "string" ? body.currentPin.trim() : "";
 
     // 1. Validate new PIN format
     if (!isValidPinFormat(pin)) {
@@ -123,7 +124,8 @@ export const setupVaultPin = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: If a PIN is already configured, force the user to prove ownership by validating currentPin.
+    // WHY THIS FIX WAS MADE: If a PIN is already configured in PostgreSQL, require and 
+    // validate currentPin using bcrypt to prevent unauthorized overwrites.
     if (user.vaultPin) {
       if (!currentPin || !isValidPinFormat(currentPin)) {
         res.status(400).json(buildErrorResponse("Current PIN is required to change vault settings."));
@@ -170,7 +172,8 @@ export const verifyVaultPin = async (
       return;
     }
 
-    const { pin } = req.body as VerifyPinInput;
+    const body = req.body as VerifyPinInput;
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
 
     if (!isValidPinFormat(pin)) {
       res.status(400).json(buildErrorResponse("PIN must be exactly 4 digits."));
@@ -195,10 +198,7 @@ export const verifyVaultPin = async (
     // Compare provided PIN against stored hash
     const isMatch = await bcrypt.compare(pin, user.vaultPin);
     if (!isMatch) {
-      res.status(401).json({
-        success: false,
-        error: "Incorrect PIN.",
-      });
+      res.status(401).json(buildErrorResponse("Incorrect PIN."));
       return;
     }
 
@@ -227,9 +227,9 @@ export const disableVaultPin = async (
       return;
     }
 
-    const { pin } = req.body as DisablePinInput;
+    const body = req.body as DisablePinInput;
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
 
-    // WHY THIS FIX WAS MADE: Prevents unauthorized removal of vault locks by requiring the valid PIN.
     if (!isValidPinFormat(pin)) {
       res.status(400).json(buildErrorResponse("Valid 4-digit PIN is required to disable vault lock."));
       return;
@@ -257,7 +257,7 @@ export const disableVaultPin = async (
       return;
     }
 
-    // Remove PIN protection
+    // Remove PIN protection in PostgreSQL
     await prisma.user.update({
       where: { id: userId },
       data: { vaultPin: null },

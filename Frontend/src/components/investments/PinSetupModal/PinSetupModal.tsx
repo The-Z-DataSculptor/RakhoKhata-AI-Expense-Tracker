@@ -33,12 +33,12 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
   const [step, setStep] = useState<"VERIFY_CURRENT" | "CREATE" | "CONFIRM">(getInitialStep);
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
   const [firstPin, setFirstPin] = useState<string>("");
+  const [savedCurrentPin, setSavedCurrentPin] = useState<string>("");
+  
   const [isError, setIsError] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  // WHY THIS FIX WAS MADE: Managed timeout reference array cleans up all timers on unmount
-  // or step shifts to avoid unmounted component state updates.
   const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
 
   const registerTimeout = useCallback((fn: () => void, delayMs: number) => {
@@ -68,7 +68,6 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
     };
   }, [isOpen, focusInput, registerTimeout, clearAllTimeouts]);
 
-  // WHY THIS FIX WAS MADE: Added Escape key listener for accessible modal closing.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && !isProcessing) {
@@ -82,25 +81,28 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
   const handleCloseModal = useCallback(() => {
     if (isProcessing) return;
     clearAllTimeouts();
+    setSavedCurrentPin("");
     onClose();
   }, [onClose, isProcessing, clearAllTimeouts]);
 
   const handleVerifyCurrentPin = async (pin: string): Promise<boolean> => {
     try {
-      await vaultAuthService.verifyPin(pin);
+      const response = await vaultAuthService.verifyPin(pin);
+      if (response && response.success === false) return false;
       return true;
     } catch {
       return false;
     }
   };
 
-  const handleSetupNewPin = async (pin: string): Promise<void> => {
-    await vaultAuthService.setupPin(pin);
+  const handleSetupNewPin = async (pin: string, currentPin?: string): Promise<void> => {
+    // WHY THIS FIX WAS MADE: Forwards currentPin (2 arguments) matching updated vaultAuthService.setupPin signature.
+    await vaultAuthService.setupPin(pin, currentPin);
   };
 
   const handleDisablePin = async (pin: string): Promise<void> => {
-    await vaultAuthService.verifyPin(pin);
-    await vaultAuthService.disablePin();
+    // WHY THIS FIX WAS MADE: Transmits verified pin (1 argument) matching updated vaultAuthService.disablePin signature.
+    await vaultAuthService.disablePin(pin);
   };
 
   const handleChange = useCallback(
@@ -124,6 +126,8 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
             const isValid = await handleVerifyCurrentPin(completePin);
             if (!isValid) throw new Error("Incorrect PIN");
 
+            setSavedCurrentPin(completePin);
+
             if (mode === "DISABLE") {
               await handleDisablePin(completePin);
               toast.success("Security lock disabled successfully.");
@@ -143,7 +147,7 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
           } else if (step === "CONFIRM") {
             if (completePin !== firstPin) throw new Error("PINs do not match");
 
-            await handleSetupNewPin(completePin);
+            await handleSetupNewPin(completePin, savedCurrentPin);
             toast.success(mode === "CHANGE" ? "PIN updated successfully!" : "Security lock enabled!");
             onSuccess();
             handleCloseModal();
@@ -160,7 +164,7 @@ export function PinSetupModal({ isOpen, onClose, onSuccess, mode }: PinSetupModa
         }
       }
     },
-    [digits, step, firstPin, mode, focusInput, onSuccess, handleCloseModal, isProcessing, registerTimeout]
+    [digits, step, firstPin, savedCurrentPin, mode, focusInput, onSuccess, handleCloseModal, isProcessing, registerTimeout]
   );
 
   const handleKeyDown = useCallback(

@@ -3,12 +3,10 @@
 /* ==========================================================================
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
-/*
+/**
  * WHY THIS IS NEEDED:
- * The backend URL must come from an environment variable so that the same
- * frontend build works in development, staging, and production without
- * any code changes. NEXT_PUBLIC_API_URL is the standard Next.js variable
- * for client‑side code. The fallback is only used for local development.
+ * The backend URL is retrieved from NEXT_PUBLIC_API_URL so the frontend
+ * functions seamlessly across development, staging, Docker, and production.
  */
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -27,7 +25,7 @@ export interface Category {
 
 export interface Transaction {
   id: string;
-  amount?: number; // legacy field – may still be present in old data
+  amount?: number; // Legacy compatibility
   type: string;
   description: string;
   date: string;
@@ -49,7 +47,7 @@ export interface Budget {
   categoryId: string;
   workspaceId: string;
   category?: Category;
-  spentAmount?: number; // computed by backend
+  spentAmount?: number; // Computed server-side
 }
 
 export interface InvestmentHistoryNode {
@@ -79,8 +77,8 @@ export interface InvestmentAsset {
   icon?: string;
   userNote?: string;
   history?: InvestmentHistoryNode[];
-  totalInvested?: number; // legacy compatibility
-  capitalCurrency?: string; // legacy compatibility
+  totalInvested?: number; // Legacy compatibility
+  capitalCurrency?: string; // Legacy compatibility
 }
 
 export interface Notification {
@@ -125,14 +123,7 @@ export interface Workspace {
    === SECTION 2: GENERIC FETCH WRAPPER ===
    ========================================================================== */
 /**
- * Base fetch function for all API calls.
- * Automatically includes credentials and JSON content‑type unless
- * the body is a FormData object (used for file uploads).
- *
- * WHY THIS IS NEEDED:
- * Centralising all API communication in one function means we can
- * apply consistent error handling, logging, and security headers
- * in a single place instead of repeating them in every service.
+ * Central HTTP fetch pipeline with cookie credentials and unified error formatting.
  */
 export const apiFetch = async <T = unknown>(
   endpoint: string,
@@ -143,14 +134,16 @@ export const apiFetch = async <T = unknown>(
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   };
-  // When body is FormData, let the browser set the multipart boundary
+
+  // WHY THIS FIX WAS MADE: Only set application/json content type if body is not FormData,
+  // allowing browsers to automatically define multipart/form-data boundaries for avatar uploads.
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
   const mergedOptions: RequestInit = {
     ...options,
-    credentials: "include", // Send HttpOnly cookies for authentication
+    credentials: "include", // Transmits PASETO/JWT HttpOnly session cookies
     headers,
   };
 
@@ -158,7 +151,6 @@ export const apiFetch = async <T = unknown>(
     const response = await fetch(url, mergedOptions);
 
     if (!response.ok) {
-      // Try to extract a human‑readable error from the backend JSON response
       let errorMessage = `Request failed with status ${response.status}`;
       try {
         const errorData: unknown = await response.json();
@@ -168,23 +160,27 @@ export const apiFetch = async <T = unknown>(
           "error" in errorData
         ) {
           errorMessage = (errorData as { error: string }).error;
+        } else if (
+          typeof errorData === "object" &&
+          errorData !== null &&
+          "message" in errorData
+        ) {
+          errorMessage = (errorData as { message: string }).message;
         }
       } catch {
-        // If the response body isn't valid JSON, use the default message
+        // Fallback to HTTP status code string if non-JSON response is returned
       }
       throw new Error(errorMessage);
     }
 
     return response.json() as Promise<T>;
   } catch (error: unknown) {
-    // Re‑throw backend errors so callers can display them to the user
     if (
       error instanceof Error &&
       !error.message.startsWith("Failed to fetch")
     ) {
       throw error;
     }
-    // Wrap network errors in a user‑friendly message
     throw new Error(
       "Unable to connect to the financial backend. Please check your connection and ensure the server is running."
     );
@@ -255,9 +251,7 @@ export const budgetService = {
       { method: "GET" }
     ),
 
-  create: (
-    data: Omit<Budget, "id" | "category" | "spentAmount">
-  ) =>
+  create: (data: Omit<Budget, "id" | "category" | "spentAmount">) =>
     apiFetch<{ message: string; budget: Budget }>("/budgets", {
       method: "POST",
       body: JSON.stringify(data),
@@ -265,9 +259,7 @@ export const budgetService = {
 
   update: (
     id: string,
-    data: Partial<
-      Omit<Budget, "id" | "category" | "spentAmount">
-    >
+    data: Partial<Omit<Budget, "id" | "category" | "spentAmount">>
   ) =>
     apiFetch<{ message: string; budget: Budget }>(
       `/budgets/${id}`,
@@ -287,9 +279,7 @@ export const investmentService = {
       { method: "GET" }
     ),
 
-  create: (
-    data: Partial<InvestmentAsset> & Record<string, unknown>
-  ) =>
+  create: (data: Partial<InvestmentAsset> & Record<string, unknown>) =>
     apiFetch<{ message: string; asset: InvestmentAsset }>(
       "/investments",
       { method: "POST", body: JSON.stringify(data) }
@@ -316,28 +306,30 @@ export const vaultAuthService = {
       method: "GET",
     }),
 
-  setupPin: (pin: string) =>
-    apiFetch<{ message: string }>(
+  // WHY THIS FIX WAS MADE: Accepts optional currentPin parameter so PIN change workflows 
+  // can authenticate against the user's existing bcrypt hash before updating.
+  setupPin: (pin: string, currentPin?: string) =>
+    apiFetch<{ success: boolean; message: string }>(
       "/auth/vault/pin-setup",
-      { method: "POST", body: JSON.stringify({ pin }) }
+      { method: "POST", body: JSON.stringify({ pin, currentPin }) }
     ),
 
   verifyPin: (pin: string) =>
-    apiFetch<{ success: boolean; message: string }>(
+    apiFetch<{ success: boolean; message?: string; error?: string }>(
       "/auth/vault/pin-verify",
       { method: "POST", body: JSON.stringify({ pin }) }
     ),
 
-  disablePin: () =>
+  // WHY THIS FIX WAS MADE: Accepts verified pin string in body payload to meet backend 
+  // authorization requirements when disabling vault security locks.
+  disablePin: (pin: string) =>
     apiFetch<{ success: boolean; message: string }>(
       "/auth/vault/pin-disable",
-      { method: "POST" }
+      { method: "POST", body: JSON.stringify({ pin }) }
     ),
 };
 
-// 🚀 Extended aiService with greeting and analysis endpoints
 export const aiService = {
-  // Existing general question endpoint
   ask: (
     question: string,
     persona: "auditor" | "coach" | "minimalist",
@@ -348,7 +340,6 @@ export const aiService = {
       body: JSON.stringify({ question, persona, workspaceId }),
     }),
 
-  // New: Daily companion greeting
   greeting: (workspaceId: string) =>
     apiFetch<{
       user: { name: string; aiPersona: string };
@@ -359,7 +350,6 @@ export const aiService = {
       body: JSON.stringify({ workspaceId }),
     }),
 
-  // New: Execute scoped analysis
   executeAnalysis: (scope: "today" | "week" | "month", workspaceId: string) =>
     apiFetch<{
       success: boolean;
@@ -396,18 +386,15 @@ export const userService = {
       method: "GET",
     }),
 
-  updateProfile: (
-    data: Partial<Omit<UserProfile, "id" | "createdAt">>
-  ) =>
+  // WHY THIS FIX WAS MADE: Corrected endpoint path from /auth/update-profile to /auth/profile 
+  // to match the backend Express controller route definition (PUT /api/auth/profile).
+  updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
     apiFetch<{ message: string; user: UserProfile }>(
-      "/auth/update-profile",
+      "/auth/profile",
       { method: "PUT", body: JSON.stringify(data) }
     ),
 
-  changePassword: (
-    currentPassword: string,
-    newPassword: string
-  ) =>
+  changePassword: (currentPassword: string, newPassword: string) =>
     apiFetch<{ message: string }>(
       "/auth/change-password",
       {

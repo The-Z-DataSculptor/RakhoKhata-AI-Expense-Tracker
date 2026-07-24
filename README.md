@@ -1,60 +1,61 @@
-<img width="1541" height="892" alt="RakhoKhata Hero" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
+Markdown
+<img width="1541" height="892" alt="RakhoKhata Hero Header" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
 
-# 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics Suite
+# 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics
 
-> A modern full-stack, dockerized financial tracking engine featuring multi-currency accounting, an encrypted PIN-protected investment vault, automated statement imports, background bill reminders, and an AI financial companion powered by Google Gemini.
+> A full-stack, containerized financial workspace featuring multi-currency accounting, a PIN-protected investment vault, automated statement parsing, background bill reminders, and AI-driven spending insights powered by Google Gemini.
 
 ---
 
-## 💡 About The Project
+## 💡 Overview
 
-Managing personal finances shouldn't feel like wrestling with complex spreadsheets. **RakhoKhata** turns raw transaction data into clear, actionable financial intelligence.
+Managing personal finances shouldn't require wrestling with messy spreadsheets or juggling detached banking apps. **RakhoKhata** turns raw transaction data into clear, actionable financial intelligence.
 
-Whether tracking daily expenses across multiple currencies, importing bank statements, scheduling bill reminders, securing long-term investments behind a PIN-encrypted vault, or asking an AI assistant for a candid spending review, RakhoKhata simplifies money management into an intuitive, real-time dashboard.
+Whether you need to track multi-currency expenses, import bank statements in bulk, set automated bill reminders, store long-term assets inside a PIN-encrypted vault, or get candid spending advice from an AI assistant, RakhoKhata gives you total visibility over your financial health in one real-time dashboard.
 
-Engineered as a decoupled full-stack architecture, RakhoKhata utilizes **Next.js 16** for server-rendered performance, **Express 5** for low-latency API processing, **Prisma 7** with **Neon Cloud PostgreSQL** for storage, and **Docker Compose** for single-command orchestration.
+Engineered as a decoupled full-stack application, RakhoKhata uses **Next.js 16** for server-rendered speed, **Express 5** for backend processing, **Prisma 7** with **Neon Cloud PostgreSQL** for storage, and **Docker Compose** for single-command setup.
 
 ---
 
 ## 🌟 Key Features
 
-### 🤖 AI Financial Companion & Leak Detector
+### 🤖 AI Financial Companion & Spending Audits
 
-- **Native Google Gemini SDK (`@google/genai`)**: Integrated via a secure, authenticated server gateway.
-- **Spending Audits & Leak Warnings**: Analyzes workspace transaction history to highlight recurring impulse purchases and unused subscriptions.
-- **Customizable AI Personas**: Get financial advice styled as an encouraging coach, strict auditor, or minimalist planner.
+- **Google Gemini Integration**: Uses `@google/genai` through an isolated, rate-limited server gateway.
+- **Leak Detection**: Scans workspace history to catch unused subscriptions, impulse buys, and recurring budget drains.
+- **Flexible Personas**: Choose how your AI coach speaks to you — from an encouraging advisor to a direct, strict financial auditor.
 
-### 🔐 PIN-Protected Investment Vault
+### 🔐 Encrypted Investment Vault
 
-- Dedicated secure vault to track stocks, crypto, commodities, and custom asset profiles.
-- Protected by a secondary **PIN authentication engine** with automated email reset flows (`vaultAuthController.ts`).
-- Real-time ROI calculations and chronological asset value history logs.
+- **Private Asset Tracking**: Keep stocks, crypto, precious metals, and custom assets behind a secure secondary PIN layer.
+- **Real-time Metrics**: Live ROI tracking, total portfolio value, and historical performance logs.
+- **PIN Reset Flow**: Automated tokenized email reset system (`vaultAuthController.ts`).
 
 ### 💱 Multi-Currency & Workspace Engine
 
-- Full support for multi-currency transaction logging (**PKR, USD, EUR, GBP, INR**, and dynamic conversions).
-- Real-time balance calculations with workspace-wide base currency toggling (`CurrencyContext`, `WorkspaceContext`).
+- **Global Currency Support**: Native support for PKR, USD, EUR, GBP, INR, and automated base conversions.
+- **Dynamic Workspace Toggling**: Instantly view net worth and cash flow in any preferred base currency.
 
-### 📊 Interactive Dashboard & Analytics
+### 📊 Interactive Visual Analytics
 
-- Visual cash flow trends, budget health donuts, and category breakdowns powered by **Recharts**.
-- "Safe to Spend" gauge controls and customizable metric rows to monitor net burn rates.
+- **Recharts Dashboard**: Dynamic cash flow trends, monthly budget health donuts, and category burn rates.
+- **"Safe to Spend" Indicator**: Keeps your daily discretionary spending aligned with monthly targets.
 
-### 🔔 Notification Engine & Background Cron Workers
+### 🔔 Automated Background Tasks
 
-- **Background Worker (`billReminderWorker.ts`)**: Automated background job execution via **Node-Cron** checking for due bills and debt deadlines.
-- Transactional email dispatching integrated with **Resend**.
+- **Cron Workers (`billReminderWorker.ts`)**: Background job checking for upcoming bill deadlines and debt reminders.
+- **Transactional Emails**: Automated email alerts powered by **Resend**.
 
-### 📑 Statement Import & Export Pipeline
+### 📑 Document Imports & Report Exports
 
-- Automated statement parsing via **ExcelJS** and **PapaParse** for instant bulk transaction uploads.
-- On-demand PDF report generation built with **PDFKit**.
-- Image avatar and receipt upload processing via **Multer**.
+- **Bulk Statement Imports**: Upload spreadsheets and bank exports using **ExcelJS** and **PapaParse**.
+- **PDF Report Generator**: Create clean, downloadable financial statements with **PDFKit**.
+- **Receipt & Avatar Uploads**: Handled cleanly via **Multer** storage middleware.
 
-### 🔒 Enterprise Security & Verification Highway
+### 🔒 Enterprise Security
 
-- **Dual Authentication**: Hybrid PASETO (`paseto-ts`) and JWT security model with HttpOnly cookie handling.
-- **Verification Highway**: Integrated email verification, password reset tokens, and rate-limited endpoints (`express-rate-limit`, `helmet`).
+- **Hybrid Authentication**: Dual-token architecture using **PASETO** (`paseto-ts`) and **JWT** with HttpOnly cookies.
+- **API Protection**: Tight endpoint protection using **Helmet**, rate limiters, CORS isolation, and **Zod** schema validation.
 
 ---
 
@@ -66,32 +67,31 @@ graph TD
     B -->|Prisma 7 ORM + PG Adapter| C[(🗄️ Neon Cloud Database<br/>PostgreSQL)]
     B -->|Secure Server Gateway| D[🤖 Google Gemini AI SDK<br/>@google/genai]
     B -->|Background Cron Job| E[⏰ Bill Reminder Worker<br/>Node-Cron]
-    B -->|Email Highway| F[📧 Resend Email API]
-
-    1. Frontend (expense-tracker)
+    B -->|Email Service| F[📧 Resend Email API]
+1. Frontend (Frontend/)
 Core Framework: Next.js 16 (v16.2.6), React 19 (v19.2.4), TypeScript 5
 
-Form & Validation: React Hook Form (v7.76.1), Zod (v4.4.3), @hookform/resolvers
+State & Forms: React Hook Form (v7.76.1), Zod (v4.4.3), @hookform/resolvers
 
-Data Visualization: Recharts (v3.8.1)
+Charts & Styling: Recharts (v3.8.1), CSS Modules, React Icons (v5.7.0), Sonner (v2.0.7)
 
-UI & Icons: CSS Modules, React Icons (v5.7.0), Sonner Toasts (v2.0.7)
+Utilities: PapaParse (v5.5.4), XLSX (v0.18.5), js-cookie (v3.0.8)
 
-Parsing & Cookies: PapaParse (v5.5.4), XLSX (v0.18.5), js-cookie (v3.0.8)
-
-2. Backend (backend)
-Runtime & Framework: Node.js, Express 5 (v5.2.1), tsx runner, TypeScript 5
+2. Backend (Backend/)
+Runtime & API: Node.js, Express 5 (v5.2.1), tsx runner, TypeScript 5
 
 Database & ORM: PostgreSQL (pg v8.22.0), Prisma ORM (v7.8.0) with @prisma/adapter-pg
 
-AI Engine: Google GenAI SDK (@google/genai v2.12.0)
+AI Engine: @google/genai (v2.12.0)
 
-Security & Auth: PASETO (paseto-ts), JWT (jsonwebtoken), Bcrypt (v6.0.0), Helmet (v8.3.0), Express Rate Limit (v8.5.2)
+Auth & Security: PASETO (paseto-ts), JWT (jsonwebtoken), Bcrypt (v6.0.0), Helmet (v8.3.0), Express Rate Limit (v8.5.2)
 
-Document Processing: ExcelJS (v4.4.0), PDFKit (v0.19.1), Multer (v2.2.0)
+Files & Reports: ExcelJS (v4.4.0), PDFKit (v0.19.1), Multer (v2.2.0)
 
-Workers & Email: Node-Cron (v4.6.0), Resend (v6.17.2)
+Scheduling & Mail: Node-Cron (v4.6.0), Resend (v6.17.2)
 
+📂 Project Structure
+Plaintext
 Expense-Tracker/
 ├── docker-compose.yml
 ├── Backend/
@@ -99,24 +99,23 @@ Expense-Tracker/
 │   ├── prisma/
 │   │   ├── schema.prisma
 │   │   ├── prisma.config.ts
-│   │   └── migrations/           # 11 Production Migrations
-│   ├── public/uploads/avatars/   # Static avatar uploads
+│   │   └── migrations/           # Database schema migrations
+│   ├── public/uploads/avatars/   # Static user uploads
 │   └── src/
-│       ├── controllers/          # AI, Auth, Budget, Category, Export, Vault, etc.
-│       ├── middleware/           # Auth & Rate Limiting
-│       ├── routes/               # Modular REST endpoints
-│       ├── services/             # Email & Notification Engines
-│       └── workers/              # Bill Reminder Background Cron
+│       ├── controllers/          # AI, Auth, Budget, Category, Vault, etc.
+│       ├── middleware/           # Auth validation & rate limiting
+│       ├── routes/               # Modular Express API endpoints
+│       ├── services/             # Email & notification dispatchers
+│       └── workers/              # Background bill reminder cron jobs
 └── Frontend/
     ├── Dockerfile
     ├── next.config.ts
     └── src/
         ├── app/                  # Next.js App Router (Auth, Dashboard, Marketing)
-        ├── components/           # Modular UI components by domain
-        ├── context/              # Workspace & Currency State
-        └── utils/                # Environment-aware API Fetcher (api.ts)
-
-🚀 Quick Start (Docker Deployment)
+        ├── components/           # Domain-driven React components
+        ├── context/              # Currency & Workspace state providers
+        └── utils/                # Environment-aware API fetcher (api.ts)
+🚀 Quick Start (Docker Setup)
 Launch the entire stack with a single command using Docker Compose.
 
 Prerequisites
@@ -125,25 +124,24 @@ Docker Desktop installed and running.
 Git installed.
 
 Step 1: Clone the Repository
-
+Bash
 git clone [https://github.com/The-Z-DataSculptor/Expense-Tracker.git](https://github.com/The-Z-DataSculptor/Expense-Tracker.git)
 cd Expense-Tracker
-
 Step 2: Configure Environment Variables
-Create a .env file in the Backend directory based on required keys:
+Create a .env file in the Backend directory based on the configuration guide below:
 
+Bash
 cp Backend/.env.example Backend/.env
-
-Step 3: Launch Containers
+Step 3: Launch Services
 Spin up both the frontend and backend services in detached mode:
 
+Bash
 docker compose up -d --build
+Step 4: Sync the Database Schema
+Push the Prisma schema to your Neon PostgreSQL instance directly from the container:
 
-Step 4: Synchronize Database Schema
-Push the Prisma schema to your Neon PostgreSQL instance directly from the backend container:
-
+Bash
 docker compose exec backend npx prisma db push
-
 🌐 Application Endpoints
 Once the containers start up successfully:
 
@@ -151,9 +149,10 @@ Frontend Dashboard: Access at http://localhost:3000
 
 Backend API Engine: Health check available at http://localhost:5000/api/health
 
-⚙️ Environment Configuration Guide
-Your Backend/.env file should contain the following variables:
+⚙️ Environment Variables (Backend/.env)
+Configure your environment keys inside Backend/.env:
 
+Code snippet
 # Server Runtime
 PORT=5000
 NODE_ENV=production
@@ -169,18 +168,15 @@ PASETO_SECRET_KEY="your_secure_paseto_secret_key_here"
 # AI Integration
 GEMINI_API_KEY="your_google_gemini_api_key_here"
 
-# Transactional Email Alerts
+# Email Delivery & Background Workers
 RESEND_API_KEY="your_resend_api_key_here"
-
-# Background Job Control
 RUN_BACKGROUND_WORKERS=true
+🛡️ Key Engineering Details
+Environment-Aware API Routing: The frontend uses a dynamic base URL resolver (getApiBaseUrl) that routes server-side requests through Docker's internal container DNS (http://backend:5000/api) during Next.js SSR, and client-side requests through host-mapped ports (http://localhost:5000/api).
 
-🛡️ Key Engineering Highlights
-Environment-Aware API Layer: The frontend utilizes a dynamic base URL resolver (getApiBaseUrl) that switches seamlessly between Docker internal container DNS (http://backend:5000/api) during Next.js SSR and local browser access (http://localhost:5000/api).
+Multi-Stage Docker Builds: Optimized Alpine Linux containers separate build-time dependencies from runtime assets, drastically reducing image sizes.
 
-Multi-Stage Docker Builds: Optimized node images reduce production container footprints while leveraging cached layer builds for lightning-fast deployments.
-
-Isolated Server Gateway: The Google Gemini API key is completely isolated on the server; client applications communicate strictly via authenticated API proxies protected by rate limiters.
+Secure API Gateway: The Google Gemini API key remains strictly server-side; client applications communicate through authenticated, rate-limited backend endpoints.
 
 👤 Author & Maintainer
 Syed Zain Hassan
@@ -191,5 +187,5 @@ Full-Stack Software Engineer & Systems Developer
 
 💼 LinkedIn: syed-zain-hassan
 
-💻 GitHub Profile: @The-Z-DataSculptor
+💻 GitHub: @The-Z-DataSculptor
 ```

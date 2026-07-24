@@ -1,9 +1,8 @@
-Markdown
-<img width="1541" height="892" alt="RakhoKhata Hero Header" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
+<img width="1541" height="892" alt="RakhoKhata Hero Header" src="[https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e](https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e)" />
 
 # 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics
 
-> A full-stack, containerized financial workspace featuring multi-currency accounting, a PIN-protected investment vault, automated statement parsing, background bill reminders, and AI-driven spending insights powered by Google Gemini.
+> A modern full-stack, containerized financial workspace featuring multi-currency accounting, a PIN-protected investment vault, automated statement parsing, background bill reminders, and AI-driven spending insights powered by Google Gemini.
 
 ---
 
@@ -68,30 +67,36 @@ graph TD
     B -->|Secure Server Gateway| D[🤖 Google Gemini AI SDK<br/>@google/genai]
     B -->|Background Cron Job| E[⏰ Bill Reminder Worker<br/>Node-Cron]
     B -->|Email Service| F[📧 Resend Email API]
-1. Frontend (Frontend/)
-Core Framework: Next.js 16 (v16.2.6), React 19 (v19.2.4), TypeScript 5
+```
 
-State & Forms: React Hook Form (v7.76.1), Zod (v4.4.3), @hookform/resolvers
+### 💻 Frontend Stack (`Frontend/`)
 
-Charts & Styling: Recharts (v3.8.1), CSS Modules, React Icons (v5.7.0), Sonner (v2.0.7)
+| Category                | Technologies & Libraries                    | Version               |
+| :---------------------- | :------------------------------------------ | :-------------------- |
+| **Core Framework**      | Next.js 16, React 19, TypeScript 5          | `v16.2.6` / `v19.2.4` |
+| **Forms & Validation**  | React Hook Form, Zod, `@hookform/resolvers` | `v7.76.1` / `v4.4.3`  |
+| **Data Visualization**  | Recharts, CSS Modules                       | `v3.8.1`              |
+| **UI & Feedback**       | React Icons, Sonner Toasts                  | `v5.7.0` / `v2.0.7`   |
+| **Parsing & Utilities** | PapaParse, XLSX, `js-cookie`                | `v5.5.4` / `v0.18.5`  |
 
-Utilities: PapaParse (v5.5.4), XLSX (v0.18.5), js-cookie (v3.0.8)
+---
 
-2. Backend (Backend/)
-Runtime & API: Node.js, Express 5 (v5.2.1), tsx runner, TypeScript 5
+### ⚙️ Backend Stack (`Backend/`)
 
-Database & ORM: PostgreSQL (pg v8.22.0), Prisma ORM (v7.8.0) with @prisma/adapter-pg
+| Category                | Technologies & Libraries                              | Version              |
+| :---------------------- | :---------------------------------------------------- | :------------------- |
+| **Runtime & API**       | Node.js, Express 5, `tsx` runner, TypeScript 5        | `v5.2.1` / `v5.7.0`  |
+| **Database & ORM**      | PostgreSQL (`pg`), Prisma ORM (`@prisma/adapter-pg`)  | `v8.22.0` / `v7.8.0` |
+| **AI Intelligence**     | Google GenAI SDK (`@google/genai`)                    | `v2.12.0`            |
+| **Security & Auth**     | PASETO (`paseto-ts`), JWT, Bcrypt, Helmet, Rate Limit | `v2.0.6` / `v8.3.0`  |
+| **Document Processing** | ExcelJS, PDFKit, Multer                               | `v4.4.0` / `v0.19.1` |
+| **Workers & Email**     | Node-Cron, Resend Email API                           | `v4.6.0` / `v6.17.2` |
 
-AI Engine: @google/genai (v2.12.0)
+---
 
-Auth & Security: PASETO (paseto-ts), JWT (jsonwebtoken), Bcrypt (v6.0.0), Helmet (v8.3.0), Express Rate Limit (v8.5.2)
+## 📂 Project Structure
 
-Files & Reports: ExcelJS (v4.4.0), PDFKit (v0.19.1), Multer (v2.2.0)
-
-Scheduling & Mail: Node-Cron (v4.6.0), Resend (v6.17.2)
-
-📂 Project Structure
-Plaintext
+```text
 Expense-Tracker/
 ├── docker-compose.yml
 ├── Backend/
@@ -115,77 +120,107 @@ Expense-Tracker/
         ├── components/           # Domain-driven React components
         ├── context/              # Currency & Workspace state providers
         └── utils/                # Environment-aware API fetcher (api.ts)
-🚀 Quick Start (Docker Setup)
-Launch the entire stack with a single command using Docker Compose.
+```
 
-Prerequisites
-Docker Desktop installed and running.
+---
 
-Git installed.
+## 🚀 Quick Start (Docker Setup)
 
-Step 1: Clone the Repository
-Bash
-git clone [https://github.com/The-Z-DataSculptor/Expense-Tracker.git](https://github.com/The-Z-DataSculptor/Expense-Tracker.git)
+Get the full-stack app running locally in less than 2 minutes using **Docker Compose**.
+
+### 📋 Prerequisites
+
+Make sure you have these installed and running:
+
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**
+- **[Git](https://git-scm.com/)**
+
+---
+
+### ⚡ Setup Guide
+
+#### Step 1: Clone the Repo
+
+```bash
+git clone https://github.com/The-Z-DataSculptor/Expense-Tracker.git
 cd Expense-Tracker
-Step 2: Configure Environment Variables
-Create a .env file in the Backend directory based on the configuration guide below:
+```
 
-Bash
+#### Step 2: Configure Environment Keys
+
+Create your backend environment configuration file:
+
+```bash
 cp Backend/.env.example Backend/.env
-Step 3: Launch Services
-Spin up both the frontend and backend services in detached mode:
+```
 
-Bash
+#### Step 3: Launch Services
+
+Build and start both frontend and backend containers in the background:
+
+```bash
 docker compose up -d --build
-Step 4: Sync the Database Schema
-Push the Prisma schema to your Neon PostgreSQL instance directly from the container:
+```
 
-Bash
+#### Step 4: Sync Your Database
+
+Push the Prisma schema to your PostgreSQL instance:
+
+```bash
 docker compose exec backend npx prisma db push
-🌐 Application Endpoints
-Once the containers start up successfully:
+```
 
-Frontend Dashboard: Access at http://localhost:3000
+---
 
-Backend API Engine: Health check available at http://localhost:5000/api/health
+## 🌐 Live Application Endpoints
 
-⚙️ Environment Variables (Backend/.env)
-Configure your environment keys inside Backend/.env:
+Once your containers are up, access the stack at:
 
-Code snippet
-# Server Runtime
+| Service         | Address                            | Purpose                       |
+| :-------------- | :--------------------------------- | :---------------------------- |
+| **Frontend UI** | `http://localhost:3000`            | Next.js Interactive Dashboard |
+| **Backend API** | `http://localhost:5000/api/health` | Express Engine Health Check   |
+
+---
+
+## ⚙️ Environment Configuration (`Backend/.env`)
+
+Configure your keys in `Backend/.env`:
+
+```env
+# Server Setup
 PORT=5000
 NODE_ENV=production
 CORS_ORIGIN=http://localhost:3000
 
-# Database Connection (Neon Cloud PostgreSQL)
-DATABASE_URL="postgresql://username:password@ep-sample-region.aws.neon.tech/neondb?sslmode=require"
+# Database (Neon PostgreSQL)
+DATABASE_URL="postgresql://user:pass@ep-sample.aws.neon.tech/neondb?sslmode=require"
 
-# Authentication Secrets
-JWT_SECRET="your_jwt_secret_key_here"
-PASETO_SECRET_KEY="your_secure_paseto_secret_key_here"
+# Security & Auth
+JWT_SECRET="your_jwt_secret_here"
+PASETO_SECRET_KEY="your_paseto_secret_here"
 
-# AI Integration
-GEMINI_API_KEY="your_google_gemini_api_key_here"
-
-# Email Delivery & Background Workers
-RESEND_API_KEY="your_resend_api_key_here"
+# Services & AI
+GEMINI_API_KEY="your_google_gemini_api_key"
+RESEND_API_KEY="your_resend_api_key"
 RUN_BACKGROUND_WORKERS=true
-🛡️ Key Engineering Details
-Environment-Aware API Routing: The frontend uses a dynamic base URL resolver (getApiBaseUrl) that routes server-side requests through Docker's internal container DNS (http://backend:5000/api) during Next.js SSR, and client-side requests through host-mapped ports (http://localhost:5000/api).
-
-Multi-Stage Docker Builds: Optimized Alpine Linux containers separate build-time dependencies from runtime assets, drastically reducing image sizes.
-
-Secure API Gateway: The Google Gemini API key remains strictly server-side; client applications communicate through authenticated, rate-limited backend endpoints.
-
-👤 Author & Maintainer
-Syed Zain Hassan
-
-Full-Stack Software Engineer & Systems Developer
-
-📧 Email: ZainHassan@protonmail.com
-
-💼 LinkedIn: syed-zain-hassan
-
-💻 GitHub: @The-Z-DataSculptor
 ```
+
+---
+
+## 🛡️ Key Architecture Highlights
+
+- **Smart Environment Aware Routing:** The API fetcher automatically routes server-side calls through internal Docker DNS (`http://backend:5000/api`) during Next.js SSR, while routing browser calls through `http://localhost:5000/api`.
+- **Lightweight Docker Footprint:** Multi-stage Alpine Linux builds separate build tools from runtime assets to keep container sizes small.
+- **Isolated AI Gateway:** Gemini API keys never reach the browser — all AI queries are handled by rate-limited backend proxies.
+
+---
+
+## 👤 Author & Maintainer
+
+**Syed Zain Hassan**  
+_Full-Stack Software Engineer & Systems Developer_
+
+[![Email](https://img.shields.io/badge/Email-ZainHassan%40protonmail.com-blue?style=flat&logo=protonmail)](mailto:ZainHassan@protonmail.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-syed--zain--hassan-0A66C2?style=flat&logo=linkedin)](https://linkedin.com/in/syed-zain-hassan)
+[![GitHub](https://img.shields.io/badge/GitHub-@The--Z--DataSculptor-181717?style=flat&logo=github)](https://github.com/The-Z-DataSculptor)

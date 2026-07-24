@@ -36,27 +36,25 @@ import {
   strictAuthLimiter,
   globalApiLimiter,
   writeActionsLimiter,
+  getUserOrIpKey,
 } from "../middleware/rateLimitMiddleware";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: SECURITY RATE LIMITERS ===
    ========================================================================== */
+/**
+ * WHY THIS FIX WAS MADE: Updated keyGenerator to use getUserOrIpKey helper and added 
+ * 'validate: { keyGeneratorIpFallback: false }'. This normalizes IPv6 client addresses 
+ * to their subnet blocks and suppresses the express-rate-limit ERR_ERL_KEY_GEN_IPV6 warning.
+ */
 const pinAttemptLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   statusCode: 429,
   skip: () => process.env.DISABLE_RATE_LIMIT === "true",
-  keyGenerator: (req) => {
-    const authReq = req as AuthenticatedRequest;
-    if (authReq.user?.userId) {
-      return `pin_user_${authReq.user.userId}`;
-    }
-    if (authReq.user?.id) {
-      return `pin_user_${authReq.user.id}`;
-    }
-    return `pin_ip_${req.ip || "127.0.0.1"}`;
-  },
+  keyGenerator: (req) => `pin_${getUserOrIpKey(req)}`,
+  validate: { keyGeneratorIpFallback: false },
   message: {
     error: "Excessive PIN entry attempts detected. Vault securely locked for 15 minutes.",
   },
@@ -105,7 +103,7 @@ router.post("/vault/pin-setup", verifyTokenGuard, strictAuthLimiter, setupVaultP
 router.post("/vault/pin-verify", verifyTokenGuard, pinAttemptLimiter, verifyVaultPin);
 router.post("/vault/pin-disable", verifyTokenGuard, pinAttemptLimiter, disableVaultPin);
 
-// WHY THIS FIX WAS MADE: Registered missing PIN reset endpoints to handle reset link requests
+// Registered missing PIN reset endpoints to handle reset link requests
 router.post("/vault/pin-request-reset", verifyTokenGuard, strictAuthLimiter, requestVaultPinReset);
 router.post("/vault/pin-reset-confirm", strictAuthLimiter, resetVaultPinWithToken);
 /* === SECTION 4 END === */

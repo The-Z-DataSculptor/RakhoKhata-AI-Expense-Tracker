@@ -22,11 +22,10 @@ function buildErrorResponse(message: string): { error: string } {
 /**
  * WHY THIS FIX WAS MADE: Ensures an IP address is ALWAYS successfully extracted, and runs it
  * through express-rate-limit's own `ipKeyGenerator` helper so IPv6 addresses are safely
- * normalized to their containing subnet. Using the raw IP string directly (the old behavior)
- * lets a single IPv6 user rotate through addresses in their assigned block and bypass limits,
- * which is exactly what express-rate-limit's own validator warns about.
+ * normalized to their containing subnet. Using the raw IP string directly
+ * lets a single IPv6 user rotate through addresses in their assigned block and bypass limits.
  */
-function extractClientIp(req: Request): string {
+export function extractClientIp(req: Request): string {
   // 1. Check Express-resolved IP address (populated when 'trust proxy' is configured)
   if (req.ip && typeof req.ip === "string" && req.ip.trim().length > 0) {
     return ipKeyGenerator(req.ip.trim());
@@ -43,10 +42,10 @@ function extractClientIp(req: Request): string {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Generates explicitly prefixed rate-limiting keys (`user_...` vs `ip_...`).
- * Prevents key collision overlap between user ID strings and IP address formats.
+ * WHY THIS FIX WAS MADE: Exported getUserOrIpKey so it can be reused in route-specific limiters 
+ * (like vault PIN attempts) without duplicating IP extraction logic.
  */
-function getUserOrIpKey(req: Request): string {
+export function getUserOrIpKey(req: Request): string {
   const authReq = req as AuthenticatedRequest;
 
   // Prefer authenticated user ID if session is active
@@ -63,8 +62,7 @@ function getUserOrIpKey(req: Request): string {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Replaced hardcoded process.env.NODE_ENV checks with a explicit environment check
- * that can be overridden with DISABLE_RATE_LIMIT=true during automated local testing.
+ * Checks if rate limiting should be skipped during automated testing
  */
 function shouldSkipLimiter(): boolean {
   if (process.env.DISABLE_RATE_LIMIT === "true") {
@@ -88,6 +86,7 @@ export const globalApiLimiter = rateLimit({
   statusCode: 429,
   skip: shouldSkipLimiter,
   keyGenerator: (req: Request) => `global_${extractClientIp(req)}`,
+  validate: { keyGeneratorIpFallback: false },
   message: buildErrorResponse(
     "Too many dashboard requests. Security cooldown active, please try again in 15 minutes."
   ),
@@ -106,6 +105,7 @@ export const strictAuthLimiter = rateLimit({
   skip: shouldSkipLimiter,
   skipSuccessfulRequests: true, // Successful logins do not count toward failure threshold
   keyGenerator: (req: Request) => `auth_${extractClientIp(req)}`,
+  validate: { keyGeneratorIpFallback: false },
   message: buildErrorResponse(
     "Too many failed security attempts. Please wait 15 minutes before trying again."
   ),

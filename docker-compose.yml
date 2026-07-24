@@ -3,14 +3,13 @@
 # ==========================================================================
 # === SECTION 1: NETWORKS & VOLUMES ===
 # ==========================================================================
-# WHY THIS FIX WAS MADE: Custom bridge network enforces isolated container-to-container 
-# DNS name resolution (e.g. frontend calling http://backend:5000) and restricts exposure.
+# Custom bridge network enforces isolated container-to-container 
+# DNS name resolution (e.g. frontend calling http://backend:5000).
 networks:
   expense_tracker_network:
     driver: bridge
 
-# WHY THIS FIX WAS MADE: Uses a managed Docker named volume to persist user uploaded 
-# media assets safely without host OS file permission conflicts or path mismatch crashes.
+# Managed Docker named volume to persist user uploaded media assets safely.
 volumes:
   backend_uploads_data:
     driver: local
@@ -36,17 +35,13 @@ services:
       - PORT=5000
       - NODE_ENV=production
     volumes:
-      # WHY THIS FIX WAS MADE: Switched from relative host paths to the named volume 
-      # 'backend_uploads_data' to guarantee non-root read/write filesystem access.
       - backend_uploads_data:/app/public/uploads
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
-    # WHY THIS FIX WAS MADE: Caps memory and CPU consumption to protect the host machine 
-    # against memory leaks and CPU starvation Denial-of-Service (DoS) conditions.
     deploy:
       resources:
         limits:
@@ -64,8 +59,7 @@ services:
       context: ./Frontend
       dockerfile: Dockerfile
       args:
-        # WHY THIS FIX WAS MADE: Uses dynamic environment variable substitution with fallbacks 
-        # so production domain URLs can be injected dynamically at image compilation time.
+        # Passes public API base URL at Next.js build time for client bundle
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000}
     container_name: expense_tracker_frontend
     restart: unless-stopped
@@ -75,17 +69,16 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      # WHY THIS FIX WAS MADE: NEXT_PUBLIC_API_URL handles browser requests, while 
-      # INTERNAL_API_URL handles secure server-side rendering (SSR) inside the docker network.
+      # Client-side (Browser) API calls target localhost:5000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+      # Server-Side Rendering (SSR / Server Components) targets container DNS
       - INTERNAL_API_URL=http://backend:5000
+      - API_URL=http://backend:5000
     depends_on:
       backend:
         condition: service_healthy
-    # WHY THIS FIX WAS MADE: Added explicit healthcheck for the frontend Next.js server 
-    # so container orchestrators can detect hung processes and auto-recover.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/login || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3

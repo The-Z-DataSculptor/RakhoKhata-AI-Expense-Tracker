@@ -4,11 +4,30 @@
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
 /**
- * WHY THIS IS NEEDED:
- * The backend URL is retrieved from NEXT_PUBLIC_API_URL so the frontend
- * functions seamlessly across development, staging, Docker, and production.
+ * Dynamically resolves the backend base URL depending on execution environment:
+ * - Server-Side (Next.js SSR inside Docker): Uses internal container DNS (http://backend:5000/api)
+ * - Client-Side (User's browser): Uses host mapped port (http://localhost:5000/api)
+ * Automatically ensures the '/api' prefix is always attached.
  */
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+export const getApiBaseUrl = (): string => {
+  let baseUrl = "http://localhost:5000";
+
+  if (typeof window === "undefined") {
+    // Executing on Next.js server (inside Docker container)
+    baseUrl = process.env.INTERNAL_API_URL || process.env.API_URL || "http://backend:5000";
+  } else {
+    // Executing in user's browser
+    baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  }
+
+  // Strip trailing slashes and ensure '/api' suffix
+  baseUrl = baseUrl.replace(/\/+$/, "");
+  if (!baseUrl.endsWith("/api")) {
+    baseUrl += "/api";
+  }
+
+  return baseUrl;
+};
 
 export interface Category {
   id: string;
@@ -129,7 +148,9 @@ export const apiFetch = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  const url = `${BACKEND_BASE_URL}${endpoint}`;
+  const baseUrl = getApiBaseUrl();
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
@@ -322,14 +343,12 @@ export const vaultAuthService = {
       { method: "POST", body: JSON.stringify({ pin }) }
     ),
 
-  // WHY THIS FIX WAS ADDED: Triggers an automated PIN reset email containing a tokenized reset link.
   requestPinReset: () =>
     apiFetch<{ success: boolean; message: string }>(
       "/auth/vault/pin-request-reset",
       { method: "POST" }
     ),
 
-  // WHY THIS FIX WAS ADDED: Validates single-use token and overrides current vault pin.
   resetPinWithToken: (token: string, newPin: string) =>
     apiFetch<{ success: boolean; message: string }>(
       "/auth/vault/pin-reset-confirm",

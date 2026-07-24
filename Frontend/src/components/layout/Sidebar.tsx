@@ -2,7 +2,7 @@
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS AND DEPENDENCIES ===
+   === SECTION 1: IMPORTS & DEPENDENCIES ===
    ========================================================================== */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
@@ -35,7 +35,7 @@ import styles from "./Sidebar.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: DATA STRUCTURES & INTERFACES ===
+   === SECTION 2: TYPES & DATA CONTRACTS ===
    ========================================================================== */
 interface NavItem {
   label: string;
@@ -64,13 +64,13 @@ const NAVIGATION_ITEMS: NavItem[] = [
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
+   === SECTION 3: COMPONENT LOGIC & HOOKS ===
    ========================================================================== */
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const { workspaces, activeWorkspace, switchWorkspace, renderIcon, isLoading } = useWorkspace();
   
-  // Defensive array checks for safe workspace mapping
+  // Safe array verification for workspaces
   const safeWorkspaces = Array.isArray(workspaces) ? workspaces : [];
 
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState<boolean>(false);
@@ -85,12 +85,12 @@ export default function Sidebar({ user }: SidebarProps) {
   const accountName = user?.name || "RakhoKhata User";
   const accountEmail = user?.email || "Cloud Synced";
 
-  // WHY THIS FIX WAS MADE: Memoizing navigation arrays prevents unnecessary array filtering
-  // computations on every single render cycle during state updates.
+  // Filter navigation items by group
   const coreItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "core"), []);
   const growthItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "growth"), []);
   const intelligenceItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "intelligence"), []);
 
+  // Compute container classes for desktop and mobile drawer states
   const containerClassName = `
     ${styles.sidebarContainer} 
     ${isCollapsed ? styles.collapsedSidebar : ""} 
@@ -107,8 +107,25 @@ export default function Sidebar({ user }: SidebarProps) {
     setIsWorkspaceMenuOpen(false);
   }, []);
 
-  // WHY THIS FIX WAS MADE: Listens for Escape key presses and click-outside events
-  // to cleanly dismiss open menus and meet accessibility standards.
+  const closeMobileDrawer = useCallback(() => {
+    setIsMobileOpen(false);
+    setIsWorkspaceMenuOpen(false);
+    setIsProfileMenuOpen(false);
+  }, []);
+
+  // Lock background scroll when mobile sidebar drawer is open
+  useEffect(() => {
+    if (isMobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileOpen]);
+
+  // Handle global click away and escape key navigation
   useEffect(() => {
     const handleGlobalClickAway = (event: MouseEvent) => {
       if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(event.target as Node)) {
@@ -137,6 +154,7 @@ export default function Sidebar({ user }: SidebarProps) {
 
   const handleSignOutAction = () => {
     setIsProfileMenuOpen(false);
+    setIsMobileOpen(false);
     Cookies.remove("token", { path: "/" });
     toast.success("Logged out successfully. See you soon!");
     window.location.href = "/login";
@@ -148,8 +166,8 @@ export default function Sidebar({ user }: SidebarProps) {
      ========================================================================== */
   return (
     <>
-      {/* MOBILE HEADER BAR */}
-      <div className={styles.mobileTopBar}>
+      {/* MOBILE STICKY TOP HEADER BAR */}
+      <header className={styles.mobileTopBar}>
         <div className={styles.mobileLogo}>
           Rakho<span className={styles.logoAccent}>Khata</span>
         </div>
@@ -162,24 +180,26 @@ export default function Sidebar({ user }: SidebarProps) {
         >
           {isMobileOpen ? <FiX size={22} /> : <FiMenu size={22} />}
         </button>
-      </div>
+      </header>
 
-      {/* MOBILE BACKDROP DRAWER BLUR OVERLAY */}
+      {/* MOBILE BACKDROP DRAWER OVERLAY */}
       {isMobileOpen && (
         <div 
           className={styles.mobileMenuBackdropOverlay} 
-          onClick={() => setIsMobileOpen(false)}
+          onClick={closeMobileDrawer}
+          aria-hidden="true"
         />
       )}
 
-      {/* DYNAMIC FORM MODAL WINDOW */}
+      {/* CREATE WORKSPACE MODAL */}
       {isCreateModalOpen && (
         <CreateWorkspaceModal onClose={() => setIsCreateModalOpen(false)} />
       )}
 
+      {/* MAIN SIDEBAR / MOBILE SLIDE-OVER DRAWER */}
       <aside className={containerClassName}>
         
-        {/* DESKTOP SIDEBAR SHRINK TRIGGER ARROW PIN */}
+        {/* DESKTOP COLLAPSE TRIGGER BUTTON */}
         <button 
           type="button"
           className={styles.desktopCollapsePinButton}
@@ -189,12 +209,24 @@ export default function Sidebar({ user }: SidebarProps) {
           <FiChevronLeft size={14} className={`${styles.pinIcon} ${isCollapsed ? styles.pinIconRotated : ""}`} />
         </button>
 
-        {/* --- BLOCK A: BRAND INSIGNIA & WORKSPACE PICKER SWITCHER --- */}
+        {/* --- BLOCK A: BRAND HEADER & WORKSPACE SELECTOR --- */}
         <div className={styles.brandHeaderSection}>
-          <div className={styles.logoLayout}>
-            Rakho<span className={styles.logoAccent}>Khata</span>
+          <div className={styles.brandHeaderRow}>
+            <div className={styles.logoLayout}>
+              Rakho<span className={styles.logoAccent}>Khata</span>
+            </div>
+            {/* Mobile-only close drawer icon */}
+            <button
+              type="button"
+              className={styles.mobileDrawerCloseBtn}
+              onClick={closeMobileDrawer}
+              aria-label="Close navigation drawer"
+            >
+              <FiX size={20} />
+            </button>
           </div>
 
+          {/* Workspace Switcher Component */}
           <div className={styles.workspaceWrapper} ref={workspaceDropdownRef}>
             <button 
               type="button"
@@ -204,7 +236,7 @@ export default function Sidebar({ user }: SidebarProps) {
               aria-expanded={isWorkspaceMenuOpen}
             >
               <span className={styles.activeWorkspaceIcon}>
-                {activeWorkspace && !isLoading ? renderIcon(activeWorkspace.iconName || "folder", 14) : <FiFolder size={14} />}
+                {activeWorkspace && !isLoading ? renderIcon(activeWorkspace.iconName || "folder", 16) : <FiFolder size={16} />}
               </span>
               <span className={styles.activeWorkspaceLabel}>
                 {isLoading ? "Loading spaces..." : (activeWorkspace ? activeWorkspace.name : "Select Space")}
@@ -212,7 +244,7 @@ export default function Sidebar({ user }: SidebarProps) {
               <FiChevronDown className={`${styles.chevronIndicator} ${isWorkspaceMenuOpen ? styles.chevronRotated : ""}`} size={14} />
             </button>
 
-            {/* DROP-DOWN DRAWER CONTEXT OPTIONS INDEX */}
+            {/* Workspace Dropdown Menu */}
             {isWorkspaceMenuOpen && (
               <div className={styles.workspaceDropdownMenu} role="menu">
                 <div className={styles.workspaceScrollArea}>
@@ -256,9 +288,10 @@ export default function Sidebar({ user }: SidebarProps) {
           </div>
         </div>
 
-        {/* --- BLOCK B: PRIMARY ROUTE NAV HIGHLIGHT LINERS --- */}
+        {/* --- BLOCK B: NAVIGATION LINKS STACK --- */}
         <nav className={styles.navNavigationStack} aria-label="Main Navigation">
           
+          {/* Core Navigation Group */}
           <div className={styles.navGroupSection}>
             {coreItems.map((item) => {
               const isLinkActive = pathname === item.href;
@@ -266,7 +299,7 @@ export default function Sidebar({ user }: SidebarProps) {
                 <Link 
                   key={item.href} 
                   href={item.href} 
-                  onClick={() => setIsMobileOpen(false)}
+                  onClick={closeMobileDrawer}
                   className={`${styles.navLinkRow} ${isLinkActive ? styles.activeNavLinkRow : ""}`}
                   title={isCollapsed ? item.label : undefined}
                 >
@@ -277,6 +310,7 @@ export default function Sidebar({ user }: SidebarProps) {
             })}
           </div>
 
+          {/* Wealth Management Group */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Wealth Management</div>
             {growthItems.map((item) => {
@@ -285,7 +319,7 @@ export default function Sidebar({ user }: SidebarProps) {
                 <Link 
                   key={item.href} 
                   href={item.href} 
-                  onClick={() => setIsMobileOpen(false)}
+                  onClick={closeMobileDrawer}
                   className={`${styles.navLinkRow} ${styles.growthRowVariant} ${isLinkActive ? styles.activeNavLinkRow : ""}`}
                   title={isCollapsed ? item.label : undefined}
                 >
@@ -296,6 +330,7 @@ export default function Sidebar({ user }: SidebarProps) {
             })}
           </div>
 
+          {/* Core Intelligence Group */}
           <div className={styles.navGroupSection}>
             <div className={styles.sectionDividerLabel}>Core Intelligence</div>
             {intelligenceItems.map((item) => {
@@ -304,7 +339,7 @@ export default function Sidebar({ user }: SidebarProps) {
                 <Link 
                   key={item.href} 
                   href={item.href} 
-                  onClick={() => setIsMobileOpen(false)}
+                  onClick={closeMobileDrawer}
                   className={`${styles.navLinkRow} ${styles.intelligenceRowVariant} ${isLinkActive ? styles.activeNavLinkRow : ""}`}
                   title={isCollapsed ? item.label : undefined}
                 >
@@ -317,12 +352,13 @@ export default function Sidebar({ user }: SidebarProps) {
 
         </nav>
 
-        {/* --- BLOCK C: BOTTOM USER DRAWER ACCOUNT MANAGER --- */}
+        {/* --- BLOCK C: USER PROFILE FOOTER CARD --- */}
         <div className={styles.profileMasterSectionWrapper} ref={profileDropdownRef}>
           
+          {/* Profile Popover Menu */}
           {isProfileMenuOpen && (
             <div className={styles.profilePopoverMenuDeck} role="menu">
-              {!isCollapsed && (
+              {(!isCollapsed || isMobileOpen) && (
                 <div className={styles.popoverMetaUserBlock}>
                   <p className={styles.popoverUserLabelTitle}>{accountName}</p>
                   <p className={styles.popoverUserConnectionTag}>Verified Profile Account</p>
@@ -334,7 +370,10 @@ export default function Sidebar({ user }: SidebarProps) {
               <Link 
                 href="/dashboard/settings" 
                 className={styles.popoverInteractButtonRow}
-                onClick={() => setIsProfileMenuOpen(false)}
+                onClick={() => {
+                  setIsProfileMenuOpen(false);
+                  closeMobileDrawer();
+                }}
                 role="menuitem"
               >
                 <FiSettings size={14} />
@@ -353,11 +392,12 @@ export default function Sidebar({ user }: SidebarProps) {
             </div>
           )}
 
+          {/* User Profile Footer Button */}
           <button 
             type="button"
             className={`${styles.accountProfileFooterSection} ${isProfileMenuOpen ? styles.footerSectionActiveTrigger : ""}`}
             onClick={toggleProfileDropdown}
-            aria-label="Toggle profile management settings layout popover window"
+            aria-label="Toggle profile management settings"
             aria-expanded={isProfileMenuOpen}
           >
             <div className={styles.userProfileIdentificationCard}>
@@ -371,7 +411,7 @@ export default function Sidebar({ user }: SidebarProps) {
               </div>
             </div>
             
-            {!isCollapsed && (
+            {(!isCollapsed || isMobileOpen) && (
               <div className={styles.profileCardIndicatorChevronFrame}>
                 <FiChevronDown className={`${styles.popoverIndicatorChevronIcon} ${isProfileMenuOpen ? styles.chevronRotated : ""}`} size={14} />
               </div>

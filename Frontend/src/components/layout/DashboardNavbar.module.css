@@ -644,14 +644,14 @@
     flex-shrink: 0;
   }
 
-  /* Hide individual dropdown triggers from standard top navbar bar except notifications & profile */
+  /* Hide desktop dropdown triggers on mobile bar except notifications & profile */
   .currencyToggleTrigger,
   .actionControlDeck > .dropdownMenuContainer:first-child,
   .actionControlDeck > .dropdownMenuContainer:last-of-type {
     display: none;
   }
 
-  /* Force display notification dropdown trigger on mobile navbar */
+  /* Display notification icon on mobile bar */
   .actionControlDeck .dropdownMenuContainer:nth-child(2) {
     display: block !important;
   }
@@ -733,12 +733,63 @@
     font-weight: 700;
     letter-spacing: 0.5px;
     color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* MOBILE ACCORDION STYLES FOR CURRENCY SELECTOR */
+  .mobileAccordionHeader {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--surface-muted);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg, 10px);
+    padding: 0.75rem 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    min-height: 48px;
+  }
+
+  .mobileAccordionHeader:active,
+  .mobileAccordionHeaderActive {
+    border-color: var(--color-primary);
+    background-color: var(--primary-soft);
+  }
+
+  .mobileAccordionTitleGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+
+  .mobileSelectedCurrencyBadge {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .mobileChevronIcon {
+    color: var(--text-muted);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+  }
+
+  .mobileChevronRotated {
+    transform: rotate(180deg);
+    color: var(--color-primary);
   }
 
   .mobileButtonLayoutGridRow {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.5rem;
+    animation: fadeIn 0.2s ease-out;
   }
 
   /* Touch-friendly 48px target heights for mobile drawer choices */
@@ -808,7 +859,7 @@
   }
 
   .factSubtext {
-    display: none; /* Hide fact pill on extra small mobile screens to keep navbar layout clean */
+    display: none;
   }
 
   .mobileButtonLayoutGridRow {

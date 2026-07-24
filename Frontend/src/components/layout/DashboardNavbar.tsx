@@ -23,7 +23,8 @@ import {
   FiInfo,
   FiCheckCircle,
   FiCamera,
-  FiLoader
+  FiLoader,
+  FiChevronDown
 } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
@@ -108,6 +109,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   const [isCurrencyOpen, setIsCurrencyOpen] = useState<boolean>(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isMobileCurrencyOpen, setIsMobileCurrencyOpen] = useState<boolean>(false);
   const [isAvatarUploading, setIsAvatarUploading] = useState<boolean>(false);
 
   const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
@@ -124,8 +126,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   } | null>(null);
   const [dynamicFact, setDynamicFact] = useState<string>("");
 
-  // WHY THIS FIX WAS MADE: Declared animationFrameId with 'const' directly during requestAnimationFrame 
-  // assignment to satisfy strict ESLint prefer-const immutability requirements while keeping render functions pure.
   useEffect(() => {
     const animationFrameId = requestAnimationFrame(() => {
       const hour = new Date().getHours();
@@ -541,7 +541,10 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
         <button
           type="button"
           className={styles.hamburgerMenuIconToggle}
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onClick={() => {
+            setIsMobileMenuOpen(!isMobileMenuOpen);
+            setIsMobileCurrencyOpen(false);
+          }}
           aria-label="Toggle navigation options menu"
           aria-expanded={isMobileMenuOpen}
         >
@@ -556,28 +559,50 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           <div className={styles.mobileNavigationDrawerTray}>
             <div className={styles.mobileDrawerWrapper}>
               
+              {/* MOBILE ACCORDION: GLOBAL SYSTEM CURRENCY */}
               <div className={styles.mobileDrawerGroupItem}>
-                <p className={styles.mobileLabelHeader}>Global System Currency</p>
-                <div className={styles.mobileButtonLayoutGridRow}>
-                  {WORLD_CURRENCIES.map((cur) => (
-                    <button
-                      key={cur.code}
-                      type="button"
-                      className={cur.code.toUpperCase() === currency?.toUpperCase() ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
-                      onClick={() => {
-                        setCurrencyWithWorkspace(cur.code, currentWorkspaceId || "");
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <span className={styles.mobileFlagIcon}>{cur.flag}</span> 
-                      {cur.code} <span className={styles.mobileCurrencySymbol}>({cur.symbol})</span>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className={`${styles.mobileAccordionHeader} ${isMobileCurrencyOpen ? styles.mobileAccordionHeaderActive : ""}`}
+                  onClick={() => setIsMobileCurrencyOpen(!isMobileCurrencyOpen)}
+                  aria-expanded={isMobileCurrencyOpen}
+                >
+                  <div className={styles.mobileAccordionTitleGroup}>
+                    <p className={styles.mobileLabelHeader}>Global System Currency</p>
+                    <span className={styles.mobileSelectedCurrencyBadge}>
+                      {activeCurrencyDetails?.flag || "💸"} {activeCurrencyDetails?.code || currency || "USD"} ({activeCurrencyDetails?.symbol || "$"})
+                    </span>
+                  </div>
+                  <FiChevronDown
+                    size={18}
+                    className={`${styles.mobileChevronIcon} ${isMobileCurrencyOpen ? styles.mobileChevronRotated : ""}`}
+                  />
+                </button>
+
+                {isMobileCurrencyOpen && (
+                  <div className={styles.mobileButtonLayoutGridRow}>
+                    {WORLD_CURRENCIES.map((cur) => (
+                      <button
+                        key={cur.code}
+                        type="button"
+                        className={cur.code.toUpperCase() === currency?.toUpperCase() ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
+                        onClick={() => {
+                          setCurrencyWithWorkspace(cur.code, currentWorkspaceId || "");
+                          setIsMobileCurrencyOpen(false);
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        <span className={styles.mobileFlagIcon}>{cur.flag}</span> 
+                        {cur.code} <span className={styles.mobileCurrencySymbol}>({cur.symbol})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className={styles.mobileDrawerDivider} />
 
+              {/* MOBILE GROUP: INTERFACE THEME */}
               <div className={styles.mobileDrawerGroupItem}>
                 <p className={styles.mobileLabelHeader}>Interface Theme</p>
                 <div className={styles.mobileButtonLayoutGridRow}>

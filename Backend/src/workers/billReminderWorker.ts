@@ -94,8 +94,10 @@ function isReminderDueOnDate(
 /**
  * Scans recurring bill categories using cursor pagination, verifies reminder due dates,
  * checks idempotency locks to eliminate duplicate emails, and dispatches reminders.
+ * 
+ * WHY THIS FIX WAS MADE: Exported function to allow manual execution in testing scripts.
  */
-async function runBillScanner(): Promise<void> {
+export async function runBillScanner(): Promise<void> {
   const today = new Date();
   const currentMonth = today.getUTCMonth() + 1; // 1-12 UTC
   const currentYear = today.getUTCFullYear();

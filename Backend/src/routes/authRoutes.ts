@@ -25,6 +25,8 @@ import {
   setupVaultPin,
   verifyVaultPin,
   disableVaultPin,
+  requestVaultPinReset,
+  resetVaultPinWithToken,
 } from "../controllers/vaultAuthController";
 import {
   verifyTokenGuard,
@@ -40,14 +42,9 @@ import {
 /* ==========================================================================
    === SECTION 2: SECURITY RATE LIMITERS ===
    ========================================================================== */
-
-/**
- * WHY THIS FIX WAS MADE: Uses the authenticated user ID (req.user.userId) as the rate limit key.
- * This prevents users sharing a public IP (e.g., corporate Wi-Fi or VPN) from locking each other out.
- */
 const pinAttemptLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes cooldown window
-  max: 10, // Maximum 10 failed PIN attempts per user
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   statusCode: 429,
   skip: () => process.env.DISABLE_RATE_LIMIT === "true",
   keyGenerator: (req) => {
@@ -77,18 +74,12 @@ const router = Router();
 router.post("/signup", strictAuthLimiter, registerUser);
 router.post("/login", strictAuthLimiter, loginUser);
 
-// WHY THIS FIX WAS MADE: Attached verifyTokenGuard so logout events retain authenticated session context.
 router.post("/logout", verifyTokenGuard, logoutUser);
 router.get("/me", verifyTokenGuard, getMe);
 
 // Profile & credential management
-// WHY THIS FIX WAS MADE: Applied writeActionsLimiter to profile updates to prevent payload flood spam.
 router.put("/update-profile", verifyTokenGuard, writeActionsLimiter, updateProfile);
-
-// WHY THIS FIX WAS MADE: Protected password changes with strictAuthLimiter to block password brute-forcing.
 router.post("/change-password", verifyTokenGuard, strictAuthLimiter, changePassword);
-
-// WHY THIS FIX WAS MADE: Protected onboarding updates with writeActionsLimiter.
 router.put("/complete-onboarding", verifyTokenGuard, writeActionsLimiter, completeOnboarding);
 
 // Password reset flow (public routes)
@@ -99,12 +90,10 @@ router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
 router.post("/verify-email", strictAuthLimiter, verifyEmail);
 
 // Google OAuth 2.0 endpoints
-// WHY THIS FIX WAS MADE: Protected OAuth initiation and callback endpoints with globalApiLimiter.
 router.get("/google", globalApiLimiter, redirectToGoogle);
 router.get("/google/callback", globalApiLimiter, handleGoogleCallback);
 
 // Exchange rates proxy
-// WHY THIS FIX WAS MADE: Protected public proxy with globalApiLimiter to shield external API key quotas.
 router.get("/exchange-rates", globalApiLimiter, getExchangeRates);
 /* === SECTION 3 END === */
 
@@ -115,6 +104,10 @@ router.get("/vault/pin-status", verifyTokenGuard, checkVaultPinStatus);
 router.post("/vault/pin-setup", verifyTokenGuard, strictAuthLimiter, setupVaultPin);
 router.post("/vault/pin-verify", verifyTokenGuard, pinAttemptLimiter, verifyVaultPin);
 router.post("/vault/pin-disable", verifyTokenGuard, pinAttemptLimiter, disableVaultPin);
+
+// WHY THIS FIX WAS MADE: Registered missing PIN reset endpoints to handle reset link requests
+router.post("/vault/pin-request-reset", verifyTokenGuard, strictAuthLimiter, requestVaultPinReset);
+router.post("/vault/pin-reset-confirm", strictAuthLimiter, resetVaultPinWithToken);
 /* === SECTION 4 END === */
 
 /* ==========================================================================

@@ -1,0 +1,232 @@
+/* src/app/(auth)/reset-vault-pin/page.module.css */
+
+/* ==========================================================================
+   === SECTION 1: CONTAINER & CARD LAYOUT ===
+   ========================================================================== */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 80vh;
+  padding: 2rem 1rem;
+  background-color: var(--background);
+  box-sizing: border-box;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+  width: 100%;
+  max-width: 420px;
+  padding: 2.25rem 2rem;
+  background-color: var(--bg-surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+}
+
+.loadingText {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: HEADER & ICON GRAPHICS ===
+   ========================================================================== */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.iconCircle {
+  width: 60px;
+  height: 60px;
+  background-color: var(--primary-soft, rgba(99, 102, 241, 0.15));
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+  color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.shieldIcon {
+  width: 26px;
+  height: 26px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 320px;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: FORM & INPUT FIELDS ===
+   ========================================================================== */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+  text-align: left;
+}
+
+.label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.01em;
+}
+
+.input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md, 10px);
+  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-surface, rgba(0, 0, 0, 0.2));
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.3em;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--primary-soft, rgba(99, 102, 241, 0.2));
+}
+
+.input::placeholder {
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: BUTTONS & ANIMATIONS ===
+   ========================================================================== */
+.submitButton {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md, 10px);
+  border: none;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter var(--transition-fast),
+              transform 0.1s ease,
+              opacity var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
+.submitButton:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: RESPONSIVE ADAPTATIONS (≤768px) ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .container {
+    padding: 1.5rem 1rem;
+    min-height: 70vh;
+  }
+
+  .card {
+    padding: 1.75rem 1.25rem;
+    gap: 1.35rem;
+  }
+
+  .iconCircle {
+    width: 52px;
+    height: 52px;
+  }
+
+  .shieldIcon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .title {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+  }
+
+  /* iOS Auto-Zoom Prevention: maintains font-size at or above 16px */
+  .input {
+    padding: 0.75rem 0.85rem;
+    font-size: 1.15rem; /* ~18.4px >= 16px */
+  }
+
+  .submitButton {
+    min-height: 44px; /* Minimum thumb touch target for mobile */
+  }
+}
+/* === SECTION 5 END === */

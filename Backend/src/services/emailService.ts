@@ -5,6 +5,11 @@
    ========================================================================== */
 import { Resend } from "resend";
 
+// Ambient type declaration safeguard in case @types/node is missing during local dev
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 // Resend API response contract
 interface ResendSendResponse {
   data?: { id: string } | null;
@@ -21,14 +26,12 @@ const resendApiKey = process.env.RESEND_API_KEY;
 // Initialize Resend client safely
 const resend = new Resend(resendApiKey || "MOCK_KEY_TO_PREVENT_CRASH");
 
-// WHY THIS FIX WAS MADE: Configurable sender address via environment variable (EMAIL_FROM)
-// with a safe fallback for local development testing on the Resend sandbox domain.
+// Configurable sender address via environment variable (EMAIL_FROM)
 const DEFAULT_SENDER =
-  process.env.EMAIL_FROM || "RakhoKhata <onboarding@resend.dev>";
+  process.env.EMAIL_FROM || "RakhoKhata Security <onboarding@resend.dev>";
 
 /**
- * WHY THIS FIX WAS MADE: Escapes special HTML characters in user inputs to prevent
- * HTML injection / XSS attacks inside email clients.
+ * Escapes special HTML characters in user inputs to prevent HTML injection.
  */
 function escapeHtml(text: string): string {
   if (!text) return "";
@@ -41,7 +44,7 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Sanitizes URL parameters to prevent javascript: URI injection in email buttons.
+ * Sanitizes URL parameters to prevent javascript: URI injection in email buttons.
  */
 function sanitizeUrl(urlStr: string): string {
   try {
@@ -56,7 +59,7 @@ function sanitizeUrl(urlStr: string): string {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Masks recipient email addresses in server console logs to prevent PII leaks.
+ * Masks recipient email addresses in server console logs to prevent PII leaks.
  */
 function maskEmail(email: string): string {
   if (!email || !email.includes("@")) return "***";
@@ -106,7 +109,6 @@ export async function sendPasswordResetEmail(
     return false;
   }
 
-  // Escape dynamic variables to stop HTML injection
   const safeName = escapeHtml(userName);
   const safeLink = sanitizeUrl(resetLink);
 
@@ -327,6 +329,120 @@ export async function sendBillReminderEmail(
     return true;
   } catch (error: unknown) {
     console.error("❌ Critical fault inside bill reminder email pipeline:", error);
+    return false;
+  }
+}
+
+/**
+ * Sends an email with a secure link to reset the Investment Vault PIN.
+ */
+export async function sendVaultPinResetEmail(
+  recipientEmail: string,
+  userName: string,
+  resetLink: string
+): Promise<boolean> {
+  if (!isResendConfigured()) return false;
+
+  if (!isValidEmail(recipientEmail)) {
+    console.error("❌ Invalid recipient email provided for Vault PIN reset.");
+    return false;
+  }
+
+  const safeName = escapeHtml(userName);
+  const safeLink = sanitizeUrl(resetLink);
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
+      <h2 style="color: #10b981; margin-bottom: 20px;">🔐 Reset Investment Vault PIN</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>We received a request to reset your secret 4-digit Investment Vault PIN.</p>
+      <p>Click the secure button below to enter a new PIN. This link will expire in <strong>15 minutes</strong>:</p>
+      
+      <div style="margin: 30px 0; text-align: center;">
+        <a href="${safeLink}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+          Reset Vault PIN
+        </a>
+      </div>
+      
+      <p style="font-size: 12px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="font-size: 12px; color: #10b981; word-break: break-all;">${safeLink}</p>
+      
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
+      <p style="font-size: 12px; color: #9ca3af;">If you did not request a PIN reset, please ignore this message.</p>
+    </div>
+  `;
+
+  try {
+    const response: ResendSendResponse = await resend.emails.send({
+      from: DEFAULT_SENDER,
+      to: [recipientEmail.trim()],
+      subject: "🔐 Reset Your Investment Vault PIN",
+      html: htmlContent,
+    });
+
+    if (response.error) {
+      console.error("❌ Resend Vault PIN Reset Transport Error:", response.error);
+      return false;
+    }
+
+    console.log(`✉️ Vault PIN reset email dispatched to [${maskEmail(recipientEmail)}]. ID: ${response.data?.id}`);
+    return true;
+  } catch (error: unknown) {
+    console.error("❌ Critical fault inside Vault PIN reset email pipeline:", error);
+    return false;
+  }
+}
+
+/**
+ * Sends a security alert email when the Vault lock screen is turned off.
+ */
+export async function sendVaultPinDisabledEmail(
+  recipientEmail: string,
+  userName: string
+): Promise<boolean> {
+  if (!isResendConfigured()) return false;
+
+  if (!isValidEmail(recipientEmail)) {
+    console.error("❌ Invalid recipient email provided for Vault PIN disabled alert.");
+    return false;
+  }
+
+  const safeName = escapeHtml(userName);
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
+      <h2 style="color: #dc2626; margin-bottom: 20px;">🛡️ Investment Vault Unlocked</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>Your 4-digit Investment Vault password screen lock was recently turned off.</p>
+      
+      <div style="margin: 25px 0; padding: 15px; background-color: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px;">
+        <p style="margin: 0; font-size: 13px; color: #991b1b; font-weight: bold;">
+          If you did NOT turn off your vault security, please log in immediately and re-enable your PIN in Settings.
+        </p>
+      </div>
+      
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
+      <p style="font-size: 12px; color: #9ca3af;">This security notice was generated automatically.</p>
+    </div>
+  `;
+
+  try {
+    const response: ResendSendResponse = await resend.emails.send({
+      from: DEFAULT_SENDER,
+      to: [recipientEmail.trim()],
+      subject: "🛡️ Security Alert: Investment Vault Lock Disabled",
+      html: htmlContent,
+    });
+
+    if (response.error) {
+      console.error("❌ Resend Vault PIN Disabled Transport Error:", response.error);
+      return false;
+    }
+
+    console.log(`✉️ Vault PIN disabled alert sent to [${maskEmail(recipientEmail)}]. ID: ${response.data?.id}`);
+    return true;
+  } catch (error: unknown) {
+    console.error("❌ Critical fault inside Vault PIN disabled alert pipeline:", error);
     return false;
   }
 }

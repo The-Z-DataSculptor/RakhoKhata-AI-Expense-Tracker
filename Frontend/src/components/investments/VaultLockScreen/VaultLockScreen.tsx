@@ -1,4 +1,4 @@
-// src/components/investments/VaultLockScreen/VaultLockScreen.tsx
+// Frontend/src/components/investments/VaultLockScreen/VaultLockScreen.tsx
 "use client";
 
 /* ==========================================================================
@@ -29,8 +29,6 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
   const [hasPin, setHasPin] = useState<boolean | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  // WHY THIS FIX WAS MADE: Stores scheduled timeout IDs to ensure clean teardown
-  // on component unmount and prevent updates on unmounted components.
   const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
 
   const registerTimeout = useCallback((fn: () => void, delayMs: number) => {
@@ -141,11 +139,20 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     }
   }, [digits, focusInput]);
 
-  // WHY THIS FIX WAS MADE: Replaced native window.alert with Sonner toast notice
-  // to avoid blocking browser event threads during user interactions.
-  const handleForgotPin = useCallback(() => {
-    toast.info("Navigate to account settings or contact workspace admin to reset PIN lock.");
-  }, []);
+  // WHY THIS FIX WAS MADE: Dispatches PIN reset email request to backend and alerts the user via toast.
+  const handleForgotPin = useCallback(async () => {
+    if (isProcessing) return;
+    try {
+      setIsProcessing(true);
+      const res = await vaultAuthService.requestPinReset();
+      toast.success(res.message || "A PIN reset link has been sent to your registered email!");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to request PIN reset.";
+      toast.error(msg);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing]);
 
   if (hasPin === null || !hasPin) {
     return (
@@ -219,7 +226,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
               onClick={handleForgotPin}
               disabled={isProcessing}
             >
-              Forgot your PIN?
+              {isProcessing ? "Sending Reset Link..." : "Forgot your PIN?"}
             </button>
           )}
         </div>

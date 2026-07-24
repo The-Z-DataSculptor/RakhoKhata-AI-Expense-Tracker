@@ -7,13 +7,9 @@ import cron from "node-cron";
 import { Prisma } from "../../prisma/generated";
 import { prisma } from "../db";
 
-// Number of records processed per database query iteration to prevent memory exhaustion
 const BATCH_SIZE = 200;
-
-// Maximum records deleted per batch during cleanup to prevent database table locking
 const CLEANUP_BATCH_SIZE = 500;
 
-// WHY THIS WAS ADDED: Explicit type payload for batched category queries to prevent TS inference loops
 type RecurringCategoryPayload = Prisma.CategoryGetPayload<{
   select: {
     id: true;
@@ -31,16 +27,10 @@ type RecurringCategoryPayload = Prisma.CategoryGetPayload<{
    === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
-/**
- * Standardized internal logger to prevent leaking sensitive system traces.
- */
 function logError(message: string, detail: unknown): void {
   console.error(message, detail);
 }
 
-/**
- * Calculates whether today is the scheduled reminder date across month boundaries.
- */
 function isReminderDueOnDate(
   dueDay: number,
   reminderDays: number,
@@ -49,7 +39,6 @@ function isReminderDueOnDate(
   const targetYear = referenceDate.getUTCFullYear();
   const targetMonth = referenceDate.getUTCMonth();
 
-  // 1. Calculate reminder date for current month's due date
   const lastDayCurrentMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
   const actualDueDayCurrentMonth = Math.min(dueDay, lastDayCurrentMonth);
   const dueDateCurrentMonth = new Date(Date.UTC(targetYear, targetMonth, actualDueDayCurrentMonth));
@@ -57,7 +46,6 @@ function isReminderDueOnDate(
   const reminderDateCurrentMonth = new Date(dueDateCurrentMonth);
   reminderDateCurrentMonth.setUTCDate(reminderDateCurrentMonth.getUTCDate() - reminderDays);
 
-  // 2. Calculate reminder date for next month's due date
   const lastDayNextMonth = new Date(Date.UTC(targetYear, targetMonth + 2, 0)).getUTCDate();
   const actualDueDayNextMonth = Math.min(dueDay, lastDayNextMonth);
   const dueDateNextMonth = new Date(Date.UTC(targetYear, targetMonth + 1, actualDueDayNextMonth));
@@ -65,7 +53,6 @@ function isReminderDueOnDate(
   const reminderDateNextMonth = new Date(dueDateNextMonth);
   reminderDateNextMonth.setUTCDate(reminderDateNextMonth.getUTCDate() - reminderDays);
 
-  // 3. Match reference date against calculated targets
   const matchesCurrentMonthReminder =
     referenceDate.getUTCFullYear() === reminderDateCurrentMonth.getUTCFullYear() &&
     referenceDate.getUTCMonth() === reminderDateCurrentMonth.getUTCMonth() &&
@@ -85,11 +72,48 @@ function isReminderDueOnDate(
    ========================================================================== */
 
 /**
+ * Creates an immediate in-app dashboard notification for security/system events.
+ */
+export async function createInAppNotification(
+  userId: string,
+  title: string,
+  message: string,
+  sourceType: string = "SECURITY_ALERT"
+): Promise<void> {
+  try {
+    const idempotencyKey = `${sourceType.toLowerCase()}_${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    await prisma.notification.create({
+      data: {
+        userId,
+        title,
+        message,
+        sourceType,
+        idempotencyKey,
+      },
+    });
+  } catch (error: unknown) {
+    logError("[Notification Service] Failed to create in-app notification:", error);
+  }
+}
+
+/**
+ * Dispatches an in-app notification confirming a successful Vault PIN reset.
+ */
+export async function createVaultPinResetNotification(userId: string): Promise<void> {
+  await createInAppNotification(
+    userId,
+    "🔐 Vault PIN Reset",
+    "Your 4-digit Investment Vault security PIN was successfully reset.",
+    "VAULT_PIN_RESET"
+  );
+}
+
+/**
  * Scans the database using cursor-based batching for recurring bills due for a reminder today.
  */
 export async function generateBillReminders(): Promise<void> {
   const today = new Date();
-  const currentMonth = today.getUTCMonth() + 1; // 1-12 UTC
+  const currentMonth = today.getUTCMonth() + 1;
   const currentYear = today.getUTCFullYear();
 
   console.log(
@@ -102,8 +126,6 @@ export async function generateBillReminders(): Promise<void> {
     let hasMoreRecords = true;
 
     while (hasMoreRecords) {
-      // WHY THIS FIX WAS MADE: Constructed queryOptions explicitly with Prisma.CategoryFindManyArgs
-      // to eliminate circular type inference errors on 'recurringCategories'.
       const queryOptions: Prisma.CategoryFindManyArgs = {
         where: {
           isRecurring: true,
@@ -241,9 +263,6 @@ export async function cleanupOldNotifications(): Promise<void> {
    === SECTION 4: SCHEDULER INITIALIZATION ===
    ========================================================================== */
 
-/**
- * Starts background cron jobs using explicit UTC timezone settings.
- */
 export function initNotificationScheduler(): void {
   cron.schedule(
     "0 0 * * *",

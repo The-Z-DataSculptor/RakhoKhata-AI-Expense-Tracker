@@ -8,7 +8,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "./generated"
 }
 
 datasource db {
@@ -42,6 +41,7 @@ enum TokenType {
   EMAIL_VERIFICATION
   TWO_FACTOR
   MAGIC_LINK
+  VAULT_PIN_RESET
 }
 
 /**

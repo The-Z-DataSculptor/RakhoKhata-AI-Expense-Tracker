@@ -135,15 +135,13 @@ export const apiFetch = async <T = unknown>(
     ...(options.headers as Record<string, string>),
   };
 
-  // WHY THIS FIX WAS MADE: Only set application/json content type if body is not FormData,
-  // allowing browsers to automatically define multipart/form-data boundaries for avatar uploads.
   if (!(options.body instanceof FormData)) {
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
   const mergedOptions: RequestInit = {
     ...options,
-    credentials: "include", // Transmits PASETO/JWT HttpOnly session cookies
+    credentials: "include", // Transmits HttpOnly session cookies
     headers,
   };
 
@@ -168,7 +166,7 @@ export const apiFetch = async <T = unknown>(
           errorMessage = (errorData as { message: string }).message;
         }
       } catch {
-        // Fallback to HTTP status code string if non-JSON response is returned
+        // Fallback to HTTP status string
       }
       throw new Error(errorMessage);
     }
@@ -306,8 +304,6 @@ export const vaultAuthService = {
       method: "GET",
     }),
 
-  // WHY THIS FIX WAS MADE: Accepts optional currentPin parameter so PIN change workflows 
-  // can authenticate against the user's existing bcrypt hash before updating.
   setupPin: (pin: string, currentPin?: string) =>
     apiFetch<{ success: boolean; message: string }>(
       "/auth/vault/pin-setup",
@@ -320,12 +316,24 @@ export const vaultAuthService = {
       { method: "POST", body: JSON.stringify({ pin }) }
     ),
 
-  // WHY THIS FIX WAS MADE: Accepts verified pin string in body payload to meet backend 
-  // authorization requirements when disabling vault security locks.
   disablePin: (pin: string) =>
     apiFetch<{ success: boolean; message: string }>(
       "/auth/vault/pin-disable",
       { method: "POST", body: JSON.stringify({ pin }) }
+    ),
+
+  // WHY THIS FIX WAS ADDED: Triggers an automated PIN reset email containing a tokenized reset link.
+  requestPinReset: () =>
+    apiFetch<{ success: boolean; message: string }>(
+      "/auth/vault/pin-request-reset",
+      { method: "POST" }
+    ),
+
+  // WHY THIS FIX WAS ADDED: Validates single-use token and overrides current vault pin.
+  resetPinWithToken: (token: string, newPin: string) =>
+    apiFetch<{ success: boolean; message: string }>(
+      "/auth/vault/pin-reset-confirm",
+      { method: "POST", body: JSON.stringify({ token, newPin }) }
     ),
 };
 
@@ -386,8 +394,6 @@ export const userService = {
       method: "GET",
     }),
 
-  // WHY THIS FIX WAS MADE: Corrected endpoint path from /auth/update-profile to /auth/profile 
-  // to match the backend Express controller route definition (PUT /api/auth/profile).
   updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
     apiFetch<{ message: string; user: UserProfile }>(
       "/auth/profile",

@@ -4,55 +4,51 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Response as ExpressResponse } from "express";
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
+import {
+  sendVaultPinResetEmail,
+  sendVaultPinDisabledEmail,
+} from "../services/emailService";
+import { createVaultPinResetNotification } from "../services/notificationService";
 
-// Data contract for setting up or changing a PIN
+const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const BCRYPT_SALT_ROUNDS = 10;
+
 interface SetupPinInput {
   pin: string;
   currentPin?: string;
 }
 
-// Data contract for verifying a PIN
 interface VerifyPinInput {
   pin: string;
 }
 
-// Data contract for disabling a PIN
 interface DisablePinInput {
   pin: string;
 }
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
-   ========================================================================== */
+interface ResetPinTokenInput {
+  token: string;
+  newPin: string;
+}
 
-// Standard cost factor for bcrypt password/PIN hashing
-const BCRYPT_SALT_ROUNDS = 10;
-
-/**
- * Standardized JSON error response builder
- */
 function buildErrorResponse(message: string): { error: string; success: boolean } {
   return { error: message, success: false };
 }
 
-/**
- * WHY THIS IS NEEDED: Ensures inputs are strictly 4 numeric digits.
- * Rejects non-numeric characters, spaces, floats, and invalid string lengths.
- */
 function isValidPinFormat(pin: unknown): pin is string {
   if (typeof pin !== "string") {
     return false;
   }
   return /^\d{4}$/.test(pin.trim());
 }
-/* === SECTION 2 END === */
+/* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 3: CONTROLLER HANDLERS ===
+   === SECTION 2: CONTROLLER HANDLERS ===
    ========================================================================== */
 
 /**
@@ -107,13 +103,11 @@ export const setupVaultPin = async (
     const pin = typeof body.pin === "string" ? body.pin.trim() : "";
     const currentPin = typeof body.currentPin === "string" ? body.currentPin.trim() : "";
 
-    // 1. Validate new PIN format
     if (!isValidPinFormat(pin)) {
       res.status(400).json(buildErrorResponse("New PIN must be exactly 4 digits."));
       return;
     }
 
-    // 2. Fetch user to verify account existence and current PIN status
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, vaultPin: true },
@@ -124,8 +118,6 @@ export const setupVaultPin = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: If a PIN is already configured in PostgreSQL, require and 
-    // validate currentPin using bcrypt to prevent unauthorized overwrites.
     if (user.vaultPin) {
       if (!currentPin || !isValidPinFormat(currentPin)) {
         res.status(400).json(buildErrorResponse("Current PIN is required to change vault settings."));
@@ -139,7 +131,6 @@ export const setupVaultPin = async (
       }
     }
 
-    // 3. Hash the new PIN and update database
     const hashedPin = await bcrypt.hash(pin, BCRYPT_SALT_ROUNDS);
 
     await prisma.user.update({
@@ -195,7 +186,6 @@ export const verifyVaultPin = async (
       return;
     }
 
-    // Compare provided PIN against stored hash
     const isMatch = await bcrypt.compare(pin, user.vaultPin);
     if (!isMatch) {
       res.status(401).json(buildErrorResponse("Incorrect PIN."));
@@ -237,7 +227,7 @@ export const disableVaultPin = async (
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, vaultPin: true },
+      select: { id: true, vaultPin: true, email: true, name: true },
     });
 
     if (!user) {
@@ -250,18 +240,20 @@ export const disableVaultPin = async (
       return;
     }
 
-    // Verify PIN before disabling lock
     const isPinCorrect = await bcrypt.compare(pin, user.vaultPin);
     if (!isPinCorrect) {
       res.status(401).json(buildErrorResponse("Incorrect PIN. Vault remains locked."));
       return;
     }
 
-    // Remove PIN protection in PostgreSQL
     await prisma.user.update({
       where: { id: userId },
       data: { vaultPin: null },
     });
+
+    sendVaultPinDisabledEmail(user.email, user.name).catch((err: unknown) =>
+      console.error("Async Vault Pin Disabled Email Error:", err)
+    );
 
     res.status(200).json({
       success: true,
@@ -272,4 +264,125 @@ export const disableVaultPin = async (
     res.status(500).json(buildErrorResponse("Failed to disable vault PIN."));
   }
 };
-/* === SECTION 3 END === */
+
+/**
+ * POST /api/auth/vault/pin-request-reset
+ * Generates a single-use tokenized link and emails it to the user.
+ */
+export const requestVaultPinReset = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json(buildErrorResponse("Authentication required."));
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true },
+    });
+
+    if (!user) {
+      res.status(404).json(buildErrorResponse("User account not found."));
+      return;
+    }
+
+    // WHY THIS FIX WAS MADE: Uses PASSWORD_RESET token type to maintain 100% compatibility with Prisma runtime validation
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: user.email, type: "PASSWORD_RESET" },
+    }).catch(() => {});
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // Expires in 15 minutes
+
+    await prisma.verificationToken.create({
+      data: {
+        tokenHash,
+        type: "PASSWORD_RESET",
+        identifier: user.email,
+        expiresAt,
+      },
+    });
+
+    const resetUrl = `${APP_FRONTEND_URL}/reset-vault-pin?token=${rawToken}`;
+    await sendVaultPinResetEmail(user.email, user.name, resetUrl);
+
+    res.status(200).json({
+      success: true,
+      message: "Vault PIN reset link sent to your registered email address.",
+    });
+  } catch (error: unknown) {
+    console.error("Request Vault PIN Reset Error:", error);
+    res.status(500).json(buildErrorResponse("Unable to send PIN reset email."));
+  }
+};
+
+/**
+ * POST /api/auth/vault/pin-reset-confirm
+ * Resets the Vault PIN using the single-use token received in email.
+ */
+export const resetVaultPinWithToken = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const body = req.body as ResetPinTokenInput;
+    const rawToken = typeof body.token === "string" ? body.token.trim() : "";
+    const newPin = typeof body.newPin === "string" ? body.newPin.trim() : "";
+
+    if (!rawToken || !isValidPinFormat(newPin)) {
+      res.status(400).json(buildErrorResponse("Valid token and 4-digit PIN are required."));
+      return;
+    }
+
+    const computedHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    const tokenRecord = await prisma.verificationToken.findUnique({
+      where: { tokenHash: computedHash },
+    });
+
+    if (!tokenRecord || tokenRecord.type !== "PASSWORD_RESET") {
+      res.status(400).json(buildErrorResponse("Invalid or expired PIN reset link."));
+      return;
+    }
+
+    if (new Date() > tokenRecord.expiresAt) {
+      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+      res.status(400).json(buildErrorResponse("Reset link expired. Please request a new one."));
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
+    if (!user) {
+      res.status(404).json(buildErrorResponse("User account not found."));
+      return;
+    }
+
+    const hashedPin = await bcrypt.hash(newPin, BCRYPT_SALT_ROUNDS);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { vaultPin: hashedPin },
+      }),
+      prisma.verificationToken.delete({
+        where: { id: tokenRecord.id },
+      }),
+    ]);
+
+    await createVaultPinResetNotification(user.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Vault PIN reset successfully! You can now unlock your vault.",
+    });
+  } catch (error: unknown) {
+    console.error("Reset Vault PIN Token Error:", error);
+    res.status(500).json(buildErrorResponse("Failed to reset vault PIN."));
+  }
+};
+/* === SECTION 2 END === */

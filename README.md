@@ -32,8 +32,12 @@ Engineered as a decoupled full-stack application, RakhoKhata uses **Next.js 16**
 
 ### 💱 Multi-Currency & Workspace Engine
 
-- **Global Currency Support**: Native support for PKR, USD, EUR, GBP, INR, and automated base conversions.
+- **Global Currency Support**: Native support for PKR, USD, EUR, GBP, INR, and dynamic live exchange rates via ExchangeRate API.
 - **Dynamic Workspace Toggling**: Instantly view net worth and cash flow in any preferred base currency.
+
+### 🔑 Social Authentication Highway
+
+- **Google OAuth 2.0 Integration**: One-tap sign-in and account linking alongside native PASETO & JWT authentication.
 
 ### 📊 Interactive Visual Analytics
 
@@ -53,7 +57,7 @@ Engineered as a decoupled full-stack application, RakhoKhata uses **Next.js 16**
 
 ### 🔒 Enterprise Security
 
-- **Hybrid Authentication**: Dual-token architecture using **PASETO** (`paseto-ts`) and **JWT** with HttpOnly cookies.
+- **Hybrid Authentication**: Dual-token architecture using **PASETO** (`paseto-ts`), **JWT**, and OAuth with HttpOnly cookies.
 - **API Protection**: Tight endpoint protection using **Helmet**, rate limiters, CORS isolation, and **Zod** schema validation.
 
 ---
@@ -62,7 +66,7 @@ Engineered as a decoupled full-stack application, RakhoKhata uses **Next.js 16**
 
 ```mermaid
 graph TD
-    A[📱 Next.js 16 Standalone UI<br/>React 19 • TypeScript • CSS Modules] -->|HTTP / REST API| B[⚙️ Express 5 Backend Core<br/>PASETO / JWT Auth • Zod • REST APIs]
+    A[📱 Next.js 16 Standalone UI<br/>React 19 • TypeScript • CSS Modules] -->|HTTP / REST API| B[⚙️ Express 5 Backend Core<br/>PASETO / JWT / OAuth Auth • Zod • REST APIs]
     B -->|Prisma 7 ORM + PG Adapter| C[(🗄️ Neon Cloud Database<br/>PostgreSQL)]
     B -->|Secure Server Gateway| D[🤖 Google Gemini AI SDK<br/>@google/genai]
     B -->|Background Cron Job| E[⏰ Bill Reminder Worker<br/>Node-Cron]
@@ -83,14 +87,14 @@ graph TD
 
 ### ⚙️ Backend Stack (`Backend/`)
 
-| Category                | Technologies & Libraries                              | Version              |
-| :---------------------- | :---------------------------------------------------- | :------------------- |
-| **Runtime & API**       | Node.js, Express 5, `tsx` runner, TypeScript 5        | `v5.2.1` / `v5.7.0`  |
-| **Database & ORM**      | PostgreSQL (`pg`), Prisma ORM (`@prisma/adapter-pg`)  | `v8.22.0` / `v7.8.0` |
-| **AI Intelligence**     | Google GenAI SDK (`@google/genai`)                    | `v2.12.0`            |
-| **Security & Auth**     | PASETO (`paseto-ts`), JWT, Bcrypt, Helmet, Rate Limit | `v2.0.6` / `v8.3.0`  |
-| **Document Processing** | ExcelJS, PDFKit, Multer                               | `v4.4.0` / `v0.19.1` |
-| **Workers & Email**     | Node-Cron, Resend Email API                           | `v4.6.0` / `v6.17.2` |
+| Category                | Technologies & Libraries                                                | Version              |
+| :---------------------- | :---------------------------------------------------------------------- | :------------------- |
+| **Runtime & API**       | Node.js, Express 5, `tsx` runner, TypeScript 5                          | `v5.2.1` / `v5.7.0`  |
+| **Database & ORM**      | PostgreSQL (`pg`), Prisma ORM (`@prisma/adapter-pg`)                    | `v8.22.0` / `v7.8.0` |
+| **AI Intelligence**     | Google GenAI SDK (`@google/genai`)                                      | `v2.12.0`            |
+| **Security & Auth**     | PASETO (`paseto-ts`), JWT, Google OAuth 2.0, Bcrypt, Helmet, Rate Limit | `v2.0.6` / `v8.3.0`  |
+| **Document Processing** | ExcelJS, PDFKit, Multer                                                 | `v4.4.0` / `v0.19.1` |
+| **Workers & Services**  | Node-Cron, Resend Email API, ExchangeRate API                           | `v4.6.0` / `v6.17.2` |
 
 ---
 
@@ -193,16 +197,22 @@ PORT=5000
 NODE_ENV=production
 CORS_ORIGIN=http://localhost:3000
 
-# Database (Neon PostgreSQL)
+# Database Connection (Neon PostgreSQL)
 DATABASE_URL="postgresql://user:pass@ep-sample.aws.neon.tech/neondb?sslmode=require"
 
-# Security & Auth
+# Security & Authentication
 JWT_SECRET="your_jwt_secret_here"
-PASETO_SECRET_KEY="your_paseto_secret_here"
+PASETO_SECRET="your_paseto_secret_here"
 
-# Services & AI
-GEMINI_API_KEY="your_google_gemini_api_key"
-RESEND_API_KEY="your_resend_api_key"
+# Google OAuth 2.0 Credentials
+GOOGLE_CLIENT_ID="your_google_client_id_here"
+GOOGLE_CLIENT_SECRET="your_google_client_secret_here"
+GOOGLE_CALLBACK_URL="http://localhost:5000/api/auth/google/callback"
+
+# External APIs & Services
+GEMINI_API_KEY="your_google_gemini_api_key_here"
+EXCHANGERATE_API_KEY="your_exchangerate_api_key_here"
+RESEND_API_KEY="your_resend_api_key_here"
 RUN_BACKGROUND_WORKERS=true
 ```
 

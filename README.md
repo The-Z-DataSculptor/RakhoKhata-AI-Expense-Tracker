@@ -1,4 +1,4 @@
-<img width="1541" height="892" alt="RakhoKhata Hero Header" src="[https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e](https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e)" />
+<img width="1541" height="892" alt="RakhoKhata Hero Header" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
 
 # 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics
 
@@ -97,7 +97,7 @@ graph TD
 ## 📂 Project Structure
 
 ```text
-Expense-Tracker/
+RakhoKhata-AI-Expense-Tracker/
 ├── docker-compose.yml
 ├── Backend/
 │   ├── Dockerfile
@@ -142,8 +142,8 @@ Make sure you have these installed and running:
 #### Step 1: Clone the Repo
 
 ```bash
-git clone https://github.com/The-Z-DataSculptor/Expense-Tracker.git
-cd Expense-Tracker
+git clone [https://github.com/The-Z-DataSculptor/RakhoKhata-AI-Expense-Tracker.git](https://github.com/The-Z-DataSculptor/RakhoKhata-AI-Expense-Tracker.git)
+cd RakhoKhata-AI-Expense-Tracker
 ```
 
 #### Step 2: Configure Environment Keys

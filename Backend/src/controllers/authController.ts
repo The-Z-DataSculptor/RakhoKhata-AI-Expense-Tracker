@@ -7,7 +7,7 @@ import { Request, Response as ExpressResponse } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { encrypt } from "paseto-ts/v4";
-import { TransactionType, Prisma } from "../../prisma/generated/client";
+import { TransactionType, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import {
@@ -20,12 +20,12 @@ import {
   SHARED_DEFAULT_BUSINESS_CATEGORIES,
 } from "./workspaceController";
 
-// Environment variables with fallback safeguards
-const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+// Environment variables with fallback safeguards pointing to live production URLs
+const APP_FRONTEND_URL = process.env.FRONTEND_URL || "https://rakhokhata.onrender.com";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/auth/google/callback";
+  process.env.GOOGLE_CALLBACK_URL || "https://expense-backend-jcy1.onrender.com/api/auth/google/callback";
 
 // External API timeout limit (10 seconds)
 const EXTERNAL_API_TIMEOUT_MS = 10000;
@@ -71,8 +71,6 @@ interface UpdateProfileRequestBody {
 function getPasetoKey(): string {
   const secret = process.env.PASETO_SECRET;
 
-  // WHY THIS FIX WAS MADE: Throws a hard server error in production if the signing secret 
-  // is omitted, preventing the use of predictable development fallback keys.
   if (!secret) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!");
@@ -105,9 +103,6 @@ function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
 
-/**
- * WHY THIS IS NEEDED: Prevents HTTP parameter array injection attacks by validating string types.
- */
 function extractSingleString(value: unknown): string | undefined {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
@@ -115,9 +110,6 @@ function extractSingleString(value: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * WHY THIS IS NEEDED: Safely extracts optional string parameters, returning null if empty or undefined.
- */
 function extractOptionalString(value: unknown): string | null {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
@@ -125,10 +117,6 @@ function extractOptionalString(value: unknown): string | null {
   return null;
 }
 
-/**
- * WHY THIS FIX WAS MADE: Maps raw default category strings into valid Prisma TransactionType Enums.
- * Fixes TypeScript build error where raw strings like "EXPENSE" were rejected by Prisma's enum schema.
- */
 function formatDefaultCategories(
   categories: Array<{ name: string; type: string; color: string; isFixed?: boolean }>
 ) {
@@ -165,7 +153,6 @@ async function fetchWithTimeout(
 
 /**
  * POST /api/auth/register
- * Registers a new local user, creates default workspaces with typed categories, and sends verification email.
  */
 export const registerUser = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
@@ -175,7 +162,6 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
     const rawEmail = extractSingleString(body.email);
     const password = typeof body.password === "string" ? body.password : "";
 
-    // 1. Input validation
     if (!fullName || !rawEmail || !password) {
       res.status(400).json(buildErrorResponse("Full name, email, and password are required."));
       return;
@@ -188,7 +174,6 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
 
     const normalizedEmail = rawEmail.toLowerCase();
 
-    // 2. Check existing user
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
@@ -198,7 +183,6 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
       return;
     }
 
-    // 3. Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const baseCurrency = extractSingleString(body.currency) || "PKR";
@@ -206,13 +190,10 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
       ? body.languages.map((lang) => String(lang).trim()).filter(Boolean)
       : [];
 
-    // 4. Verification token variables
     const rawVerifyToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawVerifyToken).digest("hex");
-    const tokenExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const tokenExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // WHY THIS FIX WAS MADE: Uses Prisma interactive transaction with explicit typing 
-    // to prevent schema mismatches on newly added user and verification token attributes.
     const newUser = await prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
         data: {
@@ -258,13 +239,11 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
       return createdUser;
     });
 
-    // 5. Async verification email dispatch
     const verificationUrl = `${APP_FRONTEND_URL}/verify-email?token=${rawVerifyToken}`;
     sendVerificationEmail(newUser.email, newUser.name, verificationUrl).catch((err: unknown) =>
       console.error("Async Verification Email Failure:", err)
     );
 
-    // 6. Generate PASETO session token
     const token = await generateSessionToken(newUser.id, newUser.email);
     res.cookie("token", token, COOKIE_OPTIONS);
 
@@ -294,7 +273,6 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
 
 /**
  * POST /api/auth/login
- * Authenticates a user with email and password.
  */
 export const loginUser = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
@@ -357,7 +335,6 @@ export const loginUser = async (req: Request, res: ExpressResponse): Promise<voi
 
 /**
  * GET /api/auth/me
- * Retrieves profile data for the authenticated user.
  */
 export const getMe = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
@@ -400,7 +377,6 @@ export const getMe = async (req: AuthenticatedRequest, res: ExpressResponse): Pr
 
 /**
  * POST /api/auth/logout
- * Clears authentication session cookie.
  */
 export const logoutUser = async (_req: Request, res: ExpressResponse): Promise<void> => {
   try {
@@ -414,7 +390,6 @@ export const logoutUser = async (_req: Request, res: ExpressResponse): Promise<v
 
 /**
  * PUT /api/auth/profile
- * Updates basic user preferences.
  */
 export const updateProfile = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
@@ -466,7 +441,6 @@ export const updateProfile = async (req: AuthenticatedRequest, res: ExpressRespo
 
 /**
  * POST /api/auth/change-password
- * Changes user password after verifying current password.
  */
 export const changePassword = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
@@ -527,7 +501,6 @@ export const changePassword = async (req: AuthenticatedRequest, res: ExpressResp
 
 /**
  * POST /api/auth/request-password-reset
- * Sends password reset email if account exists without revealing account existence.
  */
 export const requestPasswordReset = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
@@ -555,7 +528,7 @@ export const requestPasswordReset = async (req: Request, res: ExpressResponse): 
 
     const rawResetToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawResetToken).digest("hex");
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     await prisma.verificationToken.create({
       data: {
@@ -578,7 +551,6 @@ export const requestPasswordReset = async (req: Request, res: ExpressResponse): 
 
 /**
  * POST /api/auth/reset-password
- * Resets user password using a valid token.
  */
 export const resetForgottenPassword = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
@@ -640,7 +612,6 @@ export const resetForgottenPassword = async (req: Request, res: ExpressResponse)
 
 /**
  * POST /api/auth/verify-email
- * Verifies email address using a valid verification token.
  */
 export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<void> => {
   try {
@@ -700,7 +671,6 @@ export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<v
 
 /**
  * GET /api/auth/google
- * Redirects user to Google OAuth endpoint with a state token.
  */
 export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -713,7 +683,7 @@ export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 10 * 60 * 1000, // 10 minutes
+    maxAge: 10 * 60 * 1000,
   });
 
   const rootAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -735,7 +705,6 @@ export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
 
 /**
  * GET /api/auth/google/callback
- * Handles Google OAuth callback code exchange and provisions user sessions.
  */
 export const handleGoogleCallback = async (req: Request, res: ExpressResponse): Promise<void> => {
   const code = extractSingleString(req.query.code);
@@ -793,7 +762,6 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
     const { sub: googleUserId, email, name, picture } = profile;
     const normalizedEmail = email.trim().toLowerCase();
 
-    // WHY THIS FIX WAS MADE: Queries user by checking connected accounts relation to safely handle OAuth sign-ins.
     let activeUser = await prisma.user.findFirst({
       where: {
         accounts: {
@@ -827,7 +795,6 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
         }
         activeUser = existingEmailUser;
       } else {
-        // WHY THIS FIX WAS MADE: Atomically provisions the user and links their Google account within a transaction.
         activeUser = await prisma.$transaction(async (tx) => {
           const newUser = await tx.user.create({
             data: {
@@ -872,7 +839,6 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
       }
     }
 
-    // WHY THIS FIX WAS MADE: Ensures activeUser is guaranteed non-null before generating session tokens.
     if (!activeUser) {
       res.status(500).send("Authentication failed to provision user record.");
       return;
@@ -891,7 +857,6 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
 
 /**
  * POST /api/auth/complete-onboarding
- * Completes user onboarding preferences and syncs default workspace currencies.
  */
 export const completeOnboarding = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
@@ -951,7 +916,6 @@ export const completeOnboarding = async (req: AuthenticatedRequest, res: Express
 
 /**
  * GET /api/auth/exchange-rates
- * Proxies external ExchangeRate API requests.
  */
 export const getExchangeRates = async (_req: Request, res: ExpressResponse): Promise<void> => {
   try {

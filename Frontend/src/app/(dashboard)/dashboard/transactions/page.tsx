@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { transactionService, categoryService, Transaction, Category } from "@/utils/api";
+import { transactionService, categoryService, apiFetch, Transaction, Category } from "@/utils/api";
 import { toast } from "sonner";
 
 // Spreadsheet Ingestion Engine Libraries
@@ -25,9 +25,6 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFoo
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
 import { DebtReminderForm } from "@/components/forms/DebtReminderForm/DebtReminderForm";
 import styles from "./page.module.css";
-
-// ----- Dynamic API base URL (environment‑driven) -----
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 // ----- Internal types -----
 interface FormPayload {
@@ -61,8 +58,6 @@ type ParsedRowData = Record<string, string>;
 
 /**
  * Safely parses a raw value into an ISO date string (YYYY‑MM‑DD).
- * Handles Excel serial numbers, standard date strings, and DD‑MM‑YYYY formats.
- * Falls back to today's date when parsing fails.
  */
 const safeParseSpreadsheetDate = (rawVal: unknown): string => {
   const fallbackToday = new Date().toISOString().substring(0, 10);
@@ -77,7 +72,6 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
   const strVal = String(rawVal).trim();
   const numericSerial = Number(strVal);
 
-  // Excel serial date (days since 1900-01-01, range ~1980-2070)
   if (!isNaN(numericSerial) && numericSerial > 30000 && numericSerial < 60000) {
     const computedExcelDate = new Date((numericSerial - 25569) * 86400 * 1000);
     if (!isNaN(computedExcelDate.getTime())) {
@@ -90,7 +84,6 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
     return parsed.toISOString().substring(0, 10);
   }
 
-  // Try DD‑MM‑YYYY or DD/MM/YYYY
   const parts = strVal.split(/[-/.]/);
   if (parts.length === 3) {
     const day = parseInt(parts[0], 10);
@@ -171,12 +164,9 @@ export default function TransactionsPage() {
     }
   }, [activeWorkspaceId]);
 
-  // Initial load & workspace switch
   useEffect(() => {
     let isMounted = true;
-    if (!activeWorkspaceId) {
-      return;
-    }
+    if (!activeWorkspaceId) return;
 
     const loadInitialData = async () => {
       try {
@@ -226,23 +216,16 @@ export default function TransactionsPage() {
       formData.append("receipt", file);
       formData.append("workspaceId", activeWorkspaceId);
 
-      const response = await fetch(`${API_BASE_URL}/api/transactions/scan`, {
+      // ⬇️ FIXED: Uses same-origin apiFetch wrapper to pass auth cookie securely
+      const parsedResult = await apiFetch<{
+        merchant?: string;
+        date?: string;
+        totalAmount?: number;
+        currency?: string;
+      }>("/transactions/scan", {
         method: "POST",
         body: formData,
-        credentials: "include",
       });
-
-      if (!response.ok) {
-        const contentType = response.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          const errorJson = await response.json();
-          throw new Error(errorJson.error || "AI scan failed.");
-        } else {
-          throw new Error(`Server returned an unexpected response (Status: ${response.status}).`);
-        }
-      }
-
-      const parsedResult = await response.json();
 
       const unassignedCategory = categories.find(
         (c) => c.name.toLowerCase() === "unassigned"
@@ -425,32 +408,16 @@ export default function TransactionsPage() {
         description: row.description,
         date: new Date(row.date).toISOString(),
         categoryId: row.categoryId,
+        workspaceId: activeWorkspaceId,
       }));
 
-      const response = await fetch(`${API_BASE_URL}/api/transactions/bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: activeWorkspaceId,
-          transactions: payload,
-        }),
-        credentials: "include",
+      // ⬇️ FIXED: Uses transactionService.bulkCreate to pass auth cookie via relative /api route
+      const result = await transactionService.bulkCreate({
+        workspaceId: activeWorkspaceId,
+        transactions: payload,
       });
 
-      const result: unknown = await response.json();
-      if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
-            : "Bulk import failed.";
-        throw new Error(errorMessage);
-      }
-
-      const successMessage =
-        typeof result === "object" && result !== null && "message" in result
-          ? (result as { message: string }).message
-          : "Transactions imported successfully!";
-      toast.success(successMessage);
+      toast.success(result.message || "Transactions imported successfully!");
       setIsImportOpen(false);
       setImportStep(1);
       await refreshLedgerData();
@@ -606,11 +573,7 @@ export default function TransactionsPage() {
       type: tx.type.toLowerCase() as "income" | "expense",
     }));
   }, [pagedTransactions]);
-  /* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: RENDER COMPONENT ===
-     ========================================================================== */
   return (
     <div className={styles.ledgerCanvasWrapper}>
       {/* Header */}
@@ -625,7 +588,7 @@ export default function TransactionsPage() {
         onCameraScannerSelect={() => cameraInputRef.current?.click()}
       />
 
-      {/* Filter Bar – updated to use category objects */}
+      {/* Filter Bar */}
       <TransactionFilterBar
         searchQuery={searchQuery}
         onSearchChange={(val) => {
@@ -1044,4 +1007,3 @@ export default function TransactionsPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

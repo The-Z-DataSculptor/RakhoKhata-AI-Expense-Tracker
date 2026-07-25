@@ -31,7 +31,7 @@ jobs:
           echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
       - name: Build & Push Backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./Backend
           file: ./Backend/Dockerfile
@@ -41,7 +41,7 @@ jobs:
             ghcr.io/${{ env.REPO_LOWER }}/expense-backend:${{ github.sha }}
 
       - name: Build & Push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./Frontend
           file: ./Frontend/Dockerfile

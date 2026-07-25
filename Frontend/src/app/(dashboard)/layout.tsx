@@ -1,22 +1,36 @@
-// src/app/(dashboard)/layout.tsx
+// Frontend/src/app/(dashboard)/layout.tsx
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React from "react";
-import { cookies } from "next/headers";      // Read HttpOnly cookies on the server
-import { redirect } from "next/navigation";   // Server‑side redirects
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
 import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
 import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext";
 import styles from "./layout.module.css";
 
-// Base URL for internal server‑to‑server API calls
-const API_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000";
+/**
+ * Dynamically resolves the base URL for server-to-server calls:
+ * In production inside Docker on Render, uses NEXT_PUBLIC_API_URL or direct Render backend URL.
+ */
+function getBackendServerUrl(): string {
+  let url =
+    process.env.INTERNAL_API_URL ||
+    process.env.API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://expense-backend-jcy1.onrender.com";
+
+  url = url.replace(/\/+$/, "");
+  if (url.endsWith("/api")) {
+    url = url.slice(0, -4);
+  }
+  return url;
+}
+
+const API_URL = getBackendServerUrl();
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -26,24 +40,13 @@ interface DashboardLayoutProps {
 /* ==========================================================================
    === SECTION 2: SERVER‑SIDE AUTH & DATA FETCHING ===
    ========================================================================== */
-/**
- * DashboardLayout
- *
- * WHY this layout is used instead of a client‑side check:
- * The dashboard must be protected.  By verifying the session token directly
- * on the server (reading the cookie via `next/headers` and calling the
- * Express `/auth/me` endpoint), we ensure that no dashboard content is ever
- * sent to unauthenticated users.  If the token is missing or invalid, the
- * user is immediately redirected to `/login` – they never see a flash of
- * the dashboard.
- */
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("token")?.value;
 
-  // 1. No cookie → force login
+  // 1. If cookie is missing on frontend domain, send to login
   if (!sessionToken) {
     redirect("/login");
   }
@@ -52,26 +55,31 @@ export default async function DashboardLayout({
   let activeWorkspace = null;
 
   try {
-    // 2. Verify the session token against the backend
+    // 2. Verify session token against backend server
     const authResponse = await fetch(`${API_URL}/api/auth/me`, {
       method: "GET",
-      headers: { Cookie: `token=${sessionToken}` },
+      headers: { 
+        Cookie: `token=${sessionToken}`,
+        "Content-Type": "application/json"
+      },
       cache: "no-store",
     });
 
-    const authResult = await authResponse.json();
-
-    // If the backend rejects the session, treat it as expired / invalid
     if (!authResponse.ok) {
+      console.warn(`[Dashboard SSR] /auth/me rejected session (Status ${authResponse.status})`);
       redirect("/login");
     }
 
+    const authResult = await authResponse.json();
     userData = authResult.user;
 
-    // 3. Fetch the user's workspaces to obtain the default currency
+    // 3. Fetch user workspaces for workspace/currency context
     const workspaceResponse = await fetch(`${API_URL}/api/workspaces`, {
       method: "GET",
-      headers: { Cookie: `token=${sessionToken}` },
+      headers: { 
+        Cookie: `token=${sessionToken}`,
+        "Content-Type": "application/json"
+      },
       cache: "no-store",
     });
 
@@ -81,15 +89,22 @@ export default async function DashboardLayout({
         workspaceResult.workspaces &&
         workspaceResult.workspaces.length > 0
       ) {
-        activeWorkspace = workspaceResult.workspaces[0]; // first workspace is the default
+        activeWorkspace = workspaceResult.workspaces[0];
       }
     }
   } catch (error) {
-    console.error(
-      "Dashboard Server Layout Token Bridge Exception:",
-      error
-    );
-    // If the backend is completely unreachable, protect the app
+    // Prevent redirect loops when re-throwing Next.js navigation errors
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest: string }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    console.error("[Dashboard SSR Exception]:", error);
     redirect("/login");
   }
 /* === SECTION 2 END === */

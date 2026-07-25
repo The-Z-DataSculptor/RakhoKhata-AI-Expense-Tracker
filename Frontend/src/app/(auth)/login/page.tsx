@@ -17,9 +17,6 @@ import { toast } from "sonner";
 
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
 import styles from "./page.module.css";
-
-const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://expense-backend-jcy1.onrender.com";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -90,7 +87,7 @@ export default function LoginPage() {
 
   const handleLoginSubmit = async (data: LoginFormData) => {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/login`, {
+      const response = await fetch(`/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -140,7 +137,7 @@ export default function LoginPage() {
     setIsForgotSubmitting(true);
     try {
       const response = await fetch(
-        `${BACKEND_API_URL}/api/auth/request-password-reset`,
+        `/api/auth/request-password-reset`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -304,14 +301,9 @@ export default function LoginPage() {
     lastMousePos.current = { x: e.clientX, y: e.clientY };
     lastMouseTime.current = now;
   };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER COMPONENT ===
-   ========================================================================== */
   return (
     <div className={styles.fullScreenMasterLayout} suppressHydrationWarning>
-      {/* LEFT COLUMN – LOGIN FORM */}
       <section className={styles.leftFormColumn}>
         <Link href="/" className={styles.escapeHomeButton}>
           ← Back to Home
@@ -333,7 +325,6 @@ export default function LoginPage() {
                 className={styles.registrationForm}
                 noValidate
               >
-                {/* Email input */}
                 <div className={styles.inputControlGroup}>
                   <label htmlFor="email" className={styles.fieldLabel}>
                     Email Address
@@ -356,7 +347,6 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                {/* Password input */}
                 <div className={styles.inputControlGroup}>
                   <div className={styles.labelForgotRow}>
                     <label htmlFor="password" className={styles.fieldLabel}>
@@ -411,11 +401,10 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              {/* Separator & Google OAuth */}
               <div className={styles.authSeparatorContainer}>or</div>
 
               <a
-                href={`${BACKEND_API_URL}/api/auth/google`}
+                href="/api/auth/google"
                 className={styles.googleOAuthHighwayButton}
               >
                 <svg
@@ -458,7 +447,6 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* RIGHT COLUMN – INTERACTIVE GRAPHIC */}
       <aside
         className={styles.rightGraphicsColumn}
         onMouseMove={handleMouseMove}
@@ -509,7 +497,6 @@ export default function LoginPage() {
         )}
       </aside>
 
-      {/* FORGOT PASSWORD MODAL */}
       {showForgotModal && (
         <div className={styles.modalScreenDimmer}>
           <div className={styles.modalCardSurface}>
@@ -564,4 +551,3 @@ export default function LoginPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

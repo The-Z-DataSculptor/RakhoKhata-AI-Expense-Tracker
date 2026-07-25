@@ -7,9 +7,8 @@ import "dotenv/config";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-// WHY THIS FIX WAS MADE: In Prisma 7, when a custom output path (like ./generated) is used in schema.prisma,
-// the compiled client entry point is emitted at ./generated/client (or ./generated/client.js in ESM).
-import { PrismaClient } from "../prisma/generated/client";
+// Standard Prisma Client import generated directly inside node_modules/@prisma/client
+import { PrismaClient } from "@prisma/client";
 
 // Global TypeScript declaration to extend globalThis for the Prisma singleton pattern
 declare global {
@@ -24,7 +23,7 @@ declare global {
    === SECTION 2: ENVIRONMENT VALIDATION & POOL CONFIGURATION ===
    ========================================================================== */
 
-// WHY THIS FIX WAS MADE: Validates DATABASE_URL on startup to fail fast with a descriptive error
+// Validates DATABASE_URL on startup to fail fast with a descriptive error
 // instead of crashing cryptically inside pg.Pool or Prisma initialization.
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -37,7 +36,7 @@ if (!databaseUrl || typeof databaseUrl !== "string" || !databaseUrl.trim()) {
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
- * WHY THIS FIX WAS MADE: Implements a singleton pattern for pg.Pool in development to prevent
+ * Implements a singleton pattern for pg.Pool in development to prevent
  * hot-reloading tools (nodemon, ts-node-dev, tsx) from opening hundreds of orphaned database connections
  * and exceeding PostgreSQL max_connections limits.
  */
@@ -45,18 +44,16 @@ const connectionPool =
   globalThis.globalPgPool ||
   new pg.Pool({
     connectionString: databaseUrl,
-    // WHY THIS FIX WAS MADE: Configures explicit connection limits to prevent pool starvation or memory leaks.
     max: process.env.DATABASE_POOL_SIZE ? parseInt(process.env.DATABASE_POOL_SIZE, 10) : 10,
     idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
     connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection cannot be established
-    // WHY THIS FIX WAS MADE: Enforces secure SSL connections in production environments to protect data in transit.
     ssl:
       process.env.DATABASE_SSL === "true" || (isProduction && !databaseUrl.includes("localhost"))
         ? { rejectUnauthorized: true }
         : false,
   });
 
-// WHY THIS FIX WAS MADE: Registers an error handler on idle clients to prevent backend process crashes
+// Registers an error handler on idle clients to prevent backend process crashes
 // if PostgreSQL drops or resets an idle background connection.
 connectionPool.on("error", (error) => {
   console.error("🚨 Unexpected background error on idle PostgreSQL pool client:", error);
@@ -75,7 +72,7 @@ const prismaAdapter = new PrismaPg(connectionPool);
    ========================================================================== */
 
 /**
- * WHY THIS FIX WAS MADE: Enforces a PrismaClient singleton instance across module re-imports,
+ * Enforces a PrismaClient singleton instance across module re-imports,
  * ensuring thread safety, logging configuration, and connection pool reuse.
  */
 const prisma =
@@ -92,7 +89,7 @@ if (!isProduction) {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Handles graceful process termination signals (SIGINT/SIGTERM)
+ * Handles graceful process termination signals (SIGINT/SIGTERM)
  * to close active DB connections cleanly without leaking socket handles or corrupting in-flight transactions.
  */
 const handleGracefulShutdown = async (signal: string) => {

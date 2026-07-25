@@ -5,19 +5,20 @@ WORKDIR /app
 # Install OpenSSL for Prisma engine compatibility
 RUN apk add --no-cache openssl
 
-# Copy dependency manifests, Prisma schema, AND Prisma config
+# Copy dependency manifests, schema, and config
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# Restrict Node heap memory & skip audit calls to prevent memory spikes
+# Provide a build-time placeholder so Prisma 7's env("DATABASE_URL") helper validates without failing
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV NODE_OPTIONS="--max-old-space-size=1024"
-RUN npm ci --no-audit --no-fund
 
-# Generate Prisma Client (now it can find prisma.config.ts)
+# Install dependencies and generate Prisma Client
+RUN npm ci --no-audit --no-fund
 RUN npx prisma generate
 
-# Copy the rest of the application source code
+# Copy application source code
 COPY . .
 
 ENV NODE_ENV=production

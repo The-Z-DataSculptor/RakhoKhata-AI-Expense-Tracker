@@ -5,19 +5,25 @@
    ========================================================================== */
 /**
  * Dynamically resolves the backend base URL depending on execution environment:
- * - Server-Side (Next.js SSR inside Docker): Uses internal container DNS (http://backend:5000/api)
- * - Client-Side (User's browser): Uses host mapped port (http://localhost:5000/api)
+ * - Server-Side (Next.js SSR inside Docker): Uses internal container DNS or production URL
+ * - Client-Side (User's browser): Uses NEXT_PUBLIC_API_URL or production URL fallback
  * Automatically ensures the '/api' prefix is always attached.
  */
 export const getApiBaseUrl = (): string => {
-  let baseUrl = "http://localhost:5000";
+  let baseUrl = "https://expense-backend-jcy1.onrender.com";
 
   if (typeof window === "undefined") {
     // Executing on Next.js server (inside Docker container)
-    baseUrl = process.env.INTERNAL_API_URL || process.env.API_URL || "http://backend:5000";
+    baseUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "https://expense-backend-jcy1.onrender.com";
   } else {
     // Executing in user's browser
-    baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    baseUrl =
+      process.env.NEXT_PUBLIC_API_URL ||
+      "https://expense-backend-jcy1.onrender.com";
   }
 
   // Strip trailing slashes and ensure '/api' suffix

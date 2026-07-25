@@ -30,15 +30,6 @@ import {
 } from "@/constants/geoData";
 import styles from "./page.module.css";
 
-/**
- * WHY an environment variable is used for the backend URL:
- * Hardcoding "localhost:5000" would break the app in any non‑local environment.
- * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
- * work in staging, production, and Docker without code changes.
- */
-const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
 /** Signup registration flow mode */
 type SignupMethod = "CHOOSE" | "EMAIL";
 
@@ -115,7 +106,6 @@ const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
    ========================================================================== */
 
 export default function SignupPage() {
-  // Mode selection state: "CHOOSE" displays options; "EMAIL" displays standard wizard
   const [signupMethod, setSignupMethod] = useState<SignupMethod>("CHOOSE");
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -242,7 +232,7 @@ export default function SignupPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
-  // Final submission validation
+  // Final submission validation (Uses relative /api route for cookie pass-through)
   const submitForm = async () => {
     if (!formData.aiPersona) {
       toast.error("Please pick an AI assistant personality style to complete registration.");
@@ -251,7 +241,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/signup`, {
+      const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -269,12 +259,6 @@ export default function SignupPage() {
       }
 
       toast.success("Account created! Please check your email to verify your account.");
-      /*
-       * WHY we use a hard navigation here instead of Next.js router.push:
-       * Signup creates a new session and sets an HttpOnly cookie. A full
-       * page reload ensures the browser fully applies the new cookie state,
-       * avoiding potential redirect loops or stale client‑side caches.
-       */
       setTimeout(() => {
         window.location.href = "/login";
       }, 2500);
@@ -294,9 +278,7 @@ export default function SignupPage() {
    === SECTION 3: RENDER HELPERS ===
    ========================================================================== */
 
-  // Step content rendering
   const renderStepContent = () => {
-    // Initial choice screen – Google OAuth vs Email
     if (signupMethod === "CHOOSE") {
       return (
         <div className={styles.stepContainer} suppressHydrationWarning>
@@ -309,9 +291,9 @@ export default function SignupPage() {
           </div>
 
           <div className={styles.methodChoiceGrid}>
-            {/* Google OAuth Option */}
+            {/* Google OAuth Option – Uses relative /api endpoint */}
             <a
-              href={`${BACKEND_API_URL}/api/auth/google`}
+              href="/api/auth/google"
               className={`${styles.methodChoiceCard} ${styles.googleChoiceCard}`}
             >
               <div className={`${styles.methodIconBox} ${styles.googleIconBox}`}>
@@ -381,7 +363,6 @@ export default function SignupPage() {
       );
     }
 
-    // Email signup wizard steps (1‑4)
     switch (step) {
       case 1:
         return (
@@ -777,4 +758,3 @@ export default function SignupPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

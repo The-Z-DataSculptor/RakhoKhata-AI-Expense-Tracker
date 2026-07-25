@@ -26,15 +26,6 @@ import {
 } from "@/constants/geoData";
 import styles from "./page.module.css";
 
-/**
- * WHY an environment variable is used for the backend URL:
- * Hardcoding "localhost:5000" would break the app in any non‑local environment.
- * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
- * work in staging, production, and Docker without code changes.
- */
-const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
 /** Occupation options for the onboarding form */
 interface OccupationOption {
   id: string;
@@ -117,9 +108,7 @@ export default function OnboardingPage() {
     aiPersona: "",
   });
 
-  // ---------------------------------------------------------------------------
   // AUTO‑DETECT REGION FROM TIMEZONE (runs once on mount)
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     const timer = setTimeout(() => {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -151,9 +140,7 @@ export default function OnboardingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ---------------------------------------------------------------------------
   // COUNTRY CHANGE – AUTO‑SETS CURRENCY & LANGUAGE
-  // ---------------------------------------------------------------------------
   const handleCountryChange = (selectedCountryName: string) => {
     const matchedCountry = WORLD_COUNTRIES.find(
       (country) => country.name === selectedCountryName
@@ -170,14 +157,11 @@ export default function OnboardingPage() {
           languages: Array.from(languagesSet),
         };
       }
-      // If country is not in our list (or "Private"), just update the name
       return { ...prev, country: selectedCountryName };
     });
   };
 
-  // ---------------------------------------------------------------------------
   // TOGGLE LANGUAGE SELECTION
-  // ---------------------------------------------------------------------------
   const toggleLanguage = (language: string) => {
     setFormData((prev) => {
       const currentLanguages = prev.languages;
@@ -191,9 +175,7 @@ export default function OnboardingPage() {
     });
   };
 
-  // ---------------------------------------------------------------------------
   // STEP NAVIGATION
-  // ---------------------------------------------------------------------------
   const goNext = () => {
     if (step === 1 && !formData.country) {
       toast.error("Please choose your home country before continuing.");
@@ -208,21 +190,16 @@ export default function OnboardingPage() {
 
   const goPrev = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // ---------------------------------------------------------------------------
-  // FINAL SUBMISSION
-  // ---------------------------------------------------------------------------
+  // FINAL SUBMISSION (Uses relative /api route for cookie pass-through)
   const submitForm = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(
-        `${BACKEND_API_URL}/api/auth/complete-onboarding`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-          credentials: "include",
-        }
-      );
+      const response = await fetch("/api/auth/complete-onboarding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+        credentials: "include",
+      });
 
       const result: unknown = await response.json();
 
@@ -235,13 +212,6 @@ export default function OnboardingPage() {
       }
 
       toast.success("Profile customized! Redirecting...");
-      /*
-       * WHY we use a hard navigation here instead of Next.js router.push:
-       * The onboarding process updates the user's session data (currency, 
-       * onboarding flag). A full page reload ensures the new state is 
-       * completely picked up by the server‑rendered layout, avoiding stale 
-       * client‑side caches.
-       */
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 1500);
@@ -261,9 +231,6 @@ export default function OnboardingPage() {
    === SECTION 3: RENDER HELPERS ===
    ========================================================================== */
 
-  /**
-   * Renders the appropriate step content based on the current step number.
-   */
   const renderStepContent = () => {
     switch (step) {
       case 1: // Region & Currency
@@ -558,7 +525,7 @@ export default function OnboardingPage() {
                 <FiChevronLeft /> Back
               </button>
             ) : (
-              <div /> // empty placeholder to keep the footer layout balanced
+              <div />
             )}
 
             {step < 3 ? (
@@ -581,4 +548,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-/* === SECTION 4 END === */

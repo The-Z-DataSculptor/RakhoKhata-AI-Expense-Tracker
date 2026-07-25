@@ -10,17 +10,17 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-# Provide a build-time placeholder so Prisma 7's env("DATABASE_URL") helper validates
+# Provide build-time environment variable for Prisma 7 validation
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-# 1. Install dependencies
+# Install dependencies
 RUN npm ci --no-audit --no-fund
 
-# 2. Copy ALL application source code FIRST
+# Copy source code
 COPY . .
 
-# 3. Generate Prisma Client AFTER copying code (so generated files are preserved)
+# Generate Prisma Client
 RUN npx prisma generate
 
 ENV NODE_ENV=production

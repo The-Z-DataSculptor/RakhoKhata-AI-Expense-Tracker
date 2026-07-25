@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "prisma db push --accept-data-loss && tsx src/index.ts",
+    "start": "prisma generate && prisma db push --accept-data-loss && tsx src/index.ts",
     "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma db push --accept-data-loss",

@@ -30,11 +30,11 @@ const GOOGLE_CALLBACK_URL =
 // External API timeout limit (10 seconds)
 const EXTERNAL_API_TIMEOUT_MS = 10000;
 
-// Central cookie settings for session tokens
+// Central cookie settings for cross-site session tokens in production
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  secure: true,              // Required for HTTPS cross-site cookies
+  sameSite: "none" as const, // Required so browsers accept cookies between different onrender.com subdomains
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
 };
 /* === SECTION 1 END === */
@@ -96,9 +96,6 @@ async function generateSessionToken(userId: string, email: string): Promise<stri
   });
 }
 
-/**
- * Helper to standardise JSON error responses.
- */
 function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
@@ -128,9 +125,6 @@ function formatDefaultCategories(
   }));
 }
 
-/**
- * Network fetch with automatic timeout protection.
- */
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {}
@@ -681,8 +675,8 @@ export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   const stateToken = crypto.randomBytes(16).toString("hex");
   res.cookie("oauth_state", stateToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true,              // Required for HTTPS cross-site cookies
+    sameSite: "none",          // Allows OAuth state verification across subdomains
     maxAge: 10 * 60 * 1000,
   });
 
@@ -711,7 +705,7 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
   const state = extractSingleString(req.query.state);
   const storedState = extractSingleString(req.cookies?.oauth_state);
 
-  res.clearCookie("oauth_state");
+  res.clearCookie("oauth_state", COOKIE_OPTIONS);
 
   if (!state || !storedState || state !== storedState) {
     res.status(400).send("OAuth authentication failed: Invalid state parameter.");

@@ -27,35 +27,34 @@ const app = express();
    === SECTION 2: GLOBAL MIDDLEWARE & SECURITY CONFIG ===
    ========================================================================== */
 
-// WHY THIS FIX WAS MADE: Dynamically parses trust proxy settings from environment variables
-// to prevent IP spoofing attacks across various cloud load balancer and proxy configurations.
+// Dynamically parses trust proxy settings from environment variables
 const rawTrustProxy = process.env.TRUST_PROXY || "1";
 const parsedTrustProxy = rawTrustProxy === "true" ? true : isNaN(Number(rawTrustProxy)) ? rawTrustProxy : Number(rawTrustProxy);
 app.set("trust proxy", parsedTrustProxy);
 
-// WHY THIS FIX WAS MADE: Integrates Helmet to inject security headers (HSTS, X-Frame-Options, X-Content-Type-Options)
-// protecting the backend against clickjacking, MIME-sniffing, and cross-site framing attacks.
+// Inject security headers using Helmet
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
-// Explicitly sanitize and normalize allowed origins
+// Explicitly sanitize and normalize allowed origins including live Render URL
 const rawAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "https://rakhokhata.onrender.com",
   process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
 const allowedOrigins = rawAllowedOrigins.map((url) => url.replace(/\/$/, ""));
 
-// WHY THIS FIX WAS MADE: Replaced wildcard non-production origin reflection with a strict origin whitelist,
-// and throws an explicit error when unauthorized origins attempt credentialed requests.
+// Strict origin whitelist for CORS requests with credential support
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow non-browser requests (Postman, server-to-server, curl) without an Origin header
+      // Allow non-browser requests (Postman, server-to-server, curl)
       if (!origin) return callback(null, true);
 
       const normalizedOrigin = origin.replace(/\/$/, "");
@@ -72,7 +71,6 @@ app.use(
   })
 );
 
-// WHY THIS FIX WAS MADE: Enforces explicit payload size limits on incoming JSON bodies to prevent memory exhaustion DoS attacks.
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
@@ -100,7 +98,6 @@ app.use("/api", globalApiLimiter);
  */
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
-    // WHY THIS FIX WAS MADE: Uses a lightweight DB query to verify connection pool health.
     await prisma.$queryRaw`SELECT 1`;
     res.status(200).json({
       status: "active",
@@ -140,8 +137,6 @@ interface AppError extends Error {
   statusCode?: number;
 }
 
-// WHY THIS FIX WAS MADE: Standardized global Express error handling middleware to format error responses
-// and prevent leaking sensitive stack traces or database details in production.
 app.use(
   (
     err: AppError,

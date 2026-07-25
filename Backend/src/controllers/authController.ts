@@ -20,22 +20,21 @@ import {
   SHARED_DEFAULT_BUSINESS_CATEGORIES,
 } from "./workspaceController";
 
-// Environment variables with fallback safeguards pointing to live production URLs
+// Environment variables with fallback safeguards pointing to live frontend origin
 const APP_FRONTEND_URL = process.env.FRONTEND_URL || "https://rakhokhata.onrender.com";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL || "https://expense-backend-jcy1.onrender.com/api/auth/google/callback";
+  process.env.GOOGLE_CALLBACK_URL || "https://rakhokhata.onrender.com/api/auth/google/callback";
 
-// External API timeout limit (10 seconds)
 const EXTERNAL_API_TIMEOUT_MS = 10000;
 
-// Central cookie settings for cross-site session tokens in production
+// Standard cookie options (works identically on local & production via same-origin rewrites)
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: true,              // Required for HTTPS cross-site cookies
-  sameSite: "none" as const, // Required so browsers accept cookies between different onrender.com subdomains
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 /* === SECTION 1 END === */
 
@@ -65,9 +64,6 @@ interface UpdateProfileRequestBody {
   aiPersona?: unknown;
 }
 
-/**
- * Returns a secure 52-character PASERK key for PASETO encryption.
- */
 function getPasetoKey(): string {
   const secret = process.env.PASETO_SECRET;
 
@@ -84,9 +80,6 @@ function getPasetoKey(): string {
   return `k4.local.${hash.toString("base64url")}`;
 }
 
-/**
- * Creates an encrypted PASETO token for authenticated users.
- */
 async function generateSessionToken(userId: string, email: string): Promise<string> {
   const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
   return await encrypt(getPasetoKey(), {
@@ -675,8 +668,8 @@ export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   const stateToken = crypto.randomBytes(16).toString("hex");
   res.cookie("oauth_state", stateToken, {
     httpOnly: true,
-    secure: true,              // Required for HTTPS cross-site cookies
-    sameSite: "none",          // Allows OAuth state verification across subdomains
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: 10 * 60 * 1000,
   });
 
@@ -705,7 +698,7 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
   const state = extractSingleString(req.query.state);
   const storedState = extractSingleString(req.cookies?.oauth_state);
 
-  res.clearCookie("oauth_state", COOKIE_OPTIONS);
+  res.clearCookie("oauth_state");
 
   if (!state || !storedState || state !== storedState) {
     res.status(400).send("OAuth authentication failed: Invalid state parameter.");

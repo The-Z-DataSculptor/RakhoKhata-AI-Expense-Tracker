@@ -1,4 +1,4 @@
-// next.config.ts
+// Frontend/next.config.ts
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
@@ -45,34 +45,41 @@ const getBackendRemotePattern = (): RemotePattern[] => {
    === SECTION 3: CONFIGURATION DEFINITION ===
    ========================================================================== */
 const nextConfig: NextConfig = {
-  // WHY THIS FIX WAS MADE: Enables standalone output for optimized containerized deployments (Docker),
-  // bundling only the required node_modules to keep image sizes small.
   output: "standalone",
-
-  // WHY THIS FIX WAS MADE: Explicitly enables Strict Mode to catch unexpected side-effects,
-  // double-rendered components, and deprecated React lifecycle usages early in development.
   reactStrictMode: true,
-
-  // WHY THIS FIX WAS MADE: Disables 'X-Powered-By: Next.js' HTTP header to prevent attackers
-  // from fingerprinting the tech stack and targeting framework-specific exploits.
   poweredByHeader: false,
 
   images: {
     remotePatterns: [
-      // Allowed pattern for Google OAuth profile pictures
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
         port: "",
         pathname: "/**",
       },
-      // WHY THIS FIX WAS MADE: Merges static development fallbacks with dynamic production API URL patterns.
       ...getBackendRemotePattern(),
     ],
   },
 
-  // WHY THIS FIX WAS MADE: Injects fundamental HTTP security headers into all application routes
-  // to harden against Clickjacking, Cross-Site Scripting (XSS), and MIME-type sniffing.
+  // Rewrites /api/* calls to the backend so cookies are set directly on the frontend domain
+  async rewrites() {
+    const rawBackendUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "https://expense-backend-jcy1.onrender.com";
+
+    // Clean URL formatting
+    const backendBase = rawBackendUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendBase}/api/:path*`,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {

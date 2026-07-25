@@ -6,33 +6,26 @@
 /**
  * Dynamically resolves the backend base URL depending on execution environment:
  * - Server-Side (Next.js SSR inside Docker): Uses internal container DNS or production URL
- * - Client-Side (User's browser): Uses NEXT_PUBLIC_API_URL or production URL fallback
- * Automatically ensures the '/api' prefix is always attached.
+ * - Client-Side (User's browser): Uses relative '/api' endpoint via Next.js rewrites
  */
 export const getApiBaseUrl = (): string => {
-  let baseUrl = "https://expense-backend-jcy1.onrender.com";
-
   if (typeof window === "undefined") {
-    // Executing on Next.js server (inside Docker container)
-    baseUrl =
+    // Executing on Next.js server
+    let baseUrl =
       process.env.INTERNAL_API_URL ||
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       "https://expense-backend-jcy1.onrender.com";
-  } else {
-    // Executing in user's browser
-    baseUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      "https://expense-backend-jcy1.onrender.com";
+
+    baseUrl = baseUrl.replace(/\/+$/, "");
+    if (!baseUrl.endsWith("/api")) {
+      baseUrl += "/api";
+    }
+    return baseUrl;
   }
 
-  // Strip trailing slashes and ensure '/api' suffix
-  baseUrl = baseUrl.replace(/\/+$/, "");
-  if (!baseUrl.endsWith("/api")) {
-    baseUrl += "/api";
-  }
-
-  return baseUrl;
+  // Client-side browser uses relative same-origin route
+  return "/api";
 };
 
 export interface Category {
@@ -50,7 +43,7 @@ export interface Category {
 
 export interface Transaction {
   id: string;
-  amount?: number; // Legacy compatibility
+  amount?: number;
   type: string;
   description: string;
   date: string;
@@ -72,7 +65,7 @@ export interface Budget {
   categoryId: string;
   workspaceId: string;
   category?: Category;
-  spentAmount?: number; // Computed server-side
+  spentAmount?: number;
 }
 
 export interface InvestmentHistoryNode {
@@ -102,8 +95,8 @@ export interface InvestmentAsset {
   icon?: string;
   userNote?: string;
   history?: InvestmentHistoryNode[];
-  totalInvested?: number; // Legacy compatibility
-  capitalCurrency?: string; // Legacy compatibility
+  totalInvested?: number;
+  capitalCurrency?: string;
 }
 
 export interface Notification {
@@ -147,9 +140,6 @@ export interface Workspace {
 /* ==========================================================================
    === SECTION 2: GENERIC FETCH WRAPPER ===
    ========================================================================== */
-/**
- * Central HTTP fetch pipeline with cookie credentials and unified error formatting.
- */
 export const apiFetch = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {}
@@ -168,7 +158,7 @@ export const apiFetch = async <T = unknown>(
 
   const mergedOptions: RequestInit = {
     ...options,
-    credentials: "include", // Transmits HttpOnly session cookies
+    credentials: "include",
     headers,
   };
 
@@ -193,7 +183,7 @@ export const apiFetch = async <T = unknown>(
           errorMessage = (errorData as { message: string }).message;
         }
       } catch {
-        // Fallback to HTTP status string
+        // Fallback
       }
       throw new Error(errorMessage);
     }

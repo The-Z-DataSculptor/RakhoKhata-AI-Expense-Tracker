@@ -4,7 +4,8 @@
    === SECTION 1: IMPORTS & CONFIGURATION ===
    ========================================================================== */
 import { Response as ExpressResponse } from "express";
-import { TransactionType, Prisma } from "../../prisma/generated/client";
+// Standard Prisma Client import generated directly inside node_modules/@prisma/client
+import { TransactionType, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 /* === SECTION 1 END === */
@@ -30,7 +31,7 @@ interface UpdateWorkspaceInput {
   currency?: string;
 }
 
-// WHY THIS FIX WAS MADE: Explicitly typed category templates with TransactionType Enum to prevent Prisma build crashes.
+// Explicitly typed category templates with TransactionType Enum to prevent Prisma build crashes.
 const UNASSIGNED_CATEGORY: DefaultCategoryTemplate = {
   name: "Unassigned (Needs Sorting)",
   type: TransactionType.EXPENSE,
@@ -67,7 +68,7 @@ function buildErrorResponse(message: string): { error: string } {
 }
 
 /**
- * WHY THIS IS NEEDED: Prevents HTTP query parameter array injection attacks.
+ * Prevents HTTP query parameter array injection attacks.
  * Safely extracts a single string parameter from query or route parameters.
  */
 function extractSingleString(value: unknown): string | undefined {
@@ -122,7 +123,7 @@ export const getUserWorkspaces = async (
       });
       const preferredCurrency = userProfile?.currency || "PKR";
 
-      // WHY THIS FIX WAS MADE: Wraps workspace creation + category seeding inside a single atomic transaction
+      // Wraps workspace creation + category seeding inside a single atomic transaction
       // to eliminate race conditions and prevent partial workspace creation failures.
       workspaces = await prisma.$transaction(async (tx) => {
         // Re-check inside transaction to prevent concurrent duplicate workspace creation
@@ -211,7 +212,7 @@ export const createWorkspace = async (
 
     const categoryTemplates = getCategoryTemplates(sanitizedName);
 
-    // WHY THIS FIX WAS MADE: Uses nested Prisma relational writes to atomically create workspace and categories in one DB query.
+    // Uses nested Prisma relational writes to atomically create workspace and categories in one DB query.
     const newWorkspace = await prisma.workspace.create({
       data: {
         name: sanitizedName,
@@ -263,7 +264,7 @@ export const deleteWorkspace = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Verifies user ownership before deleting to prevent BOLA/IDOR security breaches.
+    // Verifies user ownership before deleting to prevent BOLA/IDOR security breaches.
     const workspace = await prisma.workspace.findFirst({
       where: { id: workspaceId, userId },
       select: { id: true },

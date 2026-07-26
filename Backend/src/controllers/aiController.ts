@@ -1,3 +1,5 @@
+// Backend/src/controllers/aiController.ts
+
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { prisma } from "../db";
@@ -6,16 +8,10 @@ import { prisma } from "../db";
 // CONFIGURATION & CONSTANTS
 // ==========================================================================
 
-// Gemini Flash Lite endpoint
-// WHY THIS FIX WAS MADE: Google made gemini-3.5-flash-lite generally available (GA) for
-// production on July 21, 2026, replacing gemini-3.1-flash-lite as the current low-cost model.
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
 
-// 15-second timeout safeguard for external API calls
 const API_TIMEOUT_MS = 15000;
-
-// Maximum transactions to include in prompt context to prevent token overflows
 const MAX_PROMPT_TRANSACTIONS = 40;
 
 type TimelineScope = "today" | "week" | "month";
@@ -29,22 +25,22 @@ const COMPANION_PERSONAS: Record<string, CompanionPersona> = {
   savage_roaster: {
     title: "Savage Roaster",
     instruction:
-      "You are RakhoKhata AI Buddy — a witty, funny, blunt friend from Pakistan. Speak in EXTREMELY SIMPLE, easy-to-read everyday English, mixed with mild local slang (like 'Yaar', 'Kharcha', 'Hisaab'). Keep every sentence short, clear, and funny. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
+      "You are RakhoKhata AI Buddy — a witty, funny, blunt friend. Speak in EXTREMELY SIMPLE, easy-to-read everyday English, mixed with mild local casual terms. Keep every sentence short, clear, and funny.",
   },
   supportive_coach: {
     title: "Supportive Coach",
     instruction:
-      "You are an encouraging money coach. Speak in VERY SIMPLE, clear, everyday English. Be positive and friendly. Keep sentences short and easy to understand. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
+      "You are an encouraging money coach. Speak in VERY SIMPLE, clear, everyday English. Be positive and friendly. Keep sentences short and easy to understand.",
   },
   forensic_detective: {
     title: "Forensic Detective",
     instruction:
-      "You are a sharp financial detective. Speak in SIMPLE, clear English. State your observations like simple clues. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
+      "You are a sharp financial detective. Speak in SIMPLE, clear English. State your observations like simple clues.",
   },
   silent_accountant: {
     title: "Silent Accountant",
     instruction:
-      "You are a calm, direct accountant. Speak in SUPER SIMPLE, basic English. Give clear facts and numbers. STIPULATION: Never output a dollar sign ($). Write all money in PKR.",
+      "You are a calm, direct accountant. Speak in SUPER SIMPLE, basic English. Give clear facts and numbers.",
   },
 };
 
@@ -55,13 +51,20 @@ const PERSONA_INSTRUCTIONS: Record<string, string> = {
     "You are a supportive Money Coach. Speak in simple, friendly English with basic, practical advice in 3-5 short sentences.",
   minimalist:
     "You are a Minimalist Advisor. Speak in simple everyday English. Tell the user clearly what to cut or save in 3-5 short sentences.",
+  savage_roaster:
+    "You are a Savage Roaster. Speak in witty, sharp, humorous plain English. Playfully roast spending habits in 3-5 short sentences.",
+  supportive_coach:
+    "You are a Supportive Money Coach. Speak in warm, encouraging English in 3-5 short sentences.",
+  forensic_detective:
+    "You are a Forensic Financial Detective. Break down clues and budget leaks in 3-5 short sentences.",
+  silent_accountant:
+    "You are a Silent Accountant. State pure financial facts and numbers directly in 3-5 short sentences.",
 };
 
 // ==========================================================================
 // HELPER UTILITIES
 // ==========================================================================
 
-/** Safely retrieves Gemini API key from environment variables */
 function getApiKey(): string {
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -70,12 +73,10 @@ function getApiKey(): string {
   return key;
 }
 
-/** Rounds currency floats to 2 decimal places to prevent floating-point precision corruption */
 function safeRoundCurrency(amount: number): number {
   return Math.round((amount + Number.EPSILON) * 100) / 100;
 }
 
-/** Calculates accurate real-time date boundaries based on current UTC time */
 function getDateRangeForScope(scope: TimelineScope): { startDate: Date; endDate: Date } {
   const now = new Date();
   const start = new Date(now);
@@ -92,7 +93,6 @@ function getDateRangeForScope(scope: TimelineScope): { startDate: Date; endDate:
     start.setUTCDate(1);
     start.setUTCHours(0, 0, 0, 0);
 
-    // Set to end of current month
     const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
     end.setTime(nextMonth.getTime() - 1);
   }
@@ -100,7 +100,6 @@ function getDateRangeForScope(scope: TimelineScope): { startDate: Date; endDate:
   return { startDate: start, endDate: end };
 }
 
-/** Executes a secure HTTP POST request to the Gemini API with timeout protection */
 async function callGeminiApi(systemInstruction: string, userPrompt: string): Promise<string> {
   const apiKey = getApiKey();
   const controller = new AbortController();
@@ -111,7 +110,7 @@ async function callGeminiApi(systemInstruction: string, userPrompt: string): Pro
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey, // Securely passing API key in HTTP headers instead of URL parameters
+        "x-goog-api-key": apiKey,
       },
       signal: controller.signal,
       body: JSON.stringify({
@@ -131,11 +130,10 @@ async function callGeminiApi(systemInstruction: string, userPrompt: string): Pro
     const jsonResult = (await response.json()) as Record<string, unknown>;
     return extractAiText(jsonResult);
   } finally {
-    clearTimeout(timeoutId); // Clean up timeout handler
+    clearTimeout(timeoutId);
   }
 }
 
-/** Safely parses output text from Gemini API response structure */
 function extractAiText(result: Record<string, unknown>): string {
   try {
     const candidates = result?.candidates as Array<Record<string, unknown>> | undefined;
@@ -155,6 +153,18 @@ function extractAiText(result: Record<string, unknown>): string {
 // ==========================================================================
 // CORE DATA ENGINE
 // ==========================================================================
+
+interface UserContextProfile {
+  id: string;
+  name: string;
+  email: string;
+  country?: string | null;
+  currency?: string | null;
+  languages?: string[];
+  occupation?: string | null;
+  financialGoal?: string | null;
+  aiPersona?: string | null;
+}
 
 interface WorkspaceMetrics {
   totalIncome: number;
@@ -179,13 +189,11 @@ interface WorkspaceMetrics {
   dateRangeText: string;
 }
 
-/** Fetches workspace details and calculates workspace metrics after enforcing BOLA authorization */
 async function fetchAndCalculateWorkspaceMetrics(
   workspaceId: string,
   userId: string,
   scope: TimelineScope
 ) {
-  // BOLA Authorization Shield: Verify workspace ownership BEFORE executing query pipelines
   const workspace = await prisma.workspace.findFirst({
     where: { id: workspaceId, userId: userId },
     select: { id: true, name: true, currency: true, userId: true },
@@ -197,11 +205,21 @@ async function fetchAndCalculateWorkspaceMetrics(
 
   const { startDate, endDate } = getDateRangeForScope(scope);
 
-  // Fetch contextual user, categories, budgets, and capped transactions in parallel
+  // Fetch full user profile along with transactions and budgets
   const [user, transactions, budgets] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true, aiPersona: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        country: true,
+        currency: true,
+        languages: true,
+        occupation: true,
+        financialGoal: true,
+        aiPersona: true,
+      },
     }),
     prisma.transaction.findMany({
       where: {
@@ -210,7 +228,7 @@ async function fetchAndCalculateWorkspaceMetrics(
       },
       include: { category: true },
       orderBy: { date: "desc" },
-      take: MAX_PROMPT_TRANSACTIONS, // Capped to prevent memory exhaustion and token overflow
+      take: MAX_PROMPT_TRANSACTIONS,
     }),
     prisma.budget.findMany({
       where: { workspaceId: workspaceId },
@@ -253,11 +271,9 @@ async function fetchAndCalculateWorkspaceMetrics(
 
   const safeToSpend = safeRoundCurrency(totalIncome - totalExpenses);
 
-  // Find top expense category
   const sortedCategories = Object.entries(categorySpentMap).sort(([, a], [, b]) => b - a);
   const topCategory = sortedCategories.length > 0 ? sortedCategories[0][0] : "None";
 
-  // Parse budgets
   const parsedBudgets = budgets.map((b) => {
     const catName = b.category?.name ?? "Unknown";
     const limit = Number(b.originalAmount ?? 0);
@@ -267,6 +283,8 @@ async function fetchAndCalculateWorkspaceMetrics(
 
   const formattedDateRange = `${startDate.getUTCDate()}/${startDate.getUTCMonth() + 1}/${startDate.getUTCFullYear()}`;
 
+  const activeCurrency = workspace.currency || user?.currency || "USD";
+
   const metrics: WorkspaceMetrics = {
     totalIncome,
     totalExpenses,
@@ -275,7 +293,7 @@ async function fetchAndCalculateWorkspaceMetrics(
     safeToSpend,
     topCategory,
     budgets: parsedBudgets,
-    currency: workspace.currency || "PKR",
+    currency: activeCurrency,
     rawTransactions: formattedTransactions,
     dateRangeText: formattedDateRange,
   };
@@ -283,8 +301,12 @@ async function fetchAndCalculateWorkspaceMetrics(
   return { user, workspace, metrics };
 }
 
-/** Formats financial metrics into a structured prompt */
-function buildPrompt(question: string, metrics: WorkspaceMetrics, workspaceName: string, userName: string): string {
+function buildPrompt(
+  question: string,
+  metrics: WorkspaceMetrics,
+  workspaceName: string,
+  user: UserContextProfile | null
+): string {
   const savings = safeRoundCurrency(metrics.totalIncome - metrics.totalExpenses);
   const savingsPercent = metrics.totalIncome > 0
     ? ((savings / metrics.totalIncome) * 100).toFixed(1)
@@ -302,10 +324,16 @@ function buildPrompt(question: string, metrics: WorkspaceMetrics, workspaceName:
         .join("\n")
     : " No recent transactions found.";
 
-  // Wrap user question inside delimited XML tags to mitigate prompt injection attacks
+  const languagesList = user?.languages?.length ? user.languages.join(", ") : "English";
+
   return `
---- FINANCIAL DATA CONTEXT ---
-User Name: "${userName}"
+--- USER PROFILE CONTEXT ---
+User Name: "${user?.name ?? "User"}"
+Occupation Style: "${user?.occupation || "Not Specified"}"
+Primary Financial Goal: "${user?.financialGoal || "General Wealth & Budget Management"}"
+Country: "${user?.country || "Not Specified"}"
+Spoken Languages: "${languagesList}"
+Default Currency: "${metrics.currency}"
 Workspace: "${workspaceName}"
 Current UTC Date: ${new Date().toISOString().substring(0, 10)}
 
@@ -325,10 +353,10 @@ ${ledgerTable}
 ${question}
 </user_question>
 
-STIPULATIONS:
-1. Answer strictly using the ledger context provided above.
-2. Under no circumstances output a dollar sign ($). Write all currencies in PKR.
-3. Keep explanation in VERY SIMPLE English. Short sentences only.
+INSTRUCTIONS & STIPULATIONS:
+1. Tailor your answer specifically to ${user?.name ?? "the user"}'s occupation (${user?.occupation || "general"}) and financial goal (${user?.financialGoal || "budgeting"}).
+2. Use simple, direct, easy-to-read English. Short sentences only.
+3. Express all financial numbers using ${metrics.currency}.
 `;
 }
 
@@ -338,11 +366,10 @@ STIPULATIONS:
 
 /**
  * POST /api/ai/ask
- * Evaluates general user questions against workspace ledger metrics
  */
 export const askAI = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const { question, persona, workspaceId } = req.body;
 
     if (!userId) {
@@ -355,12 +382,12 @@ export const askAI = async (req: AuthenticatedRequest, res: Response): Promise<v
       return;
     }
 
-    const personaKey = persona && PERSONA_INSTRUCTIONS[persona] ? persona : "coach";
-    const systemInstruction = PERSONA_INSTRUCTIONS[personaKey];
-
     const { user, workspace, metrics } = await fetchAndCalculateWorkspaceMetrics(workspaceId, userId, "month");
 
-    const promptText = buildPrompt(question, metrics, workspace.name, user?.name ?? "User");
+    const effectivePersonaKey = persona || user?.aiPersona || "coach";
+    const systemInstruction = PERSONA_INSTRUCTIONS[effectivePersonaKey] || PERSONA_INSTRUCTIONS.coach;
+
+    const promptText = buildPrompt(question, metrics, workspace.name, user);
     const aiResponseText = await callGeminiApi(systemInstruction, promptText);
 
     res.status(200).json({ response: aiResponseText });
@@ -377,11 +404,10 @@ export const askAI = async (req: AuthenticatedRequest, res: Response): Promise<v
 
 /**
  * POST /api/ai/greeting
- * Generates personalized daily onboarding greetings
  */
 export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const { workspaceId } = req.body;
 
     if (!userId) {
@@ -394,7 +420,6 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
       return;
     }
 
-    // Verify workspace ownership first
     const workspace = await prisma.workspace.findFirst({
       where: { id: workspaceId, userId: userId },
       select: { id: true },
@@ -407,7 +432,15 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, aiPersona: true },
+      select: {
+        id: true,
+        name: true,
+        aiPersona: true,
+        occupation: true,
+        financialGoal: true,
+        country: true,
+        currency: true,
+      },
     });
 
     if (!user) {
@@ -418,34 +451,45 @@ export const getAiCompanionGreeting = async (req: AuthenticatedRequest, res: Res
     const personaKey = user.aiPersona || "supportive_coach";
     const selectedPersona = COMPANION_PERSONAS[personaKey] || COMPANION_PERSONAS.supportive_coach;
 
-    // Use UTC hours for predictable greeting behavior across hosting servers
     const currentUtcHour = new Date().getUTCHours();
     const timeOfDay = currentUtcHour < 12 ? "morning" : currentUtcHour < 17 ? "afternoon" : "evening";
 
     const greetingPrompt = `
-You are the AI companion for ${user.name}. Time of day is ${timeOfDay}.
-Persona: ${selectedPersona.title}
+You are the AI companion for ${user.name}. 
+Time of day: ${timeOfDay}.
+User Occupation: ${user.occupation || "General"}.
+User Primary Goal: ${user.financialGoal || "Saving & Wealth Building"}.
+Persona: ${selectedPersona.title}.
 
-TASK: Write a short, warm, 1-2 sentence greeting for ${user.name}.
+TASK: Write a warm, personal 1-2 sentence greeting addressing ${user.name}.
 
 STIPULATIONS:
-1. Do NOT mention any account balances, income, expenses, or financial figures.
+1. Do NOT mention specific balances or exact currency amounts.
 2. Keep words EXTREMELY SIMPLE and friendly.
-3. Never output a dollar sign ($).
+3. Tailor the encouragement subtly to their goal (${user.financialGoal || "saving"}).
 `;
 
     try {
       const greetingText = await callGeminiApi(selectedPersona.instruction, greetingPrompt);
       res.status(200).json({
-        user: { name: user.name, aiPersona: personaKey },
+        user: {
+          name: user.name,
+          aiPersona: personaKey,
+          occupation: user.occupation,
+          financialGoal: user.financialGoal,
+        },
         greeting: greetingText,
         cooldowns: { today: false, week: false, month: false },
       });
     } catch {
-      // Fallback greeting if AI API call fails
       res.status(200).json({
-        user: { name: user.name, aiPersona: personaKey },
-        greeting: `Hey ${user.name}! Ready to review your finances today?`,
+        user: {
+          name: user.name,
+          aiPersona: personaKey,
+          occupation: user.occupation,
+          financialGoal: user.financialGoal,
+        },
+        greeting: `Hey ${user.name}! Ready to take control of your finances today?`,
         cooldowns: { today: false, week: false, month: false },
       });
     }
@@ -457,11 +501,10 @@ STIPULATIONS:
 
 /**
  * POST /api/ai/execute-analysis
- * Generates automated timeline summaries (today, week, month)
  */
 export const executeAiCompanionAnalysis = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const { scope, workspaceId } = req.body;
 
     if (!userId) {
@@ -490,19 +533,23 @@ export const executeAiCompanionAnalysis = async (req: AuthenticatedRequest, res:
     const selectedPersona = COMPANION_PERSONAS[personaKey] || COMPANION_PERSONAS.supportive_coach;
 
     const analysisPrompt = `
-Summarize financial performance for ${user?.name ?? "User"} during scope '${scope}' (${metrics.dateRangeText}).
+Summarize financial performance for ${user?.name ?? "User"} during timeframe '${scope}' (${metrics.dateRangeText}).
 
-METRICS:
-- Safe To Spend: PKR ${metrics.safeToSpend.toFixed(2)}
-- Total Income: PKR ${metrics.totalIncome.toFixed(2)}
-- Total Spent: PKR ${metrics.totalExpenses.toFixed(2)}
-- Flexible Spent: PKR ${metrics.flexibleExpenses.toFixed(2)}
-- Fixed Bills: PKR ${metrics.fixedExpenses.toFixed(2)}
+USER PROFILE:
+- Occupation: ${user?.occupation || "General"}
+- Goal: ${user?.financialGoal || "Budgeting"}
+
+METRICS (${metrics.currency}):
+- Safe To Spend: ${metrics.currency} ${metrics.safeToSpend.toFixed(2)}
+- Total Income: ${metrics.currency} ${metrics.totalIncome.toFixed(2)}
+- Total Spent: ${metrics.currency} ${metrics.totalExpenses.toFixed(2)}
+- Flexible Spent: ${metrics.currency} ${metrics.flexibleExpenses.toFixed(2)}
+- Fixed Bills: ${metrics.currency} ${metrics.fixedExpenses.toFixed(2)}
 
 INSTRUCTIONS:
-1. Write 3 short sentences analyzing spending.
+1. Write 3 short sentences analyzing spending tailored to their profile goal (${user?.financialGoal || "saving"}).
 2. Use VERY SIMPLE, plain English.
-3. Never use a dollar sign ($). Write money in PKR.
+3. Use currency symbol/code '${metrics.currency}'.
 `;
 
     const analysisText = await callGeminiApi(selectedPersona.instruction, analysisPrompt);

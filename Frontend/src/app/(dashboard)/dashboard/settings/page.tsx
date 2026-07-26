@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { useUser } from "@/app/(dashboard)/context/UserContext";
 import { vaultAuthService, userService, workspaceService } from "@/utils/api";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
 import {
@@ -26,7 +27,7 @@ import {
 import { toast } from "sonner";
 import styles from "./page.module.css";
 
-// ----- Static reference data -----
+// Static reference data
 const CURRENCIES = [
   "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
   "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
@@ -88,6 +89,18 @@ const AI_PERSONAS = [
   { id: "silent_accountant", emoji: "📊", label: "Silent Accountant", desc: "Pure business. Raw mathematical logic." },
 ];
 
+// Helper to clear AI Buddy greeting caches on ANY settings change
+const clearAiBuddyCache = () => {
+  if (typeof window !== "undefined") {
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("rakhokhata_greeting_")) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {}
+  }
+};
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -96,6 +109,7 @@ const AI_PERSONAS = [
 export default function SettingsPage() {
   const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace, updateWorkspaceInState } = useWorkspace();
   const { setCurrencyWithWorkspace } = useCurrency();
+  const { refreshUser, updateUserInState } = useUser();
 
   // ----- UI / loading states -----
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -130,7 +144,7 @@ export default function SettingsPage() {
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
 
-  // Sync renameInput when active workspace changes
+  // Synchronize rename input when active workspace changes
   if (activeWorkspaceId !== prevWorkspaceId) {
     setPrevWorkspaceId(activeWorkspaceId);
     setRenameInput(activeWorkspace?.name || "");
@@ -200,6 +214,7 @@ export default function SettingsPage() {
   // SAVE ACTIONS
   // ---------------------------------------------------------------------------
   const refetchProfile = async () => {
+    await refreshUser();
     const response = await userService.getProfile();
     const user = response.user;
     setName(user.name || "");
@@ -220,6 +235,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ name: name.trim() });
+      updateUserInState({ name: name.trim() });
+      clearAiBuddyCache();
       await refetchProfile();
       toast.success("Profile updated!");
     } catch (error: unknown) {
@@ -233,11 +250,11 @@ export default function SettingsPage() {
     try {
       await userService.updateProfile({ country, currency, languages });
       
-      // Synchronize currency across the active workspace and app context
       if (activeWorkspaceId && currency) {
         await setCurrencyWithWorkspace(currency, activeWorkspaceId);
       }
 
+      clearAiBuddyCache();
       await refetchProfile();
       toast.success("Location & language updated!");
     } catch (error: unknown) {
@@ -250,6 +267,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ occupation, financialGoal });
+      updateUserInState({ occupation, financialGoal });
+      clearAiBuddyCache();
       await refetchProfile();
       toast.success("Financial profile updated!");
     } catch (error: unknown) {
@@ -262,6 +281,8 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ aiPersona });
+      updateUserInState({ aiPersona });
+      clearAiBuddyCache();
       await refetchProfile();
       toast.success("AI personality updated!");
     } catch (error: unknown) {
@@ -306,6 +327,7 @@ export default function SettingsPage() {
     try {
       await workspaceService.update(activeWorkspace.id, { name: trimmed });
       updateWorkspaceInState(activeWorkspace.id, { name: trimmed });
+      clearAiBuddyCache();
       toast.success("Workspace renamed!");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to rename workspace.";
@@ -353,7 +375,11 @@ export default function SettingsPage() {
     );
   };
   const allLanguages = [...PRIORITY_LANGUAGES, ...EXTENDED_LANGUAGES];
+/* === SECTION 2 END === */
 
+/* ==========================================================================
+   === SECTION 3: RENDER COMPONENT ===
+   ========================================================================== */
   if (isProfileLoading) {
     return (
       <div className={styles.settingsCanvasDeck}>

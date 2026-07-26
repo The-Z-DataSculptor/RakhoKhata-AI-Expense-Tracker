@@ -13,7 +13,8 @@ import {
 } from "react-icons/fi";
 import { FaFire, FaUserSecret, FaCalculator } from "react-icons/fa6";
 import { toast } from "sonner";
-import { aiService } from "@/utils/api"; // no longer need UserProfile import
+import { aiService } from "@/utils/api";
+import { useUser } from "@/app/(dashboard)/context/UserContext";
 import styles from "./AiBuddyConsole.module.css";
 
 interface AiBuddyConsoleProps {
@@ -25,6 +26,8 @@ type TimelineScope = "today" | "week" | "month";
 interface GreetingUser {
   name: string;
   aiPersona: string;
+  occupation?: string;
+  financialGoal?: string;
 }
 
 interface LocalCachePayload {
@@ -35,6 +38,7 @@ interface LocalCachePayload {
 }
 
 export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProps) {
+  const { user: globalUser } = useUser();
   const [greetingUser, setGreetingUser] = useState<GreetingUser | null>(null);
   const [displayedText, setDisplayedText] = useState("");
   const [fullTargetText, setFullTargetText] = useState("");
@@ -108,7 +112,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     return () => clearInterval(typewriterInterval);
   }, [fullTargetText]);
 
-  // Fetch greeting via centralized aiService
+  // Fetch greeting with strict multi-field profile matching
   useEffect(() => {
     let isMounted = true;
     const fetchDailyGreeting = async () => {
@@ -121,6 +125,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       const todayStr = getTodayDateString();
       const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
       let cachedPayload: string | null = null;
+
       try {
         cachedPayload = localStorage.getItem(cacheKey);
       } catch {
@@ -131,7 +136,16 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       if (cachedPayload) {
         try {
           const parsed: LocalCachePayload = JSON.parse(cachedPayload);
-          if (parsed.dateStamp === todayStr && isMounted) {
+          const cachedUser = parsed.greetingUser;
+
+          // Strictly ensure all updated user profile attributes match before accepting cache
+          const isUserMatch =
+            (!globalUser?.aiPersona || cachedUser?.aiPersona === globalUser.aiPersona) &&
+            (!globalUser?.name || cachedUser?.name === globalUser.name) &&
+            (!globalUser?.occupation || cachedUser?.occupation === globalUser.occupation) &&
+            (!globalUser?.financialGoal || cachedUser?.financialGoal === globalUser.financialGoal);
+
+          if (parsed.dateStamp === todayStr && isMounted && isUserMatch) {
             setGreetingUser(parsed.greetingUser || null);
             setFullTargetText(parsed.greetingText || "");
             setCooldowns(
@@ -163,7 +177,11 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
           const cacheData: LocalCachePayload = {
             dateStamp: todayStr,
             greetingText: result.greeting || "",
-            greetingUser: result.user,
+            greetingUser: {
+              ...result.user,
+              occupation: globalUser?.occupation || undefined,
+              financialGoal: globalUser?.financialGoal || undefined,
+            },
             cooldownStates:
               result.cooldowns || {
                 today: false,
@@ -190,7 +208,16 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     return () => {
       isMounted = false;
     };
-  }, [activeWorkspaceId, getDailyCallCount, getTodayDateString]);
+  }, [
+    activeWorkspaceId,
+    getDailyCallCount,
+    getTodayDateString,
+    globalUser?.aiPersona,
+    globalUser?.name,
+    globalUser?.occupation,
+    globalUser?.financialGoal,
+    globalUser?.currency
+  ]);
 
   const handleTriggerAnalysis = async (scope: TimelineScope) => {
     if (cooldowns[scope] || isProcessingAnalysis) return;
@@ -239,7 +266,8 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     }
   };
 
-  const personaKey = greetingUser?.aiPersona || "supportive_coach";
+  const personaKey = globalUser?.aiPersona || greetingUser?.aiPersona || "supportive_coach";
+  const userName = globalUser?.name || greetingUser?.name || "";
 
   const getPersonaThemeClass = () => {
     if (personaKey === "savage_roaster") return styles.themeRoaster;
@@ -306,8 +334,8 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
             <div className={styles.identityMeta}>
               <h4>
                 <FiStar className={styles.sparkleIcon} />
-                {greetingUser?.name
-                  ? `${formatTitleCase(greetingUser.name)}'s Companion`
+                {userName
+                  ? `${formatTitleCase(userName)}'s Companion`
                   : "AI Companion Node"}
               </h4>
               <p>

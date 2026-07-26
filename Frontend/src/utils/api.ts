@@ -3,14 +3,8 @@
 /* ==========================================================================
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
-/**
- * Dynamically resolves the backend base URL depending on execution environment:
- * - Server-Side (Next.js SSR inside Docker): Uses internal container DNS or production URL
- * - Client-Side (User's browser): Uses relative '/api' endpoint via Next.js rewrites
- */
 export const getApiBaseUrl = (): string => {
   if (typeof window === "undefined") {
-    // Executing on Next.js server
     let baseUrl =
       process.env.INTERNAL_API_URL ||
       process.env.API_URL ||
@@ -24,7 +18,6 @@ export const getApiBaseUrl = (): string => {
     return baseUrl;
   }
 
-  // Client-side browser uses relative same-origin route
   return "/api";
 };
 
@@ -113,6 +106,7 @@ export interface Notification {
   updatedAt: string;
 }
 
+// ⬇️ FIXED: avatarUrl added to UserProfile interface
 export interface UserProfile {
   id: string;
   name: string;
@@ -125,6 +119,7 @@ export interface UserProfile {
   financialGoal: string | null;
   aiPersona: string | null;
   createdAt: string;
+  avatarUrl?: string | null;
 }
 
 export interface Workspace {
@@ -409,7 +404,6 @@ export const userService = {
       method: "GET",
     }),
 
-  // ⬇️ FIXED: Endpoint mapped correctly to /auth/update-profile
   updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
     apiFetch<{ message: string; user: UserProfile }>(
       "/auth/update-profile",
@@ -442,4 +436,3 @@ export const workspaceService = {
       { method: "PUT", body: JSON.stringify(data) }
     ),
 };
-/* === SECTION 3 END === */

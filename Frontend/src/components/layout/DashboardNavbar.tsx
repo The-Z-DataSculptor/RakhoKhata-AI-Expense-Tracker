@@ -1,9 +1,6 @@
 // src/components/layout/DashboardNavbar.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS & CONSTANTS ===
-   ========================================================================== */
 import React, { useState, useSyncExternalStore, useEffect, useRef } from "react";
 import Image from "next/image"; 
 import { toast } from "sonner";
@@ -28,7 +25,8 @@ import {
 } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { notificationService, userService, Notification } from "@/utils/api"; 
+import { useUser } from "@/app/(dashboard)/context/UserContext";
+import { notificationService, userService, Notification, UserProfile } from "@/utils/api"; 
 import { WORLD_CURRENCIES } from "@/constants/geoData"; 
 import styles from "./DashboardNavbar.module.css";
 
@@ -42,27 +40,12 @@ const FINANCE_FACTS = [
   "Investing $100 a month at 8% return could grow to over $150,000 in 30 years.",
   "More than 60% of people don't have a budget."
 ] as const;
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
 interface DashboardNavbarProps {
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-    uiTheme?: string;
-    currency?: string; 
-    avatarUrl?: string | null; 
-  } | null;
+  user?: Partial<UserProfile> | null;
   currentWorkspaceId?: string; 
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: UTILITY FUNCTIONS & HELPERS ===
-   ========================================================================== */
 function timeAgo(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -88,12 +71,11 @@ function getNotificationIcon(sourceType: string) {
 }
 
 const emptySubscribe = () => () => {};
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: COMPONENT LOGIC & PIPELINES ===
-   ========================================================================== */
-export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardNavbarProps) {
+export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: DashboardNavbarProps) {
+  const { user: liveUser, updateUserInState } = useUser();
+  const user = liveUser || propUser;
+
   const { activeTheme, changeTheme } = useTheme();
   const { currency, setCurrencyWithWorkspace } = useCurrency();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -112,9 +94,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   const [isMobileCurrencyOpen, setIsMobileCurrencyOpen] = useState<boolean>(false);
   const [isAvatarUploading, setIsAvatarUploading] = useState<boolean>(false);
 
-  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
-  const currentAvatarUrl = uploadedAvatarUrl ?? user?.avatarUrl ?? null;
-
+  const currentAvatarUrl = user?.avatarUrl ?? null;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
@@ -210,7 +190,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     try {
       setIsAvatarUploading(true);
       const data = await userService.uploadAvatar(formData);
-      setUploadedAvatarUrl(data.avatarUrl);
+      updateUserInState({ avatarUrl: data.avatarUrl });
       toast.success("Profile avatar updated successfully!");
     } catch (error: unknown) {
       console.error("Avatar Upload Exception Loop:", error);
@@ -260,15 +240,9 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
   if (!isMounted) {
     return <header className={styles.topNavbarBlankPlaceholder} />;
   }
-  /* === SECTION 4 END === */
 
-  /* ==========================================================================
-     === SECTION 5: RENDER SYSTEM (JSX) ===
-     ========================================================================== */
   return (
     <header className={styles.topNavbar} suppressHydrationWarning aria-label="Dashboard Top Bar">
-      
-      {/* LEFT SECTION: USER GREETING DECK */}
       <div className={styles.welcomeSection}>
         <h2 className={styles.greetingTitle}>
           {dynamicGreeting ? (
@@ -297,10 +271,7 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
         </div>
       </div>
 
-      {/* RIGHT SECTION: SYSTEM PREFERENCE TRIGGERS */}
       <div className={styles.actionControlDeck} ref={dropdownRef}>
-        
-        {/* CURRENCY DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button
             type="button"
@@ -352,7 +323,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           )}
         </div>
 
-        {/* NOTIFICATIONS DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button
             type="button"
@@ -421,7 +391,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           )}
         </div>
 
-        {/* THEME DROPDOWN */}
         <div className={styles.dropdownMenuContainer}>
           <button
             type="button"
@@ -537,7 +506,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
           )}
         </div>
 
-        {/* MOBILE MENU TOGGLE */}
         <button
           type="button"
           className={styles.hamburgerMenuIconToggle}
@@ -552,14 +520,11 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
         </button>
       </div>
 
-      {/* MOBILE DRAWER WITH BACKDROP */}
       {isMobileMenuOpen && (
         <>
           <div className={styles.mobileBackdrop} onClick={() => setIsMobileMenuOpen(false)} />
           <div className={styles.mobileNavigationDrawerTray}>
             <div className={styles.mobileDrawerWrapper}>
-              
-              {/* MOBILE ACCORDION: GLOBAL SYSTEM CURRENCY */}
               <div className={styles.mobileDrawerGroupItem}>
                 <button
                   type="button"
@@ -602,7 +567,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
 
               <div className={styles.mobileDrawerDivider} />
 
-              {/* MOBILE GROUP: INTERFACE THEME */}
               <div className={styles.mobileDrawerGroupItem}>
                 <p className={styles.mobileLabelHeader}>Interface Theme</p>
                 <div className={styles.mobileButtonLayoutGridRow}>
@@ -638,7 +602,6 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
                   </button>
                 </div>
               </div>
-
             </div>
           </div>
         </>
@@ -646,4 +609,3 @@ export default function DashboardNavbar({ user, currentWorkspaceId }: DashboardN
     </header>
   );
 }
-/* === SECTION 5 END === */

@@ -47,7 +47,7 @@ function buildErrorResponse(message: string): { error: string } {
 }
 
 /**
- * WHY THIS IS NEEDED: Prevents HTTP path traversal and URL injection attacks.
+ * Prevents HTTP path traversal and URL injection attacks.
  * Sanitizes raw filenames to ensure only safe alphanumeric characters and extensions are preserved.
  */
 function sanitizeFilename(filename: string): string {
@@ -62,7 +62,7 @@ function sanitizeFilename(filename: string): string {
    ========================================================================== */
 
 /**
- * POST /api/user/avatar
+ * POST /api/users/upload-avatar
  * Uploads a profile avatar image, validates security parameters, and updates user database profile.
  */
 export const uploadAvatar = async (
@@ -70,7 +70,7 @@ export const uploadAvatar = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Authentication required."));
       return;
@@ -85,7 +85,7 @@ export const uploadAvatar = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Enforces MIME type check as a defense-in-depth shield against malicious uploads.
+    // Enforces MIME type check as a defense-in-depth shield against malicious uploads.
     const fileMimeType = uploadedFile.mimetype ? uploadedFile.mimetype.toLowerCase() : "";
     if (!ALLOWED_AVATAR_MIME_TYPES.includes(fileMimeType)) {
       res.status(400).json(
@@ -94,7 +94,7 @@ export const uploadAvatar = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Validates file size secondary limit to block storage exhaustion attacks.
+    // Validates file size secondary limit to block storage exhaustion attacks.
     if (uploadedFile.size && uploadedFile.size > MAX_AVATAR_FILE_SIZE_BYTES) {
       res.status(400).json(
         buildErrorResponse("File size exceeds maximum threshold of 5 MB.")
@@ -102,7 +102,7 @@ export const uploadAvatar = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Verifies user existence before DB update to prevent Prisma P2025 server crashes.
+    // Verifies user existence before DB update to prevent Prisma P2025 server crashes.
     const userExists = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, avatarUrl: true },
@@ -113,8 +113,9 @@ export const uploadAvatar = async (
       return;
     }
 
-    // Construct secure public avatar URL
-    const serverUrl = process.env.BACKEND_URL || "http://localhost:5000";
+    // Construct secure public avatar URL (with production Render fallback)
+    const rawServerUrl = process.env.BACKEND_URL || "https://expense-backend-jcy1.onrender.com";
+    const serverUrl = rawServerUrl.replace(/\/+$/, "");
     const safeFilename = sanitizeFilename(uploadedFile.filename);
     const avatarUrl = `${serverUrl}/uploads/avatars/${safeFilename}`;
 

@@ -10,15 +10,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import styles from "../login/page.module.css"; // Reuses login layout
 
-/**
- * WHY an environment variable is used for the backend URL:
- * Hardcoding "localhost:5000" would break the app in any non‑local environment.
- * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
- * work in staging, production, and Docker without code changes.
- */
-const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
 type VerificationStatus = "loading" | "success" | "error";
 /* === SECTION 1 END === */
 
@@ -48,14 +39,13 @@ function VerifyEmailForm() {
       }
 
       try {
-        const response = await fetch(
-          `${BACKEND_API_URL}/api/auth/verify-email`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-          }
-        );
+        // Uses relative /api endpoint for same-origin proxy rewrites
+        const response = await fetch("/api/auth/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+          credentials: "include",
+        });
 
         const result: unknown = await response.json();
 
@@ -87,11 +77,7 @@ function VerifyEmailForm() {
 
     executeVerification();
   }, [token, router]);
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: RENDER ===
-   ========================================================================== */
   return (
     <div className={styles.formContainerContent}>
       <div className={styles.formHeader}>
@@ -153,6 +139,11 @@ function VerifyEmailForm() {
     </div>
   );
 }
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: RENDER ===
+   ========================================================================== */
 
 /**
  * Page wrapper that supplies a Suspense boundary for `useSearchParams`.

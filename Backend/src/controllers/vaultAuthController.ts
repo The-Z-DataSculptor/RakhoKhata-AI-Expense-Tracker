@@ -14,7 +14,7 @@ import {
 } from "../services/emailService";
 import { createVaultPinResetNotification } from "../services/notificationService";
 
-const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const APP_FRONTEND_URL = process.env.FRONTEND_URL || "https://rakhokhata.onrender.com";
 const BCRYPT_SALT_ROUNDS = 10;
 
 interface SetupPinInput {
@@ -290,7 +290,6 @@ export const requestVaultPinReset = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Uses PASSWORD_RESET token type to maintain 100% compatibility with Prisma runtime validation
     await prisma.verificationToken.deleteMany({
       where: { identifier: user.email, type: "PASSWORD_RESET" },
     }).catch(() => {});

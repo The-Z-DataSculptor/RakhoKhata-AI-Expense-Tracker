@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import styles from "./page.module.css";
 
-// ----- Static reference data (centralised so all dropdowns share the same lists) -----
+// ----- Static reference data -----
 const CURRENCIES = [
   "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
   "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
@@ -116,9 +116,9 @@ export default function SettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // ----- Workspace rename / delete -----
-  const [renameInput, setRenameInput] = useState<string>(activeWorkspace ? activeWorkspace.name : "");
+  const [renameInput, setRenameInput] = useState<string>(activeWorkspace?.name || "");
+  const [prevWorkspaceId, setPrevWorkspaceId] = useState<string | undefined>(activeWorkspaceId);
   const [isWorkspaceSaving, setIsWorkspaceSaving] = useState<boolean>(false);
-  const [, setRefreshKey] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // ----- Vault security -----
@@ -126,6 +126,12 @@ export default function SettingsPage() {
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
+
+  // ⬇️ FIXED: Sync renameInput during render when activeWorkspace changes (React Recommended Pattern)
+  if (activeWorkspaceId !== prevWorkspaceId) {
+    setPrevWorkspaceId(activeWorkspaceId);
+    setRenameInput(activeWorkspace?.name || "");
+  }
 
   // ---------------------------------------------------------------------------
   // PROFILE DATA FETCHING
@@ -204,13 +210,13 @@ export default function SettingsPage() {
   };
 
   const handleSaveBasicInfo = async () => {
-    if (!name.trim() || !email.trim()) {
-      toast.error("Name and email are required.");
+    if (!name.trim()) {
+      toast.error("Name is required.");
       return;
     }
     setIsSaving(true);
     try {
-      await userService.updateProfile({ name, email });
+      await userService.updateProfile({ name: name.trim() });
       await refetchProfile();
       toast.success("Profile updated!");
     } catch (error: unknown) {
@@ -289,8 +295,9 @@ export default function SettingsPage() {
     try {
       await workspaceService.update(activeWorkspace.id, { name: renameInput.trim() });
       toast.success("Workspace renamed!");
-      setRefreshKey((prev) => prev + 1);
-      window.location.reload(); // Refresh to reflect new name everywhere
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to rename workspace.";
       toast.error(message);
@@ -342,7 +349,6 @@ export default function SettingsPage() {
 /* ==========================================================================
    === SECTION 3: RENDER COMPONENT ===
    ========================================================================== */
-  // Show a loading skeleton while the profile is being fetched
   if (isProfileLoading) {
     return (
       <div className={styles.settingsCanvasDeck}>
@@ -356,7 +362,7 @@ export default function SettingsPage() {
 
   return (
     <div className={styles.settingsCanvasDeck}>
-      {/* ----- Header ----- */}
+      {/* Header */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.mainHeadline}>Settings</h1>
@@ -367,7 +373,7 @@ export default function SettingsPage() {
       </header>
 
       <div className={styles.cardsStackDeck}>
-        {/* ----- Workspace Card ----- */}
+        {/* Workspace Card */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div className={styles.iconIndicatorFrame}>
@@ -382,7 +388,6 @@ export default function SettingsPage() {
           </div>
 
           <div className={styles.cardBodyContent}>
-            {/* Rename form */}
             <form onSubmit={handleRenameSubmit} className={styles.renameFormBlock}>
               <div className={styles.inputFieldGroup}>
                 <label className={styles.fieldLabelText}>Change Current Workspace Name</label>
@@ -405,7 +410,6 @@ export default function SettingsPage() {
 
             <div className={styles.dividerSplitLine} />
 
-            {/* Workspace list */}
             <div className={styles.directoryEntriesListWrapper}>
               <h3 className={styles.subSectionLabel}>All Your Workspaces ({workspaces.length})</h3>
               <div className={styles.entriesGridList}>
@@ -440,10 +444,9 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ----- Profile Settings (tabbed) ----- */}
+        {/* Profile Settings */}
         <section className={styles.settingsCardNode} style={{ padding: 0, overflow: "hidden" }}>
           <div className={styles.modernSettingsContainer}>
-            {/* Mobile dropdown (visible only on small screens) */}
             <div className={styles.mobileTabSelectorWrapper}>
               <label htmlFor="mobile-settings-tab" className={styles.mobileTabSelectorLabel}>
                 Settings Category
@@ -467,7 +470,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Desktop sidebar tabs */}
             <div className={styles.settingsSidebar}>
               <button
                 onClick={() => setActiveTab("general")}
@@ -506,7 +508,6 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Active tab content */}
             <div className={styles.settingsContentArea}>
               {/* Identity */}
               {activeTab === "general" && (
@@ -527,13 +528,14 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div className={styles.inputFieldGroup}>
-                      <label className={styles.fieldLabelText}>Email Address</label>
+                      <label className={styles.fieldLabelText}>Email Address (Read-Only)</label>
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        disabled
+                        readOnly
                         className={styles.primaryTextInputElement}
-                        placeholder="your@email.com"
+                        style={{ opacity: 0.7, cursor: "not-allowed" }}
                       />
                     </div>
                   </div>
@@ -720,7 +722,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ----- Vault Security Card ----- */}
+        {/* Vault Security Card */}
         <section className={styles.settingsCardNode}>
           <div className={styles.cardHeaderArea}>
             <div
@@ -803,4 +805,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-/* === SECTION 3 END === */

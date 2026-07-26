@@ -10,25 +10,27 @@ WORKDIR /app
 # Install OpenSSL required for Prisma binary engine on Alpine Linux
 RUN apk add --no-cache openssl
 
-# Copy dependency manifests, schema, and config
+# Copy package manifests and config files
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 COPY tsconfig.json ./
 
-# Provide build-time environment variable for Prisma validation
+# Provide dummy DATABASE_URL for Prisma 7 build check
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-# Clean install all dependencies (including devDependencies needed for tsc)
+# Install ALL dependencies (including devDependencies for tsc and @types)
 RUN npm ci --no-audit --no-fund
 
-# Copy application source code
+# Copy source files
 COPY . .
 
-# Generate Prisma Client AND compile TypeScript to dist/
+# Generate Prisma Client
 RUN npx prisma generate
-RUN npm run build
+
+# Compile TypeScript explicitly with skipLibCheck to ignore external type conflicts
+RUN npx tsc --skipLibCheck
 
 # ==========================================================================
 # === SECTION 2: RUNTIME STAGE ===
@@ -39,15 +41,16 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-# Copy package manifests and production dependencies only
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+
+# Install production dependencies only
 RUN npm ci --omit=dev --no-audit --no-fund
 RUN npx prisma generate
 
-# Copy compiled code from builder stage
+# Copy built dist files from builder
 COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production

@@ -3,7 +3,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-import { Response as ExpressResponse } from "express";
+import { Response as ExpressResponse, Request } from "express";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { GoogleGenAI } from "@google/genai";
@@ -53,8 +53,13 @@ interface BulkImportRequestBody {
   transactions: InboundTransactionInput[];
 }
 
-// Express Request extension with uploaded Multer file handle
-interface AuthenticatedRequestWithFile extends AuthenticatedRequest {
+// WHY THIS FIX WAS MADE: Explicitly defines the attached `user` context alongside Multer's `file` handle.
+interface AuthenticatedRequestWithFile extends Request {
+  user?: {
+    id: string;
+    userId: string;
+    email: string;
+  };
   file?: Express.Multer.File;
 }
 
@@ -91,7 +96,7 @@ function extractSingleString(value: unknown): string | undefined {
 
 /**
  * WHY THIS IS NEEDED: Prevents NaN propagation and falsy evaluation bugs on 0 amounts.
- * Parses raw input into a valid non-negative number ($ \ge 0 $).
+ * Parses raw input into a valid non-negative number.
  */
 function parseNonNegativeNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") {
@@ -343,7 +348,7 @@ export const bulkCreateTransactions = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Replaced sequential loop queries with single createMany query (Eliminates N+1 DB bottleneck).
+    // WHY THIS FIX WAS MADE: Replaced sequential loop queries with single createMany query.
     const batchResult = await prisma.transaction.createMany({
       data: preparedRecords,
     });
@@ -367,7 +372,7 @@ export const scanReceipt = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildSafeError("Authentication required."));
       return;

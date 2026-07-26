@@ -9,6 +9,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import {
@@ -26,15 +27,13 @@ import { apiFetch } from "@/utils/api";
    === SECTION 2: TYPES, INTERFACES & UTILITIES ===
    ========================================================================== */
 
-// Workspace data shape returned by the backend and used throughout the app
 export interface Workspace {
   id: string;
   name: string;
   currency: string;
-  iconName?: string; // Computed client‑side for display purposes
+  iconName?: string;
 }
 
-// The full context shape provided to consumers
 interface WorkspaceContextType {
   workspaces: Workspace[];
   activeWorkspaceId: string;
@@ -43,22 +42,19 @@ interface WorkspaceContextType {
   switchWorkspace: (id: string) => void;
   createWorkspace: (name: string, currency?: string) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
+  refreshWorkspaces: () => Promise<void>;
+  updateWorkspaceInState: (id: string, updates: Partial<Workspace>) => void;
   renderIcon: (iconName: string, size?: number) => React.ReactNode;
 }
 
-// Contract for the GET /api/workspaces response
 interface FetchWorkspacesResponse {
   workspaces: Workspace[];
 }
 
-// Contract for the POST /api/workspaces response
 interface CreateWorkspaceResponse {
   workspace: Workspace;
 }
 
-/**
- * Helper that determines a display icon name based on the workspace name.
- */
 function assignDynamicIcon(name: string): string {
   const normalized = name.toLowerCase();
   if (normalized.includes("personal")) return "user";
@@ -66,9 +62,6 @@ function assignDynamicIcon(name: string): string {
   return "folder";
 }
 
-/**
- * Maps an icon name string to a React Icon component.
- */
 function renderIconComponent(
   iconName: string,
   size: number = 18
@@ -87,19 +80,14 @@ function renderIconComponent(
   }
 }
 
-/**
- * Safely saves the active workspace id to localStorage.
- * Silently ignores errors (e.g., storage full or unavailable).
- */
 function persistActiveWorkspaceId(id: string): void {
   try {
     localStorage.setItem("app_active_workspace_id", id);
   } catch {
-    // localStorage might be disabled or full – not critical
+    // localStorage might be unavailable
   }
 }
 
-// Create the context
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(
   undefined
 );
@@ -119,16 +107,41 @@ export function WorkspaceProvider({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isReady, setIsReady] = useState<boolean>(false);
 
-  // ----- Fetch workspaces on mount -----
+  // ----- Fetch / Refresh Workspaces -----
+  const refreshWorkspaces = useCallback(async () => {
+    try {
+      const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
+
+      if (data.workspaces && data.workspaces.length > 0) {
+        const enriched = data.workspaces.map((ws) => ({
+          ...ws,
+          iconName: assignDynamicIcon(ws.name),
+        }));
+        setWorkspaces(enriched);
+
+        setActiveWorkspaceId((currentId) => {
+          const savedId = typeof window !== "undefined" ? localStorage.getItem("app_active_workspace_id") : null;
+          const matched = enriched.find((ws) => ws.id === (currentId || savedId));
+          return matched ? matched.id : enriched[0].id;
+        });
+      }
+    } catch (error: unknown) {
+      console.error("Workspace Pipeline Hydration Exception:", error);
+      toast.error("Unable to load financial workspace configuration layers.");
+    } finally {
+      setIsLoading(false);
+      setIsReady(true);
+    }
+  }, []);
+
+  // Sync initial workspaces on mount cleanly without synchronous inline state triggers
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
 
-    const fetchWorkspaces = async () => {
+    const initialize = async () => {
       try {
-        setIsLoading(true);
         const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
-
-        if (cancelled) return;
+        if (!active) return;
 
         if (data.workspaces && data.workspaces.length > 0) {
           const enriched = data.workspaces.map((ws) => ({
@@ -137,28 +150,44 @@ export function WorkspaceProvider({
           }));
           setWorkspaces(enriched);
 
-          // Restore the previously active workspace or default to the first one
           const savedId = localStorage.getItem("app_active_workspace_id");
           const matched = enriched.find((ws) => ws.id === savedId);
           setActiveWorkspaceId(matched ? matched.id : enriched[0].id);
         }
       } catch (error: unknown) {
         console.error("Workspace Pipeline Hydration Exception:", error);
-        toast.error(
-          "Unable to load financial workspace configuration layers."
-        );
+        if (active) toast.error("Unable to load financial workspace configuration layers.");
       } finally {
-        if (!cancelled) {
+        if (active) {
           setIsLoading(false);
           setIsReady(true);
         }
       }
     };
 
-    fetchWorkspaces();
+    void initialize();
+
     return () => {
-      cancelled = true;
+      active = false;
     };
+  }, []);
+
+  // ----- Direct Local In-Memory State Sync -----
+  const updateWorkspaceInState = useCallback((id: string, updates: Partial<Workspace>) => {
+    setWorkspaces((prev) =>
+      prev.map((ws) => {
+        if (ws.id === id) {
+          const updatedName = updates.name ?? ws.name;
+          return {
+            ...ws,
+            ...updates,
+            name: updatedName,
+            iconName: assignDynamicIcon(updatedName),
+          };
+        }
+        return ws;
+      })
+    );
   }, []);
 
   // ----- Workspace switching -----
@@ -202,7 +231,6 @@ export function WorkspaceProvider({
       const remaining = workspaces.filter((ws) => ws.id !== id);
       setWorkspaces(remaining);
 
-      // If the active workspace was deleted, activate the first remaining one
       if (activeWorkspaceId === id && remaining.length > 0) {
         switchWorkspace(remaining[0].id);
       }
@@ -217,7 +245,6 @@ export function WorkspaceProvider({
     }
   };
 
-  // Derive the active workspace object for convenience
   const activeWorkspace = workspaces.find(
     (ws) => ws.id === activeWorkspaceId
   );
@@ -230,15 +257,11 @@ export function WorkspaceProvider({
     switchWorkspace,
     createWorkspace,
     deleteWorkspace,
+    refreshWorkspaces,
+    updateWorkspaceInState,
     renderIcon: renderIconComponent,
   };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER & EXPORTED HOOK ===
-   ========================================================================== */
-
-  // Prevent children from rendering until the initial workspace list is ready
   if (!isReady) return null;
 
   return (
@@ -248,10 +271,6 @@ export function WorkspaceProvider({
   );
 }
 
-/**
- * Hook to consume the workspace context.
- * Must be called inside a WorkspaceProvider.
- */
 export function useWorkspace(): WorkspaceContextType {
   const context = useContext(WorkspaceContext);
   if (context === undefined) {

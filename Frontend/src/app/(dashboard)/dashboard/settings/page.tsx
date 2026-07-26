@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { vaultAuthService, userService, workspaceService } from "@/utils/api";
 import { PinSetupModal } from "@/components/investments/PinSetupModal/PinSetupModal";
 import {
@@ -53,7 +54,7 @@ const PRIORITY_LANGUAGES = [
 ];
 
 const EXTENDED_LANGUAGES = [
-  "Bengali (বাংলা)", "Tamil (தமிழ்)", "Telugu (తెలుగు)", "Marathi (मराठी)",
+  "Bengali (বাংলা)", "Tamil (தமிழ்)", "Telugu (తెలుగు)", "Marathi (مراٹھی)",
   "Italian (Italiano)", "Portuguese (Português)", "Russian (Русский)",
   "Turkish (Türkçe)", "Mandarin (中文)", "Korean (한국어)", 
   "Vietnamese (Tiếng Việt)", "Thai (ภาษาไทย)", "Kashmiri (کٲشُر)",
@@ -86,13 +87,15 @@ const AI_PERSONAS = [
   { id: "forensic_detective", emoji: "🕵️‍♂️", label: "Forensic Detective", desc: "Hyper-analytical. Finds hidden leaks." },
   { id: "silent_accountant", emoji: "📊", label: "Silent Accountant", desc: "Pure business. Raw mathematical logic." },
 ];
+
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: COMPONENT STATE & HANDLERS ===
    ========================================================================== */
 export default function SettingsPage() {
-  const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace } = useWorkspace();
+  const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace, updateWorkspaceInState } = useWorkspace();
+  const { setCurrencyWithWorkspace } = useCurrency();
 
   // ----- UI / loading states -----
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -127,7 +130,7 @@ export default function SettingsPage() {
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
 
-  // ⬇️ FIXED: Sync renameInput during render when activeWorkspace changes (React Recommended Pattern)
+  // Sync renameInput when active workspace changes
   if (activeWorkspaceId !== prevWorkspaceId) {
     setPrevWorkspaceId(activeWorkspaceId);
     setRenameInput(activeWorkspace?.name || "");
@@ -147,7 +150,7 @@ export default function SettingsPage() {
           setName(user.name || "");
           setEmail(user.email || "");
           setCountry(user.country || "");
-          setCurrency(user.currency || "");
+          setCurrency(user.currency || activeWorkspace?.currency || "USD");
           setLanguages(user.languages || []);
           setOccupation(user.occupation || "");
           setFinancialGoal(user.financialGoal || "");
@@ -161,7 +164,7 @@ export default function SettingsPage() {
     };
     loadProfile();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeWorkspace?.currency]);
 
   // ---------------------------------------------------------------------------
   // VAULT PIN STATUS
@@ -229,6 +232,12 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ country, currency, languages });
+      
+      // Synchronize currency across the active workspace and app context
+      if (activeWorkspaceId && currency) {
+        await setCurrencyWithWorkspace(currency, activeWorkspaceId);
+      }
+
       await refetchProfile();
       toast.success("Location & language updated!");
     } catch (error: unknown) {
@@ -290,14 +299,14 @@ export default function SettingsPage() {
   // ---------------------------------------------------------------------------
   const handleRenameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!renameInput.trim() || !activeWorkspace) return;
+    const trimmed = renameInput.trim();
+    if (!trimmed || !activeWorkspace) return;
+
     setIsWorkspaceSaving(true);
     try {
-      await workspaceService.update(activeWorkspace.id, { name: renameInput.trim() });
+      await workspaceService.update(activeWorkspace.id, { name: trimmed });
+      updateWorkspaceInState(activeWorkspace.id, { name: trimmed });
       toast.success("Workspace renamed!");
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to rename workspace.";
       toast.error(message);
@@ -344,11 +353,7 @@ export default function SettingsPage() {
     );
   };
   const allLanguages = [...PRIORITY_LANGUAGES, ...EXTENDED_LANGUAGES];
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: RENDER COMPONENT ===
-   ========================================================================== */
   if (isProfileLoading) {
     return (
       <div className={styles.settingsCanvasDeck}>

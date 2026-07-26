@@ -7,10 +7,10 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install OpenSSL required for Prisma binary engine on Alpine Linux
+# Install OpenSSL required by Prisma CLI engine on Alpine Linux
 RUN apk add --no-cache openssl
 
-# Copy dependency manifests and configuration
+# Copy dependency manifests first for optimal Docker layer caching
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
@@ -20,13 +20,16 @@ COPY tsconfig.json ./
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-# Clean install all dependencies (including devDependencies for build)
+# Clean install all dependencies (including devDependencies)
 RUN npm ci --no-audit --no-fund
 
-# Copy application source code
+# Copy remaining source code
 COPY . .
 
-# Generate Prisma Client and compile TypeScript with skipLibCheck
+# Explicitly wipe local build artifacts before compiling in Docker
+RUN rm -rf dist prisma/generated
+
+# Generate Prisma Client and compile TypeScript
 RUN npx prisma generate
 RUN npx tsc --skipLibCheck
 

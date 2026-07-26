@@ -12,46 +12,31 @@ import styles from "./page.module.css";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
-/**
- * Note: Component uses simple state variables (pin, confirmPin),
- * so no custom props or external state interfaces are required here.
- */
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: INNER FORM COMPONENT ===
+   === SECTION 2: INNER FORM COMPONENT ===
    ========================================================================== */
 function ResetVaultPinForm() {
-  // Read token from URL query string (e.g. ?token=12a3345...)
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
 
-  // Local state for PIN form fields and submission state
   const [pin, setPin] = useState<string>("");
   const [confirmPin, setConfirmPin] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Form submission handler
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      // 1. Check if token exists in query string
       if (!token) {
         toast.error("Invalid or missing reset token. Please request a new link.");
         return;
       }
 
-      // 2. Validate PIN format (must be 4 numeric digits)
       if (!/^\d{4}$/.test(pin)) {
         toast.error("New PIN must be exactly 4 numeric digits.");
         return;
       }
 
-      // 3. Confirm PIN entries match
       if (pin !== confirmPin) {
         toast.error("PINs do not match. Please try again.");
         return;
@@ -60,13 +45,12 @@ function ResetVaultPinForm() {
       try {
         setIsSubmitting(true);
 
-        // Call backend API service to update the PIN
+        // Uses vaultAuthService which delegates to apiFetch (/api/...)
         const response = await vaultAuthService.resetPinWithToken(token, pin);
 
         if (response.success) {
           toast.success(response.message || "Vault PIN updated successfully!");
 
-          // Redirect user to investment vault page after brief delay
           setTimeout(() => {
             router.push("/dashboard/investment-vault");
           }, 1500);
@@ -85,8 +69,6 @@ function ResetVaultPinForm() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        
-        {/* Header Display Stack */}
         <div className={styles.header}>
           <div className={styles.iconCircle}>
             <svg
@@ -112,10 +94,7 @@ function ResetVaultPinForm() {
           </p>
         </div>
 
-        {/* PIN Input Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
-          
-          {/* New PIN Field */}
           <div className={styles.fieldGroup}>
             <label className={styles.label} htmlFor="newPin">
               New 4-Digit PIN
@@ -135,7 +114,6 @@ function ResetVaultPinForm() {
             />
           </div>
 
-          {/* Confirm PIN Field */}
           <div className={styles.fieldGroup}>
             <label className={styles.label} htmlFor="confirmPin">
               Confirm New PIN
@@ -155,7 +133,6 @@ function ResetVaultPinForm() {
             />
           </div>
 
-          {/* Action Button */}
           <button
             type="submit"
             disabled={isSubmitting || !token}
@@ -164,15 +141,14 @@ function ResetVaultPinForm() {
             {isSubmitting ? "Resetting PIN..." : "Save New PIN"}
           </button>
         </form>
-
       </div>
     </div>
   );
 }
-/* === SECTION 3 END === */
+/* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 4: EXPORT PAGE WITH SUSPENSE BOUNDARY ===
+   === SECTION 3: EXPORT PAGE WITH SUSPENSE BOUNDARY ===
    ========================================================================== */
 export default function ResetVaultPinPage() {
   return (
@@ -187,4 +163,4 @@ export default function ResetVaultPinPage() {
     </Suspense>
   );
 }
-/* === SECTION 4 END === */
+/* === SECTION 3 END === */

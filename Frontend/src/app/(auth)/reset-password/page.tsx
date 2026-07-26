@@ -11,15 +11,6 @@ import { toast } from "sonner";
 import styles from "../login/page.module.css"; // Reuses login layout styles
 
 /**
- * WHY an environment variable is used for the backend URL:
- * Hardcoding "localhost:5000" would break the app in any non‑local environment.
- * NEXT_PUBLIC_API_URL is available at build time and makes the frontend
- * work in staging, production, and Docker without code changes.
- */
-const BACKEND_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-/**
  * Checks whether a password meets the minimum length requirement.
  * The backend performs additional validation (complexity, history, etc.).
  */
@@ -35,10 +26,6 @@ function isValidPassword(password: string): boolean {
 /**
  * Inner form component that reads the reset token from the URL and
  * allows the user to set a new password.
- *
- * WHY it is separated: the component uses `useSearchParams()` which must be
- * wrapped in a `<Suspense>` boundary. Placing it in its own component
- * makes this boundary explicit and avoids Next.js compilation errors.
  */
 function ResetPasswordForm() {
   const router = useRouter();
@@ -66,13 +53,13 @@ function ResetPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Validate the token presence
+    // 1. Validate token presence
     if (!token) {
       toast.error("Your reset link is invalid or has expired.");
       return;
     }
 
-    // 2. Validate the new password length
+    // 2. Validate new password length
     if (!isValidPassword(newPassword)) {
       toast.error("Password must be at least 8 characters long.");
       return;
@@ -86,14 +73,13 @@ function ResetPasswordForm() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(
-        `${BACKEND_API_URL}/api/auth/reset-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, newPassword }),
-        }
-      );
+      // Uses relative /api endpoint for proxy rewrite handling
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword }),
+        credentials: "include",
+      });
 
       const result: unknown = await response.json();
 
@@ -106,7 +92,6 @@ function ResetPasswordForm() {
       }
 
       toast.success("Password changed successfully! Redirecting...");
-      // Wait briefly so the user can read the success message
       await new Promise((resolve) => setTimeout(resolve, 1000));
       router.push("/login");
     } catch (error: unknown) {
@@ -120,11 +105,7 @@ function ResetPasswordForm() {
       setIsSubmitting(false);
     }
   };
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: RENDER ===
-   ========================================================================== */
   return (
     <div className={styles.formContainerContent}>
       <div className={styles.formHeader}>

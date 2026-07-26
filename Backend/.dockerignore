@@ -32,7 +32,6 @@ id_rsa.pub
 .github
 .gitlab
 .dockerignore
-Dockerfile*
 docker-compose*
 
 # === SECTION 2 END ===

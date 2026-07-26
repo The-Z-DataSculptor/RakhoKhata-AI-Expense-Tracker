@@ -409,9 +409,10 @@ export const userService = {
       method: "GET",
     }),
 
+  // ⬇️ FIXED: Endpoint mapped correctly to /auth/update-profile
   updateProfile: (data: Partial<Omit<UserProfile, "id" | "createdAt">>) =>
     apiFetch<{ message: string; user: UserProfile }>(
-      "/auth/profile",
+      "/auth/update-profile",
       { method: "PUT", body: JSON.stringify(data) }
     ),
 

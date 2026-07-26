@@ -67,7 +67,7 @@ const nextConfig: NextConfig = {
       process.env.INTERNAL_API_URL ||
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "https://expense-backend-jcy1.onrender.com";
+      "http://localhost:5000";
 
     // Clean URL formatting
     const backendBase = rawBackendUrl.replace(/\/+$/, "").replace(/\/api$/, "");

@@ -39,11 +39,10 @@ app.use(
   })
 );
 
-// Explicitly sanitize and normalize allowed origins including live Render URL
+// Explicitly sanitize and normalize allowed origins dynamically from environment variables
 const rawAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "https://rakhokhata.onrender.com",
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];

@@ -23,9 +23,9 @@ COPY . .
 # ==========================================================================
 # === SECTION 2: BUILD CONFIGURATION & ENVIRONMENT VARIABLES ===
 # ==========================================================================
-# Declare build argument with production fallback so NEXT_PUBLIC_API_URL 
+# Declare build argument with local development fallback so NEXT_PUBLIC_API_URL 
 # is explicitly baked into the Next.js client bundle during build time.
-ARG NEXT_PUBLIC_API_URL=https://expense-backend-jcy1.onrender.com
+ARG NEXT_PUBLIC_API_URL=http://localhost:5000
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Disable Next.js telemetry and configure production runtime

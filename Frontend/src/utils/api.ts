@@ -9,7 +9,7 @@ export const getApiBaseUrl = (): string => {
       process.env.INTERNAL_API_URL ||
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "https://expense-backend-jcy1.onrender.com";
+      "http://localhost:5000";
 
     baseUrl = baseUrl.replace(/\/+$/, "");
     if (!baseUrl.endsWith("/api")) {
@@ -106,7 +106,6 @@ export interface Notification {
   updatedAt: string;
 }
 
-// ⬇️ FIXED: avatarUrl added to UserProfile interface
 export interface UserProfile {
   id: string;
   name: string;

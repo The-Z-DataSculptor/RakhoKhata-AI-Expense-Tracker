@@ -20,12 +20,13 @@ import {
   SHARED_DEFAULT_BUSINESS_CATEGORIES,
 } from "./workspaceController";
 
-// Environment variables with fallback safeguards pointing to live frontend origin
-const APP_FRONTEND_URL = process.env.FRONTEND_URL || "https://rakhokhata.onrender.com";
+// Environment variables with fallback safeguards pointing to local development
+const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL || "https://rakhokhata.onrender.com/api/auth/google/callback";
+  process.env.GOOGLE_CALLBACK_URL ||
+  `${process.env.BACKEND_PUBLIC_URL || "http://localhost:5000"}/api/auth/google/callback`;
 
 const EXTERNAL_API_TIMEOUT_MS = 10000;
 

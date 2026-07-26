@@ -14,7 +14,7 @@ import {
 } from "../services/emailService";
 import { createVaultPinResetNotification } from "../services/notificationService";
 
-const APP_FRONTEND_URL = process.env.FRONTEND_URL || "https://rakhokhata.onrender.com";
+const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const BCRYPT_SALT_ROUNDS = 10;
 
 interface SetupPinInput {

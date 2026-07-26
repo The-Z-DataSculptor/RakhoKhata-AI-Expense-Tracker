@@ -53,17 +53,9 @@ interface BulkImportRequestBody {
   transactions: InboundTransactionInput[];
 }
 
-// File interface matching Multer upload buffers
-interface MulterFile {
-  buffer: Buffer;
-  mimetype: string;
-  originalname?: string;
-  size?: number;
-}
-
 // Express Request extension with uploaded Multer file handle
 interface AuthenticatedRequestWithFile extends AuthenticatedRequest {
-  file?: MulterFile;
+  file?: Express.Multer.File;
 }
 
 // Struct for structured JSON output extracted by Gemini AI from receipt images

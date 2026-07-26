@@ -19,19 +19,9 @@ const ALLOWED_AVATAR_MIME_TYPES = [
 // Maximum allowed file size for user avatar uploads (5 MB in bytes)
 const MAX_AVATAR_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
-// Shape of the file object supplied by Multer upload middleware
-interface UploadedFile {
-  filename: string;
-  fieldname?: string;
-  originalname?: string;
-  encoding?: string;
-  mimetype?: string;
-  size?: number;
-}
-
 // Request interface extended with optional Multer file object
 interface AuthenticatedFileRequest extends AuthenticatedRequest {
-  file?: UploadedFile;
+  file?: Express.Multer.File;
 }
 /* === SECTION 1 END === */
 
@@ -113,8 +103,8 @@ export const uploadAvatar = async (
       return;
     }
 
-    // Construct secure public avatar URL (with production Render fallback)
-    const rawServerUrl = process.env.BACKEND_URL || "https://expense-backend-jcy1.onrender.com";
+    // Construct secure public avatar URL (using environment variables)
+    const rawServerUrl = process.env.BACKEND_PUBLIC_URL || process.env.BACKEND_URL || "http://localhost:5000";
     const serverUrl = rawServerUrl.replace(/\/+$/, "");
     const safeFilename = sanitizeFilename(uploadedFile.filename);
     const avatarUrl = `${serverUrl}/uploads/avatars/${safeFilename}`;

@@ -26,8 +26,9 @@ RUN npm ci --no-audit --no-fund
 # Copy application source code
 COPY . .
 
-# Run production build script (prisma generate + tsc)
-RUN npm run build
+# Generate Prisma Client and compile TypeScript with skipLibCheck
+RUN npx prisma generate
+RUN npx tsc --skipLibCheck
 
 # ==========================================================================
 # === SECTION 2: RUNTIME STAGE ===

@@ -1,15 +1,14 @@
 services:
   expense-backend-app:
-    build: ./backend
+    build: ./Backend
     container_name: expense-backend-app
     ports:
       - "5000:5000"
+    env_file:
+      - ./Backend/.env
     environment:
       - NODE_ENV=development
       - PORT=5000
-      - DATABASE_URL=${DATABASE_URL:-postgresql://placeholder:placeholder@localhost:5432/placeholder}
-      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_key_must_be_long_and_secure_12345}
-      - PASETO_SECRET=${PASETO_SECRET:-dev_paseto_secret_key_must_be_32_characters_long_for_security}
       - CLIENT_URL=http://localhost:3000
       - FRONTEND_URL=http://localhost:3000
       - TRUST_PROXY=1
@@ -17,7 +16,10 @@ services:
       - app-network
 
   expense-frontend-app:
-    build: ./frontend
+    build:
+      context: ./Frontend
+      args:
+        - INTERNAL_API_URL=http://expense-backend-app:5000
     container_name: expense-frontend-app
     ports:
       - "3000:3000"

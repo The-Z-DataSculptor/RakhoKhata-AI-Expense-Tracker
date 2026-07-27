@@ -7,23 +7,19 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Copy dependency manifests
 COPY package.json package-lock.json* ./
 
-# Install all dependencies
+# Install all dependencies sequentially
 RUN npm ci --no-audit --no-fund
 
-# Copy source code
 COPY . .
 
-# Bake API URL into client bundle at build time
-ARG NEXT_PUBLIC_API_URL=http://localhost:5000
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
+# Build argument passed from docker-compose.yml
+ARG INTERNAL_API_URL=http://expense-backend-app:5000
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
 
-# Build Next.js application
+# Compile Next.js production build with rewrites mapped to Docker backend URL
 RUN npm run build
 
 # ==========================================================================
@@ -39,10 +35,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY package.json package-lock.json* ./
 
-# Install production dependencies only
+# Install ONLY production dependencies sequentially
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# Copy built Next.js artifacts
+# Copy standalone build artifacts from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 

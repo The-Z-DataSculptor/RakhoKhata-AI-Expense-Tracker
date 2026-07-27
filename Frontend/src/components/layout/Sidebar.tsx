@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar.tsx
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -150,9 +149,11 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
   return (
     <>
       <header className={styles.mobileTopBar}>
-        <div className={styles.mobileLogo}>
-          Rakho<span className={styles.logoAccent}>Khata</span>
-        </div>
+        <Link href="/dashboard" className={styles.mobileLogoLink} onClick={closeMobileDrawer}>
+          <div className={styles.mobileLogo}>
+            Rakho<span className={styles.logoAccent}>Khata</span>
+          </div>
+        </Link>
         <button 
           type="button"
           className={styles.mobileMenuToggleTrigger}
@@ -188,9 +189,11 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
 
         <div className={styles.brandHeaderSection}>
           <div className={styles.brandHeaderRow}>
-            <div className={styles.logoLayout}>
-              Rakho<span className={styles.logoAccent}>Khata</span>
-            </div>
+            <Link href="/dashboard" className={styles.logoLinkWrapper} onClick={closeMobileDrawer}>
+              <div className={styles.logoLayout}>
+                Rakho<span className={styles.logoAccent}>Khata</span>
+              </div>
+            </Link>
             <button
               type="button"
               className={styles.mobileDrawerCloseBtn}

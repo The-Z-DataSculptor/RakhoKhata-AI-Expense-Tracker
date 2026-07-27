@@ -107,6 +107,18 @@
   width: 100%;
 }
 
+.logoLinkWrapper {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-sm, 4px);
+  transition: opacity 0.15s ease;
+}
+
+.logoLinkWrapper:hover {
+  opacity: 0.85;
+}
+
 .logoLayout {
   font-family: var(--font-navbar, inherit);
   font-weight: 800;
@@ -557,6 +569,12 @@
   display: none;
 }
 
+.mobileLogoLink {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 @media (max-width: 768px) {
   /* Hide Desktop Pin Button */
   .desktopCollapsePinButton {
@@ -614,7 +632,7 @@
   .sidebarContainer {
     position: fixed; 
     width: 285px;
-    height: 100dvh; /* Dynamic viewport height fixes Safari mobile navigation bar height issues */
+    height: 100dvh;
     top: 0;
     left: 0; 
     transform: translateX(-100%);
@@ -644,7 +662,7 @@
     animation: dropdownAppendFade 0.2s ease-out;
   }
 
-  /* Force Full View Expansion on Mobile (Ignore collapsed state) */
+  /* Force Full View Expansion on Mobile */
   .collapsedSidebar {
     width: 285px !important;
     padding: 1.25rem 1rem 1.5rem 1rem !important;
@@ -662,7 +680,7 @@
     max-width: none !important;
   }
 
-  /* Mobile Touch Target Optimizations (≥44px height for thumbs) */
+  /* Mobile Touch Target Optimizations */
   .navLinkRow {
     min-height: 44px;
     padding: 0.7rem 0.85rem;

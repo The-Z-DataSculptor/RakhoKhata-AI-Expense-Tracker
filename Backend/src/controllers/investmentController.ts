@@ -4,7 +4,7 @@
    === SECTION 1: IMPORTS & CONFIGURATION ===
    ========================================================================== */
 import { Response as ExpressResponse } from "express";
-import { Prisma } from "../../prisma/generated";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 

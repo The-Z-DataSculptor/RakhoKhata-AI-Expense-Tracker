@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc --skipLibCheck",
+    "build": "prisma generate && esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outdir=dist --packages=external",
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",
@@ -53,6 +53,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.20.0",
+    "esbuild": "^0.25.0",
     "prisma": "^7.8.0",
     "tsx": "^4.23.0",
     "typescript": "^5.7.0"

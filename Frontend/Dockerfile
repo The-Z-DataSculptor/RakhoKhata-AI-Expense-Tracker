@@ -1,46 +1,51 @@
 # Frontend/Dockerfile
 
 # ==========================================================================
-# === SECTION 1: BASE IMAGE & DEPENDENCIES ===
+# === SECTION 1: BUILD STAGE ===
 # ==========================================================================
-FROM node:20-alpine
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Install compatibility libraries required for Next.js SWC compiler on Alpine Linux
-RUN apk add --no-cache libc6-compat
-
-# Copy dependency manifests for layer caching
+# Copy dependency manifests
 COPY package.json package-lock.json* ./
 
-# Clean dependency installation
-RUN npm ci
+# Install all dependencies
+RUN npm ci --no-audit --no-fund
 
-# Copy application source code
+# Copy source code
 COPY . .
-# === SECTION 1 END ===
 
-# ==========================================================================
-# === SECTION 2: BUILD CONFIGURATION & ENVIRONMENT VARIABLES ===
-# ==========================================================================
-# Declare build argument with local development fallback so NEXT_PUBLIC_API_URL 
-# is explicitly baked into the Next.js client bundle during build time.
+# Bake API URL into client bundle at build time
 ARG NEXT_PUBLIC_API_URL=http://localhost:5000
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
-# Disable Next.js telemetry and configure production runtime
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV PORT=3000
 
-# Build the Next.js production bundle
+# Build Next.js application
 RUN npm run build
-# === SECTION 2 END ===
 
 # ==========================================================================
-# === SECTION 3: RUNTIME EXECUTION ===
+# === SECTION 2: RUNTIME STAGE ===
 # ==========================================================================
+FROM node:20-slim AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY package.json package-lock.json* ./
+
+# Install production dependencies only
+RUN npm ci --omit=dev --no-audit --no-fund
+
+# Copy built Next.js artifacts
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+
 EXPOSE 3000
 
 CMD ["npm", "start"]
-# === SECTION 3 END ===

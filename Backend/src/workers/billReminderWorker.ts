@@ -4,7 +4,7 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import cron from "node-cron";
-import { Prisma } from "../../prisma/generated";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { sendBillReminderEmail } from "../services/emailService";
 

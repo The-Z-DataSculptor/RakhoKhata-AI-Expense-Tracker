@@ -67,7 +67,7 @@ const nextConfig: NextConfig = {
       process.env.INTERNAL_API_URL ||
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5000";
+      "http://localhost:5000"; // Safe default for host development (`npm run dev`)
 
     // Clean URL formatting
     const backendBase = rawBackendUrl.replace(/\/+$/, "").replace(/\/api$/, "");

@@ -5,10 +5,10 @@
    ========================================================================== */
 import http from "http";
 import { Socket } from "net";
-import app from "./server";
-import { prisma } from "./db";
-import { initNotificationScheduler } from "./services/notificationService";
-import { initBillReminderCron } from "./workers/billReminderWorker";
+import app from "./server.js";
+import { prisma } from "./db.js";
+import { initNotificationScheduler } from "./services/notificationService.js";
+import { initBillReminderCron } from "./workers/billReminderWorker.js";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -33,7 +33,7 @@ const PORT = parsePort(process.env.PORT, 5000);
 const HOST = process.env.HOST || "0.0.0.0";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-// WHY THIS FIX WAS MADE: Explicit worker activation prevents multi-container API replicas 
+// Explicit worker activation prevents multi-container API replicas 
 // from running duplicate background cron workers unless RUN_BACKGROUND_WORKERS is explicitly set to "true".
 const isWorkerEnabled =
   process.env.RUN_BACKGROUND_WORKERS === "true" || (!IS_PRODUCTION && process.env.RUN_BACKGROUND_WORKERS !== "false");
@@ -46,7 +46,7 @@ const isWorkerEnabled =
 // Instantiate native HTTP server
 const server = http.createServer(app);
 
-// WHY THIS FIX WAS MADE: Configures explicit HTTP server timeouts to protect against Slowloris DoS attacks.
+// Configures explicit HTTP server timeouts to protect against Slowloris DoS attacks.
 server.headersTimeout = 60000; // 60 seconds limit to complete header transmissions
 server.requestTimeout = 120000; // 120 seconds total request processing ceiling
 server.keepAliveTimeout = 5000; // 5 seconds idle keep-alive socket timeout
@@ -75,7 +75,7 @@ process.on("unhandledRejection", (reason: unknown) => {
 });
 
 /**
- * WHY THIS FIX WAS MADE: Wraps server.listen inside a Promise with explicit 'error' event listeners
+ * Wraps server.listen inside a Promise with explicit 'error' event listeners
  * so async port binding failures (e.g., EADDRINUSE) are caught cleanly in try/catch blocks.
  */
 function listenPromise(serverInstance: http.Server, port: number, host: string): Promise<void> {
@@ -110,7 +110,7 @@ async function startServer(): Promise<void> {
 
     const displayHost = HOST === "0.0.0.0" ? "localhost" : HOST;
     console.log(
-      `🚀 Financial secure core engine active on http://${displayHost}:${PORT} [Env: ${process.env.NODE_ENV || "development"}]`
+      `🚀 Financial secure core engine active on http://${displayHost}:${PORT} [Env:${process.env.NODE_ENV || "development"}]`
     );
 
     // Initialize background schedulers only if explicitly enabled on this node
@@ -128,7 +128,7 @@ async function startServer(): Promise<void> {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Closes active keep-alive sockets and drains database connection pools
+ * Closes active keep-alive sockets and drains database connection pools
  * cleanly during SIGTERM/SIGINT shutdown signals without hanging.
  */
 let isShuttingDown = false;

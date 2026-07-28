@@ -1,7 +1,10 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-import "dotenv/config";
+// WHY THIS FIX WAS MADE: Replaced 'import "dotenv/config"' with explicit dotenv.config()
+import dotenv from "dotenv";
+dotenv.config();
+
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
@@ -38,7 +41,7 @@ const connectionPool =
     connectionTimeoutMillis: 10000,
     ssl:
       process.env.DATABASE_SSL === "true" || (isProduction && databaseUrl && !databaseUrl.includes("localhost"))
-        ? { rejectUnauthorized: false } // Allows SSL connections to managed cloud databases
+        ? { rejectUnauthorized: false }
         : false,
   });
 

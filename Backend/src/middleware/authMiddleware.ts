@@ -1,5 +1,3 @@
-// Backend/src/middleware/authMiddleware.ts
-
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
@@ -45,10 +43,13 @@ function derivePasetoKey(): string {
 
   if (!secret) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!");
+      throw new Error(
+        "CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!"
+      );
     }
     // Safe fallback for local development environment only
-    const devFallback = "dev_secret_key_must_be_at_least_32_characters_long_for_security";
+    const devFallback =
+      "dev_secret_key_must_be_at_least_32_characters_long_for_security";
     const devHash = crypto.createHash("sha256").update(devFallback).digest();
     return `k4.local.${devHash.toString("base64url")}`;
   }
@@ -99,7 +100,12 @@ export const verifyTokenGuard = async (
     const decoded = payload as unknown as TokenPayload;
 
     // WHY THIS FIX WAS MADE: Explicitly verifies payload integrity so missing userId or email doesn't pollute req.user.
-    if (!decoded || typeof decoded !== "object" || !decoded.userId || !decoded.email) {
+    if (
+      !decoded ||
+      typeof decoded !== "object" ||
+      !decoded.userId ||
+      !decoded.email
+    ) {
       res
         .status(401)
         .json(buildSafeError("Invalid session token payload structure."));
@@ -112,7 +118,11 @@ export const verifyTokenGuard = async (
       if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
         res
           .status(401)
-          .json(buildSafeError("Your financial session has expired. Please log in again."));
+          .json(
+            buildSafeError(
+              "Your financial session has expired. Please log in again."
+            )
+          );
         return;
       }
     }
@@ -133,13 +143,21 @@ export const verifyTokenGuard = async (
     if (errorMessage.includes("expired")) {
       res
         .status(401)
-        .json(buildSafeError("Your financial session has expired. Please log in again."));
+        .json(
+          buildSafeError(
+            "Your financial session has expired. Please log in again."
+          )
+        );
       return;
     }
 
     res
       .status(401)
-      .json(buildSafeError("Session authentication failed or token has been tampered with."));
+      .json(
+        buildSafeError(
+          "Session authentication failed or token has been tampered with."
+        )
+      );
   }
 };
 
@@ -157,7 +175,11 @@ export const ensureOnboardingCompleted = async (
     if (!userId) {
       res
         .status(401)
-        .json(buildSafeError("Unauthorized access. Active user session context missing."));
+        .json(
+          buildSafeError(
+            "Unauthorized access. Active user session context missing."
+          )
+        );
       return;
     }
 
@@ -178,7 +200,9 @@ export const ensureOnboardingCompleted = async (
       res
         .status(403)
         .json(
-          buildSafeError("Access denied. Please complete your personalized profile onboarding setup first.")
+          buildSafeError(
+            "Access denied. Please complete your personalized profile onboarding setup first."
+          )
         );
       return;
     }
@@ -189,7 +213,11 @@ export const ensureOnboardingCompleted = async (
     console.error("Onboarding Validation Gate Exception:", error);
     res
       .status(500)
-      .json(buildSafeError("Internal server error confirming customization status."));
+      .json(
+        buildSafeError(
+          "Internal server error confirming customization status."
+        )
+      );
   }
 };
 /* === SECTION 3 END === */

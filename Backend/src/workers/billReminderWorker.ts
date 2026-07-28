@@ -1,5 +1,3 @@
-// Backend/src/workers/billReminderWorker.ts
-
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
@@ -57,29 +55,43 @@ function isReminderDueOnDate(
   const targetMonth = referenceDate.getUTCMonth();
 
   // 1. Calculate reminder date for current month's due date
-  const lastDayCurrentMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const lastDayCurrentMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0)
+  ).getUTCDate();
   const actualDueDayCurrentMonth = Math.min(dueDay, lastDayCurrentMonth);
-  const dueDateCurrentMonth = new Date(Date.UTC(targetYear, targetMonth, actualDueDayCurrentMonth));
+  const dueDateCurrentMonth = new Date(
+    Date.UTC(targetYear, targetMonth, actualDueDayCurrentMonth)
+  );
 
   const reminderDateCurrentMonth = new Date(dueDateCurrentMonth);
-  reminderDateCurrentMonth.setUTCDate(reminderDateCurrentMonth.getUTCDate() - reminderDays);
+  reminderDateCurrentMonth.setUTCDate(
+    reminderDateCurrentMonth.getUTCDate() - reminderDays
+  );
 
   // 2. Calculate reminder date for next month's due date (handles reminders falling into the end of current month)
-  const lastDayNextMonth = new Date(Date.UTC(targetYear, targetMonth + 2, 0)).getUTCDate();
+  const lastDayNextMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 2, 0)
+  ).getUTCDate();
   const actualDueDayNextMonth = Math.min(dueDay, lastDayNextMonth);
-  const dueDateNextMonth = new Date(Date.UTC(targetYear, targetMonth + 1, actualDueDayNextMonth));
+  const dueDateNextMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, actualDueDayNextMonth)
+  );
 
   const reminderDateNextMonth = new Date(dueDateNextMonth);
-  reminderDateNextMonth.setUTCDate(reminderDateNextMonth.getUTCDate() - reminderDays);
+  reminderDateNextMonth.setUTCDate(
+    reminderDateNextMonth.getUTCDate() - reminderDays
+  );
 
   // 3. Match reference date against calculated targets
   const matchesCurrentMonthReminder =
-    referenceDate.getUTCFullYear() === reminderDateCurrentMonth.getUTCFullYear() &&
+    referenceDate.getUTCFullYear() ===
+      reminderDateCurrentMonth.getUTCFullYear() &&
     referenceDate.getUTCMonth() === reminderDateCurrentMonth.getUTCMonth() &&
     referenceDate.getUTCDate() === reminderDateCurrentMonth.getUTCDate();
 
   const matchesNextMonthReminder =
-    referenceDate.getUTCFullYear() === reminderDateNextMonth.getUTCFullYear() &&
+    referenceDate.getUTCFullYear() ===
+      reminderDateNextMonth.getUTCFullYear() &&
     referenceDate.getUTCMonth() === reminderDateNextMonth.getUTCMonth() &&
     referenceDate.getUTCDate() === reminderDateNextMonth.getUTCDate();
 
@@ -94,7 +106,7 @@ function isReminderDueOnDate(
 /**
  * Scans recurring bill categories using cursor pagination, verifies reminder due dates,
  * checks idempotency locks to eliminate duplicate emails, and dispatches reminders.
- * 
+ *
  * WHY THIS FIX WAS MADE: Exported function to allow manual execution in testing scripts.
  */
 export async function runBillScanner(): Promise<void> {
@@ -102,7 +114,9 @@ export async function runBillScanner(): Promise<void> {
   const currentMonth = today.getUTCMonth() + 1; // 1-12 UTC
   const currentYear = today.getUTCFullYear();
 
-  console.log(`🕒 [BillReminderWorker] Starting scan for UTC date: ${today.toUTCString()}`);
+  console.log(
+    `🕒 [BillReminderWorker] Starting scan for UTC date: ${today.toUTCString()}`
+  );
 
   try {
     let emailsDispatched = 0;
@@ -145,7 +159,9 @@ export async function runBillScanner(): Promise<void> {
       }
 
       const categoriesWithReminders: CategoryWorkerPayload[] =
-        (await prisma.category.findMany(queryOptions)) as unknown as CategoryWorkerPayload[];
+        (await prisma.category.findMany(
+          queryOptions
+        )) as unknown as CategoryWorkerPayload[];
 
       if (categoriesWithReminders.length === 0) {
         hasMoreRecords = false;
@@ -154,7 +170,11 @@ export async function runBillScanner(): Promise<void> {
 
       for (const category of categoriesWithReminders) {
         const user = category.workspace?.user;
-        if (!user || category.dueDay === null || category.reminderDays === null) {
+        if (
+          !user ||
+          category.dueDay === null ||
+          category.reminderDays === null
+        ) {
           continue;
         }
 
@@ -183,7 +203,10 @@ export async function runBillScanner(): Promise<void> {
             dueDay,
             reminderDays
           ).catch((err: unknown) => {
-            logWorkerError(`Failed to send background email to user ${user.id}`, err);
+            logWorkerError(
+              `Failed to send background email to user ${user.id}`,
+              err
+            );
             return false;
           });
 
@@ -199,7 +222,10 @@ export async function runBillScanner(): Promise<void> {
                 idempotencyKey,
               },
             }).catch((dbErr: unknown) => {
-              logWorkerError(`Failed to save idempotency record for ${category.id}`, dbErr);
+              logWorkerError(
+                `Failed to save idempotency record for ${category.id}`,
+                dbErr
+              );
             });
 
             emailsDispatched++;
@@ -213,7 +239,9 @@ export async function runBillScanner(): Promise<void> {
       }
     }
 
-    console.log(`✉️ [BillReminderWorker] Sweep completed. Dispatched ${emailsDispatched} reminder emails.`);
+    console.log(
+      `✉️ [BillReminderWorker] Sweep completed. Dispatched ${emailsDispatched} reminder emails.`
+    );
   } catch (error: unknown) {
     logWorkerError("Error running upcoming bill worker loop:", error);
   }
@@ -228,7 +256,9 @@ export async function runBillScanner(): Promise<void> {
  * Initializes the background cron scheduler using UTC timezone constraints.
  */
 export function initBillReminderCron(): void {
-  console.log("[Notification Service] Bill reminder background cron scheduler loaded (UTC).");
+  console.log(
+    "[Notification Service] Bill reminder background cron scheduler loaded (UTC)."
+  );
 
   // WHY THIS FIX WAS MADE: Explicitly configured UTC timezone in node-cron options
   // to ensure consistent execution times regardless of host server deployment location.

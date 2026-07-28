@@ -1,23 +1,17 @@
-// Backend/prisma.config.ts
-
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-// WHY THIS FIX WAS MADE: In Prisma 7, .env files are loaded explicitly at the top of the file.
-// We import 'dotenv/config' and the official 'defineConfig' / 'env' helpers from 'prisma/config'.
-import "dotenv/config";
+// WHY THIS FIX WAS MADE: Replaced 'import "dotenv/config"' with explicit dotenv.config()
+// to avoid fileURLToPath(import.meta.url) crash in bundled environments (Hostinger).
+import dotenv from "dotenv";
+dotenv.config();
+
 import { defineConfig, env } from "prisma/config";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: PRISMA 7 CLI CONFIGURATION ===
    ========================================================================== */
-
-/**
- * WHY THIS FIX WAS MADE: Using standard relative string paths ("prisma/schema.prisma") 
- * and Prisma's native env("DATABASE_URL") helper completely removes the need for 'path' 
- * and 'process' references, eliminating all TypeScript global scope errors permanently.
- */
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -27,4 +21,3 @@ export default defineConfig({
     url: env("DATABASE_URL"),
   },
 });
-/* === SECTION 2 END === */

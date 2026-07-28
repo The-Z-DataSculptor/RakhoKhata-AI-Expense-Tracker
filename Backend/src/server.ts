@@ -6,17 +6,17 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
-import { prisma } from "./db.js";
-import authRoutes from "./routes/authRoutes.js";
-import workspaceRoutes from "./routes/workspaceRoutes.js";
-import transactionRoutes from "./routes/transactionRoutes.js";
-import categoryRoutes from "./routes/categoryRoutes.js";
-import budgetRoutes from "./routes/budgetRoutes.js";
-import investmentRoutes from "./routes/investmentRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import { globalApiLimiter } from "./middleware/rateLimitMiddleware.js";
+import { prisma } from "./db";
+import authRoutes from "./routes/authRoutes";
+import workspaceRoutes from "./routes/workspaceRoutes";
+import transactionRoutes from "./routes/transactionRoutes";
+import categoryRoutes from "./routes/categoryRoutes";
+import budgetRoutes from "./routes/budgetRoutes";
+import investmentRoutes from "./routes/investmentRoutes";
+import aiRoutes from "./routes/aiRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
+import userRoutes from "./routes/userRoutes";
+import { globalApiLimiter } from "./middleware/rateLimitMiddleware";
 /* === SECTION 1 END === */
 
 const app = express();
@@ -26,7 +26,12 @@ const app = express();
    ========================================================================== */
 
 const rawTrustProxy = process.env.TRUST_PROXY || "1";
-const parsedTrustProxy = rawTrustProxy === "true" ? true : isNaN(Number(rawTrustProxy)) ? rawTrustProxy : Number(rawTrustProxy);
+const parsedTrustProxy =
+  rawTrustProxy === "true"
+    ? true
+    : isNaN(Number(rawTrustProxy))
+    ? rawTrustProxy
+    : Number(rawTrustProxy);
 app.set("trust proxy", parsedTrustProxy);
 
 app.use(
@@ -49,7 +54,11 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       const normalizedOrigin = origin.replace(/\/$/, "");
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(normalizedOrigin) || process.env.NODE_ENV !== "production") {
+      if (
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(normalizedOrigin) ||
+        process.env.NODE_ENV !== "production"
+      ) {
         return callback(null, true);
       }
       return callback(null, true);

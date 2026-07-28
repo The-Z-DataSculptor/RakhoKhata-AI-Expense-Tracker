@@ -3,10 +3,10 @@
    ========================================================================== */
 import http from "http";
 import { Socket } from "net";
-import app from "./server.js";
-import { prisma } from "./db.js";
-import { initNotificationScheduler } from "./services/notificationService.js";
-import { initBillReminderCron } from "./workers/billReminderWorker.js";
+import app from "./server";
+import { prisma } from "./db";
+import { initNotificationScheduler } from "./services/notificationService";
+import { initBillReminderCron } from "./workers/billReminderWorker";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -17,7 +17,8 @@ const rawPort = process.env.PORT || "5000";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const isWorkerEnabled =
-  process.env.RUN_BACKGROUND_WORKERS === "true" || (!IS_PRODUCTION && process.env.RUN_BACKGROUND_WORKERS !== "false");
+  process.env.RUN_BACKGROUND_WORKERS === "true" ||
+  (!IS_PRODUCTION && process.env.RUN_BACKGROUND_WORKERS !== "false");
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -47,7 +48,10 @@ process.on("unhandledRejection", (reason: unknown) => {
   console.error("💥 CRITICAL UNHANDLED PROMISE REJECTION:", reason);
 });
 
-function listenPromise(serverInstance: http.Server, portOrPath: string | number): Promise<void> {
+function listenPromise(
+  serverInstance: http.Server,
+  portOrPath: string | number
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const onError = (error: Error) => {
       serverInstance.removeListener("listening", onListening);
@@ -62,7 +66,10 @@ function listenPromise(serverInstance: http.Server, portOrPath: string | number)
     serverInstance.once("error", onError);
     serverInstance.once("listening", onListening);
 
-    if (typeof portOrPath === "string" && (isNaN(Number(portOrPath)) || portOrPath.startsWith("\\\\.\\pipe\\"))) {
+    if (
+      typeof portOrPath === "string" &&
+      (isNaN(Number(portOrPath)) || portOrPath.startsWith("\\\\.\\pipe\\"))
+    ) {
       serverInstance.listen(portOrPath);
     } else {
       serverInstance.listen(Number(portOrPath));
@@ -74,7 +81,9 @@ async function startServer(): Promise<void> {
   try {
     // Bind HTTP server first so Hostinger reverse proxy finds active process
     await listenPromise(server, rawPort);
-    console.log(`🚀 Financial secure core engine active on port/socket: ${rawPort}`);
+    console.log(
+      `🚀 Financial secure core engine active on port/socket: ${rawPort}`
+    );
 
     // Try database connection non-blockingly
     try {
@@ -85,7 +94,9 @@ async function startServer(): Promise<void> {
     }
 
     if (isWorkerEnabled) {
-      console.log("⚙️ Background cron schedulers initializing on this node...");
+      console.log(
+        "⚙️ Background cron schedulers initializing on this node..."
+      );
       initNotificationScheduler();
       initBillReminderCron();
     }

@@ -1,5 +1,3 @@
-// Backend/src/db.ts
-
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
@@ -20,12 +18,10 @@ declare global {
    === SECTION 2: ENVIRONMENT VALIDATION & POOL CONFIGURATION ===
    ========================================================================== */
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || "";
 
-if (!databaseUrl || typeof databaseUrl !== "string" || !databaseUrl.trim()) {
-  throw new Error(
-    "CRITICAL DATABASE ERROR: The 'DATABASE_URL' environment variable is missing or empty. Server cannot start."
-  );
+if (!databaseUrl.trim()) {
+  console.error("⚠️ WARNING: 'DATABASE_URL' environment variable is missing or empty.");
 }
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -41,7 +37,7 @@ const connectionPool =
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
     ssl:
-      process.env.DATABASE_SSL === "true" || (isProduction && !databaseUrl.includes("localhost"))
+      process.env.DATABASE_SSL === "true" || (isProduction && databaseUrl && !databaseUrl.includes("localhost"))
         ? { rejectUnauthorized: false } // Allows SSL connections to managed cloud databases
         : false,
   });

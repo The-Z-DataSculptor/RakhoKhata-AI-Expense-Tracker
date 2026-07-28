@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=index.js --banner:js=\"const import_meta_url = typeof document === 'undefined' ? new (require('url').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src) || '';\" --external:bcrypt --external:@prisma/client",
+    "build": "prisma generate && esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=index.js --external:bcrypt --external:@prisma/client",
     "start": "node index.js",
     "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",

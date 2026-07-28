@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "description": "Secure financial backend engine for RakhoKhata",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outdir=dist --packages=external",
+    "build": "prisma generate && esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --outdir=dist --packages=external",
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",

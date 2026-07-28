@@ -24,6 +24,7 @@ node_modules/
 # WHY THIS FIX WAS MADE: Use a comprehensive wildcard pattern (.env*) to block 
 # ALL environment file variations (staging, production, vault, etc.) while 
 # explicitly whitelisting template files (.env.example).
+.env
 .env*
 !.env.example
 !.env.template

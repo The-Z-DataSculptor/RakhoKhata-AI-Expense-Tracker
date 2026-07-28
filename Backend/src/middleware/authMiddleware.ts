@@ -1,9 +1,11 @@
+// Backend/src/middleware/authMiddleware.ts
+
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Response as ExpressResponse, NextFunction, Request } from "express";
 import crypto from "crypto";
-import { decrypt } from "paseto-ts/v4";
+import { decrypt } from "paseto-ts";
 import { prisma } from "../db";
 
 // Structure of the payload embedded inside the PASETO token

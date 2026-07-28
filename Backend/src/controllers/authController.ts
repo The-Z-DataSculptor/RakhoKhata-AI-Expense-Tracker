@@ -6,7 +6,7 @@
 import { Request, Response as ExpressResponse } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { encrypt } from "paseto-ts/v4";
+import { encrypt } from "paseto-ts";
 import { TransactionType, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";

@@ -13,18 +13,8 @@ import { initBillReminderCron } from "./workers/billReminderWorker.js";
    === SECTION 2: UTILITIES & CONFIGURATION ===
    ========================================================================== */
 
-function parsePort(val: string | undefined, defaultPort: number = 5000): number {
-  if (!val) return defaultPort;
-  const parsed = parseInt(val, 10);
-  if (isNaN(parsed) || parsed <= 0 || parsed > 65535) {
-    console.warn(`⚠️ Invalid PORT configuration "${val}". Falling back to default port ${defaultPort}.`);
-    return defaultPort;
-  }
-  return parsed;
-}
-
-const PORT = parsePort(process.env.PORT, 5000);
-const HOST = process.env.HOST || "0.0.0.0";
+// Hostinger / Passenger passes the port or pipe path in process.env.PORT
+const rawPort = process.env.PORT || "5000";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const isWorkerEnabled =
@@ -58,7 +48,10 @@ process.on("unhandledRejection", (reason: unknown) => {
   console.error("💥 CRITICAL UNHANDLED PROMISE REJECTION:", reason);
 });
 
-function listenPromise(serverInstance: http.Server, port: number, host: string): Promise<void> {
+/**
+ * Listens on the port or socket path injected by Hostinger / Passenger
+ */
+function listenPromise(serverInstance: http.Server, portOrPath: string | number): Promise<void> {
   return new Promise((resolve, reject) => {
     const onError = (error: Error) => {
       serverInstance.removeListener("listening", onListening);
@@ -72,21 +65,25 @@ function listenPromise(serverInstance: http.Server, port: number, host: string):
 
     serverInstance.once("error", onError);
     serverInstance.once("listening", onListening);
-    serverInstance.listen(port, host);
+
+    // If portOrPath is a string containing 'passenger' or named pipe, listen directly without host parameter
+    if (typeof portOrPath === "string" && (isNaN(Number(portOrPath)) || portOrPath.startsWith("\\\\.\\pipe\\"))) {
+      serverInstance.listen(portOrPath);
+    } else {
+      // Numerical port: listen directly so Passenger / Hostinger reverse proxy binds cleanly
+      serverInstance.listen(Number(portOrPath));
+    }
   });
 }
 
 async function startServer(): Promise<void> {
   try {
-    // 1. First, start HTTP listening socket so Hostinger proxy sees a live web process immediately
-    await listenPromise(server, PORT, HOST);
+    // 1. Start HTTP server listening directly on Hostinger's assigned socket/port
+    await listenPromise(server, rawPort);
 
-    const displayHost = HOST === "0.0.0.0" ? "localhost" : HOST;
-    console.log(
-      `🚀 Financial secure core engine active on http://${displayHost}:${PORT} [Env:${process.env.NODE_ENV || "development"}]`
-    );
+    console.log(`🚀 Financial secure core engine active on port/socket: ${rawPort} [Env:${process.env.NODE_ENV || "development"}]`);
 
-    // 2. Next, establish database connection pool
+    // 2. Establish database connection pool in background
     try {
       await prisma.$connect();
       console.log("✅ Database connection established successfully.");
@@ -103,7 +100,7 @@ async function startServer(): Promise<void> {
       console.log("ℹ️ Background cron schedulers disabled on this node.");
     }
   } catch (error: unknown) {
-    console.error("❌ Fatal error binding HTTP server port:", error);
+    console.error("❌ Fatal error binding HTTP server:", error);
     process.exit(1);
   }
 }

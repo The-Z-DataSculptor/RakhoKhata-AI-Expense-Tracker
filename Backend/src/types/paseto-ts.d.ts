@@ -1,6 +1,6 @@
 // Backend/src/types/paseto-ts.d.ts
 
-declare module "paseto-ts" {
+declare module "paseto-ts/v4" {
   /**
    * Encrypts a payload into a PASETO token.
    */

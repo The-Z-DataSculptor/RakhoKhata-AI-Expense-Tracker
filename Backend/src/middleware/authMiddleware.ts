@@ -4,9 +4,8 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Response as ExpressResponse, NextFunction, Request } from "express";
-import crypto from "crypto";
-import { decrypt } from "paseto-ts";
 import { prisma } from "../db";
+import { decryptSessionToken } from "../utils/sessionToken";
 
 // Structure of the payload embedded inside the PASETO token
 interface TokenPayload {
@@ -40,35 +39,6 @@ function buildSafeError(message: string): { error: string } {
  * WHY THIS FIX WAS MADE: Generates a 52-character PASERK key and throws an explicit startup error
  * in production if PASETO_SECRET is missing, preventing silent fallbacks to insecure keys.
  */
-function derivePasetoKey(): string {
-  const secret = process.env.PASETO_SECRET;
-
-  if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!"
-      );
-    }
-    // Safe fallback for local development environment only
-    const devFallback =
-      "dev_secret_key_must_be_at_least_32_characters_long_for_security";
-    const devHash = crypto.createHash("sha256").update(devFallback).digest();
-    return `k4.local.${devHash.toString("base64url")}`;
-  }
-
-  const hash = crypto.createHash("sha256").update(secret).digest();
-  return `k4.local.${hash.toString("base64url")}`;
-}
-
-// Memory cache for the derived key to avoid hashing on every single HTTP request
-let cachedPasetoKey: string | null = null;
-
-function getPasetoKey(): string {
-  if (!cachedPasetoKey) {
-    cachedPasetoKey = derivePasetoKey();
-  }
-  return cachedPasetoKey;
-}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -95,11 +65,10 @@ export const verifyTokenGuard = async (
       return;
     }
 
-    // 2. Decrypt the token using the cached PASETO key
-    const { payload } = await decrypt(getPasetoKey(), token);
+    // 2. Decrypt the token using the shared session token utility
+    const decoded = await decryptSessionToken(token);
 
     // 3. Narrow and validate the payload safely
-    const decoded = payload as unknown as TokenPayload;
 
     // WHY THIS FIX WAS MADE: Explicitly verifies payload integrity so missing userId or email doesn't pollute req.user.
     if (

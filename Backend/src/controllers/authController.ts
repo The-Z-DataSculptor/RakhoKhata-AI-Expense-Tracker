@@ -6,8 +6,8 @@
 import { Request, Response as ExpressResponse } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { encrypt } from "paseto-ts";
 import { TransactionType, Prisma } from "@prisma/client";
+import { encryptSessionToken } from "../utils/sessionToken";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import {
@@ -83,7 +83,7 @@ function getPasetoKey(): string {
 
 async function generateSessionToken(userId: string, email: string): Promise<string> {
   const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
-  return await encrypt(getPasetoKey(), {
+  return await encryptSessionToken({
     userId,
     email,
     exp: expirationTime,

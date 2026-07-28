@@ -2,11 +2,11 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Secure financial backend engine for RakhoKhata",
-  "main": "index.js",
+  "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --outdir=dist --packages=external",
-    "start": "node index.js",
+    "build": "prisma generate",
+    "start": "tsx src/index.ts",
     "type-check": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:push": "prisma db push --accept-data-loss",
@@ -39,7 +39,8 @@
     "paseto-ts": "^2.0.6",
     "pdfkit": "^0.19.1",
     "pg": "^8.22.0",
-    "resend": "^6.17.2"
+    "resend": "^6.17.2",
+    "tsx": "^4.23.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -54,7 +55,6 @@
     "@types/pg": "^8.20.0",
     "esbuild": "^0.25.0",
     "prisma": "^7.8.0",
-    "tsx": "^4.23.0",
     "typescript": "^5.7.0"
   }
 }

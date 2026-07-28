@@ -1,3 +1,5 @@
+// Backend/src/index.ts
+
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
@@ -27,9 +29,10 @@ const isWorkerEnabled =
 
 const server = http.createServer(app);
 
-server.headersTimeout = 60000;
+// Keep-alive timeouts aligned with Nginx reverse proxy standards
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 server.requestTimeout = 120000;
-server.keepAliveTimeout = 5000;
 
 const openSockets = new Set<Socket>();
 
@@ -72,7 +75,8 @@ function listenPromise(
     ) {
       serverInstance.listen(portOrPath);
     } else {
-      serverInstance.listen(Number(portOrPath));
+      // Explicitly bind to 0.0.0.0 so Hostinger's IPv4 proxy (127.0.0.1) connects successfully
+      serverInstance.listen(Number(portOrPath), "0.0.0.0");
     }
   });
 }

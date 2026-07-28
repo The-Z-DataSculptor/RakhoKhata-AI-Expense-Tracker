@@ -35,7 +35,6 @@ app.use(
   })
 );
 
-// Permissive CORS fallback to prevent server boot failure
 const rawAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -53,7 +52,7 @@ app.use(
       if (allowedOrigins.length === 0 || allowedOrigins.includes(normalizedOrigin) || process.env.NODE_ENV !== "production") {
         return callback(null, true);
       }
-      return callback(null, true); // Fallback: allow requests in production to prevent 503 crashes
+      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -66,7 +65,6 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// Serve uploads directory safely
 app.use(
   "/uploads",
   express.static(path.resolve(process.cwd(), "public", "uploads"), {
@@ -75,7 +73,7 @@ app.use(
   })
 );
 
-// Health check endpoint (placed BEFORE rate limiters or auth middlewares)
+// Health check endpoint
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -86,7 +84,6 @@ app.get("/api/health", async (_req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    console.error("Health check database warning:", error);
     res.status(200).json({
       status: "active",
       message: "API Active (Database connecting...)",
@@ -95,10 +92,8 @@ app.get("/api/health", async (_req: Request, res: Response) => {
   }
 });
 
-// Apply rate limiter to general API routes
 app.use("/api", globalApiLimiter);
 
-// Primary route handlers
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/workspaces", workspaceRoutes);
@@ -109,7 +104,6 @@ app.use("/api/investments", investmentRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// Catch-all 404 handler
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Requested API endpoint does not exist." });
 });

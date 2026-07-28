@@ -13,7 +13,6 @@ import { initBillReminderCron } from "./workers/billReminderWorker.js";
    === SECTION 2: UTILITIES & CONFIGURATION ===
    ========================================================================== */
 
-// Hostinger / Passenger passes the port or pipe path in process.env.PORT
 const rawPort = process.env.PORT || "5000";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -48,9 +47,6 @@ process.on("unhandledRejection", (reason: unknown) => {
   console.error("💥 CRITICAL UNHANDLED PROMISE REJECTION:", reason);
 });
 
-/**
- * Listens on the port or socket path injected by Hostinger / Passenger
- */
 function listenPromise(serverInstance: http.Server, portOrPath: string | number): Promise<void> {
   return new Promise((resolve, reject) => {
     const onError = (error: Error) => {
@@ -66,11 +62,9 @@ function listenPromise(serverInstance: http.Server, portOrPath: string | number)
     serverInstance.once("error", onError);
     serverInstance.once("listening", onListening);
 
-    // If portOrPath is a string containing 'passenger' or named pipe, listen directly without host parameter
     if (typeof portOrPath === "string" && (isNaN(Number(portOrPath)) || portOrPath.startsWith("\\\\.\\pipe\\"))) {
       serverInstance.listen(portOrPath);
     } else {
-      // Numerical port: listen directly so Passenger / Hostinger reverse proxy binds cleanly
       serverInstance.listen(Number(portOrPath));
     }
   });
@@ -78,12 +72,11 @@ function listenPromise(serverInstance: http.Server, portOrPath: string | number)
 
 async function startServer(): Promise<void> {
   try {
-    // 1. Start HTTP server listening directly on Hostinger's assigned socket/port
+    // Bind HTTP server first so Hostinger reverse proxy finds active process
     await listenPromise(server, rawPort);
+    console.log(`🚀 Financial secure core engine active on port/socket: ${rawPort}`);
 
-    console.log(`🚀 Financial secure core engine active on port/socket: ${rawPort} [Env:${process.env.NODE_ENV || "development"}]`);
-
-    // 2. Establish database connection pool in background
+    // Try database connection non-blockingly
     try {
       await prisma.$connect();
       console.log("✅ Database connection established successfully.");
@@ -91,13 +84,10 @@ async function startServer(): Promise<void> {
       console.error("⚠️ Database connection warning during boot:", dbError);
     }
 
-    // 3. Initialize background schedulers if enabled
     if (isWorkerEnabled) {
       console.log("⚙️ Background cron schedulers initializing on this node...");
       initNotificationScheduler();
       initBillReminderCron();
-    } else {
-      console.log("ℹ️ Background cron schedulers disabled on this node.");
     }
   } catch (error: unknown) {
     console.error("❌ Fatal error binding HTTP server:", error);

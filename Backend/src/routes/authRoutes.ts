@@ -43,11 +43,6 @@ import {
 /* ==========================================================================
    === SECTION 2: SECURITY RATE LIMITERS ===
    ========================================================================== */
-/**
- * WHY THIS FIX WAS MADE: Updated keyGenerator to use getUserOrIpKey helper and added 
- * 'validate: { keyGeneratorIpFallback: false }'. This normalizes IPv6 client addresses 
- * to their subnet blocks and suppresses the express-rate-limit ERR_ERL_KEY_GEN_IPV6 warning.
- */
 const pinAttemptLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -78,10 +73,14 @@ router.get("/me", verifyTokenGuard, getMe);
 // Profile & credential management
 router.put("/update-profile", verifyTokenGuard, writeActionsLimiter, updateProfile);
 router.post("/change-password", verifyTokenGuard, strictAuthLimiter, changePassword);
-router.put("/complete-onboarding", verifyTokenGuard, writeActionsLimiter, completeOnboarding);
 
-// Password reset flow (public routes)
+// Complete onboarding (supports both PUT and POST)
+router.put("/complete-onboarding", verifyTokenGuard, writeActionsLimiter, completeOnboarding);
+router.post("/complete-onboarding", verifyTokenGuard, writeActionsLimiter, completeOnboarding);
+
+// Password reset flow (supports both /forgot-password and /request-password-reset)
 router.post("/forgot-password", strictAuthLimiter, requestPasswordReset);
+router.post("/request-password-reset", strictAuthLimiter, requestPasswordReset);
 router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
 
 // Email verification (public route)

@@ -1,3 +1,5 @@
+// Backend/src/server.ts
+
 /* ==========================================================================
    === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
@@ -43,11 +45,14 @@ app.use(
 const rawAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "https://paleturquoise-lyrebird-486193.hostingersite.com",
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
-const allowedOrigins = rawAllowedOrigins.map((url) => url.replace(/\/$/, ""));
+const allowedOrigins = Array.from(
+  new Set(rawAllowedOrigins.map((url) => url.replace(/\/$/, "")))
+);
 
 app.use(
   cors({
@@ -82,7 +87,17 @@ app.use(
   })
 );
 
-// Health check endpoint
+// Root health check endpoint
+app.get("/", (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: "active",
+    message: "Welcome to RakhoKhata API Engine",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Detailed health check endpoint
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;

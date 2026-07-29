@@ -20,7 +20,7 @@ import {
   SHARED_DEFAULT_BUSINESS_CATEGORIES,
 } from "./workspaceController";
 
-// Environment variables with fallback safeguards pointing to local development
+// Environment variables with fallback safeguards
 const APP_FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -30,11 +30,11 @@ const GOOGLE_CALLBACK_URL =
 
 const EXTERNAL_API_TIMEOUT_MS = 10000;
 
-// Standard cookie options (works identically on local & production via same-origin rewrites)
+// Cross-domain cookie settings for separate Hostinger Frontend & Backend subdomains
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  sameSite: process.env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 /* === SECTION 1 END === */
@@ -63,22 +63,6 @@ interface UpdateProfileRequestBody {
   occupation?: unknown;
   financialGoal?: unknown;
   aiPersona?: unknown;
-}
-
-function getPasetoKey(): string {
-  const secret = process.env.PASETO_SECRET;
-
-  if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("CRITICAL SECURITY ERROR: PASETO_SECRET environment variable is missing!");
-    }
-    const devFallback = "dev_secret_key_must_be_at_least_32_characters_long_for_security";
-    const devHash = crypto.createHash("sha256").update(devFallback).digest();
-    return `k4.local.${devHash.toString("base64url")}`;
-  }
-
-  const hash = crypto.createHash("sha256").update(secret).digest();
-  return `k4.local.${hash.toString("base64url")}`;
 }
 
 async function generateSessionToken(userId: string, email: string): Promise<string> {
@@ -670,7 +654,7 @@ export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   res.cookie("oauth_state", stateToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 10 * 60 * 1000,
   });
 

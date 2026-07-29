@@ -14,13 +14,15 @@ interface TokenPayload {
   exp?: string;
 }
 
-// Custom request type that extends Express Request with user identity & full request context
+// Custom request type that extends Express Request with user identity, files, and full request context
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;      // Added for compatibility across all middlewares
     userId: string;  // Kept for backward compatibility
     email: string;
   };
+  file?: any;
+  files?: any;
   body: any;
   query: any;
   params: any;

@@ -25,10 +25,9 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
   const { createWorkspace } = useWorkspace();
   
   const [newWorkspaceName, setNewWorkspaceName] = useState<string>("");
-  const [currency, setCurrency] = useState<string>("USD");
   const [isPending, setIsPending] = useState<boolean>(false);
 
-  // WHY THIS FIX WAS MADE: Listens for Escape key presses to dismiss modal accessibly.
+  // Listens for Escape key presses to dismiss modal accessibly.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isPending) {
@@ -52,7 +51,7 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
     
     try {
       setIsPending(true);
-      await createWorkspace(sanitizedName, currency);
+      await createWorkspace(sanitizedName, "USD");
       setNewWorkspaceName("");
       toast.success("Workspace created successfully!");
       onClose();
@@ -63,7 +62,7 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
     } finally {
       setIsPending(false);
     }
-  }, [newWorkspaceName, currency, createWorkspace, onClose, isPending]);
+  }, [newWorkspaceName, createWorkspace, onClose, isPending]);
   /* === SECTION 3 END === */
 
   /* ==========================================================================
@@ -92,26 +91,6 @@ export default function CreateWorkspaceModal({ onClose }: CreateWorkspaceModalPr
               autoFocus
               required
             />
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label htmlFor="workspaceCurrency">Base Currency</label>
-            <select
-              id="workspaceCurrency"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              disabled={isPending}
-              className={styles.currencySelectField}
-              required
-            >
-              <option value="USD">USD - United States Dollar ($)</option>
-              <option value="PKR">PKR - Pakistani Rupee (Rs.)</option>
-              <option value="EUR">EUR - Euro Zone (€)</option>
-              <option value="GBP">GBP - British Pound (£)</option>
-              <option value="INR">INR - Indian Rupee (₹)</option>
-              <option value="AED">AED - UAE Dirham</option>
-              <option value="SAR">SAR - Saudi Riyal</option>
-            </select>
           </div>
           
           <div className={styles.modalActions}>

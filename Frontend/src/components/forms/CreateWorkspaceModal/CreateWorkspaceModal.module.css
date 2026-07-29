@@ -50,7 +50,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 3: FORM INPUTS & SELECT FIELDS ===
+   === SECTION 3: FORM INPUTS ===
    ========================================================================== */
 .inputGroup {
   display: flex;
@@ -65,8 +65,7 @@
   color: var(--text-primary);
 }
 
-.inputGroup input,
-.currencySelectField {
+.inputGroup input {
   padding: 0.75rem 1rem;
   background-color: var(--surface-muted);
   border: 1px solid var(--border-color);
@@ -79,20 +78,12 @@
   box-sizing: border-box;
 }
 
-/* Premium styled dropdown properties ensuring uniform height metrics across browsers */
-.currencySelectField {
-  cursor: pointer;
-  appearance: auto; /* Retains natural native selector arrow handles cleanly */
-}
-
-.inputGroup input:focus,
-.currencySelectField:focus {
+.inputGroup input:focus {
   border-color: var(--color-primary);
   background-color: var(--bg-surface);
 }
 
-.inputGroup input:disabled,
-.currencySelectField:disabled {
+.inputGroup input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -197,14 +188,9 @@
     font-size: 0.78rem;
   }
 
-  /* 
-   * Strict iOS Auto-Zoom Fix: Enforce font-size: 1rem (16px) or above 
-   * on mobile to prevent iOS Safari/Chrome from zooming in when focused.
-   */
-  .inputGroup input,
-  .currencySelectField {
-    font-size: 1rem !important; /* 16px threshold */
-    height: 48px; /* Touch target minimum height */
+  .inputGroup input {
+    font-size: 1rem !important; /* 16px threshold to prevent iOS Safari zoom */
+    height: 48px;
     padding: 0 0.85rem;
   }
 
@@ -215,7 +201,7 @@
 
   .cancelBtn,
   .confirmBtn {
-    min-height: 48px; /* Touch target height */
+    min-height: 48px;
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
     flex: 1;
@@ -242,7 +228,7 @@
   }
 
   .modalActions {
-    flex-direction: column-reverse; /* Primary confirm button on top for single-thumb submission */
+    flex-direction: column-reverse;
   }
 
   .cancelBtn,

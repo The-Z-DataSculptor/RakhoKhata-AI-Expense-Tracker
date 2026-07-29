@@ -14,13 +14,17 @@ interface TokenPayload {
   exp?: string;
 }
 
-// Custom request type that attaches the decoded user information
+// Custom request type that extends Express Request with user identity & full request context
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;      // Added for compatibility across all middlewares
     userId: string;  // Kept for backward compatibility
     email: string;
   };
+  body: any;
+  query: any;
+  params: any;
+  cookies: any;
 }
 /* === SECTION 1 END === */
 
@@ -34,11 +38,6 @@ export interface AuthenticatedRequest extends Request {
 function buildSafeError(message: string): { error: string } {
   return { error: message };
 }
-
-/**
- * WHY THIS FIX WAS MADE: Generates a 52-character PASERK key and throws an explicit startup error
- * in production if PASETO_SECRET is missing, preventing silent fallbacks to insecure keys.
- */
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -69,8 +68,6 @@ export const verifyTokenGuard = async (
     const decoded = await decryptSessionToken(token);
 
     // 3. Narrow and validate the payload safely
-
-    // WHY THIS FIX WAS MADE: Explicitly verifies payload integrity so missing userId or email doesn't pollute req.user.
     if (
       !decoded ||
       typeof decoded !== "object" ||
@@ -83,7 +80,7 @@ export const verifyTokenGuard = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Explicitly checks the ISO expiration timestamp claim to reject expired session tokens.
+    // Explicitly check ISO expiration timestamp claim to reject expired session tokens
     if (decoded.exp) {
       const expirationDate = new Date(decoded.exp);
       if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
@@ -154,7 +151,6 @@ export const ensureOnboardingCompleted = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Queries only the onboarding status to minimize database query overhead.
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
       select: { isOnboardingCompleted: true },

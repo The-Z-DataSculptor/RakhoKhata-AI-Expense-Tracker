@@ -34,26 +34,14 @@ import styles from "./page.module.css";
    ========================================================================== */
 export default function DashboardPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  // The workspace’s native currency – used as the source for all display formatting
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
 
-  // Period selection state (default: this month)
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Fetch and normalise transactions whenever the active workspace changes.
-   *
-   * WHY we map the raw API transactions:
-   * The API returns a shape (ApiTransaction) that contains both legacy fields
-   * (`amount`) and the new enterprise fields (`originalAmount`, `originalCurrency`,
-   * `baseAmountUSD`).  We normalise every transaction to a single consistent
-   * `Transaction` shape so that all downstream calculations can rely on
-   * `originalAmount` being the exact user‑entered value.
-   */
   useEffect(() => {
     let isMounted = true;
 
@@ -74,14 +62,11 @@ export default function DashboardPage() {
 
         const mapped = (response.transactions || []).map(
           (apiTx: ApiTransaction) => {
-            // Read the original amount – fall back to legacy `amount` field
             const originalAmount = Number(
               apiTx.originalAmount ?? apiTx.amount ?? 0
             );
             const originalCurrency = apiTx.originalCurrency || "PKR";
 
-            // Ensure `baseAmountUSD` is present – if missing or suspicious,
-            // recalculate from the original amount.
             let baseAmountUSD: number;
             if (
               apiTx.baseAmountUSD === null ||
@@ -98,7 +83,7 @@ export default function DashboardPage() {
 
             return {
               id: apiTx.id,
-              amount: originalAmount, // legacy compatibility
+              amount: originalAmount, 
               originalAmount,
               originalCurrency,
               baseAmountUSD,
@@ -143,15 +128,6 @@ export default function DashboardPage() {
 /* ==========================================================================
    === SECTION 3: DASHBOARD COMPUTATIONS ===
    ========================================================================== */
-  /**
-   * Recalculate all dashboard metrics, category breakdowns, and cash‑flow data
-   * whenever the transaction list or selected time period changes.
-   *
-   * WHY we use `useMemo`:
-   * These calculations involve iterating over every transaction.  By memoising
-   * the results we avoid unnecessary work when React re‑renders for unrelated
-   * reasons (e.g., theme changes).
-   */
   const dashboardData = useMemo(() => {
     if (transactions.length === 0) {
       return {
@@ -180,9 +156,11 @@ export default function DashboardPage() {
       transactions,
       activeTimeline
     );
-    const metrics = computeMetrics(filtered, activeTimeline);
-    const categoryData = computeCategoryBreakdown(filtered);
-    const cashFlowData = computeCashFlowData(filtered, activeTimeline);
+    
+    // WHY THIS FIX WAS MADE: Injected convertAmount and workspaceCurrency for accurate cross-currency math
+    const metrics = computeMetrics(filtered, activeTimeline, workspaceCurrency, convertAmount);
+    const categoryData = computeCategoryBreakdown(filtered, workspaceCurrency, convertAmount);
+    const cashFlowData = computeCashFlowData(filtered, activeTimeline, workspaceCurrency, convertAmount);
 
     return {
       filteredTransactions: filtered,
@@ -191,7 +169,7 @@ export default function DashboardPage() {
       cashFlowData,
       periodLabel: getPeriodLabel(activeTimeline),
     };
-  }, [transactions, activeTimeline]);
+  }, [transactions, activeTimeline, workspaceCurrency, convertAmount]);
 
   const { metrics, categoryData, cashFlowData, periodLabel } =
     dashboardData;

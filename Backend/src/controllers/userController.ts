@@ -4,6 +4,7 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Response as ExpressResponse } from "express";
+import "multer";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
@@ -18,11 +19,6 @@ const ALLOWED_AVATAR_MIME_TYPES = [
 
 // Maximum allowed file size for user avatar uploads (5 MB in bytes)
 const MAX_AVATAR_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-
-// Request interface extended with optional Multer file object
-interface AuthenticatedFileRequest extends AuthenticatedRequest {
-  file?: Express.Multer.File;
-}
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -37,11 +33,9 @@ function buildErrorResponse(message: string): { error: string } {
 }
 
 /**
- * Prevents HTTP path traversal and URL injection attacks.
- * Sanitizes raw filenames to ensure only safe alphanumeric characters and extensions are preserved.
+ * Sanitizes raw filenames to ensure only safe characters are preserved.
  */
 function sanitizeFilename(filename: string): string {
-  // Strip path traversal characters (e.g., "../" or "\") and sanitize filename
   const baseName = filename.replace(/^.*[\\/]/, "");
   return encodeURIComponent(baseName);
 }
@@ -66,16 +60,15 @@ export const uploadAvatar = async (
       return;
     }
 
-    // Retrieve file object from request
-    const fileRequest = req as AuthenticatedFileRequest;
-    const uploadedFile = fileRequest.file;
+    // Retrieve file object from request (inherited directly from Express.Request via @types/multer)
+    const uploadedFile = req.file;
 
     if (!uploadedFile || !uploadedFile.filename) {
       res.status(400).json(buildErrorResponse("No valid image file detected in request."));
       return;
     }
 
-    // Enforces MIME type check as a defense-in-depth shield against malicious uploads.
+    // Enforces MIME type check
     const fileMimeType = uploadedFile.mimetype ? uploadedFile.mimetype.toLowerCase() : "";
     if (!ALLOWED_AVATAR_MIME_TYPES.includes(fileMimeType)) {
       res.status(400).json(
@@ -84,7 +77,7 @@ export const uploadAvatar = async (
       return;
     }
 
-    // Validates file size secondary limit to block storage exhaustion attacks.
+    // Validates file size
     if (uploadedFile.size && uploadedFile.size > MAX_AVATAR_FILE_SIZE_BYTES) {
       res.status(400).json(
         buildErrorResponse("File size exceeds maximum threshold of 5 MB.")
@@ -92,7 +85,7 @@ export const uploadAvatar = async (
       return;
     }
 
-    // Verifies user existence before DB update to prevent Prisma P2025 server crashes.
+    // Verifies user existence
     const userExists = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, avatarUrl: true },
@@ -103,7 +96,7 @@ export const uploadAvatar = async (
       return;
     }
 
-    // Construct secure public avatar URL (using environment variables)
+    // Construct secure public avatar URL
     const rawServerUrl = process.env.BACKEND_PUBLIC_URL || process.env.BACKEND_URL || "http://localhost:5000";
     const serverUrl = rawServerUrl.replace(/\/+$/, "");
     const safeFilename = sanitizeFilename(uploadedFile.filename);

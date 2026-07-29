@@ -4,6 +4,7 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import { Response as ExpressResponse, Request } from "express";
+import "multer";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { GoogleGenAI } from "@google/genai";
@@ -53,16 +54,6 @@ interface BulkImportRequestBody {
   transactions: InboundTransactionInput[];
 }
 
-// WHY THIS FIX WAS MADE: Explicitly defines the attached `user` context alongside Multer's `file` handle.
-interface AuthenticatedRequestWithFile extends Request {
-  user?: {
-    id: string;
-    userId: string;
-    email: string;
-  };
-  file?: Express.Multer.File;
-}
-
 // Struct for structured JSON output extracted by Gemini AI from receipt images
 interface ExtractedReceiptMetrics {
   merchant: string;
@@ -84,7 +75,6 @@ function buildSafeError(message: string): { error: string } {
 }
 
 /**
- * WHY THIS IS NEEDED: Prevents HTTP query parameter array injection attacks.
  * Safely extracts a single string parameter from query or route parameters.
  */
 function extractSingleString(value: unknown): string | undefined {
@@ -95,7 +85,6 @@ function extractSingleString(value: unknown): string | undefined {
 }
 
 /**
- * WHY THIS IS NEEDED: Prevents NaN propagation and falsy evaluation bugs on 0 amounts.
  * Parses raw input into a valid non-negative number.
  */
 function parseNonNegativeNumber(value: unknown): number | undefined {
@@ -175,7 +164,7 @@ export const createTransaction = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Verifies workspace ownership BEFORE creating records (BOLA Protection).
+    // Verifies workspace ownership BEFORE creating records (BOLA Protection).
     const workspace = await prisma.workspace.findFirst({
       where: { id: sanitizedWorkspaceId, userId: userId },
       select: { id: true },
@@ -186,7 +175,7 @@ export const createTransaction = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Verifies that category belongs to target workspace to prevent cross-tenant category injection.
+    // Verifies that category belongs to target workspace to prevent cross-tenant category injection.
     const categoryMatch = await prisma.category.findFirst({
       where: { id: sanitizedCategoryId, workspaceId: sanitizedWorkspaceId },
       select: { id: true },
@@ -246,7 +235,7 @@ export const bulkCreateTransactions = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Restricts batch import size to prevent payload memory exhaustion DoS.
+    // Restricts batch import size to prevent payload memory exhaustion DoS.
     if (transactions.length > MAX_BULK_IMPORT_BATCH_SIZE) {
       res.status(400).json(
         buildSafeError(`Batch size exceeds maximum limit of ${MAX_BULK_IMPORT_BATCH_SIZE} entries per import.`)
@@ -332,7 +321,7 @@ export const bulkCreateTransactions = async (
       });
     }
 
-    // WHY THIS FIX WAS MADE: Verifies in ONE batch query that all referenced category IDs belong to this workspace.
+    // Verifies in ONE batch query that all referenced category IDs belong to this workspace.
     const validCategories = await prisma.category.findMany({
       where: {
         id: { in: Array.from(referencedCategoryIds) },
@@ -348,7 +337,7 @@ export const bulkCreateTransactions = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Replaced sequential loop queries with single createMany query.
+    // Replaced sequential loop queries with single createMany query.
     const batchResult = await prisma.transaction.createMany({
       data: preparedRecords,
     });
@@ -368,7 +357,7 @@ export const bulkCreateTransactions = async (
  * Uses Gemini AI vision models to parse receipt images and extract transaction metrics.
  */
 export const scanReceipt = async (
-  req: AuthenticatedRequestWithFile,
+  req: AuthenticatedRequest,
   res: ExpressResponse
 ): Promise<void> => {
   try {
@@ -384,7 +373,7 @@ export const scanReceipt = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Validates file MIME type to block malicious file uploads.
+    // Validates file MIME type to block malicious file uploads.
     if (!ALLOWED_RECEIPT_MIME_TYPES.includes(uploadedFile.mimetype.toLowerCase())) {
       res.status(400).json(
         buildSafeError("Invalid file type. Please upload a JPEG, PNG, WEBP, or PDF document.")
@@ -417,7 +406,7 @@ Analyze the provided receipt image and extract the following JSON fields:
 - currency: three-letter ISO currency code. Map "Rs", "Rs.", "PKR" → "PKR", "$" → "USD". Default to "PKR" if unknown.
 `;
 
-    // Query Gemini 3.1 Flash-Lite vision endpoint
+    // Query Gemini vision model
     const aiResponse = await aiClient.models.generateContent({
       model: "gemini-3.1-flash-lite",
       contents: [extractionPrompt, receiptImagePart],
@@ -479,7 +468,7 @@ export const getWorkspaceTransactions = async (
       return;
     }
 
-    // Verify workspace access (BOLA Authorization Shield)
+    // Verify workspace access
     const workspace = await prisma.workspace.findFirst({
       where: { id: targetWorkspaceId, userId: userId },
       select: { id: true },
@@ -490,7 +479,6 @@ export const getWorkspaceTransactions = async (
       return;
     }
 
-    // WHY THIS FIX WAS MADE: Enforces MAX_TRANSACTIONS_FETCH_LIMIT limit to prevent server memory exhaustion.
     const transactions = await prisma.transaction.findMany({
       where: { workspaceId: targetWorkspaceId },
       include: {

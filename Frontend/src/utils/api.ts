@@ -4,14 +4,28 @@
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
 export const getApiBaseUrl = (): string => {
+  // Server-Side Rendering (SSR) context
   if (typeof window === "undefined") {
     let baseUrl =
       process.env.INTERNAL_API_URL ||
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5000";
+      (process.env.NODE_ENV === "production"
+        ? "https://rakhokhaata.com"
+        : "http://localhost:5000");
 
     baseUrl = baseUrl.replace(/\/+$/, "");
+    if (!baseUrl.endsWith("/api")) {
+      baseUrl += "/api";
+    }
+    return baseUrl;
+  }
+
+  // Client-Side (Browser) context
+  // Uses environment variable if explicitly set, otherwise falls back to relative "/api" route
+  const clientApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (clientApiUrl) {
+    let baseUrl = clientApiUrl.replace(/\/+$/, "");
     if (!baseUrl.endsWith("/api")) {
       baseUrl += "/api";
     }
@@ -177,7 +191,7 @@ export const apiFetch = async <T = unknown>(
           errorMessage = (errorData as { message: string }).message;
         }
       } catch {
-        // Fallback
+        // Fallback for non-JSON error responses (e.g. 502 Bad Gateway)
       }
       throw new Error(errorMessage);
     }
@@ -191,7 +205,7 @@ export const apiFetch = async <T = unknown>(
       throw error;
     }
     throw new Error(
-      "Unable to connect to the financial backend. Please check your connection and ensure the server is running."
+      "Unable to connect to the Rakhokhaata backend. Please check your network connection or try again later."
     );
   }
 };

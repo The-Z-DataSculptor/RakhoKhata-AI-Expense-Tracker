@@ -15,22 +15,48 @@ const mulish = Mulish({
   variable: "--font-mulish",
 });
 
-// ----- Basic SEO metadata used by Next.js for <head> tags -----
+// ----- Production SEO & Social OpenGraph Metadata -----
 export const metadata: Metadata = {
-  title: "RakhoKhaata – Your Premium Expense Ledger",
-  description: "Track your personal and business expenses with precision.",
+  metadataBase: new URL("https://rakhokhaata.com"),
+  title: {
+    default: "RakhoKhaata – Smart Expense & Investment Ledger",
+    template: "%s | RakhoKhaata",
+  },
+  description:
+    "Track personal & business expenses, manage investments, set smart budgets, and leverage AI financial insights with secure isolated workspaces.",
+  keywords: [
+    "Expense Tracker",
+    "RakhoKhaata",
+    "Financial Ledger",
+    "Budget Manager",
+    "Investment Vault",
+    "Multi-Currency Tracker",
+    "AI Financial Coach",
+  ],
+  authors: [{ name: "RakhoKhaata Engine" }],
+  creator: "RakhoKhaata",
+  publisher: "RakhoKhaata",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
-    title: "RakhoKhaata – Your Premium Expense Ledger",
+    title: "RakhoKhaata – Smart Expense & Investment Ledger",
     description:
-      "Track personal and business expenses with isolated workspace precision.",
+      "Precision personal & business expense tracking, automated budget alerts, investment vault protection, and AI financial analysis.",
     url: "https://rakhokhaata.com",
     siteName: "RakhoKhaata",
     images: [
       {
-        url: "/og-banner.png",
+        url: "/og-banner.png", // Ensure your file in public/ is renamed to og-banner.png
         width: 1200,
         height: 630,
-        alt: "RakhoKhaata Application Premium Dashboard Interface Preview Image",
+        alt: "RakhoKhaata Premium Financial Dashboard & Expense Tracker Preview",
       },
     ],
     locale: "en_US",
@@ -38,9 +64,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RakhoKhaata – Your Premium Expense Ledger",
+    title: "RakhoKhaata – Smart Expense & Investment Ledger",
     description:
-      "Track personal and business expenses with isolated workspace precision.",
+      "Precision personal & business expense tracking, automated budget alerts, and AI financial analysis.",
     images: ["/og-banner.png"],
   },
 };

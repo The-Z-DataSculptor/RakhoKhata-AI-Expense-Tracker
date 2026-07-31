@@ -28,7 +28,7 @@ const resend = new Resend(resendApiKey || "MOCK_KEY_TO_PREVENT_CRASH");
 
 // Configurable sender address via environment variable (EMAIL_FROM)
 const DEFAULT_SENDER =
-  process.env.EMAIL_FROM || "RakhoKhaaata Security <onboarding@resend.dev>";
+  process.env.EMAIL_FROM || "RakhoKhaata Security <no-reply@rakhokhaata.com>";
 
 /**
  * Escapes special HTML characters in user inputs to prevent HTML injection.

@@ -24,7 +24,7 @@ interface CachedRates {
 /* ==========================================================================
    === SECTION 2: CACHE & FALLBACK UTILITIES ===
    ========================================================================== */
-const LOCAL_STORAGE_KEY = "rakho_khata_live_rates";
+const LOCAL_STORAGE_KEY = "rakho_khaata_live_rates";
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 const FALLBACK_RATES: Record<string, number> = {

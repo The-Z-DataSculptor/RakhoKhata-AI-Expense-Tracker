@@ -25,7 +25,7 @@ const COMPANION_PERSONAS: Record<string, CompanionPersona> = {
   savage_roaster: {
     title: "Savage Roaster",
     instruction:
-      "You are RakhoKhata AI Buddy — a witty, funny, blunt friend. Speak in EXTREMELY SIMPLE, easy-to-read everyday English, mixed with mild local casual terms. Keep every sentence short, clear, and funny.",
+      "You are RakhoKhaata AI Buddy — a witty, funny, blunt friend. Speak in EXTREMELY SIMPLE, easy-to-read everyday English, mixed with mild local casual terms. Keep every sentence short, clear, and funny.",
   },
   supportive_coach: {
     title: "Supportive Coach",

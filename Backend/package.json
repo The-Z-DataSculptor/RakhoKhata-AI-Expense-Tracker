@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Secure financial backend engine for RakhoKhata",
+  "description": "Secure financial backend engine for RakhoKhaata",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

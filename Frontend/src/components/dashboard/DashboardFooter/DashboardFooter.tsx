@@ -32,7 +32,7 @@ export default function DashboardFooter() {
       </div>
 
       <div className={styles.linksSide}>
-        <span className={styles.copyrightText}>© {currentYear} RakhoKhata</span>
+        <span className={styles.copyrightText}>© {currentYear} RakhoKhaata</span>
       </div>
 
     </footer>

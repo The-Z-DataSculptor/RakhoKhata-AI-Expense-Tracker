@@ -770,7 +770,7 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
         activeUser = await prisma.$transaction(async (tx) => {
           const newUser = await tx.user.create({
             data: {
-              name: name || "RakhoKhata User",
+              name: name || "RakhoKhaata User",
               email: normalizedEmail,
               passwordHash: null,
               avatarUrl: picture || null,

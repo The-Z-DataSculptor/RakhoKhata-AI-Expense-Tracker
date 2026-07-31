@@ -24,7 +24,7 @@ export default function Footer() {
         {/* === BRAND FOCUS === */}
         <div className={styles.brandCenter}>
           <Link href="/" className={styles.logo}>
-            Rakho<span className={styles.logoAccent}>Khata</span>
+            Rakho<span className={styles.logoAccent}>Khaata</span>
           </Link>
           <p className={styles.tagline}>Master your wealth with precision, purpose, and effortless clarity.</p>
         </div>
@@ -48,7 +48,7 @@ export default function Footer() {
 
         {/* === FOOTER IDENTIFIER === */}
         <div className={styles.copy}>
-          &copy; {currentYear} Rakho Khata — Crafted for the modern era.
+          &copy; {currentYear} Rakho Khaata — Crafted for the modern era.
         </div>
 
       </div>

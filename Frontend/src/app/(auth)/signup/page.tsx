@@ -286,7 +286,7 @@ export default function SignupPage() {
             <div className={styles.stepIconBox}>
               <FiShield className={styles.stepIcon} />
             </div>
-            <h2>Get Started with RakhoKhata</h2>
+            <h2>Get Started with RakhoKhaata</h2>
             <p>Choose your preferred account creation method below.</p>
           </div>
 
@@ -667,7 +667,7 @@ export default function SignupPage() {
           </Link>
 
           <div className={styles.sidebarContent}>
-            <h1 className={styles.brandTitle}>RakhoKhata.</h1>
+            <h1 className={styles.brandTitle}>RakhoKhaata.</h1>
             <p className={styles.brandSubtitle}>
               Simple financial intelligence.
             </p>
@@ -703,7 +703,7 @@ export default function SignupPage() {
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
               {signupMethod === "CHOOSE" ? (
-                <>Welcome to <strong>RakhoKhata</strong></>
+                <>Welcome to <strong>RakhoKhaata</strong></>
               ) : (
                 <>
                   Step {step} of 4: <strong>{STEP_TITLES[step - 1]}</strong>

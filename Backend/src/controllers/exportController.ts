@@ -171,7 +171,7 @@ export const exportTransactionsExcel = async (
     // Title Row Formatting
     worksheet.mergeCells("A1:F1");
     const titleCell = worksheet.getCell("A1");
-    titleCell.value = `RakhoKhata Ledger Statement — Workspace: ${workspace.name}`;
+    titleCell.value = `RakhoKhaata Ledger Statement — Workspace: ${workspace.name}`;
     titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: "FFFFFF" } };
     titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "6366F1" } };
     titleCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -335,7 +335,7 @@ export const exportTransactionsPdf = async (
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
       .fontSize(16)
-      .text("RAKHOKHATA ACCOUNTING STATEMENT", 60, 58);
+      .text("RAKHOKHAATA ACCOUNTING STATEMENT", 60, 58);
 
     doc
       .fontSize(10)

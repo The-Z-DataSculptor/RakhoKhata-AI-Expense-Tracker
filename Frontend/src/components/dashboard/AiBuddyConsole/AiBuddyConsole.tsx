@@ -68,13 +68,13 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     if (typeof window === "undefined") return 0;
     try {
       const todayStr = getTodayDateString();
-      const storedDate = localStorage.getItem("rakhokhata_call_date");
+      const storedDate = localStorage.getItem("rakhokhaata_call_date");
       if (storedDate !== todayStr) {
-        localStorage.setItem("rakhokhata_call_date", todayStr);
-        localStorage.setItem("rakhokhata_daily_calls", "0");
+        localStorage.setItem("rakhokhaata_call_date", todayStr);
+        localStorage.setItem("rakhokhaata_daily_calls", "0");
         return 0;
       }
-      return parseInt(localStorage.getItem("rakhokhata_daily_calls") || "0", 10);
+      return parseInt(localStorage.getItem("rakhokhaata_daily_calls") || "0", 10);
     } catch {
       return 0;
     }
@@ -84,7 +84,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     if (typeof window === "undefined") return 0;
     try {
       const updatedCount = getDailyCallCount() + 1;
-      localStorage.setItem("rakhokhata_daily_calls", updatedCount.toString());
+      localStorage.setItem("rakhokhaata_daily_calls", updatedCount.toString());
       setCallsUsedToday(updatedCount);
       return updatedCount;
     } catch {
@@ -123,7 +123,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       if (isMounted) setIsLoadingGreeting(true);
 
       const todayStr = getTodayDateString();
-      const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
+      const cacheKey = `rakhokhaata_greeting_${activeWorkspaceId}`;
       let cachedPayload: string | null = null;
 
       try {
@@ -239,7 +239,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       );
       const updatedCooldowns = { ...cooldowns, [scope]: true };
       setCooldowns(updatedCooldowns);
-      const cacheKey = `rakhokhata_greeting_${activeWorkspaceId}`;
+      const cacheKey = `rakhokhaata_greeting_${activeWorkspaceId}`;
       try {
         const cachedPayload = localStorage.getItem(cacheKey);
         if (cachedPayload) {

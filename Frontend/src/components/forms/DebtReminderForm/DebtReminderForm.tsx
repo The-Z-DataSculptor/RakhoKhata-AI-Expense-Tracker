@@ -90,7 +90,7 @@ export function DebtReminderForm({ transaction, onCancel }: DebtReminderFormProp
         return;
       }
 
-      const subject = encodeURIComponent("📝 Payment Reminder - RakhoKhata");
+      const subject = encodeURIComponent("📝 Payment Reminder - RakhoKhaata");
       const body = encodeURIComponent(sanitizedPayload);
       
       window.open(`mailto:${sanitizedContactInfo}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer");

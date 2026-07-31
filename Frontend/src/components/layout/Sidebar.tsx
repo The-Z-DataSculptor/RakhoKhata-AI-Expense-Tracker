@@ -72,7 +72,7 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
   const workspaceDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
-  const accountName = user?.name || "RakhoKhata User";
+  const accountName = user?.name || "RakhoKhaata User";
   const accountEmail = user?.email || "Cloud Synced";
 
   const coreItems = useMemo(() => NAVIGATION_ITEMS.filter(item => item.group === "core"), []);
@@ -151,7 +151,7 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
       <header className={styles.mobileTopBar}>
         <Link href="/dashboard" className={styles.mobileLogoLink} onClick={closeMobileDrawer}>
           <div className={styles.mobileLogo}>
-            Rakho<span className={styles.logoAccent}>Khata</span>
+            Rakho<span className={styles.logoAccent}>Khaata</span>
           </div>
         </Link>
         <button 
@@ -191,7 +191,7 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
           <div className={styles.brandHeaderRow}>
             <Link href="/dashboard" className={styles.logoLinkWrapper} onClick={closeMobileDrawer}>
               <div className={styles.logoLayout}>
-                Rakho<span className={styles.logoAccent}>Khata</span>
+                Rakho<span className={styles.logoAccent}>Khaata</span>
               </div>
             </Link>
             <button

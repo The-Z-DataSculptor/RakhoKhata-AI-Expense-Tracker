@@ -89,7 +89,7 @@ export default function PainPointsQuizSection() {
                   <span className={styles.badge}>Quick Platform Check</span>
                 </div>
                 <h3 className={styles.cardHeading}>What is your biggest money headache right now?</h3>
-                <p className={styles.cardSubtext}>Pick a problem below to see how the RakhoKhata dashboard solves it.</p>
+                <p className={styles.cardSubtext}>Pick a problem below to see how the RakhoKhaata dashboard solves it.</p>
                 
                 {/* WHY THIS FIX WAS MADE: Added ARIA attributes for screen reader accessibility */}
                 <div className={styles.optionsStack} role="group" aria-label="Money pain points list">

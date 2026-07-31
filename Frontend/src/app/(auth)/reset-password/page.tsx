@@ -230,7 +230,7 @@ export default function ResetPasswordPage() {
             style={{ border: "none", paddingTop: 0 }}
           >
             Your temporary link tokens are automatically hashed and deleted
-            once used to keep your RakhoKhata account completely safe.
+            once used to keep your RakhoKhaata account completely safe.
           </p>
         </div>
       </aside>

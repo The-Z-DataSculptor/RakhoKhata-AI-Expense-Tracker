@@ -28,7 +28,7 @@ const resend = new Resend(resendApiKey || "MOCK_KEY_TO_PREVENT_CRASH");
 
 // Configurable sender address via environment variable (EMAIL_FROM)
 const DEFAULT_SENDER =
-  process.env.EMAIL_FROM || "RakhoKhata Security <onboarding@resend.dev>";
+  process.env.EMAIL_FROM || "RakhoKhaaata Security <onboarding@resend.dev>";
 
 /**
  * Escapes special HTML characters in user inputs to prevent HTML injection.
@@ -114,7 +114,7 @@ export async function sendPasswordResetEmail(
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
-      <h2 style="color: #6366f1; margin-bottom: 20px;">Reset Your RakhoKhata Password</h2>
+      <h2 style="color: #6366f1; margin-bottom: 20px;">Reset Your RakhoKhaata Password</h2>
       <p>Hi <strong>${safeName}</strong>,</p>
       <p>We received a request to reset the password for your account.</p>
       <p>Click the secure button below to choose a new password. This link will expire in <strong>15 minutes</strong>:</p>
@@ -137,7 +137,7 @@ export async function sendPasswordResetEmail(
     const response: ResendSendResponse = await resend.emails.send({
       from: DEFAULT_SENDER,
       to: [recipientEmail.trim()],
-      subject: "🔒 Reset your RakhoKhata Password",
+      subject: "🔒 Reset your RakhoKhaata Password",
       html: htmlContent,
     });
 
@@ -174,7 +174,7 @@ export async function sendVerificationEmail(
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
-      <h2 style="color: #6366f1; margin-bottom: 20px;">Welcome to RakhoKhata! 🚀</h2>
+      <h2 style="color: #6366f1; margin-bottom: 20px;">Welcome to RakhoKhaata! 🚀</h2>
       <p>Hi <strong>${safeName}</strong>,</p>
       <p>Thank you for creating an account. Please confirm your email address by clicking the button below:</p>
       
@@ -196,7 +196,7 @@ export async function sendVerificationEmail(
     const response: ResendSendResponse = await resend.emails.send({
       from: DEFAULT_SENDER,
       to: [recipientEmail.trim()],
-      subject: "👋 Verify your RakhoKhata Account",
+      subject: "👋 Verify your RakhoKhaata Account",
       html: htmlContent,
     });
 
@@ -235,7 +235,7 @@ export async function sendSecurityAlertEmail(
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
       <h2 style="color: #dc2626; margin-bottom: 20px;">⚠️ Security Alert</h2>
       <p>Hi <strong>${safeName}</strong>,</p>
-      <p>This is an automated safety alert for your RakhoKhata account.</p>
+      <p>This is an automated safety alert for your RakhoKhaata account.</p>
       <p>We wanted to let you know that your <strong>${safeChangeLabel}</strong> was recently updated.</p>
       
       <div style="margin: 25px 0; padding: 15px; background-color: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px;">

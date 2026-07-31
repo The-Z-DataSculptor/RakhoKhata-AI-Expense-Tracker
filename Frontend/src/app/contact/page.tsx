@@ -9,7 +9,7 @@ import styles from "./page.module.css";
 export const metadata = {
   title: "Contact & Developer Profile | Syed Zain Hassaan",
   description:
-    "Learn more about Syed Zain Hassaan, the Full‑Stack Developer behind RakhoKhata, and get in touch for collaborations.",
+    "Learn more about Syed Zain Hassaan, the Full‑Stack Developer behind RakhoKhaata, and get in touch for collaborations.",
 };
 /* === SECTION 1 END === */
 
@@ -157,7 +157,7 @@ const Icons = {
 /**
  * WHY this page exists:
  * It provides a personal contact card and showcases the technology stack
- * used to build RakhoKhata, helping potential collaborators or employers
+ * used to build RakhoKhaata, helping potential collaborators or employers
  * understand the developer's skills.
  */
 export default function ContactPage() {
@@ -194,11 +194,11 @@ export default function ContactPage() {
         {/* TECH STACK ARCHITECTURE */}
         <div className={styles.stackSection}>
           <h2 className={styles.sectionTitle}>
-            Tech Stack Behind RakhoKhata
+            Tech Stack Behind RakhoKhaata
           </h2>
           <p className={styles.stackSubtitle}>
             This project demonstrates the full‑stack architecture built for{" "}
-            <strong>RakhoKhata</strong>—part of a versatile engineering
+            <strong>RakhoKhaata</strong>—part of a versatile engineering
             toolkit I use across web applications:
           </p>
 
@@ -367,7 +367,7 @@ export default function ContactPage() {
         {/* ACTION BUTTONS */}
         <div className={styles.buttonGroup}>
           <Link href="/signup" className={styles.primaryBtn}>
-            Start Using RakhoKhata <Icons.ArrowRight />
+            Start Using RakhoKhaata <Icons.ArrowRight />
           </Link>
 
           <Link href="/" className={styles.secondaryBtn}>

@@ -8,9 +8,9 @@ import Link from "next/link";
 import styles from "./page.module.css";
 
 export const metadata = {
-  title: "Early Access | RakhoKhata",
+  title: "Early Access | RakhoKhaata",
   description:
-    "RakhoKhata is currently in Open Beta. Create your free account today!",
+    "RakhoKhaata is currently in Open Beta. Create your free account today!",
 };
 /* === SECTION 1 END === */
 
@@ -137,7 +137,7 @@ const Icons = {
    ========================================================================== */
 /**
  * WHY this page exists:
- * It informs visitors that RakhoKhata is in open beta and offers a
+ * It informs visitors that RakhoKhaata is in open beta and offers a
  * completely free account. The page highlights six core features to
  * encourage sign‑ups.
  */
@@ -147,14 +147,14 @@ export default function BetaPage() {
       <div className={styles.contentCard}>
         {/* Top Badge */}
         <div className={styles.badge}>
-          <Icons.Sparkles /> RakhoKhata Early Access
+          <Icons.Sparkles /> RakhoKhaata Early Access
         </div>
 
         {/* Headline */}
         <h1 className={styles.title}>
           You&apos;re Early! <br />
           <span className={styles.gradientText}>
-            RakhoKhata is Free During Beta.
+            RakhoKhaata is Free During Beta.
           </span>
         </h1>
 

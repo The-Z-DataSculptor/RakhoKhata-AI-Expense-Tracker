@@ -75,7 +75,7 @@ export default function Navbar() {
       <nav className={`${styles.navbar} ${isOpen ? styles.navbarExpanded : ""}`} aria-label="Main Navigation">
         
         <Link href="/" className={styles.logo} onClick={() => setIsOpen(false)}>
-          Rakho<span className={styles.logoAccent}>Khata</span>
+          Rakho<span className={styles.logoAccent}>Khaata</span>
         </Link>
         
         <button 

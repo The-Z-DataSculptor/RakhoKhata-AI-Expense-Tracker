@@ -17,20 +17,20 @@ const mulish = Mulish({
 
 // ----- Basic SEO metadata used by Next.js for <head> tags -----
 export const metadata: Metadata = {
-  title: "RakhoKhata – Your Premium Expense Ledger",
+  title: "RakhoKhaata – Your Premium Expense Ledger",
   description: "Track your personal and business expenses with precision.",
   openGraph: {
-    title: "RakhoKhata – Your Premium Expense Ledger",
+    title: "RakhoKhaata – Your Premium Expense Ledger",
     description:
       "Track personal and business expenses with isolated workspace precision.",
-    url: "https://rakhokhata.com",
-    siteName: "RakhoKhata",
+    url: "https://rakhokhaata.com",
+    siteName: "RakhoKhaata",
     images: [
       {
         url: "/og-banner.png",
         width: 1200,
         height: 630,
-        alt: "RakhoKhata Application Premium Dashboard Interface Preview Image",
+        alt: "RakhoKhaata Application Premium Dashboard Interface Preview Image",
       },
     ],
     locale: "en_US",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RakhoKhata – Your Premium Expense Ledger",
+    title: "RakhoKhaata – Your Premium Expense Ledger",
     description:
       "Track personal and business expenses with isolated workspace precision.",
     images: ["/og-banner.png"],

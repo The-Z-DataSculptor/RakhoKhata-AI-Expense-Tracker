@@ -258,7 +258,7 @@ export default function FeatureCommandCenter() {
       return (
         <div className={`${styles.animateFade} ${styles.sharingInterface}`}>
           <div className={styles.secureLinkCopyInput}>
-            <span>khata.com/share/snapshot_7x9f2k</span>
+            <span>khaata.com/share/snapshot_7x9f2k</span>
           </div>
           <div className={styles.configToggleLine}>
             <span>Read-Only Privileges</span>
@@ -320,7 +320,7 @@ export default function FeatureCommandCenter() {
           <div className={styles.phoneContainer}>
             <div className={styles.phoneScreen}>
               <div className={styles.screenHeaderRow}>
-                <span className={styles.appLogo}>📒 Khata Ledger</span>
+                <span className={styles.appLogo}>📒 Khaata Ledger</span>
                 <div className={styles.hardwareIndicators}>
                   <span className={styles.signalBar}></span>
                   <span className={styles.batteryCell}></span>

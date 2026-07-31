@@ -313,7 +313,7 @@ export default function LoginPage() {
           <div className={styles.formHeader}>
             <h1 className={styles.mainTitle}>Welcome Back</h1>
             <p className={styles.subtext}>
-              Log in to RakhoKhata to manage your finances and track your
+              Log in to RakhoKhaata to manage your finances and track your
               goals.
             </p>
           </div>

@@ -94,7 +94,7 @@ const clearAiBuddyCache = () => {
   if (typeof window !== "undefined") {
     try {
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("rakhokhata_greeting_")) {
+        if (key.startsWith("rakhokhaata_greeting_")) {
           localStorage.removeItem(key);
         }
       });

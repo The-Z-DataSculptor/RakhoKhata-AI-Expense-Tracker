@@ -186,7 +186,7 @@
   background-color: var(--danger-soft);
 }
 
-/* --- 4. SAFE TO SPEND HERO CARD (RakhoKhata Primary Theme Blue) --- */
+/* --- 4. SAFE TO SPEND HERO CARD (RakhoKhaata Primary Theme Blue) --- */
 .safeCard {
   border-left: 4px solid var(--color-primary, #3b82f6);
   border-color: rgba(59, 130, 246, 0.15) rgba(59, 130, 246, 0.15) rgba(59, 130, 246, 0.15) var(--color-primary);

@@ -469,7 +469,7 @@ export default function OnboardingPage() {
             ← Abort Setup
           </Link>
           <div className={styles.sidebarContent}>
-            <h1 className={styles.brandTitle}>RakhoKhata.</h1>
+            <h1 className={styles.brandTitle}>RakhoKhaata.</h1>
             <p className={styles.brandSubtitle}>
               Simple financial intelligence.
             </p>

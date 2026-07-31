@@ -91,7 +91,7 @@ app.use(
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).json({
     status: "active",
-    message: "Welcome to RakhoKhata API Engine",
+    message: "Welcome to RakhoKhaata API Engine",
     version: "1.0.0",
     timestamp: new Date().toISOString(),
   });
@@ -103,7 +103,7 @@ app.get("/api/health", async (_req: Request, res: Response) => {
     await prisma.$queryRaw`SELECT 1`;
     res.status(200).json({
       status: "active",
-      message: "Welcome to RakhoKhata API",
+      message: "Welcome to RakhoKhaata API",
       database: "Connected",
       timestamp: new Date().toISOString(),
     });

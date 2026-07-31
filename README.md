@@ -1,6 +1,6 @@
-<img width="1541" height="892" alt="RakhoKhata Hero Header" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
+<img width="1541" height="892" alt="RakhoKhaata Hero Header" src="https://github.com/user-attachments/assets/62b2289f-04ac-4ab4-bdf2-74d9aa9f574e" />
 
-# 🚀 RakhoKhata — Intelligent Personal Finance & AI Analytics
+# 🚀 RakhoKhaata — Intelligent Personal Finance & AI Analytics
 
 > A modern full-stack, containerized financial workspace featuring multi-currency accounting, a PIN-protected investment vault, automated statement parsing, background bill reminders, and AI-driven spending insights powered by Google Gemini.
 
@@ -8,11 +8,11 @@
 
 ## 💡 Overview
 
-Managing personal finances shouldn't require wrestling with messy spreadsheets or juggling detached banking apps. **RakhoKhata** turns raw transaction data into clear, actionable financial intelligence.
+Managing personal finances shouldn't require wrestling with messy spreadsheets or juggling detached banking apps. **RakhoKhaata** turns raw transaction data into clear, actionable financial intelligence.
 
-Whether you need to track multi-currency expenses, import bank statements in bulk, set automated bill reminders, store long-term assets inside a PIN-encrypted vault, or get candid spending advice from an AI assistant, RakhoKhata gives you total visibility over your financial health in one real-time dashboard.
+Whether you need to track multi-currency expenses, import bank statements in bulk, set automated bill reminders, store long-term assets inside a PIN-encrypted vault, or get candid spending advice from an AI assistant, RakhoKhaata gives you total visibility over your financial health in one real-time dashboard.
 
-Engineered as a decoupled full-stack application, RakhoKhata uses **Next.js 16** for server-rendered speed, **Express 5** for backend processing, **Prisma 7** with **Neon Cloud PostgreSQL** for storage, and **Docker Compose** for single-command setup.
+Engineered as a decoupled full-stack application, RakhoKhaata uses **Next.js 16** for server-rendered speed, **Express 5** for backend processing, **Prisma 7** with **Neon Cloud PostgreSQL** for storage, and **Docker Compose** for single-command setup.
 
 ---
 
@@ -101,7 +101,7 @@ graph TD
 ## 📂 Project Structure
 
 ```text
-RakhoKhata-AI-Expense-Tracker/
+RakhoKhaata-AI-Expense-Tracker/
 ├── docker-compose.yml
 ├── Backend/
 │   ├── Dockerfile
@@ -146,8 +146,8 @@ Make sure you have these installed and running:
 #### Step 1: Clone the Repo
 
 ```bash
-git clone [https://github.com/The-Z-DataSculptor/RakhoKhata-AI-Expense-Tracker.git](https://github.com/The-Z-DataSculptor/RakhoKhata-AI-Expense-Tracker.git)
-cd RakhoKhata-AI-Expense-Tracker
+git clone [https://github.com/The-Z-DataSculptor/RakhoKhaata-AI-Expense-Tracker.git](https://github.com/The-Z-DataSculptor/RakhoKhaata-AI-Expense-Tracker.git)
+cd RakhoKhaata-AI-Expense-Tracker
 ```
 
 #### Step 2: Configure Environment Keys

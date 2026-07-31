@@ -32,7 +32,7 @@ export default function Hero() {
         {/* ==================== LEFT COLUMN START ==================== */}
         <div className={styles.leftCol}>
           <div className={styles.badge}>
-            <span aria-hidden="true">✨</span> Introducing RakhoKhata v1.0
+            <span aria-hidden="true">✨</span> Introducing RakhoKhaata v1.0
           </div>
           
           <h1 className={styles.title}>

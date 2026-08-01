@@ -138,7 +138,6 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
           const parsed: LocalCachePayload = JSON.parse(cachedPayload);
           const cachedUser = parsed.greetingUser;
 
-          // Strictly ensure all updated user profile attributes match before accepting cache
           const isUserMatch =
             (!globalUser?.aiPersona || cachedUser?.aiPersona === globalUser.aiPersona) &&
             (!globalUser?.name || cachedUser?.name === globalUser.name) &&
@@ -222,9 +221,11 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
   const handleTriggerAnalysis = async (scope: TimelineScope) => {
     if (cooldowns[scope] || isProcessingAnalysis) return;
     const currentCalls = getDailyCallCount();
-    if (currentCalls >= 4) {
+    
+    // Updated limit check to 3
+    if (currentCalls >= 3) {
       toast.error(
-        "You have reached your limit of 4 AI reports today. Please try again tomorrow!"
+        "You have reached your limit of 3 AI reports today. Please try again tomorrow!"
       );
       return;
     }
@@ -250,7 +251,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       } catch {}
       const newCount = incrementDailyCallCount();
       toast.success(
-        `Analysis loaded successfully. (Daily Usage: ${newCount}/4)`
+        `Analysis loaded successfully. (Daily Usage: ${newCount}/3)`
       );
     } catch (error: unknown) {
       const message =
@@ -349,9 +350,9 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
           <div className={styles.livePulseIndicator}>
             <span className={styles.greenPulseDot} />
             <span className={styles.pulseLabel}>
-              {callsUsedToday >= 4
+              {callsUsedToday >= 3
                 ? "DAILY LIMIT REACHED"
-                : `LIMIT: ${callsUsedToday}/4`}
+                : `LIMIT: ${callsUsedToday}/3`}
             </span>
             <span className={styles.pulseBars}>
               <span className={styles.bar}></span>
@@ -377,7 +378,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
         </div>
         <footer className={styles.actionGridFooter}>
           {(["today", "week", "month"] as TimelineScope[]).map((scope) => {
-            const isLocked = cooldowns[scope] || callsUsedToday >= 4;
+            const isLocked = cooldowns[scope] || callsUsedToday >= 3;
             const activeScope = scopeConfig[scope];
             return (
               <button
@@ -402,7 +403,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
                     <>
                       <FiLock className={styles.btnIcon} />
                       <span className={styles.btnLabelCapital}>
-                        {callsUsedToday >= 4 ? "Max Limit" : "Locked"}
+                        {callsUsedToday >= 3 ? "Max Limit" : "Locked"}
                       </span>
                     </>
                   ) : (

@@ -1,5 +1,6 @@
-/* src/components/investments/VaultAssetTable/VaultAssetTable.module.css */
-
+/* ==========================================================================
+   === SECTION 1: CONTAINER & TABLE STRUCTURE ===
+   ========================================================================== */
 .container {
   width: 100%;
   display: flex;
@@ -10,7 +11,6 @@
   box-sizing: border-box;
 }
 
-/* 4-COLUMN STRUCTURAL GRID (DESKTOP DEFAULT) */
 .tableHeader {
   display: grid;
   grid-template-columns: 1.3fr 1.2fr 1.5fr 1.2fr 0.8fr;
@@ -64,7 +64,6 @@
   align-items: center;
 }
 
-/* ASSET NAME STYLING */
 .assetIdentity {
   display: flex;
   align-items: center;
@@ -109,7 +108,6 @@
   text-transform: uppercase;
 }
 
-/* DATA TEXT STACKS */
 .dataStack {
   display: flex;
   flex-direction: column;
@@ -134,7 +132,6 @@
   color: var(--text-muted);
 }
 
-/* CONTROLS BUTTON CLUSTERS */
 .actionsGroup {
   display: flex;
   align-items: center;
@@ -177,7 +174,7 @@
 }
 
 /* ==========================================================================
-   === EXPANDED DRAWER & NEW TIMELINE UI ===
+   === EXPANDED DRAWER & TIMELINE ===
    ========================================================================== */
 .drawerContent {
   background-color: var(--surface-muted);
@@ -188,7 +185,6 @@
   gap: 2rem;
 }
 
-/* STRATEGY NOTE */
 .journalMemoBox {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
@@ -232,7 +228,6 @@
   word-break: break-word;
 }
 
-/* HISTORY HEADER */
 .historySection {
   display: flex;
   flex-direction: column;
@@ -254,7 +249,6 @@
   letter-spacing: 0.04em;
 }
 
-/* THE MODERN VERTICAL TIMELINE */
 .modernTimelineContainer {
   position: relative;
   display: flex;
@@ -267,7 +261,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 28px; /* Centers under the dots */
+  left: 28px;
   width: 2px;
   background: linear-gradient(to bottom, var(--color-primary) 0%, var(--border-color) 20%);
   z-index: 0;
@@ -308,7 +302,6 @@
   margin-top: 7px;
 }
 
-/* TIMELINE CONTENT CARDS */
 .timelineContentCard {
   flex-grow: 1;
   background-color: var(--bg-surface);
@@ -380,7 +373,6 @@
   word-break: break-word;
 }
 
-/* RECEIPT METRICS GRID */
 .receiptMetricsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -418,6 +410,108 @@
 }
 
 /* ==========================================================================
+   === PREMIUM EMPTY STATE ===
+   ========================================================================== */
+.emptyStateWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 45vh;
+  padding: 2rem 1rem;
+  width: 100%;
+}
+
+.emptyStateGlassCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(145deg, var(--bg-surface, #ffffff) 0%, var(--surface-highlight, #fcfbfe) 100%);
+  border: 1px dashed var(--border-color, #e5e1f4);
+  border-radius: 24px;
+  padding: 3.5rem 2.5rem;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(16, 4, 63, 0.03);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.emptyStateGlassCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 50px rgba(16, 4, 63, 0.06);
+}
+
+.emptyStateIconWrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--primary-soft, rgba(99, 102, 241, 0.1));
+  color: var(--color-primary, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.03);
+  animation: floatPulseVault 3s ease-in-out infinite;
+}
+
+@keyframes floatPulseVault {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.03);
+  }
+  50% {
+    transform: translateY(-5px);
+    box-shadow: 0 0 0 15px rgba(99, 102, 241, 0.05);
+  }
+}
+
+.emptyStateIconWrapper svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.75;
+}
+
+.emptyStateHeadline {
+  font-family: var(--font-navbar, sans-serif);
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.85rem 0;
+  letter-spacing: -0.02em;
+}
+
+.emptyStateSubtext {
+  font-size: 1.05rem;
+  color: var(--text-muted, #7e7a9c);
+  line-height: 1.6;
+  max-width: 440px;
+  margin: 0 0 2.25rem 0;
+}
+
+.emptyStateCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: var(--color-primary, #6366f1);
+  color: #ffffff;
+  padding: 0.9rem 1.85rem;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.emptyStateCtaBtn:hover {
+  background: var(--color-primary-dark, #4f46e5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+/* ==========================================================================
    === RESPONSIVE BREAKPOINTS (DESKTOP INTENSE < 960px) ===
    ========================================================================== */
 @media (max-width: 960px) and (min-width: 769px) {
@@ -434,10 +528,9 @@
    ========================================================================== */
 @media (max-width: 768px) {
   .tableHeader {
-    display: none; /* Hide non-responsive table column headers */
+    display: none;
   }
 
-  /* Transform rowGrid into a clean, modern card layout */
   .rowGrid {
     display: flex;
     flex-wrap: wrap;
@@ -447,14 +540,12 @@
     gap: 0.85rem;
   }
 
-  /* Top Row: Asset Identity (Left) */
   .cell:nth-child(1) {
     order: 1;
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  /* Top Row: Actions Dock (Right) */
   .cell:nth-child(5) {
     order: 2;
     flex: 0 0 auto;
@@ -465,7 +556,6 @@
     gap: 0.65rem;
   }
 
-  /* Touch-optimized action buttons */
   .iconBtn {
     width: 38px;
     height: 38px;
@@ -477,7 +567,6 @@
     margin-left: 0;
   }
 
-  /* Middle Row: Convert Quantity, Total Spent & Avg Cost into 3 equal stat cards */
   .cell:nth-child(2),
   .cell:nth-child(3),
   .cell:nth-child(4) {
@@ -512,7 +601,6 @@
     text-overflow: ellipsis;
   }
 
-  /* Expanded Drawer Mobile Adjustments */
   .drawerContent {
     padding: 1.15rem;
     gap: 1.35rem;
@@ -580,7 +668,6 @@
   }
 }
 
-/* Extra-small mobile screens (< 480px) */
 @media (max-width: 480px) {
   .rowGrid {
     padding: 0.95rem;
@@ -596,7 +683,6 @@
     font-size: 0.88rem;
   }
 
-  /* Stack metrics into 2-column + 1-column layout for extreme clarity */
   .cell:nth-child(2),
   .cell:nth-child(3) {
     flex: 1 1 calc(50% - 0.45rem);

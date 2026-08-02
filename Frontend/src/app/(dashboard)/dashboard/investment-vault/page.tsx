@@ -81,8 +81,6 @@ export default function InvestmentVaultPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  // WHY THIS FIX WAS MADE: Added page-level saving lock state to prevent re-entrant 
-  // execution of handleSaveInvestment if invoked multiple times before react renders state updates.
   const [isSavingAsset, setIsSavingAsset] = useState<boolean>(false);
 
   const [editingAsset, setEditingAsset] = useState<HydratedAsset | null>(null);
@@ -345,6 +343,11 @@ export default function InvestmentVaultPage() {
           onDeleteAsset={handleDeleteAsset}
           onEditClick={handleEditClick}
           sourceCurrency={currency}
+          // 🚀 NEW: passes the same modal‑opening function so the empty state button works
+          onAddAssetClick={() => {
+            setEditingAsset(null);
+            setIsModalOpen(true);
+          }}
         />
       </main>
 

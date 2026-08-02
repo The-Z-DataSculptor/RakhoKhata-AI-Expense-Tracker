@@ -1,4 +1,3 @@
-// src/components/investments/VaultAssetTable/VaultAssetTable.tsx
 "use client";
 
 /* ==========================================================================
@@ -30,6 +29,9 @@ const RocketIcon = () => (
 const ActivityIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
 );
+const PlusIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+);
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -51,6 +53,8 @@ interface VaultAssetTableProps {
   onDeleteAsset: (id: string) => void;
   onEditClick?: (asset: HydratedAsset) => void;
   sourceCurrency: string;
+  /** Opens the add investment modal (used in empty state CTA) */
+  onAddAssetClick?: () => void;
 }
 /* === SECTION 2 END === */
 
@@ -91,22 +95,43 @@ export function VaultAssetTable({
   onDeleteAsset,
   onEditClick,
   sourceCurrency,
+  onAddAssetClick,
 }: VaultAssetTableProps) {
   const { formatAmount, convertAmount } = useCurrency();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const safeAssets = Array.isArray(assets) ? assets : [];
 
+  // ---------------------- EMPTY STATE ----------------------
   if (safeAssets.length === 0) {
     return (
       <section className={styles.container}>
-        <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-muted, #94a3b8)" }}>
-          <p>No investment assets recorded in this vault yet.</p>
+        <div className={styles.emptyStateWrapper}>
+          <div className={styles.emptyStateGlassCard}>
+            <div className={styles.emptyStateIconWrapper}>
+              <RocketIcon />
+            </div>
+            <h3 className={styles.emptyStateHeadline}>Your Vault Awaits</h3>
+            <p className={styles.emptyStateSubtext}>
+              Track your stocks, crypto, and other investments in one secure place. Start building your portfolio today.
+            </p>
+            {onAddAssetClick && (
+              <button
+                type="button"
+                className={styles.emptyStateCtaBtn}
+                onClick={onAddAssetClick}
+              >
+                <PlusIcon />
+                <span>Add Your First Investment</span>
+              </button>
+            )}
+          </div>
         </div>
       </section>
     );
   }
 
+  // ---------------------- ASSET LIST (original) ----------------------
   return (
     <section className={styles.container}>
       <div className={styles.tableHeader}>

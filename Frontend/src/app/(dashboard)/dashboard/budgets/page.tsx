@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -72,7 +73,13 @@ export default function BudgetsPage() {
 
         if (isMounted) {
           setBudgets((budgetsData.budgets as ExtendedBudget[]) || []);
-          setCategories(categoriesData.categories || []);
+          
+          // ✅ Normalise category types to UPPERCASE so the expense filter works reliably
+          const normalisedCategories = (categoriesData.categories || []).map((cat) => ({
+            ...cat,
+            type: cat.type?.toUpperCase() || "EXPENSE",
+          }));
+          setCategories(normalisedCategories);
         }
       } catch (error: unknown) {
         if (isMounted) {
@@ -187,7 +194,6 @@ export default function BudgetsPage() {
     });
   }, [budgets, activeRange, workspaceCurrency, convertAmount]);
 
-  // Helper to open the create budget modal (used in both header and empty state)
   const openCreateModal = () => {
     setEditingBudget(null);
     setIsModalOpen(true);
@@ -276,7 +282,6 @@ export default function BudgetsPage() {
         )}
       </main>
 
-      {/* ✅ Only expense categories are shown */}
       <CreateBudgetModal
         isOpen={isModalOpen}
         onClose={() => {

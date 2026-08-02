@@ -12,7 +12,7 @@ import {
   FiEdit2, 
   FiBell, 
   FiCheckSquare,
-  FiBookOpen // 🚀 Added for the premium empty state
+  FiBookOpen
 } from "react-icons/fi";
 import styles from "./TransactionLedgerGrid.module.css";
 /* === SECTION 1 END === */
@@ -67,7 +67,6 @@ export default function TransactionLedgerGrid({
   onToggleSelectRow,
   onToggleSelectAllOnPage,
 }: TransactionLedgerGridProps) {
-  // Defensive array verification
   const validatedRecords = Array.isArray(records) ? records : [];
   const safeSelectedIds = Array.isArray(selectedIds) ? selectedIds : [];
 
@@ -85,7 +84,7 @@ export default function TransactionLedgerGrid({
     <div className={styles.ledgerTableViewportWrapper}>
       {validatedRecords.length === 0 ? (
         
-        /* 🚀 NEW PREMIUM EMPTY STATE */
+        /* 🚀 UPDATED PREMIUM EMPTY STATE – matches dashboard design, no button */
         <div className={styles.emptyStateContainerBlock} role="status">
           <div className={styles.emptyStateGlassCard}>
             <div className={styles.emptyStateIconWrapper}>

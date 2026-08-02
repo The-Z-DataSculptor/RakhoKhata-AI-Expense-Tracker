@@ -227,7 +227,12 @@ export default function AiInsightsPage() {
         response={aiResponse}
       />
 
-      <AiLeakWarnings warnings={warnings} isLoading={isDataLoading} />
+      {/* ✅ NOW PASSES hasBudgets PROP TO ACTIVATE REAL BUDGET CHECK */}
+      <AiLeakWarnings
+        warnings={warnings}
+        isLoading={isDataLoading}
+        hasBudgets={budgets.length > 0}
+      />
 
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />

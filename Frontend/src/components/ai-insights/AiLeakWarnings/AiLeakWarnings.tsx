@@ -1,4 +1,3 @@
-// src/components/ai-insights/AiLeakWarnings/AiLeakWarnings.tsx
 "use client";
 
 /* ==========================================================================
@@ -24,7 +23,7 @@ export interface WarningItem {
 interface AiLeakWarningsProps {
   warnings: WarningItem[];
   isLoading: boolean;
-  /** NEW – Whether at least one budget exists in the current workspace */
+  /** Whether at least one budget exists in the current workspace */
   hasBudgets?: boolean;
 }
 /* === SECTION 2 END === */
@@ -33,7 +32,6 @@ interface AiLeakWarningsProps {
    === SECTION 3: COMPONENT LOGIC & RENDER ===
    ========================================================================== */
 export function AiLeakWarnings({ warnings, isLoading, hasBudgets }: AiLeakWarningsProps) {
-  // Defensive guard: ensure warnings is always an array
   const safeWarnings = Array.isArray(warnings) ? warnings : [];
 
   const renderContent = () => {
@@ -49,7 +47,7 @@ export function AiLeakWarnings({ warnings, isLoading, hasBudgets }: AiLeakWarnin
       );
     }
 
-    // NEW: No budgets at all – guide user to create one
+    // No budgets – show compact empty state with CTA
     if (!hasBudgets) {
       return (
         <div className={styles.noBudgetsPremiumState} role="status" aria-live="polite">
@@ -59,7 +57,7 @@ export function AiLeakWarnings({ warnings, isLoading, hasBudgets }: AiLeakWarnin
             </div>
             <h3 className={styles.noBudgetsHeadline}>No Budgets Set Yet</h3>
             <p className={styles.noBudgetsSubtext}>
-              Set spending limits for your categories to automatically detect money leaks and overspending.
+              Set spending limits for your categories to automatically get money leaks and overspending warning.
             </p>
             <Link href="/dashboard/budgets" className={styles.noBudgetsCtaBtn}>
               Go to Budgets
@@ -69,7 +67,7 @@ export function AiLeakWarnings({ warnings, isLoading, hasBudgets }: AiLeakWarnin
       );
     }
 
-    // Existing empty state: budgets exist but no leaks
+    // Budgets exist but no leaks found
     if (safeWarnings.length === 0) {
       return (
         <div role="status" aria-live="polite">
@@ -82,7 +80,7 @@ export function AiLeakWarnings({ warnings, isLoading, hasBudgets }: AiLeakWarnin
       );
     }
 
-    // Leaks detected – render warning cards (unchanged)
+    // Leaks detected
     return (
       <>
         <div className={styles.leaksGroupHeaderRow}>

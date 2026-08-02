@@ -5,7 +5,15 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React from "react";
-import { FiArrowUpRight, FiArrowDownLeft, FiTrash2, FiEdit2, FiBell, FiCheckSquare } from "react-icons/fi";
+import { 
+  FiArrowUpRight, 
+  FiArrowDownLeft, 
+  FiTrash2, 
+  FiEdit2, 
+  FiBell, 
+  FiCheckSquare,
+  FiBookOpen // 🚀 Added for the premium empty state
+} from "react-icons/fi";
 import styles from "./TransactionLedgerGrid.module.css";
 /* === SECTION 1 END === */
 
@@ -37,8 +45,6 @@ interface TransactionLedgerGridProps {
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC & HELPERS ===
    ========================================================================== */
-// WHY THIS FIX WAS MADE: Defensively parses currency amounts to prevent unhandled .toFixed()
-// exceptions on null or non-numeric inputs.
 const formatOriginalCurrency = (amount: unknown, currency?: string): string => {
   const numericVal = Number(amount);
   const safeAmount = isNaN(numericVal) ? 0 : numericVal;
@@ -78,11 +84,20 @@ export default function TransactionLedgerGrid({
   return (
     <div className={styles.ledgerTableViewportWrapper}>
       {validatedRecords.length === 0 ? (
+        
+        /* 🚀 NEW PREMIUM EMPTY STATE */
         <div className={styles.emptyStateContainerBlock} role="status">
-          <p className={styles.emptyStateNoticeText}>
-            No active transaction logs match your filter combinations.
-          </p>
+          <div className={styles.emptyStateGlassCard}>
+            <div className={styles.emptyStateIconWrapper}>
+              <FiBookOpen className={styles.emptyStateIcon} />
+            </div>
+            <h3 className={styles.emptyStateHeadline}>Welcome to Your Ledger!</h3>
+            <p className={styles.emptyStateNoticeText}>
+              Select the right workspace above, record your first transaction, and watch your dashboard come alive. Let's get tracking!
+            </p>
+          </div>
         </div>
+
       ) : (
         <>
           {/* DESKTOP HIGH-DENSITY TABLE */}
@@ -297,4 +312,4 @@ export default function TransactionLedgerGrid({
     </div>
   );
 }
-/* === SECTION 3 END === */
+/* === SECTION 4 END === */

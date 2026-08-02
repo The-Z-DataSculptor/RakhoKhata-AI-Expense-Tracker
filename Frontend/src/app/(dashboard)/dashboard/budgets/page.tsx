@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -10,7 +9,7 @@ import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { budgetService, categoryService } from "@/utils/api";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiTarget, FiPlusCircle } from "react-icons/fi";
 import { toast } from "sonner";
 import styles from "./page.module.css";
 
@@ -169,7 +168,6 @@ export default function BudgetsPage() {
           ? originalLimit
           : convertAmount(Number(budget.baseAmountUSD || 0), "USD", workspaceCurrency);
 
-      // spentAmount is USD from backend, convert to workspace currency
       const spentInWorkspaceCurrency = convertAmount(Number(budget.spentAmount || 0), "USD", workspaceCurrency);
 
       const scaledLimit = Math.round(limitInWorkspaceCurrency * scale * 100) / 100;
@@ -188,6 +186,12 @@ export default function BudgetsPage() {
       };
     });
   }, [budgets, activeRange, workspaceCurrency, convertAmount]);
+
+  // Helper to open the create budget modal (used in both header and empty state)
+  const openCreateModal = () => {
+    setEditingBudget(null);
+    setIsModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -226,10 +230,7 @@ export default function BudgetsPage() {
           <button
             type="button"
             className={styles.primaryCreateActionButton}
-            onClick={() => {
-              setEditingBudget(null);
-              setIsModalOpen(true);
-            }}
+            onClick={openCreateModal}
           >
             <FiPlus size={14} className={styles.plusIconDecoration} />
             <span>Add Budget</span>
@@ -252,12 +253,25 @@ export default function BudgetsPage() {
             onDeleteClick={handleDeleteBudget}
           />
         ) : (
-          <div className={styles.sectionFallback}>
-            <p className={styles.fallbackText}>No active budgets found in this workspace.</p>
-            <p className={styles.subFallbackText}>
-              Create a new budget to track your spending limits specifically for{" "}
-              {activeWorkspaceId?.includes("business") ? "your business" : "your personal"} expenses.
-            </p>
+          /* 🚀 NEW PREMIUM EMPTY STATE – Warm and Inviting */
+          <div className={styles.emptyBudgetState}>
+            <div className={styles.emptyBudgetGlassCard}>
+              <div className={styles.emptyBudgetIconWrapper}>
+                <FiTarget className={styles.emptyBudgetIcon} />
+              </div>
+              <h3 className={styles.emptyBudgetHeadline}>Start Budgeting Smarter</h3>
+              <p className={styles.emptyBudgetSubtext}>
+                Take control of your finances. Set monthly limits for categories and let us help you track spending effortlessly.
+              </p>
+              <button
+                type="button"
+                className={styles.emptyBudgetCtaBtn}
+                onClick={openCreateModal}
+              >
+                <FiPlusCircle size={18} />
+                <span>Create Your First Budget</span>
+              </button>
+            </div>
           </div>
         )}
       </main>

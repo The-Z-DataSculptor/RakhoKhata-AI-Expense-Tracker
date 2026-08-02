@@ -159,30 +159,37 @@ export const apiFetch = async <T = unknown>(
   try {
     const response = await fetch(url, mergedOptions);
 
+    // Read response body as plain text first to safely check content length
+    const responseText = await response.text();
+    let responseData: unknown = null;
+
+    if (responseText && responseText.trim().length > 0) {
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        // Fallback for non-JSON string responses (e.g. plain text OAuth errors)
+        responseData = { message: responseText };
+      }
+    }
+
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
-      try {
-        const errorData: unknown = await response.json();
-        if (
-          typeof errorData === "object" &&
-          errorData !== null &&
-          "error" in errorData
-        ) {
-          errorMessage = (errorData as { error: string }).error;
-        } else if (
-          typeof errorData === "object" &&
-          errorData !== null &&
-          "message" in errorData
-        ) {
-          errorMessage = (errorData as { message: string }).message;
+      if (typeof responseData === "object" && responseData !== null) {
+        if ("error" in responseData && typeof (responseData as { error: unknown }).error === "string") {
+          errorMessage = (responseData as { error: string }).error;
+        } else if ("message" in responseData && typeof (responseData as { message: unknown }).message === "string") {
+          errorMessage = (responseData as { message: string }).message;
         }
-      } catch {
-        // Fallback
       }
       throw new Error(errorMessage);
     }
 
-    return response.json() as Promise<T>;
+    // Safely return empty object for HTTP 204 or empty string payloads
+    if (response.status === 204 || responseData === null) {
+      return {} as T;
+    }
+
+    return responseData as T;
   } catch (error: unknown) {
     if (
       error instanceof Error &&

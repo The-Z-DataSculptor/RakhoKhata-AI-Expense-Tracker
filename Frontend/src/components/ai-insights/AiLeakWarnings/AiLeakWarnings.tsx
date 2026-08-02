@@ -5,7 +5,8 @@
    === SECTION 1: IMPORTS ===
    ========================================================================== */
 import React from "react";
-import { FiAlertTriangle, FiCheckCircle } from "react-icons/fi";
+import Link from "next/link";
+import { FiAlertTriangle, FiCheckCircle, FiTarget } from "react-icons/fi";
 import styles from "./AiLeakWarnings.module.css";
 /* === SECTION 1 END === */
 
@@ -23,15 +24,16 @@ export interface WarningItem {
 interface AiLeakWarningsProps {
   warnings: WarningItem[];
   isLoading: boolean;
+  /** NEW – Whether at least one budget exists in the current workspace */
+  hasBudgets?: boolean;
 }
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: COMPONENT LOGIC & RENDER ===
    ========================================================================== */
-export function AiLeakWarnings({ warnings, isLoading }: AiLeakWarningsProps) {
-  // WHY THIS FIX WAS MADE: Defensively guards against null or undefined warnings prop to prevent
-  // client-side runtime crashes if API responses fail to pass an array.
+export function AiLeakWarnings({ warnings, isLoading, hasBudgets }: AiLeakWarningsProps) {
+  // Defensive guard: ensure warnings is always an array
   const safeWarnings = Array.isArray(warnings) ? warnings : [];
 
   const renderContent = () => {
@@ -47,6 +49,27 @@ export function AiLeakWarnings({ warnings, isLoading }: AiLeakWarningsProps) {
       );
     }
 
+    // NEW: No budgets at all – guide user to create one
+    if (!hasBudgets) {
+      return (
+        <div className={styles.noBudgetsPremiumState} role="status" aria-live="polite">
+          <div className={styles.noBudgetsGlassCard}>
+            <div className={styles.noBudgetsIconWrapper}>
+              <FiTarget className={styles.noBudgetsIcon} />
+            </div>
+            <h3 className={styles.noBudgetsHeadline}>No Budgets Set Yet</h3>
+            <p className={styles.noBudgetsSubtext}>
+              Set spending limits for your categories to automatically detect money leaks and overspending.
+            </p>
+            <Link href="/dashboard/budgets" className={styles.noBudgetsCtaBtn}>
+              Go to Budgets
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // Existing empty state: budgets exist but no leaks
     if (safeWarnings.length === 0) {
       return (
         <div role="status" aria-live="polite">
@@ -54,11 +77,12 @@ export function AiLeakWarnings({ warnings, isLoading }: AiLeakWarningsProps) {
             <FiCheckCircle className={styles.titleAlertWarningIcon} size={18} style={{ color: "#10b981" }} />
             <h3 className={styles.leaksMainLabelTitle}>No money leaks found!</h3>
           </div>
-          <p className={styles.emptyMessage}> Great job! You are staying within your budgets.</p>
+          <p className={styles.emptyMessage}>Great job! You are staying within your budgets.</p>
         </div>
       );
     }
 
+    // Leaks detected – render warning cards (unchanged)
     return (
       <>
         <div className={styles.leaksGroupHeaderRow}>
@@ -68,8 +92,6 @@ export function AiLeakWarnings({ warnings, isLoading }: AiLeakWarningsProps) {
 
         <div className={styles.warningsCardLayoutGrid}>
           {safeWarnings.map((warning, index) => {
-            // WHY THIS FIX WAS MADE: Uses a fallback composite key if warning.id is missing or duplicate,
-            // ensuring DOM node identification integrity during React reconciliation.
             const uniqueKey = warning.id || `leak-warning-${index}`;
             const dotColor = warning.severity === "high" ? "#dc2626" : "#d97706";
 

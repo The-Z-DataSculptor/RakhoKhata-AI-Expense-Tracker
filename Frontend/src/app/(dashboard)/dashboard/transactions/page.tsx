@@ -151,13 +151,13 @@ export default function TransactionsPage() {
   const [stagedPreviewRows, setStagedPreviewRows] = useState<ImportRowPreview[]>([]);
 
   // ---------------------------------------------------------------------------
-  // DATA FETCHING
+  // DATA FETCHING (SAFEGUARDED)
   // ---------------------------------------------------------------------------
   const refreshLedgerData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
       const txData = await transactionService.getByWorkspace(activeWorkspaceId);
-      setTransactions(txData.transactions);
+      setTransactions(txData?.transactions || []);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to refresh transactions.";
       toast.error(message);
@@ -176,8 +176,8 @@ export default function TransactionsPage() {
           categoryService.getByWorkspace(activeWorkspaceId),
         ]);
         if (isMounted) {
-          setTransactions(txData.transactions);
-          setCategories(catData.categories);
+          setTransactions(txData?.transactions || []);
+          setCategories(catData?.categories || []);
           setCurrentPage(1);
           setSelectedRecordIds([]);
         }
@@ -216,7 +216,6 @@ export default function TransactionsPage() {
       formData.append("receipt", file);
       formData.append("workspaceId", activeWorkspaceId);
 
-      // ⬇️ FIXED: Uses same-origin apiFetch wrapper to pass auth cookie securely
       const parsedResult = await apiFetch<{
         merchant?: string;
         date?: string;
@@ -227,10 +226,11 @@ export default function TransactionsPage() {
         body: formData,
       });
 
-      const unassignedCategory = categories.find(
+      const safeCategories = categories || [];
+      const unassignedCategory = safeCategories.find(
         (c) => c.name.toLowerCase() === "unassigned"
       );
-      const defaultCategoryId = unassignedCategory?.id || categories[0]?.id || "";
+      const defaultCategoryId = unassignedCategory?.id || safeCategories[0]?.id || "";
 
       const scannedTransaction: Partial<Transaction> = {
         description: parsedResult.merchant || "AI Scanned Receipt",
@@ -246,7 +246,7 @@ export default function TransactionsPage() {
         ),
         type: "EXPENSE",
         categoryId: defaultCategoryId,
-        category: unassignedCategory || categories[0],
+        category: unassignedCategory || safeCategories[0],
       };
 
       toast.success("Receipt data extracted!", { id: notificationId });
@@ -269,7 +269,7 @@ export default function TransactionsPage() {
     const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     const mapping = { date: "", description: "", amount: "", currency: "", type: "" };
 
-    for (const header of headers) {
+    for (const header of headers || []) {
       const normal = clean(header);
       if (!mapping.date && (normal.includes("date") || normal.includes("time"))) mapping.date = header;
       if (!mapping.description && (normal.includes("desc") || normal.includes("narrative") || normal.includes("detail")))
@@ -296,9 +296,9 @@ export default function TransactionsPage() {
           header: true,
           skipEmptyLines: true,
           complete: (results) => {
-            if (results.meta.fields && results.data.length > 0) {
+            if (results.meta.fields && (results.data || []).length > 0) {
               setRawFileHeaders(results.meta.fields);
-              setRawParsedRows(results.data);
+              setRawParsedRows(results.data || []);
               autoGuessFileHeaders(results.meta.fields);
               setImportStep(2);
             } else {
@@ -318,11 +318,11 @@ export default function TransactionsPage() {
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
           const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
-          if (rows.length > 0) {
+          if ((rows || []).length > 0) {
             const headers = rows[0].map((h) => String(h));
             const body = XLSX.utils.sheet_to_json<ParsedRowData>(sheet);
             setRawFileHeaders(headers);
-            setRawParsedRows(body);
+            setRawParsedRows(body || []);
             autoGuessFileHeaders(headers);
             setImportStep(2);
           } else {
@@ -343,10 +343,11 @@ export default function TransactionsPage() {
       return;
     }
 
-    const unassignedCategory = categories.find((c) => c.name.toLowerCase() === "unassigned");
-    const defaultCategoryId = unassignedCategory?.id || categories[0]?.id || "";
+    const safeCategories = categories || [];
+    const unassignedCategory = safeCategories.find((c) => c.name.toLowerCase() === "unassigned");
+    const defaultCategoryId = unassignedCategory?.id || safeCategories[0]?.id || "";
 
-    const previewRows: ImportRowPreview[] = rawParsedRows.map((row, idx) => {
+    const previewRows: ImportRowPreview[] = (rawParsedRows || []).map((row, idx) => {
       let rawAmount = parseFloat(String(row[colMap.amount] || "0").replace(/[^0-9.-]/g, ""));
       let detectedType: "INCOME" | "EXPENSE" = fallbackType;
 
@@ -369,12 +370,12 @@ export default function TransactionsPage() {
       let categoryId = defaultCategoryId;
       const description = String(row[colMap.description] || "").toLowerCase();
       if (description.includes("salary") || description.includes("dividend")) {
-        const found = categories.find(
+        const found = safeCategories.find(
           (c) => c.name.toLowerCase().includes("salary") || c.name.toLowerCase().includes("revenue")
         );
         if (found) categoryId = found.id;
       } else if (description.includes("rent") || description.includes("housing")) {
-        const found = categories.find(
+        const found = safeCategories.find(
           (c) => c.name.toLowerCase().includes("rent") || c.name.toLowerCase().includes("housing")
         );
         if (found) categoryId = found.id;
@@ -400,7 +401,7 @@ export default function TransactionsPage() {
     setIsSubmittingImport(true);
 
     try {
-      const payload = stagedPreviewRows.map((row) => ({
+      const payload = (stagedPreviewRows || []).map((row) => ({
         originalAmount: row.amount,
         originalCurrency: row.currency,
         baseAmountUSD: convertAmount(row.amount, row.currency, "USD"),
@@ -411,13 +412,12 @@ export default function TransactionsPage() {
         workspaceId: activeWorkspaceId,
       }));
 
-      // ⬇️ FIXED: Uses transactionService.bulkCreate to pass auth cookie via relative /api route
       const result = await transactionService.bulkCreate({
         workspaceId: activeWorkspaceId,
         transactions: payload,
       });
 
-      toast.success(result.message || "Transactions imported successfully!");
+      toast.success(result?.message || "Transactions imported successfully!");
       setIsImportOpen(false);
       setImportStep(1);
       await refreshLedgerData();
@@ -474,7 +474,8 @@ export default function TransactionsPage() {
   };
 
   const handleEditRecordTrigger = (targetId: string) => {
-    const match = transactions.find((t) => t.id === targetId);
+    const safeTransactions = transactions || [];
+    const match = safeTransactions.find((t) => t.id === targetId);
     if (match) {
       setEditingTransaction(match);
       setIsModalOpen(true);
@@ -484,8 +485,8 @@ export default function TransactionsPage() {
   const handleDeleteRecordTrigger = async (targetId: string) => {
     try {
       await transactionService.delete(targetId);
-      setTransactions((prev) => prev.filter((item) => item.id !== targetId));
-      setSelectedRecordIds((prev) => prev.filter((id) => id !== targetId));
+      setTransactions((prev) => (prev || []).filter((item) => item.id !== targetId));
+      setSelectedRecordIds((prev) => (prev || []).filter((id) => id !== targetId));
       toast.success("Transaction deleted.");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to delete transaction.";
@@ -495,9 +496,9 @@ export default function TransactionsPage() {
 
   const handleBulkDeleteExecution = async () => {
     try {
-      await Promise.all(selectedRecordIds.map((id) => transactionService.delete(id)));
+      await Promise.all((selectedRecordIds || []).map((id) => transactionService.delete(id)));
       toast.success(`Successfully deleted ${selectedRecordIds.length} transactions.`);
-      setTransactions((prev) => prev.filter((row) => !selectedRecordIds.includes(row.id)));
+      setTransactions((prev) => (prev || []).filter((row) => !selectedRecordIds.includes(row.id)));
       setSelectedRecordIds([]);
       setCurrentPage(1);
     } catch (error: unknown) {
@@ -512,29 +513,31 @@ export default function TransactionsPage() {
   // ---------------------------------------------------------------------------
   const handleToggleSingleRowSelection = (targetId: string) => {
     setSelectedRecordIds((prev) =>
-      prev.includes(targetId) ? prev.filter((id) => id !== targetId) : [...prev, targetId]
+      (prev || []).includes(targetId) ? (prev || []).filter((id) => id !== targetId) : [...(prev || []), targetId]
     );
   };
 
   const handleToggleSelectAllOnPage = (visiblePageIds: string[]) => {
     setSelectedRecordIds((prev) => {
-      const allSelected = visiblePageIds.every((id) => prev.includes(id));
+      const safePrev = prev || [];
+      const safeVisible = visiblePageIds || [];
+      const allSelected = safeVisible.every((id) => safePrev.includes(id));
       return allSelected
-        ? prev.filter((id) => !visiblePageIds.includes(id))
-        : Array.from(new Set([...prev, ...visiblePageIds]));
+        ? safePrev.filter((id) => !safeVisible.includes(id))
+        : Array.from(new Set([...safePrev, ...safeVisible]));
     });
   };
 
   const handleClearSelectionQueue = () => setSelectedRecordIds([]);
 
   // ---------------------------------------------------------------------------
-  // AGGREGATION FOR DISPLAY (MEMOIZED)
+  // AGGREGATION FOR DISPLAY (MEMOIZED WITH ARRAY GUARDS)
   // ---------------------------------------------------------------------------
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((tx) => {
+    return (transactions || []).filter((tx) => {
       const query = searchQuery.toLowerCase().trim();
-      const matchesSearch = !query || tx.description.toLowerCase().includes(query);
-      const matchesType = selectedType === "all" || tx.type.toUpperCase() === selectedType.toUpperCase();
+      const matchesSearch = !query || (tx.description || "").toLowerCase().includes(query);
+      const matchesType = selectedType === "all" || (tx.type || "").toUpperCase() === selectedType.toUpperCase();
       const matchesCategory =
         selectedCategory === "all" || tx.categoryId === selectedCategory;
       return matchesSearch && matchesType && matchesCategory;
@@ -545,10 +548,10 @@ export default function TransactionsPage() {
     let totalIncomeUSD = 0;
     let totalExpenseUSD = 0;
 
-    filteredTransactions.forEach((tx) => {
+    (filteredTransactions || []).forEach((tx) => {
       const value = Number(tx.baseAmountUSD ?? tx.amount ?? 0);
-      if (tx.type.toUpperCase() === "INCOME") totalIncomeUSD += value;
-      else if (tx.type.toUpperCase() === "EXPENSE") totalExpenseUSD += value;
+      if ((tx.type || "").toUpperCase() === "INCOME") totalIncomeUSD += value;
+      else if ((tx.type || "").toUpperCase() === "EXPENSE") totalExpenseUSD += value;
     });
 
     return {
@@ -559,20 +562,24 @@ export default function TransactionsPage() {
 
   // Pagination slice
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const pagedTransactions = filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
+  const pagedTransactions = (filteredTransactions || []).slice(startIndex, startIndex + itemsPerPage);
 
   const gridRows: TransactionRecord[] = useMemo(() => {
-    return pagedTransactions.map((tx) => ({
+    return (pagedTransactions || []).map((tx) => ({
       id: tx.id,
       date: tx.date ? String(tx.date).substring(0, 10) : "",
-      description: tx.description,
+      description: tx.description || "",
       category: tx.category?.name || "General",
       originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
       originalCurrency: tx.originalCurrency ?? "USD",
       amount: Number(tx.amount || 0),
-      type: tx.type.toLowerCase() as "income" | "expense",
+      type: (tx.type || "expense").toLowerCase() as "income" | "expense",
     }));
   }, [pagedTransactions]);
+
+  const categoryOptionsForFilter = useMemo(() => {
+    return (categories || []).map((c) => ({ id: c.id, name: c.name }));
+  }, [categories]);
 
   return (
     <div className={styles.ledgerCanvasWrapper}>
@@ -600,7 +607,7 @@ export default function TransactionsPage() {
           setSelectedType(val);
           setCurrentPage(1);
         }}
-        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        categories={categoryOptionsForFilter}
         selectedCategory={selectedCategory}
         onCategoryChange={(catId) => {
           setSelectedCategory(catId);
@@ -779,7 +786,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Select Column --</option>
-                      {rawFileHeaders.map((h) => (
+                      {(rawFileHeaders || []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -795,7 +802,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Select Column --</option>
-                      {rawFileHeaders.map((h) => (
+                      {(rawFileHeaders || []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -811,7 +818,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Select Column --</option>
-                      {rawFileHeaders.map((h) => (
+                      {(rawFileHeaders || []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -827,7 +834,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Fallback Only ({fallbackCurrency}) --</option>
-                      {rawFileHeaders.map((h) => (
+                      {(rawFileHeaders || []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -896,7 +903,7 @@ export default function TransactionsPage() {
                       </tr>
                     </thead>
                     <tbody className={styles.previewTableBodyRowCluster}>
-                      {stagedPreviewRows.map((row, rIdx) => (
+                      {(stagedPreviewRows || []).map((row, rIdx) => (
                         <tr key={row.index}>
                           <td className={styles.tableCellDate}>{row.date}</td>
                           <td className={styles.tableCellTruncateText} title={row.description}>
@@ -920,12 +927,12 @@ export default function TransactionsPage() {
                               onChange={(e) => {
                                 const newId = e.target.value;
                                 setStagedPreviewRows((prev) =>
-                                  prev.map((pr, idx) => (idx === rIdx ? { ...pr, categoryId: newId } : pr))
+                                  (prev || []).map((pr, idx) => (idx === rIdx ? { ...pr, categoryId: newId } : pr))
                                 );
                               }}
                               className={styles.tableCellInlineSelectControl}
                             >
-                              {categories.map((cat) => (
+                              {(categories || []).map((cat) => (
                                 <option key={cat.id} value={cat.id}>
                                   {cat.name}
                                 </option>
@@ -985,7 +992,7 @@ export default function TransactionsPage() {
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
             <TransactionForm
               onAddTransaction={handleUpsertTransaction}
-              availableCategories={categories}
+              availableCategories={categories || []}
               initialData={editingTransaction}
               onCancel={handleClosePopupModal}
               workspaceId={activeWorkspaceId || ""}

@@ -136,7 +136,7 @@ export function filterTransactionsByDateRange(
   start: Date,
   end: Date
 ): Transaction[] {
-  return transactions.filter((tx) => {
+  return (transactions || []).filter((tx) => {
     const txDate = new Date(tx.date);
     return txDate >= start && txDate <= end;
   });
@@ -146,9 +146,10 @@ export function filterTransactionsByPeriod(
   transactions: Transaction[],
   period: TimePeriod
 ): Transaction[] {
+  const safeTransactions = transactions || [];
   const range = getPeriodDateRange(period);
-  if (!range) return transactions; 
-  return filterTransactionsByDateRange(transactions, range.start, range.end);
+  if (!range) return safeTransactions; 
+  return filterTransactionsByDateRange(safeTransactions, range.start, range.end);
 }
 
 function isFixedExpense(tx: Transaction): boolean {
@@ -167,16 +168,16 @@ export function computeMetrics(
   workspaceCurrency: string,
   convertAmount: ConvertFn
 ): DashboardMetrics {
+  const safeTransactions = transactions || [];
   const { start, end } = getCurrentMonthRange();
-  const monthTxs = filterTransactionsByDateRange(transactions, start, end);
+  const monthTxs = filterTransactionsByDateRange(safeTransactions, start, end);
 
   let monthIncome = 0;
   let monthExpenses = 0;
   let monthFixed = 0;
   let monthFlexible = 0;
 
-  monthTxs.forEach((tx) => {
-    // WHY THIS FIX WAS MADE: Convert original transaction to workspace currency before summing
+  (monthTxs || []).forEach((tx) => {
     const rawValue = Number(tx.originalAmount);
     const value = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
       ? rawValue 
@@ -202,7 +203,7 @@ export function computeMetrics(
   if (period === "all") {
     let totalIncome = 0, totalExpenses = 0, totalFixed = 0, totalFlexible = 0;
     
-    transactions.forEach((tx) => {
+    safeTransactions.forEach((tx) => {
       const rawValue = Number(tx.originalAmount);
       const value = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
         ? rawValue 
@@ -262,7 +263,8 @@ export function computeCategoryBreakdown(
   workspaceCurrency: string,
   convertAmount: ConvertFn
 ): CategoryBreakdownItem[] {
-  const expenses = transactions.filter((tx) => tx.type === "EXPENSE");
+  const safeTransactions = transactions || [];
+  const expenses = safeTransactions.filter((tx) => tx.type === "EXPENSE");
   const categoryMap = new Map<string, CategoryBreakdownItem>();
 
   expenses.forEach((tx) => {
@@ -270,7 +272,6 @@ export function computeCategoryBreakdown(
     const color = tx.category?.color || "var(--text-muted)";
     const rawAmount = Number(tx.originalAmount);
     
-    // Convert to workspace base before grouping
     const amount = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
       ? rawAmount 
       : convertAmount(rawAmount, tx.originalCurrency, workspaceCurrency);
@@ -321,11 +322,12 @@ export function computeCashFlowData(
   workspaceCurrency: string,
   convertAmount: ConvertFn
 ): CashFlowDataPoint[] {
+  const safeTransactions = transactions || [];
   const range = getPeriodDateRange(period);
 
   const aggregate = (txs: Transaction[], groupBy: "day" | "week" | "month") => {
     const groups = new Map<string, { income: number; expenses: number }>();
-    txs.forEach((tx) => {
+    (txs || []).forEach((tx) => {
       const date = new Date(tx.date);
       let key: string;
       if (groupBy === "day") {
@@ -341,7 +343,6 @@ export function computeCashFlowData(
       const entry = groups.get(key) || { income: 0, expenses: 0 };
       const rawAmount = Number(tx.originalAmount);
       
-      // Convert to workspace base before charting
       const amount = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
         ? rawAmount 
         : convertAmount(rawAmount, tx.originalCurrency, workspaceCurrency);
@@ -354,10 +355,10 @@ export function computeCashFlowData(
   };
 
   if (!range) {
-    if (transactions.length === 0) return [];
-    const dates = transactions.map((tx) => new Date(tx.date));
+    if (safeTransactions.length === 0) return [];
+    const dates = safeTransactions.map((tx) => new Date(tx.date));
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const filtered = transactions.filter((tx) => new Date(tx.date) >= minDate);
+    const filtered = safeTransactions.filter((tx) => new Date(tx.date) >= minDate);
     const groups = aggregate(filtered, "month");
     const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
@@ -381,8 +382,8 @@ export function computeCashFlowData(
   }
 
   const { start, end } = range;
-  const filtered = filterTransactionsByDateRange(transactions, start, end);
-  if (filtered.length === 0) return [];
+  const filtered = filterTransactionsByDateRange(safeTransactions, start, end);
+  if ((filtered || []).length === 0) return [];
 
   const groupBy: "day" | "week" | "month" = period === "30d" ? "week" : "day";
   const groups = aggregate(filtered, groupBy);

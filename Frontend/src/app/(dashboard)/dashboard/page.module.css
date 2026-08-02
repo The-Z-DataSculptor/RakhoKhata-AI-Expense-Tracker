@@ -11,7 +11,7 @@
   max-width: 1250px;
   margin: 0 auto;
   box-sizing: border-box;
-  padding-bottom: 2.5rem; /* 🚀 FIXED: Added clean breathing gap at the bottom of the viewport page */
+  padding-bottom: 2.5rem; 
 }
 /* === SECTION 1 END === */
 
@@ -93,7 +93,7 @@
   justify-content: center !important; 
   align-self: center !important;      
   flex-shrink: 0;
-  margin: 0 !important;               
+  margin: 0 !important;                
   padding: 0 !important;              
 }
 
@@ -132,11 +132,10 @@
 
 .chartWrapperNode {
   width: 100%;
-  display: flex;          /* 🚀 FIXED: Added flex mapping layout container box logic */
-  flex-direction: column; /* 🚀 FIXED: Forces inner content layout directions to baseline */
+  display: flex;          
+  flex-direction: column; 
 }
 
-/* 🚀 FIXED: Force the inner custom React elements to fill out 100% of their flex bounds layout */
 .chartWrapperNode > * {
   flex: 1 1 auto;
   display: flex;
@@ -148,13 +147,13 @@
 @media (min-width: 1025px) {
   .isolatedStage {
     flex-direction: row;
-    align-items: stretch; /* Preserved: Extends boundaries cleanly to match structural parameters */
+    align-items: stretch;
   }
   .isolatedStage > .chartWrapperNode:nth-child(1) {
     flex: 1.4; 
   }
   .isolatedStage > .chartWrapperNode:nth-child(2) {
-    flex: 1;    
+    flex: 1;   
   }
 }
 
@@ -190,3 +189,112 @@
   }
 } 
 /* === SECTION 6 END === */
+
+/* ==========================================================================
+   === SECTION 7: PREMIUM EMPTY STATE ===
+   ========================================================================== */
+.emptyStateContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 55vh;
+  padding: 2rem 1rem;
+}
+
+.emptyStateGlassCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(145deg, #ffffff 0%, #fcfbfe 100%);
+  border: 1px dashed var(--border-color, #e5e1f4);
+  border-radius: 24px;
+  padding: 4.5rem 2rem;
+  max-width: 550px;
+  box-shadow: 0 10px 40px rgba(16, 4, 63, 0.03);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.emptyStateGlassCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 50px rgba(16, 4, 63, 0.06);
+}
+
+.emptyStateIconWrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.1); 
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.03);
+  animation: floatPulse 3s ease-in-out infinite;
+}
+
+@keyframes floatPulse {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.03);
+  }
+  50% {
+    transform: translateY(-5px);
+    box-shadow: 0 0 0 15px rgba(99, 102, 241, 0.05);
+  }
+}
+
+.emptyStateIcon {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.75;
+}
+
+.emptyStateHeadline {
+  font-family: var(--font-navbar, sans-serif);
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.85rem 0;
+  letter-spacing: -0.02em;
+}
+
+.emptyStateSubtext {
+  font-size: 1.05rem;
+  color: var(--text-muted, #7e7a9c);
+  line-height: 1.6;
+  max-width: 440px;
+  margin: 0 0 2.25rem 0;
+}
+
+.emptyStateCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: var(--color-primary, #6366f1);
+  color: #ffffff;
+  padding: 0.9rem 1.85rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.emptyStateCtaBtn:hover {
+  background: #4f46e5;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.ctaArrowIcon {
+  transition: transform 0.2s ease;
+}
+
+.emptyStateCtaBtn:hover .ctaArrowIcon {
+  transform: translateX(4px);
+}
+/* === SECTION 7 END === */

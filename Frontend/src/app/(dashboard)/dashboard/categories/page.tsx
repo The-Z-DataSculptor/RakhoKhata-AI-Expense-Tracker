@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/categories/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -50,7 +49,6 @@ export default function CategoriesPage() {
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
 
-  // WHY THIS FIX WAS MADE: Initialized to false to prevent synchronous setState cascading errors in effect bodies
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -59,7 +57,6 @@ export default function CategoriesPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
 
-  // Safely validates and maps database frequency strings to type unions
   const toFrequencyUnion = (value: string | null): CategoryRecord["frequency"] => {
     if (!value) return "MONTHLY";
     const allowed = ["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"];
@@ -74,10 +71,13 @@ export default function CategoriesPage() {
         transactionService.getByWorkspace(activeWorkspaceId)
       ]);
 
-      setTransactions(txData.transactions);
+      const fetchedTxs = txData?.transactions || [];
+      const fetchedCats = catData?.categories || [];
 
-      const mappedCategories: CategoryRecord[] = catData.categories.map((dbCat: Category) => {
-        const txCount = txData.transactions.filter(tx => tx.categoryId === dbCat.id).length;
+      setTransactions(fetchedTxs);
+
+      const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category) => {
+        const txCount = fetchedTxs.filter(tx => tx.categoryId === dbCat.id).length;
         return {
           id: dbCat.id,
           workspaceId: dbCat.workspaceId,
@@ -116,10 +116,13 @@ export default function CategoriesPage() {
         ]);
 
         if (isMounted) {
-          setTransactions(txData.transactions);
+          const fetchedTxs = txData?.transactions || [];
+          const fetchedCats = catData?.categories || [];
 
-          const mappedCategories: CategoryRecord[] = catData.categories.map((dbCat: Category) => {
-            const txCount = txData.transactions.filter(tx => tx.categoryId === dbCat.id).length;
+          setTransactions(fetchedTxs);
+
+          const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category) => {
+            const txCount = fetchedTxs.filter(tx => tx.categoryId === dbCat.id).length;
             return {
               id: dbCat.id,
               workspaceId: dbCat.workspaceId,
@@ -163,15 +166,14 @@ export default function CategoriesPage() {
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
-  // WHY THIS FIX WAS MADE: Uses safe transaction deletion and re-creation matching available utility methods 
-  // since transactionService lacks an explicit 'update' route.
   const handleApplyCategory = async (categoryId: string, transactionIds: string[]) => {
     if (!activeWorkspaceId) return;
     try {
       setIsLoading(true);
+      const safeTransactionsList = transactions || [];
       await Promise.all(
-        transactionIds.map(async (id) => {
-          const tx = transactions.find(t => t.id === id);
+        (transactionIds || []).map(async (id) => {
+          const tx = safeTransactionsList.find(t => t.id === id);
           if (!tx) return;
 
           await transactionService.delete(id);
@@ -249,7 +251,7 @@ export default function CategoriesPage() {
     try {
       await categoryService.delete(id);
       toast.success("Category deleted.");
-      setCategories((prev) => prev.filter((c) => c.id !== id));
+      setCategories((prev) => (prev || []).filter((c) => c.id !== id));
       await refreshCategoryData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to delete category.";
@@ -257,12 +259,11 @@ export default function CategoriesPage() {
     }
   };
 
-  const unassignedNode = categories.find(c => c.name.toLowerCase().includes("unassigned"));
+  const unassignedNode = (categories || []).find(c => c.name.toLowerCase().includes("unassigned"));
   const unassignedUUID = unassignedNode ? unassignedNode.id : "";
 
-  // WHY THIS FIX WAS MADE: Safely handles date parsing with explicit type checking, avoiding 'never' type and toISOString errors.
   const filteredUnassigned: UnassignedTransactionRecord[] = useMemo(() => {
-    return transactions
+    return (transactions || [])
       .filter(tx => tx.categoryId === unassignedUUID)
       .map(tx => {
         let safeDateStr = "";
@@ -286,7 +287,7 @@ export default function CategoriesPage() {
   }, [transactions, unassignedUUID]);
 
   const categoryOptions: CategoryOption[] = useMemo(() => {
-    return categories
+    return (categories || [])
       .filter(cat => !cat.name.toLowerCase().includes("unassigned"))
       .map((cat) => ({
         id: cat.id,
@@ -294,7 +295,6 @@ export default function CategoriesPage() {
       }));
   }, [categories]);
 
-  // Memoizes live statistical calculations to optimize CPU performance across renders.
   const liveStatsData = useMemo((): CategoryStatData => {
     let topExp = { name: "N/A", amountWorkspace: 0 };
     let topInc = { name: "N/A", amountWorkspace: 0 };
@@ -303,9 +303,11 @@ export default function CategoriesPage() {
     let totalIncWorkspace = 0;
 
     const categorySums: Record<string, { amountWorkspace: number; count: number }> = {};
+    const safeTxs = transactions || [];
+    const safeCats = categories || [];
 
-    transactions.forEach(tx => {
-      const cat = categories.find(c => c.id === tx.categoryId);
+    safeTxs.forEach(tx => {
+      const cat = safeCats.find(c => c.id === tx.categoryId);
       const catName = cat?.name || "Unknown";
 
       let txAmountWorkspace: number;
@@ -350,7 +352,7 @@ export default function CategoriesPage() {
   }, [transactions, categories, workspaceCurrency, convertAmount]);
 
   const orderedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
+    return [...(categories || [])].sort((a, b) => {
       if (a.isFixed && !b.isFixed) return -1;
       if (!a.isFixed && b.isFixed) return 1;
       return 0;
@@ -371,7 +373,6 @@ export default function CategoriesPage() {
 
   return (
     <div className={styles.categoriesCanvasWrapper}>
-
       <header className={styles.pageHeaderDeck}>
         <div className={styles.titleGroup}>
           <h1 className={styles.mainTitleHeading}>Categories</h1>

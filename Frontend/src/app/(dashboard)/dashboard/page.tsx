@@ -5,6 +5,8 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { FiActivity, FiArrowRight } from "react-icons/fi";
 import TimeSwitcher, {
   TimePeriod,
 } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
@@ -157,7 +159,6 @@ export default function DashboardPage() {
       activeTimeline
     );
     
-    // WHY THIS FIX WAS MADE: Injected convertAmount and workspaceCurrency for accurate cross-currency math
     const metrics = computeMetrics(filtered, activeTimeline, workspaceCurrency, convertAmount);
     const categoryData = computeCategoryBreakdown(filtered, workspaceCurrency, convertAmount);
     const cashFlowData = computeCashFlowData(filtered, activeTimeline, workspaceCurrency, convertAmount);
@@ -190,11 +191,23 @@ export default function DashboardPage() {
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       ) : transactions.length === 0 ? (
-        <div className={styles.emptyState}>
-          <p>
-            No transactions yet. Start adding your expenses and income!
-          </p>
+        
+        /* 🚀 NEW PREMIUM EMPTY STATE */
+        <div className={styles.emptyStateContainer}>
+          <div className={styles.emptyStateGlassCard}>
+            <div className={styles.emptyStateIconWrapper}>
+              <FiActivity className={styles.emptyStateIcon} />
+            </div>
+            <h2 className={styles.emptyStateHeadline}>Dashboard Offline</h2>
+            <p className={styles.emptyStateSubtext}>
+              Select the right workspace and head over to the transactions section. Record your first entry and watch your financial overview come alive!
+            </p>
+            <Link href="/dashboard/transactions" className={styles.emptyStateCtaBtn}>
+              Go to Transactions <FiArrowRight className={styles.ctaArrowIcon} />
+            </Link>
+          </div>
         </div>
+
       ) : (
         <>
           {/* AI Companion Console */}

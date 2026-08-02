@@ -50,8 +50,6 @@ function getIconComponent(iconSlug: string) {
   }
 }
 
-// WHY THIS FIX WAS MADE: Safely constructs background tint styling without string-appending "12",
-// preventing invalid CSS syntax when category accent colors are in shorthand hex (#fff) or RGB format.
 function getSafeBackgroundStyle(colorHex?: string): React.CSSProperties {
   if (!colorHex || typeof colorHex !== "string") {
     return { backgroundColor: "rgba(128, 128, 128, 0.12)", color: "#888888" };
@@ -59,7 +57,6 @@ function getSafeBackgroundStyle(colorHex?: string): React.CSSProperties {
   
   let cleanHex = colorHex.trim().replace("#", "");
   
-  // Convert 3-digit shorthand hex (#fff) to 6-digit hex (#ffffff)
   if (cleanHex.length === 3) {
     cleanHex = cleanHex.split("").map((char) => char + char).join("");
   }
@@ -84,7 +81,6 @@ function getSafeBackgroundStyle(colorHex?: string): React.CSSProperties {
    === SECTION 4: RENDER (JSX) ===
    ========================================================================== */
 export default function CategoryGrid({ categoriesList, onEditClick, onDeleteClick }: CategoryGridProps) {
-  // WHY THIS FIX WAS MADE: Guards against null/undefined categoriesList prop to prevent UI crashes.
   const safeCategories = Array.isArray(categoriesList) ? categoriesList : [];
 
   if (safeCategories.length === 0) {
@@ -100,7 +96,6 @@ export default function CategoryGrid({ categoriesList, onEditClick, onDeleteClic
   return (
     <div className={styles.gridCanvasWrapper}>
       {safeCategories.map((categoryItem, index) => {
-        // WHY THIS FIX WAS MADE: Composite fallback key prevents React reconciliation key collisions.
         const uniqueKey = categoryItem.id || `category-card-${index}`;
 
         return (
@@ -148,7 +143,7 @@ export default function CategoryGrid({ categoriesList, onEditClick, onDeleteClic
                 ) : (
                   <>
                     <button 
-                      type="button"
+                      type="button" 
                       className={`${styles.actionButton} ${styles.editButton}`}
                       onClick={() => onEditClick(categoryItem)}
                       title="Edit category"
@@ -158,7 +153,7 @@ export default function CategoryGrid({ categoriesList, onEditClick, onDeleteClic
                     </button>
                     
                     <button 
-                      type="button"
+                      type="button" 
                       className={`${styles.actionButton} ${styles.deleteButton}`}
                       onClick={() => onDeleteClick(categoryItem.id)}
                       title="Delete category"

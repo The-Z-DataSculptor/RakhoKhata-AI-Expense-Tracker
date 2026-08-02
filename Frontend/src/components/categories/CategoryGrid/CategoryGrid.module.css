@@ -6,7 +6,7 @@
 .gridCanvasWrapper {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem; /* Tighter gap matrix for a more structured canvas footprint */
+  gap: 0.85rem; 
   width: 100%;
   box-sizing: border-box;
 }
@@ -18,10 +18,10 @@
   background-color: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: 12px;
-  padding: 0.85rem 1rem; /* 🚀 CUT IN HALF: Drastically reduced top/bottom padding handles vertical space */
+  padding: 0.85rem 1rem; 
   display: flex;
   flex-direction: column;
-  gap: 0.65rem; /* Compressed spacing gaps between internal rows */
+  gap: 0.65rem; 
   box-sizing: border-box;
   box-shadow: 0 2px 8px -2px rgba(16, 4, 63, 0.04);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -39,7 +39,7 @@
    ========================================================================== */
 .cardHeaderRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start; 
   justify-content: space-between;
   width: 100%;
   gap: 0.5rem;
@@ -50,11 +50,11 @@
   align-items: center;
   gap: 0.65rem;
   flex: 1;
-  min-width: 0; /* Forces text truncation engines to trigger accurately inside nested flex environments */
+  min-width: 0; 
 }
 
 .iconCircleStage {
-  width: 30px; /* 🚀 RE-SCALE: Compressed downward from 40px to create thin rows */
+  width: 30px; 
   height: 30px;
   border-radius: 8px;
   display: flex;
@@ -64,19 +64,24 @@
 }
 
 .categoryLabelTitle {
-  font-size: 0.92rem; /* Crisp, readable, modern layout proportions */
+  font-size: 0.92rem; 
   font-weight: 700;
   color: var(--text-primary, #10043f);
   margin: 0;
-  white-space: nowrap;
+  line-height: 1.3;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2; /* 🚀 FIXED: Added standard property for full cross-browser compatibility */
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .typeBadge {
   font-size: 0.62rem;
   font-weight: 800;
   padding: 0.15rem 0.45rem;
+  margin-top: 0.2rem; 
   border-radius: 6px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -107,7 +112,7 @@
   justify-content: space-between;
   width: 100%;
   padding-top: 0.5rem;
-  border-top: 1px dashed var(--border-color, #f3f1fb); /* Gives a premium notebook separator boundary */
+  border-top: 1px dashed var(--border-color, #f3f1fb); 
 }
 
 .counterLogText {
@@ -128,7 +133,7 @@
 }
 
 .actionButton {
-  width: 24px; /* 🚀 INTUITIVE: Clean square action plates reduce bulky typography buttons */
+  width: 24px; 
   height: 24px;
   border-radius: 6px;
   display: inline-flex;

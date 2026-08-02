@@ -15,6 +15,7 @@ import {
   requestPasswordReset,
   resetForgottenPassword,
   verifyEmail,
+  resendVerificationEmail,   // <-- NEW
   redirectToGoogle,
   handleGoogleCallback,
   completeOnboarding,
@@ -85,6 +86,14 @@ router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
 
 // Email verification (public route)
 router.post("/verify-email", strictAuthLimiter, verifyEmail);
+
+// 🚀 Resend verification email (authenticated only)
+router.post(
+  "/resend-verification",
+  verifyTokenGuard,
+  strictAuthLimiter,
+  resendVerificationEmail
+);
 
 // Google OAuth 2.0 endpoints
 router.get("/google", globalApiLimiter, redirectToGoogle);

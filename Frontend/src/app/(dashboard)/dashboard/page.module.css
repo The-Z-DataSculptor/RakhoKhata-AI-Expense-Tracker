@@ -11,26 +11,25 @@
   max-width: 1250px;
   margin: 0 auto;
   box-sizing: border-box;
-  padding-bottom: 2.5rem; 
+  padding-bottom: 2.5rem;
 }
-/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: COMPACT WHITE CONTAINER BOX CARDS HEADER SYSTEM ===
    ========================================================================== */
 .dashboardHeaderCardBox {
   display: flex;
-  align-items: center;       
+  align-items: center;
   justify-content: space-between;
   width: 100%;
   gap: 1.5rem;
   background-color: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 12px);
-  padding: 1.15rem 1.5rem;   
+  padding: 1.15rem 1.5rem;
   box-shadow: 0 4px 15px rgba(16, 4, 63, 0.01);
   box-sizing: border-box;
-  min-height: 80px;          
+  min-height: 80px;
 }
 
 .headingBlock {
@@ -44,11 +43,11 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  height: 1.75rem;           
+  height: 1.75rem;
 }
 
 .liveAnalyticsBadgeElement {
-  font-size: 0.65rem; 
+  font-size: 0.65rem;
   font-weight: 800;
   background-color: rgba(22, 163, 74, 0.07);
   color: #16a34a;
@@ -64,15 +63,14 @@
 
 .welcomeHeadline {
   font-family: var(--font-navbar, sans-serif);
-  font-size: 1.5rem; 
+  font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0;
   padding: 0;
-  line-height: 1;            
-  color: var(--text-primary, #10043f); 
+  line-height: 1;
+  color: var(--text-primary, #10043f);
 }
-/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: TEXT DESCRIPTIVE LABELS ===
@@ -80,21 +78,21 @@
 .welcomeSubtext {
   margin: 0;
   padding: 0;
-  font-size: 0.82rem; 
-  font-weight: 500; 
-  line-height: 1;            
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1;
   color: var(--text-muted, #7e7a9c);
   padding-left: 0.05rem;
 }
 
 .timeSwitcherActionFrame {
   display: flex !important;
-  align-items: center !important;     
-  justify-content: center !important; 
-  align-self: center !important;      
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
   flex-shrink: 0;
-  margin: 0 !important;                
-  padding: 0 !important;              
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .timeSwitcherActionFrame > div,
@@ -106,7 +104,6 @@
   justify-content: center !important;
   margin: 0 auto !important;
 }
-/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: CENTER STAGE CONTAINER SLOTS ===
@@ -118,7 +115,6 @@
 .gaugeRowStage {
   width: 100%;
 }
-/* === SECTION 4 END === */
 
 /* ==========================================================================
    === SECTION 5: LOWER CHARTS FLEX STAGE ===
@@ -132,8 +128,8 @@
 
 .chartWrapperNode {
   width: 100%;
-  display: flex;          
-  flex-direction: column; 
+  display: flex;
+  flex-direction: column;
 }
 
 .chartWrapperNode > * {
@@ -150,10 +146,10 @@
     align-items: stretch;
   }
   .isolatedStage > .chartWrapperNode:nth-child(1) {
-    flex: 1.4; 
+    flex: 1.4;
   }
   .isolatedStage > .chartWrapperNode:nth-child(2) {
-    flex: 1;   
+    flex: 1;
   }
 }
 
@@ -162,7 +158,6 @@
   margin-top: 1rem;
   transition: var(--transition-fast);
 }
-/* === SECTION 5 END === */
 
 /* ==========================================================================
    === SECTION 6: PHONE SCREEN RESPONSIVENESS ===
@@ -175,20 +170,19 @@
     padding: 1.25rem;
     min-height: auto;
   }
-  
+
   .titleWithBadgeRow {
     flex-direction: column-reverse;
     align-items: flex-start;
     gap: 0.35rem;
     height: auto;
   }
-  
+
   .timeSwitcherActionFrame {
     width: 100%;
     height: auto;
   }
-} 
-/* === SECTION 6 END === */
+}
 
 /* ==========================================================================
    === SECTION 7: PREMIUM EMPTY STATE ===
@@ -225,7 +219,7 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: rgba(99, 102, 241, 0.1); 
+  background: rgba(99, 102, 241, 0.1);
   color: #4f46e5;
   display: flex;
   align-items: center;
@@ -236,7 +230,8 @@
 }
 
 @keyframes floatPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
     box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.03);
   }
@@ -297,4 +292,41 @@
 .emptyStateCtaBtn:hover .ctaArrowIcon {
   transform: translateX(4px);
 }
-/* === SECTION 7 END === */
+
+/* ==========================================================================
+   === SECTION 8: VERIFICATION BANNER (NEW) ===
+   ========================================================================== */
+.verificationBanner {
+  background-color: var(--primary-soft, rgba(99, 102, 241, 0.1));
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.bannerContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bannerIcon {
+  color: var(--color-primary);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.bannerResendBtn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-left: 0.25rem;
+}

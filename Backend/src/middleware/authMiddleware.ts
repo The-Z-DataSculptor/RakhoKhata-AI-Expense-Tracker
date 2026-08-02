@@ -132,6 +132,53 @@ export const verifyTokenGuard = async (
 };
 
 /**
+ * Middleware that blocks access if the user has not verified their email address.
+ * Must be placed AFTER `verifyTokenGuard`.
+ *
+ * WHY THIS FIX WAS MADE:
+ * - Prevents throw‑away accounts from accessing any data before email verification.
+ * - Works in tandem with the 24‑hour cleanup worker to automatically delete stale unverified accounts.
+ */
+export const ensureEmailVerified = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      res.status(401).json(buildSafeError("Unauthorized access. Active user session context missing."));
+      return;
+    }
+
+    const userProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isEmailVerified: true },
+    });
+
+    if (!userProfile) {
+      res.status(401).json(buildSafeError("User account no longer exists. Session invalid."));
+      return;
+    }
+
+    if (!userProfile.isEmailVerified) {
+      res.status(403).json(
+        buildSafeError(
+          "Email not verified. Please check your inbox or request a new verification link."
+        )
+      );
+      return;
+    }
+
+    // Email is verified – continue
+    next();
+  } catch (error: unknown) {
+    console.error("Email Verification Guard Exception:", error);
+    res.status(500).json(buildSafeError("Internal server error verifying email status."));
+  }
+};
+
+/**
  * Middleware that blocks access if the user has not completed the onboarding process.
  * Must be placed after `verifyTokenGuard`.
  */

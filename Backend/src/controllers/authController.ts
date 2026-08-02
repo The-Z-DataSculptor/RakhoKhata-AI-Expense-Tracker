@@ -297,6 +297,7 @@ export const loginUser = async (req: Request, res: ExpressResponse): Promise<voi
         financialGoal: user.financialGoal,
         aiPersona: user.aiPersona,
         isOnboardingCompleted: user.isOnboardingCompleted,
+        isEmailVerified: user.isEmailVerified,
       },
     });
   } catch (error: unknown) {
@@ -331,6 +332,7 @@ export const getMe = async (req: AuthenticatedRequest, res: ExpressResponse): Pr
         aiPersona: true,
         avatarUrl: true,
         isOnboardingCompleted: true,
+        isEmailVerified: true,
         createdAt: true,
       },
     });
@@ -400,6 +402,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: ExpressRespo
         aiPersona: true,
         avatarUrl: true,
         isOnboardingCompleted: true,
+        isEmailVerified: true,
         createdAt: true,
       },
     });
@@ -635,6 +638,63 @@ export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<v
     res.status(500).json(buildErrorResponse("Internal server error verifying email."));
   }
 };
+
+/**
+ * POST /api/auth/resend-verification
+ * Authenticated – allows a logged‑in user to request a new verification email.
+ */
+export const resendVerificationEmail = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json(buildErrorResponse("Unauthorized."));
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true, isEmailVerified: true },
+    });
+
+    if (!user) {
+      res.status(404).json(buildErrorResponse("User not found."));
+      return;
+    }
+
+    if (user.isEmailVerified) {
+      res.status(400).json(buildErrorResponse("Email is already verified."));
+      return;
+    }
+
+    // Remove old tokens and generate a new one
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const tokenExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.$transaction([
+      prisma.verificationToken.deleteMany({
+        where: { identifier: user.email, type: "EMAIL_VERIFICATION" },
+      }),
+      prisma.verificationToken.create({
+        data: {
+          tokenHash,
+          type: "EMAIL_VERIFICATION",
+          identifier: user.email,
+          expiresAt: tokenExpiration,
+        },
+      }),
+    ]);
+
+    const verificationUrl = `${APP_FRONTEND_URL}/verify-email?token=${rawToken}`;
+    await sendVerificationEmail(user.email, user.name, verificationUrl);
+
+    res.status(200).json({ message: "Verification email sent. Please check your inbox." });
+  } catch (error: unknown) {
+    console.error("Resend Verification Error:", error);
+    res.status(500).json(buildErrorResponse("Internal server error resending verification email."));
+  }
+};
+
 /* === SECTION 3 END === */
 
 /* ==========================================================================

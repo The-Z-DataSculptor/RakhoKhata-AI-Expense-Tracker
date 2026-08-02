@@ -119,6 +119,8 @@ export interface UserProfile {
   aiPersona: string | null;
   createdAt: string;
   avatarUrl?: string | null;
+  isEmailVerified?: boolean;   // <-- NEW
+  isOnboardingCompleted?: boolean;
 }
 
 export interface Workspace {

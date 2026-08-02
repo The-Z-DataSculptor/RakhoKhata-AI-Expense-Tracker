@@ -1,4 +1,3 @@
-// Frontend/src/app/(auth)/login/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -31,6 +30,7 @@ interface LoginSuccessPayload {
     id: string;
     email: string;
     isOnboardingCompleted: boolean;
+    isEmailVerified?: boolean;   // NEW
   };
 }
 
@@ -105,7 +105,15 @@ export default function LoginPage() {
       }
 
       const payload = result as LoginSuccessPayload;
-      toast.success("Welcome back! Loading your session...");
+
+      // Show verification reminder if email not verified
+      if (payload.user?.isEmailVerified === false) {
+        toast.info("Please check your inbox to verify your email address.", {
+          duration: 5000,
+        });
+      } else {
+        toast.success("Welcome back! Loading your session...");
+      }
 
       const targetPath =
         payload.user?.isOnboardingCompleted ? "/dashboard" : "/onboarding";

@@ -9,6 +9,8 @@ import app from "./server";
 import { prisma } from "./db";
 import { initNotificationScheduler } from "./services/notificationService";
 import { initBillReminderCron } from "./workers/billReminderWorker";
+import { initCleanupCron } from "./workers/cleanupUnverifiedAccountsWorker";
+import { initVerificationReminderCron } from "./workers/verificationReminderWorker";   // <-- NEW
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -103,6 +105,8 @@ async function startServer(): Promise<void> {
       );
       initNotificationScheduler();
       initBillReminderCron();
+      initCleanupCron();
+      initVerificationReminderCron();   // <-- NEW
     }
   } catch (error: unknown) {
     console.error("❌ Fatal error binding HTTP server:", error);

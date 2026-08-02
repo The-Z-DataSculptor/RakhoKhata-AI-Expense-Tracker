@@ -1,4 +1,3 @@
-// src/app/(auth)/verify-email/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -34,7 +33,9 @@ function VerifyEmailForm() {
       // If the token is missing, we cannot proceed
       if (!token) {
         setStatus("error");
-        setErrorMessage("Missing security token in the verification link.");
+        setErrorMessage(
+          "Missing security token in the verification link. You can log in and request a new verification email from the dashboard."
+        );
         return;
       }
 
@@ -67,11 +68,19 @@ function VerifyEmailForm() {
       } catch (error: unknown) {
         console.error("Verification error:", error);
         setStatus("error");
-        setErrorMessage(
+        const message =
           error instanceof Error
             ? error.message
-            : "A network problem occurred during verification."
-        );
+            : "A network problem occurred during verification.";
+
+        // If the error indicates an expired token, give a clear message
+        if (message.toLowerCase().includes("expired")) {
+          setErrorMessage(
+            "Your verification link has expired. Please log in and click 'Resend Verification Email' from the dashboard."
+          );
+        } else {
+          setErrorMessage(message);
+        }
       }
     };
 
@@ -121,18 +130,35 @@ function VerifyEmailForm() {
             >
               {errorMessage}
             </p>
-            <Link
-              href="/login"
-              className={styles.submitPrimaryButton}
-              style={{
-                display: "block",
-                textTransform: "none",
-                textAlign: "center",
-                textDecoration: "none",
-              }}
-            >
-              Back to Sign In
-            </Link>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <Link
+                href="/login"
+                className={styles.submitPrimaryButton}
+                style={{
+                  display: "block",
+                  textTransform: "none",
+                  textAlign: "center",
+                  textDecoration: "none",
+                }}
+              >
+                Log In to Resend Verification
+              </Link>
+              <Link
+                href="/signup"
+                className={styles.submitPrimaryButton}
+                style={{
+                  display: "block",
+                  textTransform: "none",
+                  textAlign: "center",
+                  textDecoration: "none",
+                  background: "transparent",
+                  border: "1px solid var(--border-color, #e5e1f4)",
+                  color: "var(--text-primary, #10043f)",
+                }}
+              >
+                Back to Sign Up
+              </Link>
+            </div>
           </div>
         )}
       </div>

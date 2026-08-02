@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useSyncExternalStore, useEffect, useRef } from "react";
-import Image from "next/image"; 
+import Image from "next/image";
 import { toast } from "sonner";
 import {
   FiSun,
@@ -21,13 +21,14 @@ import {
   FiCheckCircle,
   FiCamera,
   FiLoader,
-  FiChevronDown
+  FiChevronDown,
+  FiMail,
 } from "react-icons/fi";
 import { useTheme } from "@/hooks/useTheme";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { useUser } from "@/app/(dashboard)/context/UserContext";
-import { notificationService, userService, Notification, UserProfile } from "@/utils/api"; 
-import { WORLD_CURRENCIES } from "@/constants/geoData"; 
+import { notificationService, userService, Notification, UserProfile } from "@/utils/api";
+import { WORLD_CURRENCIES } from "@/constants/geoData";
 import styles from "./DashboardNavbar.module.css";
 
 const FINANCE_FACTS = [
@@ -38,12 +39,12 @@ const FINANCE_FACTS = [
   "The word 'budget' comes from the French word 'bougette' meaning a small bag.",
   "People who track their expenses save 15% more on average.",
   "Investing $100 a month at 8% return could grow to over $150,000 in 30 years.",
-  "More than 60% of people don't have a budget."
+  "More than 60% of people don't have a budget.",
 ] as const;
 
 interface DashboardNavbarProps {
   user?: Partial<UserProfile> | null;
-  currentWorkspaceId?: string; 
+  currentWorkspaceId?: string;
 }
 
 function timeAgo(dateString: string): string {
@@ -64,9 +65,14 @@ function timeAgo(dateString: string): string {
 
 function getNotificationIcon(sourceType: string) {
   switch (sourceType) {
-    case "BILL_REMINDER": return <FiCalendar size={18} className={styles.iconBill} />;
-    case "BUDGET_ALERT": return <FiAlertCircle size={18} className={styles.iconAlert} />;
-    default: return <FiInfo size={18} className={styles.iconSystem} />;
+    case "BILL_REMINDER":
+      return <FiCalendar size={18} className={styles.iconBill} />;
+    case "BUDGET_ALERT":
+      return <FiAlertCircle size={18} className={styles.iconAlert} />;
+    case "VERIFICATION_REMINDER":
+      return <FiMail size={18} className={styles.iconSystem} />;
+    default:
+      return <FiInfo size={18} className={styles.iconSystem} />;
   }
 }
 
@@ -81,11 +87,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isMounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const isMounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const [isThemeOpen, setIsThemeOpen] = useState<boolean>(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState<boolean>(false);
@@ -96,7 +98,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
 
   const currentAvatarUrl = user?.avatarUrl ?? null;
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  
+
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
   const unreadCount = safeNotifications.filter((n) => !n.isRead).length;
 
@@ -194,7 +196,8 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
       toast.success("Profile avatar updated successfully!");
     } catch (error: unknown) {
       console.error("Avatar Upload Exception Loop:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to modify profile image asset.";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to modify profile image asset.";
       toast.error(errorMessage);
     } finally {
       setIsAvatarUploading(false);
@@ -221,13 +224,37 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
     }
   };
 
+  const handleResendVerification = async () => {
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data: unknown = await res.json();
+      if (!res.ok) {
+        const errorMsg =
+          typeof data === "object" && data !== null && "error" in data
+            ? (data as { error: string }).error
+            : "Failed to resend verification email.";
+        throw new Error(errorMsg);
+      }
+      toast.success("Verification email sent! Check your inbox.");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "An unexpected error occurred.";
+      toast.error(message);
+    }
+  };
+
   const getThemeIcon = () => {
     if (activeTheme === "light") return <FiSun size={16} />;
     if (activeTheme === "dark") return <FiMoon size={16} />;
     return <FiMonitor size={16} />;
   };
 
-  const activeCurrencyDetails = WORLD_CURRENCIES.find((c) => c.code.toUpperCase() === currency?.toUpperCase());
+  const activeCurrencyDetails = WORLD_CURRENCIES.find(
+    (c) => c.code.toUpperCase() === currency?.toUpperCase()
+  );
   const displayGreetingName = user?.name ? user.name.split(" ")[0] : "User";
   const formattedDate = isMounted
     ? new Date().toLocaleDateString("en-US", {
@@ -272,6 +299,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
       </div>
 
       <div className={styles.actionControlDeck} ref={dropdownRef}>
+        {/* Currency Dropdown */}
         <div className={styles.dropdownMenuContainer}>
           <button
             type="button"
@@ -308,13 +336,19 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                         setCurrencyWithWorkspace(option.code, currentWorkspaceId || "");
                         setIsCurrencyOpen(false);
                       }}
-                      className={option.code.toUpperCase() === currency?.toUpperCase() ? styles.activeMenuOption : ""}
+                      className={
+                        option.code.toUpperCase() === currency?.toUpperCase()
+                          ? styles.activeMenuOption
+                          : ""
+                      }
                     >
                       <span className={styles.currencyMenuFlag}>{option.flag}</span>
                       <span className={styles.currencyMenuCode}>{option.code}</span>
                       <span className={styles.currencyMenuLabel}>{option.label}</span>
                       <span className={styles.currencyMenuSymbolBadge}>{option.symbol}</span>
-                      {option.code.toUpperCase() === currency?.toUpperCase() && <FiCheck className={styles.checkMarkerIcon} size={14} />}
+                      {option.code.toUpperCase() === currency?.toUpperCase() && (
+                        <FiCheck className={styles.checkMarkerIcon} size={14} />
+                      )}
                     </button>
                   </li>
                 ))}
@@ -323,6 +357,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
           )}
         </div>
 
+        {/* Notification Dropdown */}
         <div className={styles.dropdownMenuContainer}>
           <button
             type="button"
@@ -353,7 +388,11 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                   )}
                 </div>
                 {unreadCount > 0 && (
-                  <button type="button" className={styles.markAllReadBtn} onClick={handleMarkAllAsRead}>
+                  <button
+                    type="button"
+                    className={styles.markAllReadBtn}
+                    onClick={handleMarkAllAsRead}
+                  >
                     <FiCheckCircle size={14} /> Mark all read
                   </button>
                 )}
@@ -369,7 +408,9 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                   safeNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`${styles.notificationCard} ${!notification.isRead ? styles.notificationCardUnread : ""}`}
+                      className={`${styles.notificationCard} ${
+                        !notification.isRead ? styles.notificationCardUnread : ""
+                      }`}
                       onClick={() => handleMarkAsRead(notification.id, notification.isRead)}
                     >
                       <div className={styles.notificationIconWrapper}>
@@ -378,9 +419,23 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                       <div className={styles.notificationContent}>
                         <div className={styles.notificationTopRow}>
                           <p className={styles.notificationCardTitle}>{notification.title}</p>
-                          <span className={styles.notificationTime}>{timeAgo(notification.createdAt)}</span>
+                          <span className={styles.notificationTime}>
+                            {timeAgo(notification.createdAt)}
+                          </span>
                         </div>
                         <p className={styles.notificationCardMessage}>{notification.message}</p>
+                        {notification.sourceType === "VERIFICATION_REMINDER" && (
+                          <button
+                            type="button"
+                            className={styles.resendVerificationBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleResendVerification();
+                            }}
+                          >
+                            <FiMail size={12} /> Resend Verification Email
+                          </button>
+                        )}
                       </div>
                       {!notification.isRead && <div className={styles.unreadIndicatorDot} />}
                     </div>
@@ -391,6 +446,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
           )}
         </div>
 
+        {/* Theme Dropdown */}
         <div className={styles.dropdownMenuContainer}>
           <button
             type="button"
@@ -423,7 +479,9 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                     <div className={styles.themeLabelCluster}>
                       <FiSun size={14} /> <span>Light</span>
                     </div>
-                    {activeTheme === "light" && <FiCheck className={styles.checkMarkerIcon} size={14} />}
+                    {activeTheme === "light" && (
+                      <FiCheck className={styles.checkMarkerIcon} size={14} />
+                    )}
                   </button>
                 </li>
                 <li>
@@ -439,7 +497,9 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                     <div className={styles.themeLabelCluster}>
                       <FiMoon size={14} /> <span>Dark</span>
                     </div>
-                    {activeTheme === "dark" && <FiCheck className={styles.checkMarkerIcon} size={14} />}
+                    {activeTheme === "dark" && (
+                      <FiCheck className={styles.checkMarkerIcon} size={14} />
+                    )}
                   </button>
                 </li>
                 <li>
@@ -455,7 +515,9 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                     <div className={styles.themeLabelCluster}>
                       <FiMonitor size={14} /> <span>System</span>
                     </div>
-                    {activeTheme === "system" && <FiCheck className={styles.checkMarkerIcon} size={14} />}
+                    {activeTheme === "system" && (
+                      <FiCheck className={styles.checkMarkerIcon} size={14} />
+                    )}
                   </button>
                 </li>
               </ul>
@@ -463,7 +525,8 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
           )}
         </div>
 
-        <input 
+        {/* Avatar Upload */}
+        <input
           type="file"
           ref={fileInputRef}
           onChange={handleAvatarChange}
@@ -471,8 +534,8 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
           style={{ display: "none" }}
         />
 
-        <div 
-          className={`${styles.profileAvatarContainer} ${isAvatarUploading ? styles.avatarLoadingState : ""}`} 
+        <div
+          className={`${styles.profileAvatarContainer} ${isAvatarUploading ? styles.avatarLoadingState : ""}`}
           onClick={handleAvatarClick}
           title="Click to upload custom picture"
         >
@@ -482,10 +545,10 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
             </div>
           ) : currentAvatarUrl ? (
             <>
-              <Image 
-                src={currentAvatarUrl} 
-                alt={user?.name || "User Avatar"} 
-                className={styles.profileAvatarImage} 
+              <Image
+                src={currentAvatarUrl}
+                alt={user?.name || "User Avatar"}
+                className={styles.profileAvatarImage}
                 width={38}
                 height={38}
                 unoptimized
@@ -506,6 +569,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
           )}
         </div>
 
+        {/* Mobile Menu Toggle */}
         <button
           type="button"
           className={styles.hamburgerMenuIconToggle}
@@ -520,6 +584,7 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
         </button>
       </div>
 
+      {/* Mobile Menu Drawer */}
       {isMobileMenuOpen && (
         <>
           <div className={styles.mobileBackdrop} onClick={() => setIsMobileMenuOpen(false)} />
@@ -550,14 +615,18 @@ export default function DashboardNavbar({ user: propUser, currentWorkspaceId }: 
                       <button
                         key={cur.code}
                         type="button"
-                        className={cur.code.toUpperCase() === currency?.toUpperCase() ? styles.mobileActiveActionButton : styles.mobileSecondaryActionButton}
+                        className={
+                          cur.code.toUpperCase() === currency?.toUpperCase()
+                            ? styles.mobileActiveActionButton
+                            : styles.mobileSecondaryActionButton
+                        }
                         onClick={() => {
                           setCurrencyWithWorkspace(cur.code, currentWorkspaceId || "");
                           setIsMobileCurrencyOpen(false);
                           setIsMobileMenuOpen(false);
                         }}
                       >
-                        <span className={styles.mobileFlagIcon}>{cur.flag}</span> 
+                        <span className={styles.mobileFlagIcon}>{cur.flag}</span>
                         {cur.code} <span className={styles.mobileCurrencySymbol}>({cur.symbol})</span>
                       </button>
                     ))}

@@ -929,3 +929,26 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   === SECTION 10: RESEND VERIFICATION BUTTON (NEW) ===
+   ========================================================================== */
+.resendVerificationBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background-color: var(--color-primary, #6366f1);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.resendVerificationBtn:hover {
+  background-color: var(--color-primary-dark, #4f46e5);
+}

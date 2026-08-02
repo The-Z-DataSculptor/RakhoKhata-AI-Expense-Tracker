@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -6,7 +5,8 @@
    ========================================================================== */
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { FiActivity, FiArrowRight } from "react-icons/fi";
+import { FiActivity, FiArrowRight, FiMail } from "react-icons/fi";
+import { toast } from "sonner";
 import TimeSwitcher, {
   TimePeriod,
 } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
@@ -18,6 +18,7 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFoo
 import AiBuddyConsole from "@/components/dashboard/AiBuddyConsole/AiBuddyConsole";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
+import { useUser } from "@/app/(dashboard)/context/UserContext"; // NEW
 import { transactionService } from "@/utils/api";
 import {
   filterTransactionsByPeriod,
@@ -38,11 +39,15 @@ export default function DashboardPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "PKR";
   const { convertAmount } = useCurrency();
+  const { user } = useUser(); // NEW
 
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Determine if email is verified (default to true to avoid flash)
+  const isEmailVerified = user?.isEmailVerified ?? true;
 
   useEffect(() => {
     let isMounted = true;
@@ -85,7 +90,7 @@ export default function DashboardPage() {
 
             return {
               id: apiTx.id,
-              amount: originalAmount, 
+              amount: originalAmount,
               originalAmount,
               originalCurrency,
               baseAmountUSD,
@@ -125,11 +130,11 @@ export default function DashboardPage() {
       isMounted = false;
     };
   }, [activeWorkspaceId, convertAmount]);
-/* === SECTION 2 END === */
+  /* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: DASHBOARD COMPUTATIONS ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 3: DASHBOARD COMPUTATIONS ===
+     ========================================================================== */
   const dashboardData = useMemo(() => {
     if (transactions.length === 0) {
       return {
@@ -154,14 +159,25 @@ export default function DashboardPage() {
       };
     }
 
-    const filtered = filterTransactionsByPeriod(
-      transactions,
-      activeTimeline
+    const filtered = filterTransactionsByPeriod(transactions, activeTimeline);
+
+    const metrics = computeMetrics(
+      filtered,
+      activeTimeline,
+      workspaceCurrency,
+      convertAmount
     );
-    
-    const metrics = computeMetrics(filtered, activeTimeline, workspaceCurrency, convertAmount);
-    const categoryData = computeCategoryBreakdown(filtered, workspaceCurrency, convertAmount);
-    const cashFlowData = computeCashFlowData(filtered, activeTimeline, workspaceCurrency, convertAmount);
+    const categoryData = computeCategoryBreakdown(
+      filtered,
+      workspaceCurrency,
+      convertAmount
+    );
+    const cashFlowData = computeCashFlowData(
+      filtered,
+      activeTimeline,
+      workspaceCurrency,
+      convertAmount
+    );
 
     return {
       filteredTransactions: filtered,
@@ -172,15 +188,53 @@ export default function DashboardPage() {
     };
   }, [transactions, activeTimeline, workspaceCurrency, convertAmount]);
 
-  const { metrics, categoryData, cashFlowData, periodLabel } =
-    dashboardData;
-/* === SECTION 3 END === */
+  const { metrics, categoryData, cashFlowData, periodLabel } = dashboardData;
+  /* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER ===
-   ========================================================================== */
+  /* ==========================================================================
+     === SECTION 4: RENDER ===
+     ========================================================================== */
   return (
     <div className={styles.workspaceWrapper}>
+      {/* Verification banner – only if email is not verified */}
+      {!isEmailVerified && (
+        <div className={styles.verificationBanner}>
+          <div className={styles.bannerContent}>
+            <FiMail className={styles.bannerIcon} />
+            <span>
+              Your email is not verified. Please check your inbox or{" "}
+              <button
+                className={styles.bannerResendBtn}
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/auth/resend-verification", {
+                      method: "POST",
+                      credentials: "include",
+                    });
+                    const data: unknown = await res.json();
+                    if (!res.ok) {
+                      const errorMsg =
+                        typeof data === "object" && data !== null && "error" in data
+                          ? (data as { error: string }).error
+                          : "Failed to resend verification email.";
+                      throw new Error(errorMsg);
+                    }
+                    toast.success("Verification email sent! Check your inbox.");
+                  } catch (err: unknown) {
+                    const message =
+                      err instanceof Error ? err.message : "An unexpected error occurred.";
+                    toast.error(message);
+                  }
+                }}
+              >
+                resend verification email
+              </button>
+              .
+            </span>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className={styles.loadingState}>
           <p>Loading your financial data...</p>
@@ -191,7 +245,6 @@ export default function DashboardPage() {
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       ) : transactions.length === 0 ? (
-        
         /* 🚀 NEW PREMIUM EMPTY STATE */
         <div className={styles.emptyStateContainer}>
           <div className={styles.emptyStateGlassCard}>
@@ -200,14 +253,18 @@ export default function DashboardPage() {
             </div>
             <h2 className={styles.emptyStateHeadline}>Dashboard Offline</h2>
             <p className={styles.emptyStateSubtext}>
-              Select the right workspace and head over to the transactions section. Record your first entry and watch your financial overview come alive!
+              Select the right workspace and head over to the transactions
+              section. Record your first entry and watch your financial overview
+              come alive!
             </p>
-            <Link href="/dashboard/transactions" className={styles.emptyStateCtaBtn}>
+            <Link
+              href="/dashboard/transactions"
+              className={styles.emptyStateCtaBtn}
+            >
               Go to Transactions <FiArrowRight className={styles.ctaArrowIcon} />
             </Link>
           </div>
         </div>
-
       ) : (
         <>
           {/* AI Companion Console */}
@@ -240,10 +297,7 @@ export default function DashboardPage() {
           </header>
 
           {/* Summary metric cards */}
-          <section
-            className={styles.metricsRowStage}
-            aria-label="Quick Summary"
-          >
+          <section className={styles.metricsRowStage} aria-label="Quick Summary">
             <MetricRow
               metrics={metrics}
               periodLabel={periodLabel}

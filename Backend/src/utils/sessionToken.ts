@@ -1,3 +1,5 @@
+//K:\Developer\Expense-Tracker\Backend\src\utils\sessionToken.ts
+
 import crypto from "crypto";
 
 interface SessionTokenPayload {

@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -71,10 +70,13 @@ export default function BudgetsPage() {
           categoryService.getByWorkspace(activeWorkspaceId)
         ]);
 
+        // 🔍 DIAGNOSTIC LOG – check the console in your browser (F12 → Console)
+        console.log("📦 All categories from API:", categoriesData.categories);
+
         if (isMounted) {
           setBudgets((budgetsData.budgets as ExtendedBudget[]) || []);
           
-          // ✅ Normalise category types to UPPERCASE so the expense filter works reliably
+          // Normalise category types to UPPERCASE so the expense filter works reliably
           const normalisedCategories = (categoriesData.categories || []).map((cat) => ({
             ...cat,
             type: cat.type?.toUpperCase() || "EXPENSE",
@@ -259,7 +261,6 @@ export default function BudgetsPage() {
             onDeleteClick={handleDeleteBudget}
           />
         ) : (
-          /* 🚀 NEW PREMIUM EMPTY STATE – Warm and Inviting */
           <div className={styles.emptyBudgetState}>
             <div className={styles.emptyBudgetGlassCard}>
               <div className={styles.emptyBudgetIconWrapper}>

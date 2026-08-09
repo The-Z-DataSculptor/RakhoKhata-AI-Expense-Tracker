@@ -8,8 +8,9 @@ import { prisma } from "../db";
 // CONFIGURATION & CONSTANTS
 // ==========================================================================
 
+// Updated to a valid model name (gemini-1.5-flash)
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 const API_TIMEOUT_MS = 15000;
 const MAX_PROMPT_TRANSACTIONS = 40;
@@ -147,7 +148,7 @@ function extractAiText(result: Record<string, unknown>): string {
   } catch (error) {
     console.error("Error parsing Gemini API JSON layout:", error);
   }
-  return "Sorry, I couldn't process a clear response right now.";
+  return JSON.stringify({ text: "Sorry, I couldn't process a response right now." });
 }
 
 // ==========================================================================

@@ -65,10 +65,7 @@ export function getUserOrIpKey(req: Request): string {
  * Checks if rate limiting should be skipped during automated testing
  */
 function shouldSkipLimiter(): boolean {
-  if (process.env.DISABLE_RATE_LIMIT === "true") {
-    return true;
-  }
-  return false;
+  return process.env.DISABLE_RATE_LIMIT === "true";
 }
 /* === SECTION 2 END === */
 

@@ -15,7 +15,7 @@ import {
   requestPasswordReset,
   resetForgottenPassword,
   verifyEmail,
-  resendVerificationEmail,   // <-- NEW
+  resendVerificationEmail,
   redirectToGoogle,
   handleGoogleCallback,
   completeOnboarding,
@@ -79,7 +79,7 @@ router.post("/change-password", verifyTokenGuard, strictAuthLimiter, changePassw
 router.put("/complete-onboarding", verifyTokenGuard, writeActionsLimiter, completeOnboarding);
 router.post("/complete-onboarding", verifyTokenGuard, writeActionsLimiter, completeOnboarding);
 
-// Password reset flow (supports both /forgot-password and /request-password-reset)
+// Password reset flow (/forgot-password aliased directly to requestPasswordReset)
 router.post("/forgot-password", strictAuthLimiter, requestPasswordReset);
 router.post("/request-password-reset", strictAuthLimiter, requestPasswordReset);
 router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
@@ -87,7 +87,7 @@ router.post("/reset-password", strictAuthLimiter, resetForgottenPassword);
 // Email verification (public route)
 router.post("/verify-email", strictAuthLimiter, verifyEmail);
 
-// 🚀 Resend verification email (authenticated only)
+// Resend verification email (authenticated only)
 router.post(
   "/resend-verification",
   verifyTokenGuard,

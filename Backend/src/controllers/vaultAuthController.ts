@@ -290,9 +290,10 @@ export const requestVaultPinReset = async (
       return;
     }
 
+    // Remove old tokens – log errors instead of swallowing them
     await prisma.verificationToken.deleteMany({
       where: { identifier: user.email, type: "PASSWORD_RESET" },
-    }).catch(() => {});
+    }).catch((err) => console.error("Verification token cleanup error:", err));
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -350,36 +351,54 @@ export const resetVaultPinWithToken = async (
     }
 
     if (new Date() > tokenRecord.expiresAt) {
-      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+      // Delete expired token with logging
+      await prisma.verificationToken.delete({ where: { id: tokenRecord.id } })
+        .catch((err) => console.error("Verification token cleanup error:", err));
       res.status(400).json(buildErrorResponse("Reset link expired. Please request a new one."));
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { email: tokenRecord.identifier } });
-    if (!user) {
-      res.status(404).json(buildErrorResponse("User account not found."));
-      return;
-    }
-
+    // Move user lookup inside the transaction to avoid race conditions
     const hashedPin = await bcrypt.hash(newPin, BCRYPT_SALT_ROUNDS);
 
-    await prisma.$transaction([
-      prisma.user.update({
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { email: tokenRecord.identifier },
+        select: { id: true },
+      });
+
+      if (!user) {
+        throw new Error("User account not found.");
+      }
+
+      await tx.user.update({
         where: { id: user.id },
         data: { vaultPin: hashedPin },
-      }),
-      prisma.verificationToken.delete({
-        where: { id: tokenRecord.id },
-      }),
-    ]);
+      });
 
-    await createVaultPinResetNotification(user.id);
+      await tx.verificationToken.delete({
+        where: { id: tokenRecord.id },
+      });
+    });
+
+    // Notification after transaction success
+    const user = await prisma.user.findUnique({
+      where: { email: tokenRecord.identifier },
+      select: { id: true },
+    });
+    if (user) {
+      await createVaultPinResetNotification(user.id);
+    }
 
     res.status(200).json({
       success: true,
       message: "Vault PIN reset successfully! You can now unlock your vault.",
     });
   } catch (error: unknown) {
+    if (error instanceof Error && error.message === "User account not found.") {
+      res.status(404).json(buildErrorResponse("User account not found."));
+      return;
+    }
     console.error("Reset Vault PIN Token Error:", error);
     res.status(500).json(buildErrorResponse("Failed to reset vault PIN."));
   }

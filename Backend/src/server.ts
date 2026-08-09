@@ -27,14 +27,24 @@ const app = express();
    === SECTION 2: GLOBAL MIDDLEWARE & SECURITY CONFIG ===
    ========================================================================== */
 
+// ------- Trust proxy configuration for reverse proxy (Hostinger, Nginx, etc.) -------
+// This tells Express to trust the X-Forwarded-* headers from the first proxy.
+// In production (e.g., behind Hostinger), set TRUST_PROXY="1" or "true".
+// If you have multiple proxies, set it to the number of proxies or a comma-separated list.
 const rawTrustProxy = process.env.TRUST_PROXY || "1";
-const parsedTrustProxy =
-  rawTrustProxy === "true"
-    ? true
-    : isNaN(Number(rawTrustProxy))
-    ? rawTrustProxy
-    : Number(rawTrustProxy);
+let parsedTrustProxy: boolean | number | string;
+if (rawTrustProxy === "true") {
+  parsedTrustProxy = true;
+} else if (rawTrustProxy === "false") {
+  parsedTrustProxy = false;
+} else if (!isNaN(Number(rawTrustProxy))) {
+  parsedTrustProxy = Number(rawTrustProxy);
+} else {
+  // Could be a string like "loopback, linklocal, uniquelocal" or IP ranges
+  parsedTrustProxy = rawTrustProxy;
+}
 app.set("trust proxy", parsedTrustProxy);
+// -------------------------------------------------------------------------
 
 app.use(
   helmet({
@@ -60,13 +70,15 @@ app.use(
       if (!origin) return callback(null, true);
       const normalizedOrigin = origin.replace(/\/$/, "");
       if (
-        allowedOrigins.length === 0 ||
-        allowedOrigins.includes(normalizedOrigin) ||
-        process.env.NODE_ENV !== "production"
+        allowedOrigins.length > 0 &&
+        allowedOrigins.includes(normalizedOrigin)
       ) {
         return callback(null, true);
       }
-      return callback(null, true);
+      if (process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],

@@ -157,7 +157,8 @@ export default function TransactionsPage() {
     if (!activeWorkspaceId) return;
     try {
       const txData = await transactionService.getByWorkspace(activeWorkspaceId);
-      setTransactions(txData?.transactions || []);
+      const safeTransactions = Array.isArray(txData?.transactions) ? txData.transactions : [];
+      setTransactions(safeTransactions);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to refresh transactions.";
       toast.error(message);
@@ -176,8 +177,11 @@ export default function TransactionsPage() {
           categoryService.getByWorkspace(activeWorkspaceId),
         ]);
         if (isMounted) {
-          setTransactions(txData?.transactions || []);
-          setCategories(catData?.categories || []);
+          const safeTxs = Array.isArray(txData?.transactions) ? txData.transactions : [];
+          const safeCats = Array.isArray(catData?.categories) ? catData.categories : [];
+
+          setTransactions(safeTxs);
+          setCategories(safeCats);
           setCurrentPage(1);
           setSelectedRecordIds([]);
         }
@@ -226,7 +230,7 @@ export default function TransactionsPage() {
         body: formData,
       });
 
-      const safeCategories = categories || [];
+      const safeCategories = Array.isArray(categories) ? categories : [];
       const unassignedCategory = safeCategories.find(
         (c) => c.name.toLowerCase() === "unassigned"
       );
@@ -296,10 +300,13 @@ export default function TransactionsPage() {
           header: true,
           skipEmptyLines: true,
           complete: (results) => {
-            if (results.meta.fields && (results.data || []).length > 0) {
-              setRawFileHeaders(results.meta.fields);
-              setRawParsedRows(results.data || []);
-              autoGuessFileHeaders(results.meta.fields);
+            const fields = Array.isArray(results.meta.fields) ? results.meta.fields : [];
+            const dataRows = Array.isArray(results.data) ? results.data : [];
+
+            if (fields.length > 0 && dataRows.length > 0) {
+              setRawFileHeaders(fields);
+              setRawParsedRows(dataRows);
+              autoGuessFileHeaders(fields);
               setImportStep(2);
             } else {
               toast.error("CSV file appears to be empty or corrupt.");
@@ -318,11 +325,14 @@ export default function TransactionsPage() {
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
           const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
-          if ((rows || []).length > 0) {
-            const headers = rows[0].map((h) => String(h));
+          
+          if (Array.isArray(rows) && rows.length > 0) {
+            const headers = (rows[0] || []).map((h) => String(h));
             const body = XLSX.utils.sheet_to_json<ParsedRowData>(sheet);
+            const safeBody = Array.isArray(body) ? body : [];
+
             setRawFileHeaders(headers);
-            setRawParsedRows(body || []);
+            setRawParsedRows(safeBody);
             autoGuessFileHeaders(headers);
             setImportStep(2);
           } else {
@@ -343,11 +353,13 @@ export default function TransactionsPage() {
       return;
     }
 
-    const safeCategories = categories || [];
+    const safeCategories = Array.isArray(categories) ? categories : [];
     const unassignedCategory = safeCategories.find((c) => c.name.toLowerCase() === "unassigned");
     const defaultCategoryId = unassignedCategory?.id || safeCategories[0]?.id || "";
 
-    const previewRows: ImportRowPreview[] = (rawParsedRows || []).map((row, idx) => {
+    const safeParsedRows = Array.isArray(rawParsedRows) ? rawParsedRows : [];
+
+    const previewRows: ImportRowPreview[] = safeParsedRows.map((row, idx) => {
       let rawAmount = parseFloat(String(row[colMap.amount] || "0").replace(/[^0-9.-]/g, ""));
       let detectedType: "INCOME" | "EXPENSE" = fallbackType;
 
@@ -401,7 +413,9 @@ export default function TransactionsPage() {
     setIsSubmittingImport(true);
 
     try {
-      const payload = (stagedPreviewRows || []).map((row) => ({
+      const safeStagedRows = Array.isArray(stagedPreviewRows) ? stagedPreviewRows : [];
+
+      const payload = safeStagedRows.map((row) => ({
         originalAmount: row.amount,
         originalCurrency: row.currency,
         baseAmountUSD: convertAmount(row.amount, row.currency, "USD"),
@@ -474,7 +488,7 @@ export default function TransactionsPage() {
   };
 
   const handleEditRecordTrigger = (targetId: string) => {
-    const safeTransactions = transactions || [];
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
     const match = safeTransactions.find((t) => t.id === targetId);
     if (match) {
       setEditingTransaction(match);
@@ -485,8 +499,8 @@ export default function TransactionsPage() {
   const handleDeleteRecordTrigger = async (targetId: string) => {
     try {
       await transactionService.delete(targetId);
-      setTransactions((prev) => (prev || []).filter((item) => item.id !== targetId));
-      setSelectedRecordIds((prev) => (prev || []).filter((id) => id !== targetId));
+      setTransactions((prev) => (Array.isArray(prev) ? prev : []).filter((item) => item.id !== targetId));
+      setSelectedRecordIds((prev) => (Array.isArray(prev) ? prev : []).filter((id) => id !== targetId));
       toast.success("Transaction deleted.");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to delete transaction.";
@@ -496,9 +510,11 @@ export default function TransactionsPage() {
 
   const handleBulkDeleteExecution = async () => {
     try {
-      await Promise.all((selectedRecordIds || []).map((id) => transactionService.delete(id)));
-      toast.success(`Successfully deleted ${selectedRecordIds.length} transactions.`);
-      setTransactions((prev) => (prev || []).filter((row) => !selectedRecordIds.includes(row.id)));
+      const safeSelectedIds = Array.isArray(selectedRecordIds) ? selectedRecordIds : [];
+      await Promise.all(safeSelectedIds.map((id) => transactionService.delete(id)));
+
+      toast.success(`Successfully deleted ${safeSelectedIds.length} transactions.`);
+      setTransactions((prev) => (Array.isArray(prev) ? prev : []).filter((row) => !safeSelectedIds.includes(row.id)));
       setSelectedRecordIds([]);
       setCurrentPage(1);
     } catch (error: unknown) {
@@ -512,15 +528,18 @@ export default function TransactionsPage() {
   // SELECTION HANDLERS
   // ---------------------------------------------------------------------------
   const handleToggleSingleRowSelection = (targetId: string) => {
-    setSelectedRecordIds((prev) =>
-      (prev || []).includes(targetId) ? (prev || []).filter((id) => id !== targetId) : [...(prev || []), targetId]
-    );
+    setSelectedRecordIds((prev) => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      return safePrev.includes(targetId)
+        ? safePrev.filter((id) => id !== targetId)
+        : [...safePrev, targetId];
+    });
   };
 
   const handleToggleSelectAllOnPage = (visiblePageIds: string[]) => {
     setSelectedRecordIds((prev) => {
-      const safePrev = prev || [];
-      const safeVisible = visiblePageIds || [];
+      const safePrev = Array.isArray(prev) ? prev : [];
+      const safeVisible = Array.isArray(visiblePageIds) ? visiblePageIds : [];
       const allSelected = safeVisible.every((id) => safePrev.includes(id));
       return allSelected
         ? safePrev.filter((id) => !safeVisible.includes(id))
@@ -534,7 +553,8 @@ export default function TransactionsPage() {
   // AGGREGATION FOR DISPLAY (MEMOIZED WITH ARRAY GUARDS)
   // ---------------------------------------------------------------------------
   const filteredTransactions = useMemo(() => {
-    return (transactions || []).filter((tx) => {
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+    return safeTransactions.filter((tx) => {
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch = !query || (tx.description || "").toLowerCase().includes(query);
       const matchesType = selectedType === "all" || (tx.type || "").toUpperCase() === selectedType.toUpperCase();
@@ -548,7 +568,8 @@ export default function TransactionsPage() {
     let totalIncomeUSD = 0;
     let totalExpenseUSD = 0;
 
-    (filteredTransactions || []).forEach((tx) => {
+    const safeFiltered = Array.isArray(filteredTransactions) ? filteredTransactions : [];
+    safeFiltered.forEach((tx) => {
       const value = Number(tx.baseAmountUSD ?? tx.amount ?? 0);
       if ((tx.type || "").toUpperCase() === "INCOME") totalIncomeUSD += value;
       else if ((tx.type || "").toUpperCase() === "EXPENSE") totalExpenseUSD += value;
@@ -562,10 +583,12 @@ export default function TransactionsPage() {
 
   // Pagination slice
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const pagedTransactions = (filteredTransactions || []).slice(startIndex, startIndex + itemsPerPage);
+  const safeFiltered = Array.isArray(filteredTransactions) ? filteredTransactions : [];
+  const pagedTransactions = safeFiltered.slice(startIndex, startIndex + itemsPerPage);
 
   const gridRows: TransactionRecord[] = useMemo(() => {
-    return (pagedTransactions || []).map((tx) => ({
+    const safePaged = Array.isArray(pagedTransactions) ? pagedTransactions : [];
+    return safePaged.map((tx) => ({
       id: tx.id,
       date: tx.date ? String(tx.date).substring(0, 10) : "",
       description: tx.description || "",
@@ -578,7 +601,8 @@ export default function TransactionsPage() {
   }, [pagedTransactions]);
 
   const categoryOptionsForFilter = useMemo(() => {
-    return (categories || []).map((c) => ({ id: c.id, name: c.name }));
+    const safeCategories = Array.isArray(categories) ? categories : [];
+    return safeCategories.map((c) => ({ id: c.id, name: c.name }));
   }, [categories]);
 
   return (
@@ -786,7 +810,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Select Column --</option>
-                      {(rawFileHeaders || []).map((h) => (
+                      {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -802,7 +826,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Select Column --</option>
-                      {(rawFileHeaders || []).map((h) => (
+                      {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -818,7 +842,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Select Column --</option>
-                      {(rawFileHeaders || []).map((h) => (
+                      {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -834,7 +858,7 @@ export default function TransactionsPage() {
                       className={styles.premiumFieldSelectControl}
                     >
                       <option value="">-- Fallback Only ({fallbackCurrency}) --</option>
-                      {(rawFileHeaders || []).map((h) => (
+                      {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
                         <option key={h} value={h}>
                           {h}
                         </option>
@@ -903,7 +927,7 @@ export default function TransactionsPage() {
                       </tr>
                     </thead>
                     <tbody className={styles.previewTableBodyRowCluster}>
-                      {(stagedPreviewRows || []).map((row, rIdx) => (
+                      {(Array.isArray(stagedPreviewRows) ? stagedPreviewRows : []).map((row, rIdx) => (
                         <tr key={row.index}>
                           <td className={styles.tableCellDate}>{row.date}</td>
                           <td className={styles.tableCellTruncateText} title={row.description}>
@@ -927,12 +951,14 @@ export default function TransactionsPage() {
                               onChange={(e) => {
                                 const newId = e.target.value;
                                 setStagedPreviewRows((prev) =>
-                                  (prev || []).map((pr, idx) => (idx === rIdx ? { ...pr, categoryId: newId } : pr))
+                                  (Array.isArray(prev) ? prev : []).map((pr, idx) =>
+                                    idx === rIdx ? { ...pr, categoryId: newId } : pr
+                                  )
                                 );
                               }}
                               className={styles.tableCellInlineSelectControl}
                             >
-                              {(categories || []).map((cat) => (
+                              {(Array.isArray(categories) ? categories : []).map((cat) => (
                                 <option key={cat.id} value={cat.id}>
                                   {cat.name}
                                 </option>
@@ -992,7 +1018,7 @@ export default function TransactionsPage() {
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
             <TransactionForm
               onAddTransaction={handleUpsertTransaction}
-              availableCategories={categories || []}
+              availableCategories={Array.isArray(categories) ? categories : []}
               initialData={editingTransaction}
               onCancel={handleClosePopupModal}
               workspaceId={activeWorkspaceId || ""}

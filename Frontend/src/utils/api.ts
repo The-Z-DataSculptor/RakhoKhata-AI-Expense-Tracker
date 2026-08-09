@@ -134,11 +134,12 @@ export interface Workspace {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: GENERIC FETCH WRAPPER ===
+   === SECTION 2: GENERIC FETCH WRAPPER WITH RESILIENCE & RETRIES ===
    ========================================================================== */
 export const apiFetch = async <T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retries: number = 2
 ): Promise<T> => {
   const baseUrl = getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
@@ -152,14 +153,20 @@ export const apiFetch = async <T = unknown>(
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
+  // 15-second request timeout controller
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   const mergedOptions: RequestInit = {
     ...options,
     credentials: "include",
+    signal: options.signal || controller.signal,
     headers,
   };
 
   try {
     const response = await fetch(url, mergedOptions);
+    clearTimeout(timeoutId);
 
     // Read response body as plain text first to safely check content length
     const responseText = await response.text();
@@ -175,6 +182,12 @@ export const apiFetch = async <T = unknown>(
     }
 
     if (!response.ok) {
+      // Auto-retry transient HTTP 502, 503, and 504 gateway errors
+      if (retries > 0 && response.status >= 502 && response.status <= 504) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return apiFetch<T>(endpoint, options, retries - 1);
+      }
+
       let errorMessage = `Request failed with status ${response.status}`;
       if (typeof responseData === "object" && responseData !== null) {
         if ("error" in responseData && typeof (responseData as { error: unknown }).error === "string") {
@@ -193,6 +206,18 @@ export const apiFetch = async <T = unknown>(
 
     return responseData as T;
   } catch (error: unknown) {
+    clearTimeout(timeoutId);
+
+    // Auto-retry network drops if retry attempts remain
+    if (retries > 0 && error instanceof Error && error.name !== "AbortError") {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return apiFetch<T>(endpoint, options, retries - 1);
+    }
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Connection timed out. Please check your network connection.");
+    }
+
     if (
       error instanceof Error &&
       !error.message.startsWith("Failed to fetch")

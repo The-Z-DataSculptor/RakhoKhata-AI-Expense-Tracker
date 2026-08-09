@@ -67,52 +67,54 @@ export default function DashboardPage() {
         );
         if (!isMounted) return;
 
-        const mapped = (response.transactions || []).map(
-          (apiTx: ApiTransaction) => {
-            const originalAmount = Number(
-              apiTx.originalAmount ?? apiTx.amount ?? 0
-            );
-            const originalCurrency = apiTx.originalCurrency || "PKR";
+        const rawTransactions = Array.isArray(response?.transactions)
+          ? response.transactions
+          : [];
 
-            let baseAmountUSD: number;
-            if (
-              apiTx.baseAmountUSD === null ||
-              apiTx.baseAmountUSD === undefined
-            ) {
-              baseAmountUSD = convertAmount(
-                originalAmount,
-                originalCurrency,
-                "USD"
-              );
-            } else {
-              baseAmountUSD = Number(apiTx.baseAmountUSD);
-            }
+        const mapped = rawTransactions.map((apiTx: ApiTransaction) => {
+          const originalAmount = Number(
+            apiTx.originalAmount ?? apiTx.amount ?? 0
+          );
+          const originalCurrency = apiTx.originalCurrency || "PKR";
 
-            return {
-              id: apiTx.id,
-              amount: originalAmount,
+          let baseAmountUSD: number;
+          if (
+            apiTx.baseAmountUSD === null ||
+            apiTx.baseAmountUSD === undefined
+          ) {
+            baseAmountUSD = convertAmount(
               originalAmount,
               originalCurrency,
-              baseAmountUSD,
-              type: apiTx.type as "INCOME" | "EXPENSE",
-              description: apiTx.description || "",
-              date: apiTx.date,
-              workspaceId: apiTx.workspaceId,
-              categoryId: apiTx.categoryId,
-              category: {
-                id: apiTx.category?.id || "",
-                name: apiTx.category?.name || "",
-                type: apiTx.category?.type || "",
-                color: apiTx.category?.color || "",
-                isFixed: apiTx.category?.isFixed || false,
-                isRecurring: apiTx.category?.isRecurring || false,
-                frequency: apiTx.category?.frequency ?? undefined,
-                dueDay: apiTx.category?.dueDay ?? undefined,
-                reminderDays: apiTx.category?.reminderDays ?? undefined,
-              },
-            } as Transaction;
+              "USD"
+            );
+          } else {
+            baseAmountUSD = Number(apiTx.baseAmountUSD);
           }
-        );
+
+          return {
+            id: apiTx.id,
+            amount: originalAmount,
+            originalAmount,
+            originalCurrency,
+            baseAmountUSD,
+            type: apiTx.type as "INCOME" | "EXPENSE",
+            description: apiTx.description || "",
+            date: apiTx.date,
+            workspaceId: apiTx.workspaceId,
+            categoryId: apiTx.categoryId,
+            category: {
+              id: apiTx.category?.id || "",
+              name: apiTx.category?.name || "",
+              type: apiTx.category?.type || "",
+              color: apiTx.category?.color || "",
+              isFixed: apiTx.category?.isFixed || false,
+              isRecurring: apiTx.category?.isRecurring || false,
+              frequency: apiTx.category?.frequency ?? undefined,
+              dueDay: apiTx.category?.dueDay ?? undefined,
+              reminderDays: apiTx.category?.reminderDays ?? undefined,
+            },
+          } as Transaction;
+        });
 
         setTransactions(mapped);
       } catch (fetchError) {
@@ -209,6 +211,7 @@ export default function DashboardPage() {
                   try {
                     const res = await fetch("/api/auth/resend-verification", {
                       method: "POST",
+                      headers: { "Content-Type": "application/json" },
                       credentials: "include",
                     });
                     const data: unknown = await res.json();

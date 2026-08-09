@@ -158,7 +158,7 @@ export function VaultLockScreen({ onUnlock }: VaultLockScreenProps) {
     return (
       <div className={styles.lockScreenContainer} role="status" aria-live="polite">
         <div className={styles.lockBoxPanel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
-          <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">Verifying vault authorization state...</p>
+          <p className={styles.loadingPulseText}>Verifying vault authorization state...</p>
         </div>
       </div>
     );

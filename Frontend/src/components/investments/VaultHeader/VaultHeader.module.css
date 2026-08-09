@@ -114,8 +114,8 @@
 }
 
 .lockActiveBtn {
-  background-color: var(--color-success, #16a34a);
-  color: #ffffff;
+  background-color: var(--success-soft, rgba(22, 163, 74, 0.12));
+  color: var(--color-success, #16a34a);
   border-color: var(--color-success, #16a34a);
   opacity: 1 !important;
   cursor: default;

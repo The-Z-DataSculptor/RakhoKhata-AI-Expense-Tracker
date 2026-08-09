@@ -132,13 +132,13 @@
 }
 
 .badgeHighDangerSoft {
-  background-color: rgba(220, 38, 38, 0.1);
+  background-color: var(--danger-soft, rgba(220, 38, 38, 0.1));
   color: var(--color-danger, #dc2626);
   border: 1px solid rgba(220, 38, 38, 0.15);
 }
 
 .badgeMediumWarningSoft {
-  background-color: rgba(217, 119, 6, 0.1);
+  background-color: var(--warning-soft, rgba(217, 119, 6, 0.1));
   color: var(--color-warning, #d97706);
   border: 1px solid rgba(217, 119, 6, 0.15);
 }
@@ -255,7 +255,7 @@
   align-items: center;
   gap: 0.5rem;
   background: var(--color-primary, #6366f1);
-  color: #ffffff;
+  color: var(--text-on-primary, #ffffff);
   padding: 0.75rem 1.5rem;          /* reduced from 0.9rem 1.85rem */
   border-radius: 12px;
   font-weight: 600;
@@ -270,7 +270,7 @@
   background: var(--color-primary-dark, #4f46e5);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-  color: #ffffff;
+  color: var(--text-on-primary, #ffffff);
 }
 
 /* ==========================================================================

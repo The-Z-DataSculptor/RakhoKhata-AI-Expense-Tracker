@@ -11,6 +11,8 @@ import { decryptSessionToken } from "../utils/sessionToken";
 interface TokenPayload {
   userId: string;
   email: string;
+  isEmailVerified?: boolean;
+  isOnboardingCompleted?: boolean;
   exp?: string;
 }
 
@@ -20,6 +22,8 @@ export interface AuthenticatedRequest extends Request {
     id: string;      // Added for compatibility across all middlewares
     userId: string;  // Kept for backward compatibility
     email: string;
+    isEmailVerified?: boolean;
+    isOnboardingCompleted?: boolean;
   };
   file?: any;
   files?: any;
@@ -102,6 +106,8 @@ export const verifyTokenGuard = async (
       id: String(decoded.userId).trim(),
       userId: String(decoded.userId).trim(),
       email: String(decoded.email).trim().toLowerCase(),
+      isEmailVerified: decoded.isEmailVerified,
+      isOnboardingCompleted: decoded.isOnboardingCompleted,
     };
 
     // 5. Proceed to the next middleware or route handler
@@ -151,6 +157,11 @@ export const ensureEmailVerified = async (
       return;
     }
 
+    if (req.user?.isEmailVerified === true) {
+      next();
+      return;
+    }
+
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
       select: { isEmailVerified: true },
@@ -197,6 +208,11 @@ export const ensureOnboardingCompleted = async (
             "Unauthorized access. Active user session context missing."
           )
         );
+      return;
+    }
+
+    if (req.user?.isOnboardingCompleted === true) {
+      next();
       return;
     }
 

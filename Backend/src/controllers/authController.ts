@@ -73,11 +73,18 @@ interface UpdateProfileRequestBody {
   aiPersona?: unknown;
 }
 
-async function generateSessionToken(userId: string, email: string): Promise<string> {
+async function generateSessionToken(
+  userId: string,
+  email: string,
+  isEmailVerified?: boolean,
+  isOnboardingCompleted?: boolean
+): Promise<string> {
   const expirationTime = new Date(Date.now() + COOKIE_OPTIONS.maxAge).toISOString();
   return await encryptSessionToken({
     userId,
     email,
+    isEmailVerified,
+    isOnboardingCompleted,
     exp: expirationTime,
   });
 }
@@ -294,7 +301,12 @@ export const loginUser = async (req: Request, res: ExpressResponse): Promise<voi
       return;
     }
 
-    const token = await generateSessionToken(user.id, user.email);
+    const token = await generateSessionToken(
+      user.id,
+      user.email,
+      user.isEmailVerified,
+      user.isOnboardingCompleted
+    );
     res.cookie("token", token, COOKIE_OPTIONS);
 
     res.status(200).json({
@@ -874,7 +886,12 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
       return;
     }
 
-    const token = await generateSessionToken(activeUser.id, activeUser.email);
+    const token = await generateSessionToken(
+      activeUser.id,
+      activeUser.email,
+      activeUser.isEmailVerified,
+      activeUser.isOnboardingCompleted
+    );
     res.cookie("token", token, COOKIE_OPTIONS);
 
     const redirectPath = activeUser.isOnboardingCompleted ? "/dashboard" : "/onboarding";

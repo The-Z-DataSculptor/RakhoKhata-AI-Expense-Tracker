@@ -61,7 +61,7 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Rewrites /api/* calls to the backend so cookies are set directly on the frontend domain
+  // Rewrites /api/* calls to the backend while preserving Host headers & session cookies
   async rewrites() {
     const rawBackendUrl =
       process.env.INTERNAL_API_URL ||

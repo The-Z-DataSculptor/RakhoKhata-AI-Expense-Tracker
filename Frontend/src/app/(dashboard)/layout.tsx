@@ -64,8 +64,12 @@ export default async function DashboardLayout({
       redirect("/login");
     }
 
-    const authResult = await authResponse.json();
-    userData = authResult.user;
+    const authResult = await authResponse.json().catch(() => null);
+    userData = authResult?.user || null;
+
+    if (!userData) {
+      redirect("/login");
+    }
 
     const workspaceResponse = await fetch(`${API_URL}/api/workspaces`, {
       method: "GET",
@@ -77,9 +81,10 @@ export default async function DashboardLayout({
     });
 
     if (workspaceResponse.ok) {
-      const workspaceResult = await workspaceResponse.json();
+      const workspaceResult = await workspaceResponse.json().catch(() => null);
       if (
-        workspaceResult.workspaces &&
+        workspaceResult?.workspaces &&
+        Array.isArray(workspaceResult.workspaces) &&
         workspaceResult.workspaces.length > 0
       ) {
         activeWorkspace = workspaceResult.workspaces[0];

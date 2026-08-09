@@ -500,7 +500,7 @@ export const getWorkspaceTransactions = async (
       take: MAX_TRANSACTIONS_FETCH_LIMIT,
     });
 
-    res.status(200).json({ transactions });
+    res.status(200).json({ transactions: transactions || [] });
   } catch (error: unknown) {
     console.error("Fetch Transactions Error:", error);
     res.status(500).json(buildSafeError("Internal server error fetching workspace transactions."));

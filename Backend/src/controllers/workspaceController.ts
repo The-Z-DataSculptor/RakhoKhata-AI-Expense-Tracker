@@ -178,7 +178,7 @@ export const getUserWorkspaces = async (
       });
     }
 
-    res.status(200).json({ workspaces });
+    res.status(200).json({ workspaces: workspaces || [] });
   } catch (error: unknown) {
     console.error("Fetch Workspaces Error:", error);
     res.status(500).json(buildErrorResponse("Unable to retrieve workspace data."));

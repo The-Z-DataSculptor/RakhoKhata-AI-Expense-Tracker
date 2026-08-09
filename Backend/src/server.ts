@@ -60,8 +60,8 @@ const rawAllowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
-const allowedOrigins = Array.from(
-  new Set(rawAllowedOrigins.map((url) => url.replace(/\/$/, "")))
+const allowedOriginsSet = new Set(
+  rawAllowedOrigins.map((url) => url.replace(/\/$/, ""))
 );
 
 app.use(
@@ -69,10 +69,7 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       const normalizedOrigin = origin.replace(/\/$/, "");
-      if (
-        allowedOrigins.length > 0 &&
-        allowedOrigins.includes(normalizedOrigin)
-      ) {
+      if (allowedOriginsSet.has(normalizedOrigin)) {
         return callback(null, true);
       }
       if (process.env.NODE_ENV !== "production") {

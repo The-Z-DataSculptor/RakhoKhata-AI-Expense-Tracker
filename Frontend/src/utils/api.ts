@@ -119,7 +119,7 @@ export interface UserProfile {
   aiPersona: string | null;
   createdAt: string;
   avatarUrl?: string | null;
-  isEmailVerified?: boolean;   // <-- NEW
+  isEmailVerified?: boolean;
   isOnboardingCompleted?: boolean;
 }
 
@@ -176,7 +176,7 @@ export const apiFetch = async <T = unknown>(
       try {
         responseData = JSON.parse(responseText);
       } catch {
-        // Fallback for non-JSON string responses (e.g. plain text OAuth errors)
+        // Fallback for non-JSON string responses
         responseData = { message: responseText };
       }
     }

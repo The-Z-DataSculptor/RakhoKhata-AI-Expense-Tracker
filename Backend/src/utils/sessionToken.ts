@@ -5,6 +5,8 @@ import crypto from "crypto";
 interface SessionTokenPayload {
   userId: string;
   email: string;
+  isEmailVerified?: boolean;
+  isOnboardingCompleted?: boolean;
   exp?: string;
 }
 

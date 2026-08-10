@@ -1,5 +1,8 @@
 // Backend/src/controllers/aiController.ts
 
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { prisma } from "../db";
@@ -8,9 +11,9 @@ import { prisma } from "../db";
 // CONFIGURATION & CONSTANTS
 // ==========================================================================
 
-// Updated to a valid model name (gemini-1.5-flash)
+// Updated to gemini-3.5-flash-lite
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
 
 const API_TIMEOUT_MS = 15000;
 const MAX_PROMPT_TRANSACTIONS = 40;
@@ -67,9 +70,10 @@ const PERSONA_INSTRUCTIONS: Record<string, string> = {
 // ==========================================================================
 
 function getApiKey(): string {
-  const key = process.env.GEMINI_API_KEY;
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!key) {
-    throw new Error("GEMINI_API_KEY is missing from environment variables.");
+    console.error("Gemini API Key is missing in environment variables.");
+    throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is missing from environment variables.");
   }
   return key;
 }

@@ -1,41 +1,72 @@
-/* src/components/marketing/PainPointsQuiz.module.css */
+/*D:\Developer\Expense-Tracker\Frontend\src\components\marketing\PainPointsQuiz.module.css */
 
 /* ==========================================================================
-   === SECTION 1: GLOBAL SECTION LAYOUT ===
+   === SECTION 1: GLOBAL SECTION & HEADINGS ===
    ========================================================================== */
 .sectionContainer {
   width: 100%;
   background-color: var(--background);
-  padding: 4rem 1.5rem;
-  font-family: "Inter", system-ui, sans-serif;
+  padding: 5rem 1.5rem;
+  font-family: var(--font-navbar, system-ui, sans-serif);
   position: relative;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-.sectionContainer::before {
-  content: '';
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(97, 59, 191, 0.05) 0%, transparent 70%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 0;
-  pointer-events: none;
+.sectionHeaderWrap {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 3.5rem auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sectionPill {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.9rem;
+  border-radius: 50px;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--primary-soft-strong);
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  margin: 0 0 1rem 0;
+}
+
+.accentText {
+  color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-light) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sectionSubtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
 }
 
 .layoutGridContainer {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1160px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr;
   gap: 3rem;
   align-items: center;
-  position: relative;
-  z-index: 1;
 }
 
 .leftColumn, .rightColumn {
@@ -49,19 +80,19 @@
    ========================================================================== */
 .quizCard {
   width: 100%;
-  max-width: 480px;
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-lg, 24px);
+  max-width: 500px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
   padding: 2.25rem;
-  box-shadow: 0 4px 20px rgba(16, 4, 63, 0.03);
+  box-shadow: var(--shadow-soft);
   box-sizing: border-box;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.6s ease, box-shadow 0.6s ease;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .quizCardActive {
-  border-color: rgba(97, 59, 191, 0.3);
-  box-shadow: 0 35px 60px -15px rgba(97, 59, 191, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 20px 40px -15px rgba(97, 59, 191, 0.15);
 }
 
 .metaRow {
@@ -70,37 +101,36 @@
 }
 
 .badge, .successBadge {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
-  padding: 0.4rem 0.75rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 6px;
-  background: rgba(97, 59, 191, 0.08);
-  border: 1px solid rgba(97, 59, 191, 0.1);
-  color: var(--color-primary, #613bbf);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong);
+  color: var(--color-primary);
 }
 
 .successBadge {
-  background: rgba(22, 163, 74, 0.08);
-  border-color: rgba(22, 163, 74, 0.1);
-  color: #16a34a;
+  background: var(--success-soft);
+  border-color: rgba(22, 163, 74, 0.2);
+  color: var(--color-success);
 }
 
 .cardHeading {
-  font-size: 1.65rem;
+  font-size: 1.45rem;
   font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: -0.03em;
-  margin: 1rem 0 0.5rem 0;
-  color: var(--text-primary, #10043f);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin: 0.75rem 0 0.5rem 0;
+  color: var(--text-primary);
 }
 
 .cardSubtext {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.5;
-  font-weight: 500;
-  color: var(--text-muted, #7e7a9c); 
+  color: var(--text-muted); 
   margin: 0 0 1.5rem 0;
 }
 
@@ -112,30 +142,29 @@
 
 .optionButton {
   width: 100%;
-  background: transparent;
-  border: 1px solid var(--border-color, #e5e1f4);
-  padding: 1.15rem;
-  border-radius: 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-md);
   text-align: left;
-  color: var(--text-secondary, #4e4a6b); 
+  color: var(--text-secondary); 
   cursor: pointer;
   display: flex;
-  gap: 1rem;
+  gap: 0.85rem;
   align-items: center;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
 }
 
 .optionButton:hover, .optionButtonActive {
-  background: rgba(97, 59, 191, 0.03);
-  border-color: rgba(97, 59, 191, 0.4);
-  color: var(--text-primary, #10043f); 
+  background: var(--primary-soft);
+  border-color: var(--color-primary);
+  color: var(--text-primary); 
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px -5px rgba(97, 59, 191, 0.08);
 }
 
 .bullet {
-  color: var(--color-primary, #613bbf);
-  font-weight: 700;
+  color: var(--color-primary);
+  font-weight: 800;
   font-size: 1.1rem;
   opacity: 0.4;
   transition: transform 0.2s ease, opacity 0.2s ease;
@@ -147,9 +176,9 @@
 }
 
 .buttonText {
-  font-size: 0.95rem;
-  line-height: 1.4;
-  font-weight: 500;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 /* ==========================================================================
@@ -165,50 +194,47 @@
 .solutionTextWrapper {
   width: 100%;
   box-sizing: border-box;
-  margin: 1.25rem 0 1.75rem 0;
-  padding: 1.5rem;
-  background: rgba(97, 59, 191, 0.04);
-  border: 1px solid rgba(97, 59, 191, 0.15);
-  border-radius: 14px;
+  margin: 1rem 0 1.5rem 0;
+  padding: 1.35rem;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong);
+  border-radius: var(--radius-md);
 }
 
 .boxLabel {
   font-size: 0.7rem;
   text-transform: uppercase;
-  font-weight: 700;
-  color: var(--color-primary, #613bbf);
+  font-weight: 800;
+  color: var(--color-primary);
   letter-spacing: 0.08em;
   display: block;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .featureTitle {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-primary, #10043f); 
+  color: var(--text-primary); 
   margin: 0 0 0.5rem 0;
 }
 
 .fixDescription {
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 0.92rem;
+  line-height: 1.55;
   margin: 0;
-  color: var(--text-secondary, #4e4a6b);
+  color: var(--text-secondary);
 }
 
 .resetButtonBox {
   width: 100%;
-  box-sizing: border-box;
   background: transparent;
-  border: 1px solid var(--border-color, #e5e1f4);
-  padding: 1rem;
-  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--text-muted, #7e7a9c);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -217,13 +243,13 @@
 }
 
 .resetButtonBox:hover {
-  background: rgba(97, 59, 191, 0.03);
-  border-color: rgba(97, 59, 191, 0.4);
-  color: var(--color-primary, #613bbf);
+  background: var(--primary-soft-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .resetBullet {
-  color: var(--color-primary, #613bbf);
+  color: var(--color-primary);
   transition: transform 0.2s ease;
 }
 
@@ -237,17 +263,16 @@
 .matrixBrowserWindow {
   width: 100%;
   max-width: 580px;
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e5e1f4);
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(16, 4, 63, 0.05); 
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft); 
   overflow: hidden;
-  box-sizing: border-box;
 }
 
 .browserHeaderToolbar {
-  background-color: var(--surface-muted, #f9f8ff);
-  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
   padding: 0.85rem 1.25rem;
   display: flex;
   align-items: center;
@@ -264,40 +289,36 @@
   height: 8px;
   border-radius: 50%;
 }
-.dotRed { background-color: #ef4444; }
-.dotYellow { background-color: #f59e0b; }
-.dotGreen { background-color: #10b981; }
+.dotRed { background-color: var(--color-danger); }
+.dotYellow { background-color: var(--color-warning); }
+.dotGreen { background-color: var(--color-success); }
 
 .appTitleText {
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--text-muted, #7e7a9c);
-  letter-spacing: 0.03em;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .matrixGridContainer {
   display: grid;
   grid-template-columns: 1fr;
-  background-color: var(--border-color, #e5e1f4);
+  background-color: var(--border-color);
   gap: 1px;
 }
 
 .quadrantBox {
-  background-color: var(--bg-surface, #ffffff);
-  padding: 1.5rem 1.25rem;
+  background-color: var(--bg-surface);
+  padding: 1.35rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  box-sizing: border-box;
+  gap: 1rem;
+  transition: all 0.3s ease;
 }
 
 .quadrantHighlighted {
-  background-color: rgba(97, 59, 191, 0.02);
-  box-shadow: inset 0 0 0 2px rgba(97, 59, 191, 0.4);
-  z-index: 5;
+  background-color: var(--primary-soft-faint);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 
 .quadMetaHeader {
@@ -307,79 +328,75 @@
 }
 
 .quadIconCode {
-  color: var(--color-primary, #613bbf);
+  color: var(--color-primary);
   font-weight: 800;
   font-size: 0.9rem;
 }
 
 .quadTitleLabel {
   font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-primary, #10043f);
+  font-weight: 800;
+  color: var(--text-primary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
-
-/* ==========================================================================
-   === SECTION 5: QUADRANT SPECIFIC MOCK UPS ===
-   ========================================================================== */
 
 /* Q1: Workspaces */
 .mockWorkspaceLayout {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .mockWorkspaceActive, .mockWorkspaceInactive {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e1f4);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
 
 .mockWorkspaceActive {
-  background-color: rgba(97, 59, 191, 0.05);
-  border-color: rgba(97, 59, 191, 0.3);
+  background-color: var(--primary-soft);
+  border-color: var(--primary-soft-strong);
 }
 
 .mockWsDotBusiness {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--color-primary, #613bbf);
+  background-color: var(--color-primary);
 }
 
 .mockWsDotPersonal {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--text-muted, #7e7a9c);
+  background-color: var(--text-muted);
 }
 
 .mockWsName {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-primary, #10043f);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
   flex-grow: 1;
 }
 
 .mockWsCheck {
-  color: var(--color-primary, #613bbf);
-  font-weight: bold;
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 800;
 }
 
 /* Q2: Budgets */
 .mockBudgetLayout {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  background-color: var(--surface-muted, #f9f8ff);
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e1f4);
+  gap: 0.5rem;
+  background-color: var(--surface-muted);
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
 
 .mockBudgetRow {
@@ -389,60 +406,59 @@
 }
 
 .mockBudgetName {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-primary, #10043f);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .mockBudgetAmount {
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary, #4e4a6b);
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 
 .mockBudgetTrack {
   width: 100%;
   height: 6px;
-  background-color: var(--border-color, #e5e1f4);
+  background-color: var(--surface-chart);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .mockBudgetFill {
   height: 100%;
-  background-color: #10b981;
+  background-color: var(--color-success);
 }
 
 .mockBudgetStatus {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #10b981;
-  text-transform: uppercase;
+  color: var(--color-success);
 }
 
 /* Q3: AI Insights */
 .mockAiLayout {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .mockAiPersona {
   font-size: 0.7rem;
   font-weight: 800;
-  color: #ef4444;
+  color: var(--color-primary);
   text-transform: uppercase;
 }
 
 .mockAiBubble {
-  background-color: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  padding: 0.85rem;
-  border-radius: 0 12px 12px 12px;
-  font-size: 0.82rem;
-  line-height: 1.4;
-  color: var(--text-primary, #10043f);
-  font-weight: 500;
+  background-color: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong);
+  padding: 0.75rem;
+  border-radius: 0 10px 10px 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* Q4: Investment Vault */
@@ -451,45 +467,37 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 1.5rem 0;
-  background-color: var(--surface-muted, #f9f8ff);
-  border-radius: 8px;
-  border: 1px solid var(--border-color, #e5e1f4);
+  gap: 0.55rem;
+  padding: 1.15rem 0;
+  background-color: var(--surface-muted);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
 
 .mockVaultLockIcon {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
 }
 
 .mockVaultTitle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-primary, #10043f);
+  color: var(--text-primary);
 }
 
 .mockPinDots {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .mockPinDotFilled {
-  width: 10px;
-  height: 10px;
-  background-color: var(--text-primary, #10043f);
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary);
   border-radius: 50%;
-}
-
-.mockPinDotEmpty {
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--border-color, #e5e1f4);
-  border-radius: 50%;
-  box-sizing: border-box;
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE MEDIA QUERIES ===
+   === SECTION 5: RESPONSIVE MEDIA QUERIES ===
    ========================================================================== */
 @media (min-width: 1024px) {
   .layoutGridContainer {
@@ -497,16 +505,11 @@
     gap: 3.5rem;
   }
   
-  .leftColumn {
-    justify-content: flex-end;
+  .sectionTitle {
+    font-size: 2.85rem;
   }
-  
-  .rightColumn {
-    justify-content: flex-start;
-  }
-  
+
   .matrixGridContainer {
     grid-template-columns: 1fr 1fr; 
   }
 }
-/* === SECTION 6 END === */

@@ -1,51 +1,58 @@
-/* Layout container aligned cleanly onto your soft lavender-tinted background */
+/* ==========================================================================
+   === SECTION 1: MAIN CONTAINER & HEADER ===
+   ========================================================================== */
 .commandSection {
   max-width: 1200px;
   margin: 4rem auto;
-  padding: 2.5rem;
+  padding: 3rem 2rem;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
 }
 
 .sectionHeader {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 3.5rem;
 }
 
 .sectionBadge {
   display: inline-block;
-  padding: 0.35rem 0.85rem;
-  background-color: var(--background);
+  padding: 0.35rem 0.95rem;
+  background-color: var(--primary-soft);
   color: var(--color-primary);
   border-radius: var(--radius-md);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
-  border: 1px solid var(--border-color);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--primary-soft-strong);
 }
 
 .sectionHeading {
   font-size: 2.25rem;
   font-weight: 800;
-  color: var(--text-primary); /* FIXED: Swapped from --foreground */
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 0.65rem;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
 .sectionSubtext {
   color: var(--text-muted);
-  font-size: 1.1rem;
-  max-width: 600px;
+  font-size: 1.05rem;
+  max-width: 620px;
   margin: 0 auto;
+  line-height: 1.6;
 }
 
-/* STRUCTURAL THREE-COLUMN DESIGN FLOW */
+/* ==========================================================================
+   === SECTION 2: THREE-COLUMN GRID SYSTEM ===
+   ========================================================================== */
 .centerContainer {
   display: grid;
-  grid-template-columns: 260px 1fr 300px;
+  grid-template-columns: 280px 1fr 310px;
   gap: 2.5rem;
   align-items: start;
 }
@@ -57,11 +64,13 @@
   }
 }
 
-/* COLUMN 1: SIDEBAR OPTION LINK CONTROLLERS */
+/* ==========================================================================
+   === SECTION 3: COLUMN 1 TABS SIDEBAR ===
+   ========================================================================== */
 .tabsSidebar {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .tabCardButton {
@@ -69,25 +78,28 @@
   background-color: var(--background);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 1.15rem;
+  padding: 1rem 1.15rem;
   text-align: left;
+  cursor: pointer;
   transition: var(--transition-fast);
 }
 
 .tabCardButton:hover {
-  border-color: var(--color-accent-light);
+  border-color: var(--color-primary);
+  background-color: var(--primary-soft-hover);
   transform: translateX(3px);
 }
 
 .tabCardActive {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary-dark);
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 4px 14px rgba(97, 59, 191, 0.3);
 }
 
 .tabCardLabel {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  color: var(--text-secondary); /* FIXED: Better inactive state visibility */
+  color: var(--text-secondary);
   transition: var(--transition-fast);
 }
 
@@ -96,31 +108,34 @@
 }
 
 .tabCardActive .tabCardLabel {
-  color: var(--text-on-primary);
+  color: var(--text-on-primary) !important;
 }
 
-/* COLUMN 2: CENTER PIECE PRODUCT CARD EXPLANATION AREA */
+/* ==========================================================================
+   === SECTION 4: COLUMN 2 EXPLANATION BOX ===
+   ========================================================================== */
 .featureExplanationFrame {
   background-color: var(--background);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 2.5rem;
+  padding: 2.25rem;
   min-height: 380px;
   display: flex;
   flex-direction: column;
 }
 
 .displayTitle {
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 800;
-  color: var(--text-primary); /* FIXED: Swapped from --foreground */
-  margin-bottom: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 0.85rem;
+  line-height: 1.25;
 }
 
 .displayDescription {
-  color: var(--text-muted);
-  font-size: 1.05rem;
-  line-height: 1.6;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.65;
   margin-bottom: auto;
 }
 
@@ -130,11 +145,11 @@
   border-top: 1px solid var(--border-color);
 }
 
-/* INTERACTIVE INPUT TRIGGERS ACCORDING TO SYSTEM CONFIG */
+/* Toggle Controllers */
 .toggleGroup {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.75rem;
   background-color: var(--bg-surface);
   padding: 0.4rem;
   border-radius: var(--radius-md);
@@ -147,15 +162,16 @@
   border: none;
   background: transparent;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-muted);
+  cursor: pointer;
   transition: var(--transition-fast);
 }
 
 .toggleActive {
   background-color: var(--color-primary);
   color: var(--text-on-primary) !important;
-  box-shadow: 0 4px 10px var(--primary-soft);
+  box-shadow: var(--shadow-soft);
 }
 
 .actionButton {
@@ -163,10 +179,11 @@
   background-color: var(--color-primary);
   color: var(--text-on-primary);
   border: none;
-  padding: 1rem;
+  padding: 0.95rem 1.25rem;
   font-weight: 700;
   border-radius: var(--radius-md);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  cursor: pointer;
   transition: var(--transition-fast);
   display: flex;
   align-items: center;
@@ -176,7 +193,8 @@
 
 .actionButton:hover:not(:disabled) {
   background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(97, 59, 191, 0.35);
 }
 
 .actionButtonActive {
@@ -195,25 +213,27 @@
   color: var(--color-primary);
 }
 
-/* COLUMN 3: DEVICE PREVIEW FRAME CONTAINER */
+/* ==========================================================================
+   === SECTION 5: COLUMN 3 SMART PHONE MOCKUP ===
+   ========================================================================== */
 .mockupColumn {
   display: flex;
   justify-content: center;
 }
 
 .phoneContainer {
-  background-color: #10043F; /* FIXED: Static deep dark value so phone frame doesn't invert in dark mode */
+  background-color: #10043F;
   padding: 0.65rem;
   border-radius: 28px;
-  box-shadow: var(--shadow-soft); /* FIXED: Leverages adaptive shadow tokens */
+  box-shadow: var(--shadow-soft);
   width: 100%;
-  max-width: 290px;
+  max-width: 300px;
 }
 
 .phoneScreen {
   background-color: var(--bg-surface);
   border-radius: 22px;
-  height: 420px;
+  min-height: 420px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -230,9 +250,9 @@
 }
 
 .appLogo {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  color: var(--text-primary); /* FIXED: Swapped from --foreground */
+  color: var(--text-primary);
 }
 
 .hardwareIndicators {
@@ -249,20 +269,20 @@
   justify-content: center;
 }
 
-/* SMART DEVICE DATA COMPONENTS */
+/* Phone Mockup Internal Components */
 .balanceCard {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   padding: 1.25rem;
   border-radius: var(--radius-md);
   color: var(--text-on-primary);
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
 }
 
 .cardLabel {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  color: var(--border-color);
-  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 700;
   margin-bottom: 0.25rem;
 }
 
@@ -274,7 +294,7 @@
 .logListStack {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .miniLogLine {
@@ -285,107 +305,206 @@
   background-color: var(--background);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
 .miniLogLine span {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .miniLogLine strong {
-  color: var(--text-primary); /* FIXED: Swapped from --foreground */
+  color: var(--text-primary);
 }
 
-/* VOICE LOGGING PREVIEW LAYOUTS */
-.voiceAssistantCard {
+.textSuccess {
+  color: var(--color-success) !important;
+}
+
+/* AI Chat Preview */
+.aiChatScreen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.chatBubbleUser {
+  background-color: var(--primary-soft);
+  color: var(--color-primary-dark);
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px 12px 2px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  align-self: flex-end;
+}
+
+.chatBubbleAi {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  padding: 0.85rem;
+  border-radius: 12px 12px 12px 2px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.aiBotTag {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+/* Scanner Preview */
+.scannerScreen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.scannerCameraBox {
+  border: 2px dashed var(--color-primary);
+  background-color: var(--primary-soft);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.scanTargetIcon {
+  font-size: 1.5rem;
+}
+
+.scanTargetText {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.scannedCardPreview {
+  background-color: var(--background);
+  border: 1px solid var(--border-color);
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.scannedRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.scannedAmount {
+  color: var(--color-danger);
+  font-weight: 800;
+}
+
+.parsedTag {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-success);
   text-align: center;
 }
 
-.voicePlaceholderText {
-  font-size: 0.85rem;
+/* Vault Preview */
+.vaultLockedView {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vaultBigLock {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.vaultStatusTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.vaultStatusSubtitle {
+  font-size: 0.75rem;
   color: var(--text-muted);
-  line-height: 1.4;
+  margin: 0 0 0.5rem 0;
 }
 
-.speechOutputContainer {
+.mockPinDots {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mockPinDotFilled {
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+}
+
+.mockPinDotEmpty {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+}
+
+.vaultUnlockedView {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding: 1rem;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  gap: 0.75rem;
 }
 
-.liveSpeechBubble {
-  background-color: var(--background);
-  border: 1px solid var(--border-color);
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius-md);
-  font-size: 0.88rem;
-  font-weight: 700;
-  font-style: italic;
-  color: var(--color-primary-dark);
-  margin-bottom: 0.85rem;
-}
-
-.successBanner {
-  font-size: 0.8rem;
-  font-weight: 700;
+.vaultHeaderBadge {
+  background-color: var(--success-soft);
   color: var(--color-success);
-}
-
-/* REMINDER TIMELINE INTERACTIVE LISTS */
-.reminderList {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.reminderStepRow {
-  display: flex;
-  gap: 0.85rem;
-  margin-bottom: 1rem;
-  align-items: flex-start;
-}
-
-.reminderStepRow:last-child {
-  margin-bottom: 0;
-}
-
-.reminderDotMarker {
-  background-color: var(--background);
-  border: 1px solid var(--border-color);
-  color: var(--color-primary);
+  padding: 0.4rem;
+  border-radius: var(--radius-md);
   font-size: 0.75rem;
   font-weight: 800;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  text-align: center;
+}
+
+.vaultAssetRow {
+  background-color: var(--background);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
-.reminderStepBody strong {
+.vaultAssetRow strong {
+  font-size: 0.8rem;
+  color: var(--text-primary);
   display: block;
-  font-size: 0.82rem;
-  color: var(--text-primary); /* FIXED: Swapped from --foreground */
 }
 
-.reminderStepBody p {
-  font-size: 0.75rem;
+.vaultAssetRow p {
+  font-size: 0.7rem;
   color: var(--text-muted);
-  margin-top: 0.15rem;
-  line-height: 1.3;
+  margin: 0;
 }
 
-.dangerLabel {
-  color: var(--color-danger) !important;
+.assetValue {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-primary);
 }
 
-/* CURRENCY LAYER CONVERSION */
+/* Multi-Currency Calculator */
 .currencyCalculatorBox {
   display: flex;
   flex-direction: column;
@@ -403,18 +522,19 @@
 }
 
 .currencyMeta {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
 .currencyValue {
   font-size: 1.1rem;
-  color: var(--text-primary); /* FIXED: Swapped from --foreground */
+  color: var(--text-primary);
 }
 
 .currencyValueTarget {
   font-size: 1.1rem;
   color: var(--color-primary);
+  font-weight: 800;
 }
 
 .conversionArrowVector {
@@ -432,49 +552,12 @@
 
 .vectorText {
   font-size: 0.65rem;
-  font-family: monospace;
   color: var(--text-muted);
   text-transform: uppercase;
+  font-weight: 700;
 }
 
-/* SHARING SCREEN INTERFACE METRICS */
-.sharingInterface {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.secureLinkCopyInput {
-  background-color: var(--background);
-  border: 1px dashed var(--color-accent-light);
-  padding: 0.75rem;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  font-family: monospace;
-  text-align: center;
-  color: var(--color-primary-dark);
-  overflow-x: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.configToggleLine {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.82rem;
-  border-bottom: 1px solid var(--background);
-  padding-bottom: 0.5rem;
-}
-
-.textSuccessGreen {
-  color: var(--color-success);
-}
-
-.textMutedLabel {
-  color: var(--text-muted);
-}
-
-/* REUSABLE TRANSITION ANIMATION GRAPHICS */
+/* Helpers & Animation */
 .animateFade {
   animation: fadeInFrame 0.25s ease-in-out forwards;
 }
@@ -488,37 +571,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* ANIMATING AUDIO CAPTURE LAYER */
-.audioWaveContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 0.75rem;
-}
-
-.waveBar {
-  width: 3px;
-  height: 15px;
-  background-color: var(--color-danger);
-  border-radius: 2px;
-  animation: soundPulse 0.6s ease-in-out infinite alternate;
-}
-
-.waveBar:nth-child(2) {
-  animation-delay: 0.15s;
-  height: 25px;
-}
-
-.waveBar:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes soundPulse {
-  from { transform: scaleY(1); }
-  to { transform: scaleY(0.4); }
 }
 
 .pulseDot {

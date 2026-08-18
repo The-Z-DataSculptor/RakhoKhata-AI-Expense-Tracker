@@ -1,142 +1,202 @@
-// src/components/marketing/FeatureCommandCenter.tsx
 "use client";
 
 /* ==========================================================================
-   === SECTION 1: IMPORTS & DATA STRUCTURES ===
+   === SECTION 1: IMPORTS & DATA CONTRACTS ===
    ========================================================================== */
 import React, { useState, useEffect, useRef } from "react";
 import styles from "./FeatureCommandCenter.module.css";
 
 const FEATURES = [
   {
+    id: "ai-buddy",
+    label: "🤖 AI Money Buddy",
+    title: "Ask Questions in Plain English",
+    desc: "No confusing accounting formulas. Ask 'Where did my salary go this week?' and get simple, friendly advice with zero judgment.",
+  },
+  {
+    id: "ocr-scanner",
+    label: "📸 AI Receipt Scanner",
+    title: "Snap a Photo, Skip the Typing",
+    desc: "Upload or take a photo of any paper receipt or invoice. Our Gemini vision model reads the store name, date, and exact total in seconds.",
+  },
+  {
+    id: "vault",
+    label: "🔒 Private Investment Vault",
+    title: "Hidden Behind a 4-Digit Security PIN",
+    desc: "Track gold, crypto, savings, or shares with complete peace of mind—even if family or friends borrow your phone or laptop.",
+  },
+  {
     id: "workspaces",
-    label: "💼 Dual Workspaces",
-    title: "Separate Business from Personal",
-    desc: "Switch between personal and business expenses with one click. Perfect for freelancers.",
-  },
-  {
-    id: "voice",
-    label: "🎙️ Voice Logging",
-    title: "Hands-Free Entry",
-    desc: "Just speak your expense. The app extracts amount and category automatically.",
-  },
-  {
-    id: "reminders",
-    label: "✉️ Smart Reminders",
-    title: "Never Miss a Payment",
-    desc: "Automated reminders for bills and shared expenses.",
+    label: "💼 Home & Side-Hustle Workspaces",
+    title: "Keep Personal & Business Cleanly Split",
+    desc: "Stop mixing grocery bills with client income. Switch between your home budget and freelance earnings with a single tap.",
   },
   {
     id: "currency",
-    label: "🌍 Multi-Currency",
-    title: "Travel Without Worry",
-    desc: "Log expenses in any currency. Auto-converts to your home currency.",
-  },
-  {
-    id: "sharing",
-    label: "🔗 Share Links",
-    title: "Share Securely",
-    desc: "Generate temporary links for roommates or partners to view shared expenses.",
+    label: "🌍 Multi-Currency Ledger",
+    title: "Works Seamlessly in PKR, USD & Beyond",
+    desc: "Earn in USD or EUR while spending in PKR or AED. Automatic exchange rates keep your total net balance 100% accurate.",
   },
 ] as const;
+
+type FeatureId = typeof FEATURES[number]["id"];
 /* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: MAIN COMPONENT & STATE MECHANICS ===
    ========================================================================== */
 export default function FeatureCommandCenter() {
-  const [activeId, setActiveId] = useState<string>("workspaces");
-  const [workspaceMode, setWorkspaceMode] = useState<"private" | "business">("private");
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [voiceText, setVoiceText] = useState<string>("");
+  const [activeId, setActiveId] = useState<FeatureId>("ai-buddy");
+  const [workspaceMode, setWorkspaceMode] = useState<"personal" | "business">("personal");
+  
+  // AI Companion interaction states
+  const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
+  const [aiAnswer, setAiAnswer] = useState<string>(
+    "You spent Rs 4,200 on food delivery this week. That's Rs 1,100 less than last week! Safe to spend today: Rs 3,400."
+  );
 
-  // WHY THIS FIX WAS MADE: Tracks async timer handles using refs to ensure all scheduled timers 
-  // are cleanly cleared on component unmount or tab switches, preventing state leaks.
-  const timerHandleRef = useRef<NodeJS.Timeout | null>(null);
-  const secondaryTimerHandleRef = useRef<NodeJS.Timeout | null>(null);
+  // Receipt Scanner interaction states
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [scannedResult, setScannedResult] = useState<{
+    merchant: string;
+    amount: string;
+    date: string;
+  } | null>({
+    merchant: "Metro Supermarket",
+    amount: "Rs 6,450",
+    date: "18 Aug 2026",
+  });
 
-  const clearTimers = () => {
-    if (timerHandleRef.current) clearTimeout(timerHandleRef.current);
-    if (secondaryTimerHandleRef.current) clearTimeout(secondaryTimerHandleRef.current);
+  // Vault PIN state
+  const [isVaultUnlocked, setIsVaultUnlocked] = useState<boolean>(false);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
   };
 
   useEffect(() => {
-    return () => {
-      clearTimers();
-    };
+    return () => clearTimer();
   }, []);
 
   const activeFeature = FEATURES.find((f) => f.id === activeId) ?? FEATURES[0];
 
-  const handleVoiceClick = () => {
-    if (isRecording) return;
-    clearTimers();
-    setIsRecording(true);
-    setVoiceText("");
-
-    timerHandleRef.current = setTimeout(() => {
-      setVoiceText("Coffee $4.50 at Starbucks");
-      secondaryTimerHandleRef.current = setTimeout(() => {
-        setIsRecording(false);
-      }, 1500);
-    }, 1500);
+  const handleTabSwitch = (id: FeatureId) => {
+    clearTimer();
+    setActiveId(id);
   };
 
-  const handleTabSwitch = (featureId: string) => {
-    clearTimers();
-    setActiveId(featureId);
-    if (featureId === "voice") {
-      setIsRecording(false);
-      setVoiceText("");
-    }
+  const handleTriggerAiQuery = () => {
+    if (isAiThinking) return;
+    setIsAiThinking(true);
+    setAiAnswer("Analyzing your recent transactions...");
+
+    timerRef.current = setTimeout(() => {
+      setAiAnswer(
+        "Found 1 subscription leak: You have an unused cloud storage charge of $9.99 renewing in 3 days!"
+      );
+      setIsAiThinking(false);
+    }, 1200);
+  };
+
+  const handleTriggerOcrScan = () => {
+    if (isScanning) return;
+    setIsScanning(true);
+    setScannedResult(null);
+
+    timerRef.current = setTimeout(() => {
+      setScannedResult({
+        merchant: "McDonald's Drive-Thru",
+        amount: "Rs 1,850",
+        date: "Today, 2:15 PM",
+      });
+      setIsScanning(false);
+    }, 1400);
   };
   /* === SECTION 2 END === */
 
   /* ==========================================================================
-     === SECTION 3: RENDER HELPERS ===
+     === SECTION 3: RENDER ACTION CONTROLLERS ===
      ========================================================================== */
   const renderControls = () => {
+    if (activeId === "ai-buddy") {
+      return (
+        <div className={styles.interactiveActionArea}>
+          <button
+            type="button"
+            className={`${styles.actionButton} ${isAiThinking ? styles.actionButtonActive : ""}`}
+            onClick={handleTriggerAiQuery}
+            disabled={isAiThinking}
+          >
+            {isAiThinking ? (
+              <>
+                <span className={styles.pulseDot} aria-hidden="true"></span>
+                AI Buddy is Calculating...
+              </>
+            ) : (
+              "💬 Ask AI: 'Where am I overspending?'"
+            )}
+          </button>
+        </div>
+      );
+    }
+
+    if (activeId === "ocr-scanner") {
+      return (
+        <div className={styles.interactiveActionArea}>
+          <button
+            type="button"
+            className={`${styles.actionButton} ${isScanning ? styles.actionButtonActive : ""}`}
+            onClick={handleTriggerOcrScan}
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <>
+                <span className={styles.pulseDot} aria-hidden="true"></span>
+                AI Vision Scanning Receipt...
+              </>
+            ) : (
+              "📸 Try Receipt Auto-Scan"
+            )}
+          </button>
+        </div>
+      );
+    }
+
+    if (activeId === "vault") {
+      return (
+        <div className={styles.interactiveActionArea}>
+          <button
+            type="button"
+            className={styles.actionButton}
+            onClick={() => setIsVaultUnlocked(!isVaultUnlocked)}
+          >
+            {isVaultUnlocked ? "🔒 Relock Investment Vault" : "🔑 Enter PIN to View Assets"}
+          </button>
+        </div>
+      );
+    }
+
     if (activeId === "workspaces") {
       return (
         <div className={styles.interactiveActionArea}>
           <div className={styles.toggleGroup}>
             <button
               type="button"
-              className={`${styles.toggleButton} ${workspaceMode === "private" ? styles.toggleActive : ""}`}
-              onClick={() => setWorkspaceMode("private")}
+              className={`${styles.toggleButton} ${workspaceMode === "personal" ? styles.toggleActive : ""}`}
+              onClick={() => setWorkspaceMode("personal")}
             >
-              🏡 Private Mode
+              🏡 Personal Home
             </button>
             <button
               type="button"
               className={`${styles.toggleButton} ${workspaceMode === "business" ? styles.toggleActive : ""}`}
               onClick={() => setWorkspaceMode("business")}
             >
-              👔 Business Mode
+              💼 Side-Hustle / Work
             </button>
           </div>
-        </div>
-      );
-    }
-
-    if (activeId === "voice") {
-      return (
-        <div className={styles.interactiveActionArea}>
-          <button
-            type="button"
-            className={`${styles.actionButton} ${isRecording ? styles.actionButtonActive : ""}`}
-            onClick={handleVoiceClick}
-            disabled={isRecording}
-          >
-            {isRecording ? (
-              <>
-                <span className={styles.pulseDot} aria-hidden="true"></span>
-                Listening Pulse...
-              </>
-            ) : (
-              "🎙️ Trigger Voice Capture"
-            )}
-          </button>
         </div>
       );
     }
@@ -144,129 +204,164 @@ export default function FeatureCommandCenter() {
     return (
       <div className={styles.interactiveActionArea}>
         <div className={styles.automatedStatusBanner}>
-          ⚡ Engine Pipeline Active
+          ⚡ Real-time automated exchange rate active
         </div>
       </div>
     );
   };
 
+  /* ==========================================================================
+     === SECTION 4: RENDER PHONE SCREEN SIMULATION ===
+     ========================================================================== */
   const renderPhoneContent = () => {
+    // 1. AI Buddy Screen
+    if (activeId === "ai-buddy") {
+      return (
+        <div className={styles.animateFade}>
+          <div className={styles.aiChatScreen}>
+            <div className={styles.chatBubbleUser}>
+              &ldquo;Where did most of my cash go this week?&rdquo;
+            </div>
+            <div className={styles.chatBubbleAi}>
+              <span className={styles.aiBotTag}>🤖 RakhoKhaata AI</span>
+              <p>{aiAnswer}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. Receipt Scanner Screen
+    if (activeId === "ocr-scanner") {
+      return (
+        <div className={styles.animateFade}>
+          <div className={styles.scannerScreen}>
+            <div className={styles.scannerCameraBox}>
+              <span className={styles.scanTargetIcon}>📷</span>
+              <span className={styles.scanTargetText}>
+                {isScanning ? "Extracting line items..." : "Receipt Detected"}
+              </span>
+            </div>
+            {scannedResult && (
+              <div className={styles.scannedCardPreview}>
+                <div className={styles.scannedRow}>
+                  <span>Store:</span>
+                  <strong>{scannedResult.merchant}</strong>
+                </div>
+                <div className={styles.scannedRow}>
+                  <span>Amount:</span>
+                  <strong className={styles.scannedAmount}>{scannedResult.amount}</strong>
+                </div>
+                <div className={styles.scannedRow}>
+                  <span>Date:</span>
+                  <span>{scannedResult.date}</span>
+                </div>
+                <div className={styles.parsedTag}>✓ Auto-Categorized as Expense</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // 3. Vault Screen
+    if (activeId === "vault") {
+      return (
+        <div className={styles.animateFade}>
+          {!isVaultUnlocked ? (
+            <div className={styles.vaultLockedView}>
+              <div className={styles.vaultBigLock}>🔒</div>
+              <p className={styles.vaultStatusTitle}>Private Vault Locked</p>
+              <p className={styles.vaultStatusSubtitle}>Enter your 4-digit PIN to reveal balances</p>
+              <div className={styles.mockPinDots}>
+                <span className={styles.mockPinDotFilled}></span>
+                <span className={styles.mockPinDotFilled}></span>
+                <span className={styles.mockPinDotFilled}></span>
+                <span className={styles.mockPinDotEmpty}></span>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.vaultUnlockedView}>
+              <div className={styles.vaultHeaderBadge}>
+                <span>🔓 Vault Unlocked</span>
+              </div>
+              <div className={styles.vaultAssetRow}>
+                <div>
+                  <strong>Gold Reserve (Tola)</strong>
+                  <p>2.5 Units • Safe Deposit</p>
+                </div>
+                <span className={styles.assetValue}>Rs 615,000</span>
+              </div>
+              <div className={styles.vaultAssetRow}>
+                <div>
+                  <strong>Emergency Cash Savings</strong>
+                  <p>High-Yield Account</p>
+                </div>
+                <span className={styles.assetValue}>$1,850.00</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 4. Workspaces Screen
     if (activeId === "workspaces") {
       return (
         <div className={styles.animateFade}>
           <div className={styles.balanceCard}>
-            <div className={styles.cardLabel}>Monthly Aggregation</div>
+            <div className={styles.cardLabel}>
+              {workspaceMode === "personal" ? "Personal Home Balance" : "Side-Hustle Balance"}
+            </div>
             <div className={styles.cardValue}>
-              {workspaceMode === "private" ? "$1,420.00" : "$8,645.00"}
+              {workspaceMode === "personal" ? "Rs 84,250" : "$2,450.00"}
             </div>
           </div>
           <div className={styles.logListStack}>
-            <div className={styles.miniLogLine}>
-              <span>⚡ Electricity Bill</span>
-              <strong>$145.00</strong>
-            </div>
-            <div className={styles.miniLogLine}>
-              <span>⛽ Transport Fuel</span>
-              <strong>$55.00</strong>
-            </div>
-            <div className={styles.miniLogLine}>
-              <span>🛒 Inventory Sourcing</span>
-              <strong>$112.00</strong>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeId === "voice") {
-      return (
-        <div className={styles.animateFade}>
-          <div className={styles.voiceAssistantCard}>
-            {!voiceText && !isRecording && (
-              <p className={styles.voicePlaceholderText}>
-                Click the prompt controller to fire real-time transcription modeling
-              </p>
-            )}
-            {isRecording && (
-              <div className={styles.audioWaveContainer}>
-                <div className={styles.waveBar}></div>
-                <div className={styles.waveBar}></div>
-                <div className={styles.waveBar}></div>
-                <p className={styles.voicePlaceholderText}>Processing audio waves...</p>
-              </div>
-            )}
-            {voiceText && !isRecording && (
-              <div className={styles.speechOutputContainer}>
-                <div className={styles.liveSpeechBubble}>&quot;{voiceText}&quot;</div>
-                <div className={styles.successBanner}>✓ Parsed into database ledger</div>
-              </div>
+            {workspaceMode === "personal" ? (
+              <>
+                <div className={styles.miniLogLine}>
+                  <span>🛒 Monthly Groceries</span>
+                  <strong>-Rs 18,500</strong>
+                </div>
+                <div className={styles.miniLogLine}>
+                  <span>⚡ Home Utility Bill</span>
+                  <strong>-Rs 12,300</strong>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={styles.miniLogLine}>
+                  <span>🚀 Client Project Retainer</span>
+                  <strong className={styles.textSuccess}>+$1,200.00</strong>
+                </div>
+                <div className={styles.miniLogLine}>
+                  <span>💻 Software Tool License</span>
+                  <strong>-$49.00</strong>
+                </div>
+              </>
             )}
           </div>
         </div>
       );
     }
 
-    if (activeId === "reminders") {
-      return (
-        <div className={`${styles.animateFade} ${styles.reminderList}`}>
-          <div className={styles.reminderStepRow}>
-            <div className={styles.reminderDotMarker}>01</div>
-            <div className={styles.reminderStepBody}>
-              <strong>Day 1: Friendly Soft Notice</strong>
-              <p>Automated invoice ping dispatched to client mailbox.</p>
-            </div>
-          </div>
-          <div className={styles.reminderStepRow}>
-            <div className={styles.reminderDotMarker}>05</div>
-            <div className={styles.reminderStepBody}>
-              <strong>Day 5: Formal Ledger Warning</strong>
-              <p>Past grace threshold notice compiled securely.</p>
-            </div>
-          </div>
-          <div className={styles.reminderStepRow}>
-            <div className={styles.reminderDotMarker}>10</div>
-            <div className={styles.reminderStepBody}>
-              <strong className={styles.dangerLabel}>Day 10: Strict Escalation</strong>
-              <p>Final transactional warnings issued via email relays.</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
+    // 5. Multi-Currency Screen
     if (activeId === "currency") {
       return (
         <div className={`${styles.animateFade} ${styles.currencyCalculatorBox}`}>
           <div className={styles.currencyValueRow}>
-            <span className={styles.currencyMeta}>🇪🇺 Base EUR Expense</span>
-            <strong className={styles.currencyValue}>€85.00</strong>
+            <span className={styles.currencyMeta}>💵 USD Inflow (Freelance)</span>
+            <strong className={styles.currencyValue}>$500.00</strong>
           </div>
           <div className={styles.conversionArrowVector}>
             <span className={styles.vectorLine}></span>
-            <span className={styles.vectorText}>Matrix Conversion Layer</span>
+            <span className={styles.vectorText}>Live Exchange Conversion</span>
             <span className={styles.vectorLine}></span>
           </div>
           <div className={styles.currencyValueRow}>
-            <span className={styles.currencyMeta}>🇺🇸 Target Domestic Base</span>
-            <strong className={styles.currencyValueTarget}>$91.80 USD</strong>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeId === "sharing") {
-      return (
-        <div className={`${styles.animateFade} ${styles.sharingInterface}`}>
-          <div className={styles.secureLinkCopyInput}>
-            <span>khaata.com/share/snapshot_7x9f2k</span>
-          </div>
-          <div className={styles.configToggleLine}>
-            <span>Read-Only Privileges</span>
-            <strong className={styles.textSuccessGreen}>Enabled</strong>
-          </div>
-          <div className={styles.configToggleLine}>
-            <span>Enforce Authentication</span>
-            <span className={styles.textMutedLabel}>Active</span>
+            <span className={styles.currencyMeta}>🇵🇰 Home Ledger Equivalent</span>
+            <strong className={styles.currencyValueTarget}>Rs 139,500 PKR</strong>
           </div>
         </div>
       );
@@ -274,19 +369,16 @@ export default function FeatureCommandCenter() {
 
     return null;
   };
-  /* === SECTION 3 END === */
+  /* === SECTION 4 END === */
 
-  /* ==========================================================================
-     === SECTION 4: MAIN JSX RENDER LAYOUT ===
-     ========================================================================== */
   return (
-    <section id="features" className={styles.commandSection} aria-label="Capabilities Command Center">
+    <section id="features" className={styles.commandSection} aria-label="Core Feature Capabilities">
       
       <div className={styles.sectionHeader}>
-        <div className={styles.sectionBadge}>System Orchestration</div>
-        <h2 className={styles.sectionHeading}>Platform Capabilities Hub</h2>
+        <div className={styles.sectionBadge}>Simple & Powerful</div>
+        <h2 className={styles.sectionHeading}>Everything You Need to Master Your Money</h2>
         <p className={styles.sectionSubtext}>
-          Interact with our dynamic feature architecture directly from the central telemetry workspace grid.
+          No complex spreadsheets or confusing accounting jargon. Click any feature below to test how RakhoKhaata works.
         </p>
       </div>
 
@@ -315,12 +407,12 @@ export default function FeatureCommandCenter() {
           {renderControls()}
         </div>
 
-        {/* COLUMN 3: DEVICE PREVIEW FRAMEWORK */}
+        {/* COLUMN 3: PHONE PREVIEW SIMULATOR */}
         <div className={styles.mockupColumn} aria-hidden="true">
           <div className={styles.phoneContainer}>
             <div className={styles.phoneScreen}>
               <div className={styles.screenHeaderRow}>
-                <span className={styles.appLogo}>📒 Khaata Ledger</span>
+                <span className={styles.appLogo}>📒 RakhoKhaata</span>
                 <div className={styles.hardwareIndicators}>
                   <span className={styles.signalBar}></span>
                   <span className={styles.batteryCell}></span>
@@ -337,4 +429,3 @@ export default function FeatureCommandCenter() {
     </section>
   );
 }
-/* === SECTION 4 END === */

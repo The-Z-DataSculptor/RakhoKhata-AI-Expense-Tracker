@@ -1,6 +1,3 @@
-/* src/components/Navbar.module.css */
-/* REFACTORED: Two distinct layouts - Desktop (default) and Mobile (media query) */
-
 /* ==========================================================================
    BASE STRUCTURE - Wrapper & Foundation
    ========================================================================== */
@@ -13,6 +10,7 @@
   z-index: 1000;
   display: flex;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 /* ==========================================================================
@@ -29,7 +27,6 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   background-color: var(--bg-surface);
-  opacity: 0.95;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 
@@ -39,11 +36,19 @@
 
   position: relative;
   overflow: visible;
+  box-sizing: border-box;
 }
 
-/* DESKTOP: Logo on far left */
+.mobileNavHeader {
+  display: contents;
+}
+
+.mobileControls {
+  display: contents;
+}
+
 .logo {
-  font-family: var(--font-navbar);
+  font-family: var(--font-navbar, system-ui, sans-serif);
   font-weight: 800;
   font-size: 1.25rem;
   color: var(--text-primary);
@@ -52,7 +57,6 @@
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
-
   flex: 0 0 auto;
   order: 1;
   margin-right: 2rem;
@@ -64,7 +68,6 @@
   margin-left: 0.15rem;
 }
 
-/* DESKTOP: Hamburger hidden */
 .hamburger {
   display: none;
 }
@@ -91,20 +94,18 @@
   transform: rotate(-45deg) translate(7px, -7px);
 }
 
-/* DESKTOP: Theme trigger positioned between logo and nav */
+/* ==========================================================================
+   THEME TRIGGER & POPOVER
+   ========================================================================== */
 .themeContainer {
   position: relative;
   flex: 0 0 auto;
   order: 2;
   margin-right: 2rem;
-  width: auto;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
-  z-index: 1010;
-  overflow: visible;
+  z-index: 1050;
 }
 
 .themeTrigger {
@@ -115,20 +116,15 @@
   height: 40px;
   min-width: 40px;
   min-height: 40px;
-
   border-radius: 50%;
   border: 1px solid var(--border-color);
   background: var(--surface-muted);
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
-
-  flex: 0 0 auto;
-
   position: relative;
-  z-index: 1011;
-
-  pointer-events: auto;
+  z-index: 1051;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .themeTrigger:hover {
@@ -141,30 +137,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none; /* Prevents event target hijacking */
+  user-select: none;
 }
 
-/* DESKTOP: Theme dropdown properly anchored */
 .themeDropdown {
   position: absolute;
   top: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%);
-
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 0.5rem;
-
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-
   min-width: 140px;
-
-  box-shadow: var(--shadow-soft);
-  z-index: 1015;
-
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1060;
   animation: slideInDown 0.2s ease forwards;
 }
 
@@ -173,10 +165,10 @@
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.6rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   border: none;
   background: transparent;
-  font-family: var(--font-navbar);
+  font-family: var(--font-navbar, system-ui, sans-serif);
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-secondary);
@@ -184,6 +176,7 @@
   border-radius: 10px;
   cursor: pointer;
   transition: background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .themeDropdown button:hover {
@@ -197,7 +190,9 @@
   font-weight: 600;
 }
 
-/* DESKTOP: Navigation links centered */
+/* ==========================================================================
+   NAV LINKS & DROPDOWN (DESKTOP)
+   ========================================================================== */
 .navLinks {
   display: flex;
   flex-direction: row;
@@ -206,15 +201,11 @@
   gap: 2.25rem;
   background: transparent;
   border: none;
-  animation: none;
   list-style: none;
-
   flex: 1;
   order: 3;
-
   justify-content: center;
   align-items: center;
-
   margin: 0;
 }
 
@@ -225,16 +216,85 @@
   text-decoration: none;
   transition: var(--transition-fast);
   padding: 0;
-  border-radius: 0;
   white-space: nowrap;
 }
 
 .navLinks a:hover {
   color: var(--color-primary);
-  background-color: transparent;
 }
 
-/* DESKTOP: Auth actions on far right */
+.dropdownContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dropdownTrigger {
+  background: transparent;
+  border: none;
+  font-family: var(--font-navbar, system-ui, sans-serif);
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  transition: var(--transition-fast);
+}
+
+.dropdownTrigger:hover,
+.dropdownTriggerActive {
+  color: var(--color-primary);
+}
+
+.dropdownArrow {
+  font-size: 0.55rem;
+  opacity: 0.7;
+}
+
+.dropdownMenuWrapper {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1015;
+  animation: slideInDown 0.2s ease forwards;
+}
+
+.dropdownMenu {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 0.5rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 170px;
+  box-shadow: var(--shadow-soft);
+  margin: 0;
+}
+
+.dropdownMenuItem a {
+  display: block;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dropdownMenuItem a:hover {
+  background-color: var(--primary-soft-hover);
+  color: var(--color-primary);
+}
+
+/* ==========================================================================
+   AUTH ACTIONS
+   ========================================================================== */
 .authActions {
   display: flex;
   flex-direction: row;
@@ -243,41 +303,31 @@
   gap: 1.75rem;
   background: transparent;
   border: none;
-  animation: none;
-  margin-top: 0;
-
   flex: 0 0 auto;
   order: 4;
-
   align-items: center;
   margin-left: auto;
 }
 
 .signInLink {
-  font-family: var(--font-navbar);
+  font-family: var(--font-navbar, system-ui, sans-serif);
   font-weight: 500;
   font-size: 0.92rem;
   color: var(--text-secondary);
-  text-align: left;
-  padding: 0;
   text-decoration: none;
   transition: color 0.2s ease;
-  border-radius: 0;
-  display: block;
-  background-color: transparent;
 }
 
 .signInLink:hover {
   color: var(--color-primary);
-  background-color: transparent;
 }
 
 .signUpButton {
-  font-family: var(--font-navbar);
+  font-family: var(--font-navbar, system-ui, sans-serif);
   background-color: var(--color-primary);
-  color: var(--text-on-primary);
+  color: var(--text-on-primary, #ffffff);
   padding: 0.65rem 1.35rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg, 20px);
   font-weight: 600;
   font-size: 0.88rem;
   border: none;
@@ -285,11 +335,10 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  width: auto;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-soft);
-  text-decoration: none; /* 🚀 Ensures Link tag looks like a true button */
+  text-decoration: none;
 }
 
 .signUpButton:hover {
@@ -305,15 +354,11 @@
   transform: translateX(3px);
 }
 
-/* ==========================================================================
-   ANIMATION
-   ========================================================================== */
 @keyframes slideInDown {
   from {
     opacity: 0;
     transform: translateX(-50%) translateY(-8px);
   }
-
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -325,268 +370,188 @@
    ========================================================================== */
 @media (max-width: 768px) {
   .navbarWrapper {
-    padding: 0 1rem;
-    top: 1rem;
+    padding: 0 0.75rem;
+    top: 0.75rem;
   }
 
-  /* MOBILE: Base navbar */
   .navbar {
-    justify-content: center;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    gap: 0;
-    border-radius: 20px;
-
-    position: relative;
-    overflow: visible;
-  }
-
-  /* MOBILE: Collapsed state */
-  .navbar:not(.navbarExpanded) {
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .navbar:not(.navbarExpanded) .hamburger {
-    display: flex;
     flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 1rem;
+    border-radius: 18px;
+    position: relative;
+    overflow: visible !important;
+  }
+
+  .mobileNavHeader {
+    display: flex;
     justify-content: space-between;
-    width: 24px;
-    height: 18px;
-    background: transparent;
-    border: none;
+    align-items: center;
+    width: 100%;
+    position: relative;
+    z-index: 1040;
+  }
+
+  .mobileNavHeader .logo {
+    margin-right: 0;
+    font-size: 1.2rem;
+  }
+
+  .mobileControls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .mobileControls .themeContainer {
+    order: unset;
+    margin-right: 0;
+    position: relative;
+    z-index: 1050;
+  }
+
+  .mobileControls .themeTrigger {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
     cursor: pointer;
-    padding: 0;
-
-    z-index: 1001;
-
-    order: 99;
-    align-self: center;
-    flex: 0 0 auto;
   }
 
-  .navbar:not(.navbarExpanded) .logo {
-    margin-right: 0;
-    order: 1;
-  }
-
-  .navbar:not(.navbarExpanded) .navLinks,
-  .navbar:not(.navbarExpanded) .authActions,
-  .navbar:not(.navbarExpanded) .themeContainer {
-    display: none;
-  }
-
-  /* =========================================================================
-     MOBILE: EXPANDED STATE
-     ========================================================================= */
-  .navbarExpanded {
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-
-    padding: 1.5rem 1rem;
-    width: 100%;
-    gap: 0;
-
-    border-radius: 20px;
-
-    position: relative;
-    overflow: visible;
-  }
-
-  /* 1. Logo */
-  .navbarExpanded .logo {
-    order: 1;
-    margin-right: 0;
-    margin-bottom: 1.5rem;
-    text-align: center;
-    width: 100%;
-  }
-
-  /* 2. Navigation Links */
-  .navbarExpanded .navLinks {
-    order: 2;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 0;
-    width: 100%;
-
-    flex: none;
-    justify-content: center;
-
-    padding: 1.25rem 0;
-    border-bottom: 1px solid var(--border-color);
-
-    margin-bottom: 1rem;
-  }
-
-  .navbarExpanded .navLinks a {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-
-    display: block;
-    width: 100%;
-
-    padding: 0.75rem 0;
-    text-align: center;
-
-    transition: color 0.2s ease;
-    border-radius: 8px;
-  }
-
-  .navbarExpanded .navLinks a:hover {
-    color: var(--color-primary);
-    background-color: var(--primary-soft-faint);
-  }
-
-  /* 3. Auth Actions */
-  .navbarExpanded .authActions {
-    order: 3;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 0.65rem;
-    width: 100%;
-
-    flex: none;
-    margin-left: 0;
-
-    border: none;
-    margin-top: 0;
-
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-
-    margin-bottom: 1.5rem;
-  }
-
-  .navbarExpanded .signInLink {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-
-    text-align: center;
-    padding: 0.75rem 1rem;
-
-    display: block;
-    width: 100%;
-
-    border-radius: 8px;
-    transition: all 0.2s ease;
-  }
-
-  .navbarExpanded .signInLink:hover {
-    color: var(--color-primary);
-    background-color: var(--primary-soft-faint);
-  }
-
-  .navbarExpanded .signUpButton {
-    width: 100%;
-    padding: 0.8rem 1.5rem;
-    font-size: 0.92rem;
-    box-shadow: none;
-    border-radius: var(--radius-lg);
-  }
-
-  .navbarExpanded .signUpButton:hover {
-    transform: translateY(-2px);
-  }
-
-  /* 4. Theme Controller */
-  .navbarExpanded .themeContainer {
-    position: relative;
-
-    order: 4;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    width: 100%;
-    flex: none;
-
-    margin-right: 0;
-    margin-bottom: 0;
-
-    overflow: visible;
-
-    z-index: 1010;
-    pointer-events: auto;
-  }
-
-  .navbarExpanded .themeTrigger {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    min-height: 40px;
-
-    position: relative;
-    z-index: 1011;
-
-    pointer-events: auto;
-    touch-action: manipulation;
-  }
-
-  /* MOBILE EXPANDED: Dropdown opens upward */
-  .navbarExpanded .themeDropdown {
+  .mobileControls .themeDropdown {
     position: absolute;
-
-    top: auto;
-    bottom: calc(100% + 12px);
-
-    left: 50%;
-    transform: translateX(-50%);
-
-    z-index: 1015;
+    top: calc(100% + 10px);
+    right: 0;
+    left: auto;
+    transform: none;
+    z-index: 1060;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    min-width: 130px;
   }
 
-  /* MOBILE: Hamburger */
   .hamburger {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-
-    width: 24px;
-    height: 18px;
-
+    width: 22px;
+    height: 16px;
     background: transparent;
     border: none;
     cursor: pointer;
     padding: 0;
-
-    z-index: 1001;
-
-    flex: 0 0 auto;
-    align-self: center;
+    z-index: 1040;
   }
 
-  .hamburger:not(.hamburgerActive) .bar {
-    background-color: var(--text-primary);
+  .navbar:not(.navbarExpanded) .navLinks,
+  .navbar:not(.navbarExpanded) .authActions {
+    display: none;
   }
 
-  .hamburgerActive .bar {
-    background-color: var(--text-primary);
+  .navbarExpanded {
+    padding: 1rem 1.15rem 1.25rem 1.15rem;
+    border-radius: 20px;
+    gap: 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   }
 
-  .navbarExpanded .hamburger {
-    order: 99;
+  .navbarExpanded .navLinks {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.25rem;
+    padding: 1rem 0 0.85rem 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin: 0.85rem 0;
+  }
 
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
+  .navbarExpanded .navLinks a,
+  .navbarExpanded .dropdownTrigger {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.6rem 0;
+    border-radius: 8px;
+  }
+
+  .navbarExpanded .dropdownContainer {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .navbarExpanded .dropdownMenuWrapper {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin-top: 0.35rem;
+    animation: none;
+  }
+
+  .navbarExpanded .dropdownMenu {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    width: 100%;
+    background-color: var(--surface-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.5rem;
+    box-shadow: none;
+    box-sizing: border-box;
+  }
+
+  .navbarExpanded .dropdownMenuItem a {
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.6rem 0.4rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .navbarExpanded .authActions {
+    order: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+
+  .navbarExpanded .signInLink {
+    text-align: center;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-muted);
+  }
+
+  .navbarExpanded .signUpButton {
+    width: 100%;
+    min-height: 44px;
+    font-size: 0.95rem;
+    border-radius: 10px;
   }
 }
 
-/* ==========================================================================
-   SMOOTH TRANSITIONS
-   ========================================================================== */
-.navbar,
-.navLinks,
-.authActions,
-.themeContainer {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+@media (max-width: 380px) {
+  .navbarExpanded .dropdownMenu {
+    grid-template-columns: 1fr;
+  }
 }

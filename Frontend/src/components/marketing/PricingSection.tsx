@@ -1,4 +1,4 @@
-// src/components/PricingSection.tsx
+/* D:\Developer\Expense-Tracker\Frontend\src\components\marketing\PricingSection.tsx
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & MODULE CONSTANTS ===
@@ -7,46 +7,38 @@ import React from "react";
 import Link from "next/link";
 import styles from "./PricingSection.module.css";
 
-// WHY THIS FIX WAS MADE: Defining static arrays outside the component scope prevents 
-// re-allocating memory for feature lists on every render cycle.
 const FREE_FEATURES = [
-  "Up to 700 transaction entries every single month",
-  "Up to 3 individual multi-purpose Workspaces",
-  "Free Workspace sharing with family & co-workers",
-  "Password-Locked Asset Vault (Hide balances from family)",
-  "Automated Email Renewal alerts for subscriptions (Netflix)",
-  "Live multi-currency conversion tools",
-  "Basic read-only email snapshot links",
+  "Up to 700 daily transaction entries every month",
+  "Separate Personal & Business Workspaces",
+  "Live multi-currency conversions (PKR, USD, EUR, etc.)",
+  "PIN-Locked Private Investment Vault",
+  "Safe-to-Spend visual daily & monthly budget bars",
+  "100% Free forever — no credit card needed",
 ] as const;
 
 const PRO_FEATURES = [
-  "Everything in Free, plus:",
-  "Unlimited Workspaces & transaction entries forever",
-  "Smart OCR Receipt Scanner (Snap photos to auto-log)",
-  "AI Hands-Free Voice Logging inputs",
-  "Interactive Shared Split Ledgers (Read/Write via WhatsApp & Email)",
-  "Advanced multi-day automated debt tracking pipelines",
+  "Everything in the Free plan, plus:",
+  "Unlimited Workspaces & unlimited monthly transactions",
+  "AI Receipt Scanner (Snap photos of paper bills to auto-log)",
+  "Conversational AI Money Companion (Plain English financial advice)",
+  "Recurring bill reminders & subscription leak alerts",
+  "Export complete ledger history to Excel / CSV spreadsheets",
 ] as const;
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
-// Static marketing component props
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: MAIN RENDERING LAYOUT COMPONENT ===
+   === SECTION 2: PRICING SECTION COMPONENT (SERVER COMPONENT) ===
    ========================================================================== */
 export default function PricingSection() {
   return (
-    <section id="pricing" className={styles.pricingWrapper} aria-label="Pricing Plans">
+    <section id="pricing" className={styles.pricingWrapper} aria-label="Transparent Pricing Plans">
       
       {/* HEADER ZONE */}
       <div className={styles.headerBlock}>
-        <h1 className={styles.mainTitle}>Choose Your Financial Freedom Plan</h1>
+        <div className={styles.sectionBadge}>Honest & Transparent</div>
+        <h2 className={styles.mainTitle}>Simple Pricing for Real People</h2>
         <p className={styles.subTitle}>
-          Build an unbreakable tracking habit for free, or unlock automation engine upgrades.
+          Start building your daily money habit for free. Upgrade whenever you want instant AI receipt scanning and automated insights.
         </p>
       </div>
 
@@ -57,23 +49,21 @@ export default function PricingSection() {
         <div className={styles.freeCard}>
           <div className={styles.cardHeader}>
             <span className={styles.tierBadgeFree}>
-              <span aria-hidden="true">🟢</span> Personal Habit
+              <span aria-hidden="true">🟢</span> Always Free
             </span>
-            <h2 className={styles.cardTitle}>Free</h2>
+            <h3 className={styles.cardTitle}>Free Starter</h3>
             <div className={styles.priceContainer}>
               <span className={styles.currencySymbol}>$</span>
               <span className={styles.priceValue}>0</span>
-              <span className={styles.priceDuration}>/month</span>
+              <span className={styles.priceDuration}>/forever</span>
             </div>
             <p className={styles.cardDescription}>
-              Perfect for casual, daily manual logging and personal budget tracking.
+              Everything you need to track daily meals, groceries, rent, and family cash flow without spending a penny.
             </p>
           </div>
 
           <hr className={styles.divider} />
 
-          {/* WHY THIS FIX WAS MADE: Uses string content as unique map keys instead of array indices
-              to maintain proper React DOM reconciliation standards and adds aria-hidden to decorative icons. */}
           <ul className={styles.featureList}>
             {FREE_FEATURES.map((feature) => (
               <li key={feature} className={styles.featureItem}>
@@ -88,25 +78,25 @@ export default function PricingSection() {
           </Link>
         </div>
 
-        {/* --- CARD B: PRO TIER --- */}
+        {/* --- CARD B: PRO AUTOMATION TIER --- */}
         <div className={styles.proCard}>
           
           <div className={styles.floatingBadge}>
-            <span aria-hidden="true">⚡</span> Power Automation Hub
+            <span aria-hidden="true">⚡</span> Most Popular for Busy Pros
           </div>
 
           <div className={styles.cardHeader}>
             <span className={styles.tierBadgePro}>
-              <span aria-hidden="true">🟣</span> Automation Core
+              <span aria-hidden="true">🟣</span> AI Power Suite
             </span>
-            <h2 className={styles.cardTitle}>Pro Upgrade</h2>
+            <h3 className={styles.cardTitle}>RakhoKhaata Pro</h3>
             <div className={styles.priceContainer}>
               <span className={styles.currencySymbol}>$</span>
-              <span className={styles.priceValue}>9</span>
+              <span className={styles.priceValue}>6</span>
               <span className={styles.priceDuration}>/month</span>
             </div>
             <p className={styles.cardDescription}>
-              Designed for freelancers and power users who demand lightning-fast automation.
+              For remote workers, busy parents, and side-hustlers who want AI to scan receipts and find wasted money automatically.
             </p>
           </div>
 
@@ -121,8 +111,8 @@ export default function PricingSection() {
             ))}
           </ul>
 
-          <Link href="/beta" className={styles.proButton}>
-            Unlock Power Automation
+          <Link href="/signup" className={styles.proButton}>
+            Try Pro with 14-Day Free Trial
           </Link>
         </div>
 
@@ -130,4 +120,4 @@ export default function PricingSection() {
     </section>
   );
 }
-/* === SECTION 3 END === */
+/* === SECTION 2 END === */

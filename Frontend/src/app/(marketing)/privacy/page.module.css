@@ -1,0 +1,514 @@
+/* ==========================================================================
+   === SECTION 1: CANVAS & HERO BANNER ===
+   ========================================================================== */
+.privacyCanvas {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6.5rem 1.5rem 5rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.heroSection {
+  text-align: center;
+  max-width: 820px;
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--primary-soft-strong);
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.heroBadgeIcon {
+  font-size: 0.95rem;
+}
+
+.heroHeadline {
+  font-family: var(--font-navbar, system-ui, sans-serif);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+  line-height: 1.18;
+}
+
+.heroSubtext {
+  font-size: clamp(0.95rem, 2vw, 1.08rem);
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin: 0 0 1.5rem 0;
+  max-width: 660px;
+}
+
+.policyMetaBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 0.45rem 1.15rem;
+  border-radius: 50px;
+  box-shadow: var(--shadow-soft);
+}
+
+.metaDivider {
+  color: var(--color-primary);
+}
+
+/* ==========================================================================
+   === SECTION 2: MOBILE NAVIGATION ACCORDION ===
+   ========================================================================== */
+.mobileNavAccordion {
+  display: none;
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 1.5rem;
+  position: sticky;
+  top: 5rem;
+  z-index: 90;
+}
+
+.mobileNavToggleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.15rem;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
+.mobileNavBtnText {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mobileNavListIcon {
+  color: var(--color-primary);
+  font-size: 1.1rem;
+}
+
+.chevronIcon {
+  transition: transform 0.25s ease;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.mobileDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+
+.mobileNavItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.mobileNavItemActive {
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   === SECTION 3: TWO-COLUMN LAYOUT & STICKY SIDEBAR ===
+   ========================================================================== */
+.layoutContainer {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 3rem;
+  width: 100%;
+  max-width: 1200px;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+.sidebarStickyNav {
+  position: sticky;
+  top: 6.5rem;
+}
+
+.sidebarCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.sidebarTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 0.85rem 0.5rem;
+}
+
+.navLinkList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.navLinkItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navLinkItem:hover {
+  background-color: var(--primary-soft-hover);
+  color: var(--color-primary);
+}
+
+.navLinkActive {
+  background-color: var(--primary-soft) !important;
+  color: var(--color-primary) !important;
+  font-weight: 700;
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.navTitleText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   === SECTION 4: LEGAL ARTICLE CONTENT ===
+   ========================================================================== */
+.contentDoc {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2.75rem;
+  box-sizing: border-box;
+}
+
+.docSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-margin-top: 6.5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin: 0;
+}
+
+.sectionIcon {
+  color: var(--color-primary);
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.subHeader {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0.75rem 0 0.25rem 0;
+}
+
+.contentDoc p {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.bulletList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.bulletList li {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.bulletList strong {
+  color: var(--text-primary);
+}
+
+.highlightCallout {
+  background-color: var(--primary-soft-faint, rgba(97, 59, 191, 0.04));
+  border-left: 4px solid var(--color-primary);
+  padding: 1.15rem 1.35rem;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+/* Legal Tables (Desktop) */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 0.5rem;
+}
+
+.legalTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.legalTable th {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  font-weight: 700;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.legalTable td {
+  padding: 0.85rem 1rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.legalTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Mobile Stacked Cards (Hidden on desktop) */
+.mobileCardsList {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.mobileCard {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mobileCardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.mobileCardRow {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.mobileCardLabel {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.2rem;
+}
+
+.contactCard {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.contactCard p {
+  font-size: 0.92rem;
+}
+
+.contactCard a {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   === SECTION 5: BACK TO TOP BUTTON & RESPONSIVE BREAKPOINTS ===
+   ========================================================================== */
+.backToTopBtn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary, #ffffff);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px var(--primary-soft);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 95;
+}
+
+.backToTopBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-3px);
+}
+
+@media (max-width: 900px) {
+  .privacyCanvas {
+    padding: 5.5rem 1rem 4rem 1rem;
+  }
+
+  .layoutContainer {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .sidebarStickyNav {
+    display: none;
+  }
+
+  .mobileNavAccordion {
+    display: block;
+  }
+
+  .contentDoc {
+    padding: 2rem 1.25rem;
+    gap: 2.25rem;
+  }
+
+  .sectionHeader {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .tableWrapper {
+    display: none;
+  }
+
+  .mobileCardsList {
+    display: flex;
+  }
+
+  .policyMetaBar {
+    flex-direction: column;
+    gap: 0.25rem;
+    border-radius: var(--radius-md);
+  }
+
+  .metaDivider {
+    display: none;
+  }
+
+  .bulletList {
+    padding-left: 1rem;
+  }
+
+  .backToTopBtn {
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 40px;
+    height: 40px;
+  }
+}

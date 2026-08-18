@@ -1,96 +1,251 @@
-/* src/components/Footer.module.css */
-
 /* ==========================================================================
-   === SECTION 1: RADIAL LAYOUT ENGINE ===
+   === SECTION 1: FOOTER CONTAINER & GRID ===
    ========================================================================== */
 .footerContainer {
-  background: var(--background);
-  padding: 40px 24px;
+  width: 100%;
+  background-color: var(--bg-surface);
   border-top: 1px solid var(--border-color);
-  text-align: center;
+  padding: 4.5rem 1.5rem 2.5rem 1.5rem;
+  box-sizing: border-box;
+  font-family: var(--font-navbar, system-ui, sans-serif);
 }
 
 .footerInner {
-  max-width: 600px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 40px;
+  box-sizing: border-box;
 }
 
-/* === SECTION 2: BRAND ELEMENTS === */
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 2fr;
+  gap: 3.5rem;
+  margin-bottom: 3.5rem;
+  align-items: start;
+}
+
+.linksWrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+}
+
+@media (max-width: 900px) {
+  .footerGrid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+}
+
+/* ==========================================================================
+   === SECTION 2: BRAND IDENTITY COLUMN ===
+   ========================================================================== */
+.brandColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .logo {
-  font-family: var(--font-navbar);
-  font-size: 1.35rem;
-  font-weight: 300;
+  font-size: 1.55rem;
+  font-weight: 800;
   color: var(--text-primary);
+  text-decoration: none;
   letter-spacing: -0.03em;
-  user-select: none;
-  text-decoration: none; /* 🚀 Ensures Link tag renders cleanly without link underlines */
-  display: inline-block;
+  margin-bottom: 0.85rem;
 }
 
 .logoAccent {
-  font-weight: 700;
   color: var(--color-primary);
-  margin-left: 0.15rem;
 }
 
-.tagline { 
+.tagline {
+  font-size: 0.92rem;
+  line-height: 1.65;
   color: var(--text-muted);
-  font-size: 1rem; 
-  margin-top: 8px; 
+  max-width: 380px;
+  margin: 0 0 1.25rem 0;
 }
 
-/* === SECTION 3: NAVIGATION STYLING === */
-.navLinks {
+.privacyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid var(--primary-soft-strong);
+}
+
+.badgeIcon {
+  font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   === SECTION 3: NAVIGATION LINK COLUMNS ===
+   ========================================================================== */
+.linkColumn {
   display: flex;
-  gap: 32px;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
 }
 
-.navLinks a {
-  text-decoration: none;
-  color: var(--text-secondary);
+.columnTitle {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  margin-bottom: 1.15rem;
+}
+
+.linkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.footerLink {
   font-size: 0.9rem;
-  padding: 8px 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  transition: var(--transition-fast);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+  padding: 0.25rem 0;
 }
 
-.navLinks a:hover {
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  border-color: var(--color-primary);
+.footerLink:hover {
+  color: var(--color-primary);
+  transform: translateX(3px);
 }
 
-/* === SECTION 4: SOCIAL MEDIA ICONS === */
+.securityStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--color-success);
+  font-weight: 700;
+  margin-top: 0.35rem;
+}
+
+.shieldIcon {
+  font-size: 0.82rem;
+}
+
+/* ==========================================================================
+   === SECTION 4: DIVIDER & BOTTOM BAR ===
+   ========================================================================== */
+.footerDivider {
+  border: 0;
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 0 0 2rem 0;
+}
+
+.bottomBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.copyrightText {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.copyrightText strong {
+  color: var(--text-primary);
+}
+
 .socialIcons {
   display: flex;
-  gap: 24px;
-  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.socialIcons a {
-  text-decoration: none;
+.socialIconBtn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: var(--radius-md);
+  background-color: var(--background);
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  transition: var(--transition-fast);
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.socialIcons a:hover { 
+.socialIconBtn:hover {
+  border-color: var(--color-primary);
   color: var(--color-primary);
+  background-color: var(--primary-soft);
   transform: translateY(-2px);
 }
 
-/* === SECTION 5: COPYRIGHT === */
-.copy {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+/* ==========================================================================
+   === SECTION 5: MOBILE-SPECIFIC ADJUSTMENTS (<= 640px & <= 480px) ===
+   ========================================================================== */
+@media (max-width: 640px) {
+  .footerContainer {
+    padding: 3.5rem 1rem 2rem 1rem;
+  }
+
+  .footerGrid {
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .brandColumn {
+    align-items: flex-start;
+  }
+
+  .tagline {
+    max-width: 100%;
+    font-size: 0.88rem;
+  }
+
+  .linksWrapper {
+    gap: 1.5rem;
+  }
+
+  .footerLink {
+    padding: 0.35rem 0;
+  }
+
+  .bottomBar {
+    flex-direction: column-reverse;
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+
+  .socialIcons {
+    justify-content: center;
+    gap: 0.45rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .linksWrapper {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
 }

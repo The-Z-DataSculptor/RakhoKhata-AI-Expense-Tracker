@@ -1,0 +1,415 @@
+/* ==========================================================================
+   === SECTION 1: CANVAS & HERO ===
+   ========================================================================== */
+.aboutCanvas {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--text-primary);
+  padding: 6rem 1.5rem 5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+.heroSection {
+  max-width: 820px;
+  text-align: center;
+  margin-bottom: 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 1rem;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--primary-soft-strong);
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.badgeIcon {
+  font-size: 0.95rem;
+}
+
+.heroHeadline {
+  font-family: var(--font-navbar);
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+}
+
+.gradientText {
+  color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-light) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.heroSubtext {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 650px;
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 2: FOUNDER STORY CARD ===
+   ========================================================================== */
+.storySection {
+  width: 100%;
+  max-width: 860px;
+  margin-bottom: 5rem;
+}
+
+.storyCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.founderHeader {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.avatarWrap {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  border: 2px solid var(--primary-soft-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.founderName {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.founderRole {
+  font-size: 0.92rem;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.storyBody p {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.storyBody p:last-child {
+  margin-bottom: 0;
+}
+
+.quoteBox {
+  background: var(--primary-soft-faint);
+  border-left: 4px solid var(--color-primary);
+  padding: 1.25rem 1.5rem;
+  margin: 1.75rem 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   === SECTION 3: CORE PILLARS GRID ===
+   ========================================================================== */
+.pillarsSection {
+  width: 100%;
+  max-width: 1160px;
+  margin-bottom: 5rem;
+}
+
+.sectionHeaderWrap {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 3.5rem auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.miniPill {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.9rem;
+  border-radius: 50px;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--primary-soft-strong);
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  margin: 0 0 0.85rem 0;
+  line-height: 1.2;
+}
+
+.sectionSubtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.pillarsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.75rem;
+}
+
+.pillarCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.pillarCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-primary);
+}
+
+.pillarIconBox {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.pillarTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.pillarText {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 4: ROADMAP & PROMISE ===
+   ========================================================================== */
+.roadmapSection {
+  width: 100%;
+  max-width: 860px;
+  margin-bottom: 5rem;
+}
+
+.roadmapCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.roadmapTitle {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.roadmapText {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: 2rem;
+}
+
+.roadmapList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.roadmapItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.checkIcon {
+  color: var(--color-success);
+  font-size: 1.35rem;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.roadmapItem strong {
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.roadmapItem p {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 5: CALL TO ACTION ===
+   ========================================================================== */
+.ctaSection {
+  width: 100%;
+  max-width: 860px;
+}
+
+.ctaCard {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  border-radius: var(--radius-lg);
+  padding: 3.5rem 2rem;
+  text-align: center;
+  color: var(--text-on-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--shadow-soft);
+}
+
+.ctaHeadline {
+  font-size: 2.1rem;
+  font-weight: 800;
+  margin-bottom: 0.85rem;
+  letter-spacing: -0.02em;
+}
+
+.ctaSubtext {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  opacity: 0.92;
+  max-width: 540px;
+  margin-bottom: 2rem;
+}
+
+.ctaActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.primaryCtaBtn, .secondaryCtaBtn {
+  font-family: var(--font-navbar);
+  padding: 0.95rem 1.85rem;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.primaryCtaBtn {
+  background-color: var(--bg-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.primaryCtaBtn:hover {
+  transform: translateY(-2px);
+  background-color: var(--surface-muted);
+}
+
+.secondaryCtaBtn {
+  background-color: transparent;
+  color: var(--text-on-primary);
+  border: 1px solid var(--primary-soft-strong);
+}
+
+.secondaryCtaBtn:hover {
+  background-color: var(--primary-soft);
+  border-color: var(--text-on-primary);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   === SECTION 6: RESPONSIVE QUERIES ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .heroHeadline {
+    font-size: 2.15rem;
+  }
+
+  .storyCard, .roadmapCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .sectionTitle {
+    font-size: 1.85rem;
+  }
+
+  .ctaHeadline {
+    font-size: 1.65rem;
+  }
+
+  .ctaActions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .primaryCtaBtn, .secondaryCtaBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}

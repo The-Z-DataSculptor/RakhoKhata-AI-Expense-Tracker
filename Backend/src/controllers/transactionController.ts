@@ -48,6 +48,18 @@ interface CreateTransactionRequestBody {
   categoryId: string;
 }
 
+// Data contract for transaction update request body
+interface UpdateTransactionRequestBody {
+  amount?: string | number;
+  originalAmount?: string | number;
+  originalCurrency?: string;
+  baseAmountUSD?: string | number;
+  type?: "INCOME" | "EXPENSE";
+  description?: string;
+  date?: string;
+  categoryId?: string;
+}
+
 // Data contract for bulk import request body
 interface BulkImportRequestBody {
   workspaceId: string;
@@ -127,7 +139,7 @@ export const createTransaction = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildSafeError("Authentication required."));
       return;
@@ -212,6 +224,148 @@ export const createTransaction = async (
 };
 
 /**
+ * PUT /api/transactions/:id
+ * Updates an existing transaction record or re-assigns its category safely.
+ */
+export const updateTransaction = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const targetId = extractSingleString(req.params.id);
+
+    if (!userId) {
+      res.status(401).json(buildSafeError("Authentication required."));
+      return;
+    }
+
+    if (!targetId) {
+      res.status(400).json(buildSafeError("Transaction ID is required."));
+      return;
+    }
+
+    // Verify transaction exists and user owns the parent workspace
+    const existingTransaction = await prisma.transaction.findUnique({
+      where: { id: targetId },
+      include: { workspace: true },
+    });
+
+    if (!existingTransaction || existingTransaction.workspace.userId !== userId) {
+      res.status(404).json(buildSafeError("Transaction not found or access denied."));
+      return;
+    }
+
+    const body = req.body as UpdateTransactionRequestBody;
+    const updateData: Record<string, unknown> = {};
+
+    if (body.originalAmount !== undefined) {
+      const parsed = parseNonNegativeNumber(body.originalAmount);
+      if (parsed === undefined) {
+        res.status(400).json(buildSafeError("Invalid originalAmount value."));
+        return;
+      }
+      updateData.originalAmount = parsed;
+    }
+
+    if (body.amount !== undefined) {
+      const parsed = parseNonNegativeNumber(body.amount);
+      if (parsed !== undefined) {
+        updateData.originalAmount = parsed;
+      }
+    }
+
+    if (body.baseAmountUSD !== undefined) {
+      const parsed = parseNonNegativeNumber(body.baseAmountUSD);
+      if (parsed === undefined) {
+        res.status(400).json(buildSafeError("Invalid baseAmountUSD value."));
+        return;
+      }
+      updateData.baseAmountUSD = parsed;
+    }
+
+    if (body.originalCurrency !== undefined) {
+      const curr = extractSingleString(body.originalCurrency)?.toUpperCase();
+      if (!curr) {
+        res.status(400).json(buildSafeError("Invalid currency code provided."));
+        return;
+      }
+      updateData.originalCurrency = curr;
+    }
+
+    if (body.type !== undefined) {
+      if (!isValidTransactionType(body.type)) {
+        res.status(400).json(buildSafeError("Type must be INCOME or EXPENSE."));
+        return;
+      }
+      updateData.type = body.type;
+    }
+
+    if (body.description !== undefined) {
+      updateData.description = String(body.description).trim();
+    }
+
+    if (body.date !== undefined) {
+      const parsedDate = parseDateSafely(String(body.date));
+      if (!parsedDate) {
+        res.status(400).json(buildSafeError("Invalid date format provided."));
+        return;
+      }
+      updateData.date = parsedDate;
+    }
+
+    if (body.categoryId !== undefined) {
+      const catId = extractSingleString(body.categoryId);
+      if (!catId) {
+        res.status(400).json(buildSafeError("Invalid category ID provided."));
+        return;
+      }
+
+      // Verify category belongs to the transaction's workspace
+      const categoryMatch = await prisma.category.findFirst({
+        where: { id: catId, workspaceId: existingTransaction.workspaceId },
+        select: { id: true },
+      });
+
+      if (!categoryMatch) {
+        res.status(400).json(buildSafeError("Category does not belong to this workspace."));
+        return;
+      }
+
+      updateData.categoryId = catId;
+    }
+
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: targetId },
+      data: updateData,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            color: true,
+            isFixed: true,
+            isRecurring: true,
+            frequency: true,
+            dueDay: true,
+            reminderDays: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: "Transaction updated successfully.",
+      transaction: updatedTransaction,
+    });
+  } catch (error: unknown) {
+    console.error("Update Transaction Error:", error);
+    res.status(500).json(buildSafeError("Internal server error updating transaction."));
+  }
+};
+
+/**
  * POST /api/transactions/bulk
  * Imports a batch of transactions using a single atomic database query.
  */
@@ -220,7 +374,7 @@ export const bulkCreateTransactions = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildSafeError("Authentication required."));
       return;
@@ -337,7 +491,6 @@ export const bulkCreateTransactions = async (
       return;
     }
 
-    // Replaced sequential loop queries with single createMany query.
     const batchResult = await prisma.transaction.createMany({
       data: preparedRecords,
     });
@@ -381,7 +534,7 @@ export const scanReceipt = async (
       return;
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       res.status(500).json(buildSafeError("AI receipt scanner service is not configured on server."));
       return;
@@ -455,7 +608,7 @@ export const getWorkspaceTransactions = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const targetWorkspaceId = extractSingleString(req.query.workspaceId);
 
     if (!userId) {
@@ -516,7 +669,7 @@ export const deleteTransaction = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const targetId = extractSingleString(req.params.id);
 
     if (!userId) {

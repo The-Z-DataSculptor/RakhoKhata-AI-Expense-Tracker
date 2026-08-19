@@ -19,6 +19,16 @@ import {
   FiMinus,
   FiMail,
   FiShield,
+  FiZap,
+  FiAward,
+  FiSearch,
+  FiSmile,
+  FiTrendingUp,
+  FiActivity,
+  FiCompass,
+  FiHeart,
+  FiBarChart2,
+  FiEye,
 } from "react-icons/fi";
 
 import { signupSchema } from "@/schemas/auth";
@@ -57,7 +67,7 @@ interface OccupationOption {
 /** Financial goal card */
 interface FinancialGoal {
   id: string;
-  emoji: string;
+  icon: React.ReactNode;
   title: string;
   desc: string;
 }
@@ -65,37 +75,97 @@ interface FinancialGoal {
 /** AI persona card */
 interface AiPersona {
   id: string;
-  emoji: string;
+  icon: React.ReactNode;
   title: string;
   desc: string;
 }
 
-// Static data arrays – defined outside the component to avoid re‑creation
+// Static data arrays – defined outside the component to avoid re-creation
 const OCCUPATIONS: OccupationOption[] = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
   { id: "entrepreneur", label: "Entrepreneur / Business", desc: "Focuses on business revenue" },
   { id: "student", label: "Student", desc: "Living on a tight budget" },
   { id: "gig_worker", label: "Gig Worker / Creator", desc: "Flexible earnings" },
-  { id: "prefer_not_to_say", label: "Prefer Not to Say", desc: "Keep it private 🔒" },
+  { id: "prefer_not_to_say", label: "Prefer Not to Say", desc: "Keep it private and unlisted" },
 ];
 
 const FINANCIAL_GOALS: FinancialGoal[] = [
-  { id: "hustler", emoji: "🚀", title: "The Hustler", desc: "Managing gigs & multiple income streams." },
-  { id: "saver", emoji: "🏦", title: "The Saver", desc: "Building an emergency fund or buying a home." },
-  { id: "tight_budgeter", emoji: "🔍", title: "The Budgeter", desc: "Living paycheck-to-paycheck, finding leaks." },
-  { id: "zen_master", emoji: "🧘‍♂️", title: "The Zen Master", desc: "Just tracking cash flows with zero stress." },
-  { id: "wealth_builder", emoji: "📈", title: "The Wealth Builder", desc: "Investing, growing assets, and compound growth." },
-  { id: "debt_destroyer", emoji: "🔨", title: "The Debt Destroyer", desc: "Aggressively tackling outstanding loans & debt." },
-  { id: "nomad", emoji: "🗺️", title: "The Nomad / Expat", desc: "Working globally, handling multi-currency accounts." },
-  { id: "privacy_sentinel", emoji: "🛡️", title: "Prefer Private", desc: "Do not categorize or analyze my financial intentions." },
+  { 
+    id: "hustler", 
+    icon: <FiZap />, 
+    title: "The Hustler", 
+    desc: "Managing gigs & multiple income streams." 
+  },
+  { 
+    id: "saver", 
+    icon: <FiAward />, 
+    title: "The Saver", 
+    desc: "Building an emergency fund or buying a home." 
+  },
+  { 
+    id: "tight_budgeter", 
+    icon: <FiSearch />, 
+    title: "The Budgeter", 
+    desc: "Living paycheck-to-paycheck, finding leaks." 
+  },
+  { 
+    id: "zen_master", 
+    icon: <FiSmile />, 
+    title: "The Zen Master", 
+    desc: "Just tracking cash flows with zero stress." 
+  },
+  { 
+    id: "wealth_builder", 
+    icon: <FiTrendingUp />, 
+    title: "The Wealth Builder", 
+    desc: "Investing, growing assets, and compound growth." 
+  },
+  { 
+    id: "debt_destroyer", 
+    icon: <FiActivity />, 
+    title: "The Debt Destroyer", 
+    desc: "Aggressively tackling outstanding loans & debt." 
+  },
+  { 
+    id: "nomad", 
+    icon: <FiCompass />, 
+    title: "The Nomad / Expat", 
+    desc: "Working globally, handling multi-currency accounts." 
+  },
+  { 
+    id: "privacy_sentinel", 
+    icon: <FiShield />, 
+    title: "Prefer Private", 
+    desc: "Do not categorize or analyze my financial intentions." 
+  },
 ];
 
 const AI_PERSONAS: AiPersona[] = [
-  { id: "savage_roaster", emoji: "🔥", title: "Savage Roaster", desc: "Tough love. Will playfully roast your spending habits." },
-  { id: "supportive_coach", emoji: "🤝", title: "Supportive Coach", desc: "Warm mentor. Celebrates wins and guides gently." },
-  { id: "forensic_detective", emoji: "🕵️‍♂️", title: "Forensic Detective", desc: "Hyper-analytical. Finds sneaky hidden spending leaks." },
-  { id: "silent_accountant", emoji: "📊", title: "Silent Accountant", desc: "Professional. No jokes, just raw mathematical logic." },
+  { 
+    id: "savage_roaster", 
+    icon: <FiZap />, 
+    title: "Savage Roaster", 
+    desc: "Tough love. Will playfully challenge your unnecessary spending habits." 
+  },
+  { 
+    id: "supportive_coach", 
+    icon: <FiHeart />, 
+    title: "Supportive Coach", 
+    desc: "Warm mentor. Celebrates wins and guides your journey gently." 
+  },
+  { 
+    id: "forensic_detective", 
+    icon: <FiEye />, 
+    title: "Forensic Detective", 
+    desc: "Hyper-analytical. Finds subtle recurring and hidden spending leaks." 
+  },
+  { 
+    id: "silent_accountant", 
+    icon: <FiBarChart2 />, 
+    title: "Silent Accountant", 
+    desc: "Professional precision. Direct financial ledger calculations without banter." 
+  },
 ];
 
 const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
@@ -124,7 +194,7 @@ export default function SignupPage() {
     aiPersona: "",
   });
 
-  // Auto‑detect region from timezone (runs once on mount)
+  // Auto-detect region from timezone (runs once on mount)
   useEffect(() => {
     const timer = setTimeout(() => {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -156,7 +226,7 @@ export default function SignupPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Country change → auto‑sets currency & language
+  // Country change -> auto-sets currency & language
   const handleCountryChange = (selectedCountryName: string) => {
     const matchedCountry = WORLD_COUNTRIES.find(
       (c) => c.name === selectedCountryName
@@ -232,7 +302,7 @@ export default function SignupPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
-  // Final submission validation (Uses relative /api route for cookie pass-through)
+  // Final submission validation
   const submitForm = async () => {
     if (!formData.aiPersona) {
       toast.error("Please pick an AI assistant personality style to complete registration.");
@@ -291,7 +361,7 @@ export default function SignupPage() {
           </div>
 
           <div className={styles.methodChoiceGrid}>
-            {/* Google OAuth Option – Uses relative /api endpoint */}
+            {/* Google OAuth Option */}
             <a
               href="/api/auth/google"
               className={`${styles.methodChoiceCard} ${styles.googleChoiceCard}`}
@@ -324,7 +394,7 @@ export default function SignupPage() {
               </div>
               <div className={styles.methodText}>
                 <h4>Continue with Google</h4>
-                <p>1‑click fast registration using your Google account.</p>
+                <p>1-click fast registration using your Google account.</p>
               </div>
               <FiChevronRight className={styles.methodArrow} />
             </a>
@@ -347,7 +417,7 @@ export default function SignupPage() {
               </div>
               <div className={styles.methodText}>
                 <h4>Sign up with Email</h4>
-                <p>Set up a password‑protected account step‑by‑step.</p>
+                <p>Set up a password-protected account step-by-step.</p>
               </div>
               <FiChevronRight className={styles.methodArrow} />
             </button>
@@ -458,7 +528,7 @@ export default function SignupPage() {
                     </option>
                   ))}
                   <option value="Private">
-                    🌍 My Country is Not Listed / Prefer Private
+                    Country Not Listed / Prefer Private
                   </option>
                 </select>
               </div>
@@ -474,10 +544,10 @@ export default function SignupPage() {
                 >
                   {WORLD_CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.flag} {c.code} ({c.symbol}) - {c.label}
+                      {c.code} ({c.symbol}) - {c.label}
                     </option>
                   ))}
-                  <option value="OTHER">💸 Other (Dynamic Base)</option>
+                  <option value="OTHER">Other Currency (Dynamic Base)</option>
                 </select>
               </div>
             </div>
@@ -485,7 +555,7 @@ export default function SignupPage() {
             <div className={styles.inputGroup}>
               <label>Other Languages You Speak (Optional)</label>
               <p className={styles.helperText}>
-                This helps your AI assistant use comfortable wording!
+                This helps your AI assistant use comfortable wording for your digests.
               </p>
 
               <div className={styles.tagsContainerOuter}>
@@ -572,7 +642,7 @@ export default function SignupPage() {
                 <option value="">Choose an option...</option>
                 {OCCUPATIONS.map((o) => (
                   <option key={o.id} value={o.id}>
-                    {o.label} - {o.desc}
+                    {o.label} — {o.desc}
                   </option>
                 ))}
               </select>
@@ -593,7 +663,7 @@ export default function SignupPage() {
                       setFormData({ ...formData, financialGoal: goal.id })
                     }
                   >
-                    <span className={styles.cardEmoji}>{goal.emoji}</span>
+                    <div className={styles.cardIconBox}>{goal.icon}</div>
                     <div className={styles.cardText}>
                       <h4>{goal.title}</h4>
                       <p>{goal.desc}</p>
@@ -632,7 +702,7 @@ export default function SignupPage() {
                       setFormData({ ...formData, aiPersona: persona.id })
                     }
                   >
-                    <span className={styles.cardEmoji}>{persona.emoji}</span>
+                    <div className={styles.aiIconBox}>{persona.icon}</div>
                     <div className={styles.cardText}>
                       <h4>{persona.title}</h4>
                       <p>{persona.desc}</p>
@@ -699,7 +769,7 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Mobile‑only step tracker */}
+          {/* Mobile-only step tracker */}
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
               {signupMethod === "CHOOSE" ? (

@@ -7,6 +7,7 @@ import { Router } from "express";
 import multer from "multer";
 import {
   createTransaction,
+  updateTransaction,
   bulkCreateTransactions,
   scanReceipt,
   getWorkspaceTransactions,
@@ -42,7 +43,7 @@ const ALLOWED_RECEIPT_MIME_TYPES = [
   "application/pdf",
 ];
 
-// WHY THIS FIX WAS MADE: Added fileFilter to reject non-supported files at the multipart boundary before buffering memory.
+// Rejects non-supported files at the multipart boundary before buffering into memory
 const memoryUploadEngine = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -67,9 +68,6 @@ const memoryUploadEngine = multer({
 /**
  * GET /api/transactions
  * Fetches transactions for a workspace (workspaceId query parameter required).
- * 
- * WHY THIS FIX WAS MADE: Protected with `globalApiLimiter` to prevent database query starvation
- * and `ensureOnboardingCompleted` to enforce profile initialization.
  */
 router.get(
   "/",
@@ -82,9 +80,6 @@ router.get(
 /**
  * POST /api/transactions
  * Creates a single transaction entry.
- * 
- * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to block automated script
- * spam from flooding database tables.
  */
 router.post(
   "/",
@@ -95,11 +90,20 @@ router.post(
 );
 
 /**
+ * PUT /api/transactions/:id
+ * Updates an existing transaction record (or mass re-assigns category).
+ */
+router.put(
+  "/:id",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  updateTransaction
+);
+
+/**
  * POST /api/transactions/bulk
  * Imports multiple transactions in a single batch.
- * 
- * WHY THIS FIX WAS MADE: Rate limited using `writeActionsLimiter` to prevent database
- * lock contention during heavy batch writes.
  */
 router.post(
   "/bulk",
@@ -112,9 +116,7 @@ router.post(
 /**
  * POST /api/transactions/scan
  * Scans a receipt document/image using Gemini AI vision models.
- * 
- * WHY THIS FIX WAS MADE: Protected with `aiApiLimiter` BEFORE parsing multipart files to shield server RAM
- * and Gemini API key quotas from abuse.
+ * Protected by shared aiApiLimiter.
  */
 router.post(
   "/scan",
@@ -128,8 +130,6 @@ router.post(
 /**
  * DELETE /api/transactions/:id
  * Removes a transaction by ID.
- * 
- * WHY THIS FIX WAS MADE: Protected with `writeActionsLimiter` to safeguard against bulk deletion spam.
  */
 router.delete(
   "/:id",
@@ -142,9 +142,6 @@ router.delete(
 /**
  * GET /api/transactions/export/excel
  * Generates and streams an Excel spreadsheet statement.
- * 
- * WHY THIS FIX WAS MADE: Rate limited using `globalApiLimiter` to prevent CPU-intensive spreadsheet
- * generation from overloading server memory.
  */
 router.get(
   "/export/excel",
@@ -157,9 +154,6 @@ router.get(
 /**
  * GET /api/transactions/export/pdf
  * Generates and streams a PDF report document.
- * 
- * WHY THIS FIX WAS MADE: Protected with `globalApiLimiter` to prevent PDF render streaming
- * from blocking Node.js event loops.
  */
 router.get(
   "/export/pdf",

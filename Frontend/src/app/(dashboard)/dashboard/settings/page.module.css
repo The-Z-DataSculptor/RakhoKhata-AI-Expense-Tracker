@@ -1,4 +1,4 @@
-/* src/app/(dashboard)/dashboard/settings/page.module.css */
+/* Frontend/src/app/(dashboard)/dashboard/settings/page.module.css */
 
 /* ==========================================================================
    === SECTION 1: MAIN STRUCTURAL CANVAS FOUNDATIONS ===
@@ -8,7 +8,7 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  max-width: 950px;
+  max-width: 1250px;
   margin: 0 auto;
   box-sizing: border-box;
   letter-spacing: -0.02em;
@@ -204,7 +204,6 @@
   min-height: 400px;
 }
 
-/* Hidden by default on desktop viewports (> 768px) */
 .mobileTabSelectorWrapper {
   display: none;
 }
@@ -304,55 +303,106 @@
 }
 
 /* ==========================================================================
-   === SECTION 5: RICH CARDS & TAGS ===
+   === SECTION 5: SELECTION CARDS & TAGS ===
    ========================================================================== */
-.richCardsGrid {
+.selectionCardsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
-.richCard {
-  display: flex;
-  flex-direction: column;
+.selectionCardsGridVertical {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 0.75rem;
-  padding: 1.25rem;
-  background-color: var(--bg-surface, #ffffff);
-  border: 2px solid var(--border-color, #e5e1f4);
-  border-radius: var(--radius-md, 10px);
+}
+
+.selectionCard {
+  border: 1.5px solid var(--border-color, #e5e1f4);
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  background-color: var(--bg-surface, #ffffff);
+  position: relative;
   box-sizing: border-box;
 }
 
-.richCard:hover {
+.selectionCard:hover {
   border-color: #c4b5fd;
   background-color: var(--surface-muted, #f9f8ff);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.richCardActive {
+.selectionCardActive {
   border-color: var(--color-primary, #613bbf);
-  background-color: rgba(97, 59, 191, 0.04);
-  box-shadow: 0 4px 15px rgba(97, 59, 191, 0.1);
+  background-color: var(--surface-outline, #f1eefc);
+  box-shadow: 0 4px 15px rgba(97, 59, 191, 0.12);
 }
 
-.richCardEmoji {
-  font-size: 1.75rem;
+.aiCardActive {
+  border-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.05);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.12);
 }
 
-.richCardText h4 {
-  margin: 0 0 0.35rem 0;
+.cardIconBox,
+.aiIconBox {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: rgba(97, 59, 191, 0.1);
+  color: var(--color-primary, #613bbf);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.selectionCardActive .cardIconBox {
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+}
+
+.aiCardActive .aiIconBox {
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+.cardText {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardText h4 {
+  margin: 0 0 0.25rem 0;
   font-size: 0.95rem;
-  font-weight: 800;
   color: var(--text-primary, #10043f);
+  font-weight: 700;
 }
 
-.richCardText p {
+.cardText p {
   margin: 0;
   font-size: 0.8rem;
   color: var(--text-secondary, #4e4a6b);
   line-height: 1.4;
+}
+
+.checkIcon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: var(--color-primary, #613bbf);
+  font-size: 1.25rem;
+}
+
+.aiCardActive .checkIcon {
+  color: #10b981;
 }
 
 .tagsGrid {
@@ -597,7 +647,7 @@
 
   .primaryTextInputElement,
   .selectInput {
-    font-size: 1rem; /* 16px to prevent iOS auto-zoom */
+    font-size: 1rem;
     min-height: 48px;
     padding: 0.75rem 0.85rem;
   }
@@ -615,12 +665,10 @@
     min-height: auto;
   }
   
-  /* Hide desktop sidebar on mobile */
   .settingsSidebar {
     display: none !important;
   }
 
-  /* Show mobile section dropdown selector */
   .mobileTabSelectorWrapper {
     display: flex;
     flex-direction: column;
@@ -649,13 +697,13 @@
 
   .mobileTabSelectElement {
     width: 100%;
-    height: 48px; /* 48px touch target */
+    height: 48px;
     padding: 0 2.5rem 0 1rem;
     background-color: var(--bg-surface, #ffffff);
     border: 1px solid var(--border-color, #e5e1f4);
     border-radius: var(--radius-md, 8px);
     color: var(--text-primary, #10043f);
-    font-size: 1rem; /* Strictly 16px to prevent iOS Safari auto-zoom */
+    font-size: 1rem;
     font-weight: 700;
     appearance: none;
     -webkit-appearance: none;
@@ -704,31 +752,14 @@
     padding-top: 1.15rem;
   }
 
-  .richCardsGrid {
+  .selectionCardsGrid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
 
-  .richCard {
-    padding: 1rem;
-    flex-direction: row;
-    align-items: center;
-    gap: 1rem;
+  .selectionCard {
+    padding: 0.9rem 1rem;
     min-height: 48px;
-  }
-
-  .richCardEmoji {
-    font-size: 1.5rem;
-    flex-shrink: 0;
-  }
-
-  .richCardText h4 {
-    font-size: 0.9rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .richCardText p {
-    font-size: 0.78rem;
   }
 
   .tagBtn {
@@ -796,5 +827,11 @@
     font-size: 0.6rem;
     padding: 0.1rem 0.45rem;
   }
+
+  .cardIconBox,
+  .aiIconBox {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
 }
-/* === SECTION 8 END === */

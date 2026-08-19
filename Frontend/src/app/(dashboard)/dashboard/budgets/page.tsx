@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -70,13 +71,9 @@ export default function BudgetsPage() {
           categoryService.getByWorkspace(activeWorkspaceId)
         ]);
 
-        // 🔍 DIAGNOSTIC LOG – check the console in your browser (F12 → Console)
-        console.log("📦 All categories from API:", categoriesData.categories);
-
         if (isMounted) {
           setBudgets((budgetsData.budgets as ExtendedBudget[]) || []);
           
-          // Normalise category types to UPPERCASE so the expense filter works reliably
           const normalisedCategories = (categoriesData.categories || []).map((cat) => ({
             ...cat,
             type: cat.type?.toUpperCase() || "EXPENSE",
@@ -164,7 +161,6 @@ export default function BudgetsPage() {
     }
   };
 
-  // Convert spent from USD to workspace currency (spentAmount is now in USD)
   const computedBudgetItems: BudgetItem[] = useMemo(() => {
     const scale = getScalingFactor(activeRange);
 
@@ -290,7 +286,7 @@ export default function BudgetsPage() {
           setEditingBudget(null);
         }}
         onSubmit={handleSaveBudgetSubmit}
-        categories={categories.filter(cat => cat.type === "EXPENSE")}
+        categories={categories.filter((cat) => cat.type === "EXPENSE")}
         initialData={
           editingBudget
             ? {

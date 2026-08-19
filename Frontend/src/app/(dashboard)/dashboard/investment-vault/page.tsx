@@ -280,11 +280,6 @@ export default function InvestmentVaultPage() {
   }, [assets]);
 
   const totalPositionsCount = assets.length;
-  /* === SECTION 3 END === */
-
-  /* ==========================================================================
-     === SECTION 4: STRUCTURAL LAYOUT OUTPUT SYSTEM (JSX) ===
-     ========================================================================== */
 
   if (hasDatabasePin && !isVaultUnlocked) {
     return (
@@ -319,7 +314,6 @@ export default function InvestmentVaultPage() {
 
   return (
     <div className={styles.vaultMainPageWrapper}>
-
       <VaultHeader
         hasPinEnabled={hasDatabasePin}
         onAddAssetClick={() => {
@@ -343,7 +337,6 @@ export default function InvestmentVaultPage() {
           onDeleteAsset={handleDeleteAsset}
           onEditClick={handleEditClick}
           sourceCurrency={currency}
-          // 🚀 NEW: passes the same modal‑opening function so the empty state button works
           onAddAssetClick={() => {
             setEditingAsset(null);
             setIsModalOpen(true);
@@ -388,8 +381,6 @@ export default function InvestmentVaultPage() {
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>
-
     </div>
   );
 }
-/* === SECTION 4 END === */

@@ -21,6 +21,15 @@ export const getApiBaseUrl = (): string => {
   return "/api";
 };
 
+export type AiPersonaType =
+  | "savage_roaster"
+  | "supportive_coach"
+  | "forensic_detective"
+  | "silent_accountant"
+  | "auditor"
+  | "coach"
+  | "minimalist";
+
 export interface Category {
   id: string;
   name: string;
@@ -153,7 +162,6 @@ export const apiFetch = async <T = unknown>(
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
-  // 15-second request timeout controller
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -168,7 +176,6 @@ export const apiFetch = async <T = unknown>(
     const response = await fetch(url, mergedOptions);
     clearTimeout(timeoutId);
 
-    // Read response body as plain text first to safely check content length
     const responseText = await response.text();
     let responseData: unknown = null;
 
@@ -176,13 +183,11 @@ export const apiFetch = async <T = unknown>(
       try {
         responseData = JSON.parse(responseText);
       } catch {
-        // Fallback for non-JSON string responses
         responseData = { message: responseText };
       }
     }
 
     if (!response.ok) {
-      // Auto-retry transient HTTP 502, 503, and 504 gateway errors
       if (retries > 0 && response.status >= 502 && response.status <= 504) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         return apiFetch<T>(endpoint, options, retries - 1);
@@ -199,7 +204,6 @@ export const apiFetch = async <T = unknown>(
       throw new Error(errorMessage);
     }
 
-    // Safely return empty object for HTTP 204 or empty string payloads
     if (response.status === 204 || responseData === null) {
       return {} as T;
     }
@@ -208,7 +212,6 @@ export const apiFetch = async <T = unknown>(
   } catch (error: unknown) {
     clearTimeout(timeoutId);
 
-    // Auto-retry network drops if retry attempts remain
     if (retries > 0 && error instanceof Error && error.name !== "AbortError") {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       return apiFetch<T>(endpoint, options, retries - 1);
@@ -245,6 +248,15 @@ export const transactionService = {
     apiFetch<{ message: string; transaction: Transaction }>(
       "/transactions",
       { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  update: (
+    id: string,
+    data: Partial<Omit<Transaction, "id" | "category">>
+  ) =>
+    apiFetch<{ message: string; transaction: Transaction }>(
+      `/transactions/${id}`,
+      { method: "PUT", body: JSON.stringify(data) }
     ),
 
   bulkCreate: (data: {
@@ -383,7 +395,7 @@ export const vaultAuthService = {
 export const aiService = {
   ask: (
     question: string,
-    persona: "auditor" | "coach" | "minimalist",
+    persona: AiPersonaType,
     workspaceId: string
   ) =>
     apiFetch<{ response: string }>("/ai/ask", {

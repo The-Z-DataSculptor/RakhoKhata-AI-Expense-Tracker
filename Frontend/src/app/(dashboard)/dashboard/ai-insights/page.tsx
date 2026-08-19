@@ -1,243 +1,421 @@
-// src/app/(dashboard)/dashboard/ai-insights/page.tsx
+// Frontend/src/app/(dashboard)/dashboard/ai-insights/page.tsx
 "use client";
 
-/* ==========================================================================
-   === SECTION 1: IMPORTS ===
-   ========================================================================== */
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { AiChatConsole } from "@/components/ai-insights/AiChatConsole/AiChatConsole";
-import { AiResponseCard } from "@/components/ai-insights/AiResponseCard/AiResponseCard";
-import { AiLeakWarnings } from "@/components/ai-insights/AiLeakWarnings/AiLeakWarnings";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  FiSend,
+  FiUser,
+  FiZap,
+  FiTarget,
+  FiTrendingUp,
+  FiShield,
+  FiCompass,
+  FiActivity,
+  FiHelpCircle,
+} from "react-icons/fi";
+import { FaFire, FaUserSecret, FaCalculator, FaBolt } from "react-icons/fa6";
+import { toast } from "sonner";
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
+import { useUser } from "@/app/(dashboard)/context/UserContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { transactionService, budgetService, Transaction, Budget, aiService } from "@/utils/api";
-import { toast } from "sonner";
+import { aiService, AiPersonaType } from "@/utils/api";
 import styles from "./page.module.css";
-/* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
-type AdvisorPersona = "auditor" | "coach" | "minimalist";
-
-interface WarningItem {
+interface ChatMessage {
   id: string;
-  categoryName: string;
-  severity: "high" | "medium";
-  overspendAmount: string;
-  simpleDescription: string;
+  sender: "user" | "buddy";
+  text: string;
+  timestamp: string;
 }
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC ===
-   ========================================================================== */
+function generateId(prefix: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function getFormattedTime(): string {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function AiInsightsPage() {
+  const { user: globalUser } = useUser();
   const { activeWorkspaceId } = useWorkspace();
-  const { formatAmount, convertAmount, currency } = useCurrency();
+  const { currency } = useCurrency();
 
-  const [activePersona, setActivePersona] = useState<AdvisorPersona>("auditor");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isCardVisible, setIsCardVisible] = useState<boolean>(false);
-  const [aiResponse, setAiResponse] = useState<string>("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState<string>("");
+  const [isLoadingGreeting, setIsLoadingGreeting] = useState<boolean>(true);
+  const [isSending, setIsSending] = useState<boolean>(false);
 
-  // --- LOCAL DATA STATES (Used strictly for visual Warnings list) ---
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  // WHY THIS FIX WAS MADE: Initialized to false to eliminate synchronous setState calls inside effect guard bodies
-  const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
-
-  // Maintains a ref to track the latest active request token, preventing race conditions
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeRequestRef = useRef<number>(0);
 
-  // Fetch real data safely with unmount safeguards when workspace changes
+  const personaKey: AiPersonaType =
+    (globalUser?.aiPersona as AiPersonaType) || "supportive_coach";
+  const userName = globalUser?.name || "Friend";
+
+  const formatTitleCase = (name: string): string => {
+    if (!name) return "";
+    return name
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isSending]);
+
+  const getPersonaDetails = () => {
+    switch (personaKey) {
+      case "savage_roaster":
+        return {
+          title: "Savage Financial Critic",
+          avatarIcon: <FaFire className={styles.personaAvatarIcon} />,
+          badge: "ROAST ENGINE ACTIVE",
+          statusText: "IMPULSE AUDIT LIVE",
+          statusIcon: <FiActivity />,
+          guideText: "Ask about impulse buys, weekend splurges, or where cash is leaking.",
+          suggestions: [
+            { label: "Top Burners", query: "Roast my biggest spending category this month." },
+            { label: "Splurge Reality Check", query: "Can I realistically afford a big weekend purchase right now?" },
+            { label: "Impulse Leaks", query: "Where did I waste money impulsively this past week?" },
+          ],
+          themeClass: styles.themeRoaster,
+        };
+      case "forensic_detective":
+        return {
+          title: "Forensic Ledger Auditor",
+          avatarIcon: <FaUserSecret className={styles.personaAvatarIcon} />,
+          badge: "DEEP AUDIT PROTOCOL",
+          statusText: "LEAK DETECTION LIVE",
+          statusIcon: <FiShield />,
+          guideText: "Ask to uncover subtle recurring subscriptions, hidden fees, or category spikes.",
+          suggestions: [
+            { label: "Subscription Traps", query: "Find subtle recurring subscriptions and stealth expenses." },
+            { label: "Category Anomaly", query: "Are there any abnormal category spikes compared to last month?" },
+            { label: "Cash Velocity", query: "Audit my daily average spending velocity this cycle." },
+          ],
+          themeClass: styles.themeDetective,
+        };
+      case "silent_accountant":
+        return {
+          title: "Precision Strategist",
+          avatarIcon: <FaCalculator className={styles.personaAvatarIcon} />,
+          badge: "PRECISION PROTOCOL",
+          statusText: "LIVE LEDGER SYNC",
+          statusIcon: <FiShield />,
+          guideText: "Ask for exact runway numbers, affordability simulations, or margin breakdowns.",
+          suggestions: [
+            { label: "Affordability Check", query: "Simulate a planned purchase against my current reserve balance." },
+            { label: "Runway Calculation", query: "Calculate my exact burn rate and financial runway at this pace." },
+            { label: "Category Breakdown", query: "Provide a sorted percentage breakdown of all spending." },
+          ],
+          themeClass: styles.themeAccountant,
+        };
+      default:
+        return {
+          title: "Growth Co-Pilot",
+          avatarIcon: <FiCompass className={styles.personaAvatarIcon} />,
+          badge: "MENTOR ENGINE ACTIVE",
+          statusText: "GOAL TRACKING LIVE",
+          statusIcon: <FiCompass />,
+          guideText: "Ask for actionable expense cuts, goal completion forecasts, or pacing tips.",
+          suggestions: [
+            { label: "Target Forecast", query: "How close am I to hitting my financial goal at this rate?" },
+            { label: "3 Actionable Cuts", query: "Give me 3 practical ways to optimize my cash flow this week." },
+            { label: "Monthly Summary", query: "Summarize my overall financial health for this month." },
+          ],
+          themeClass: styles.themeCoach,
+        };
+    }
+  };
+
+  const persona = getPersonaDetails();
+
   useEffect(() => {
     let isMounted = true;
-    if (!activeWorkspaceId) {
-      return;
-    }
 
-    const fetchData = async () => {
-      if (isMounted) setIsDataLoading(true);
+    const fetchInitialGreeting = async () => {
+      if (!activeWorkspaceId) {
+        if (isMounted) setIsLoadingGreeting(false);
+        return;
+      }
+
+      setIsLoadingGreeting(true);
+
       try {
-        const [txData, budgetData] = await Promise.all([
-          transactionService.getByWorkspace(activeWorkspaceId),
-          budgetService.getByWorkspace(activeWorkspaceId),
-        ]);
-        if (isMounted) {
-          setTransactions(txData.transactions || []);
-          setBudgets(budgetData.budgets || []);
+        const result = await aiService.greeting(activeWorkspaceId);
+        if (isMounted && result?.greeting) {
+          setMessages([
+            {
+              id: generateId("greeting"),
+              sender: "buddy",
+              text: result.greeting,
+              timestamp: getFormattedTime(),
+            },
+          ]);
         }
       } catch {
         if (isMounted) {
-          toast.error("Could not load your data. Please try again.");
+          const fallbackText = `Hey ${formatTitleCase(userName)}! Your command center is primed in ${currency}. What financial move are we analyzing today?`;
+          setMessages([
+            {
+              id: generateId("fallback-greeting"),
+              sender: "buddy",
+              text: fallbackText,
+              timestamp: getFormattedTime(),
+            },
+          ]);
         }
       } finally {
-        if (isMounted) {
-          setIsDataLoading(false);
-        }
+        if (isMounted) setIsLoadingGreeting(false);
       }
     };
 
-    fetchData();
+    fetchInitialGreeting();
 
     return () => {
       isMounted = false;
     };
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, currency, userName, personaKey]);
 
-  // --- COMPUTE WARNINGS FROM REAL DATA (Client UI decoration only) ---
-  const warnings = useMemo<WarningItem[]>(() => {
-    if (!transactions.length || !budgets.length) return [];
+  const handleSendMessage = useCallback(
+    async (textToSend?: string) => {
+      const query = (textToSend || inputValue).trim();
+      if (!query || isSending || !activeWorkspaceId) return;
 
-    const categorySpent: Record<string, number> = {};
-    transactions.forEach((tx) => {
-      if (tx.type !== "EXPENSE") return;
-      const catName = tx.category?.name || "Uncategorized";
-      const amount = convertAmount(
-        Number(tx.originalAmount || 0),
-        tx.originalCurrency || "USD",
-        currency
-      );
-      categorySpent[catName] = (categorySpent[catName] || 0) + amount;
-    });
+      const userMessage: ChatMessage = {
+        id: generateId("chat-user"),
+        sender: "user",
+        text: query,
+        timestamp: getFormattedTime(),
+      };
 
-    const warningList: WarningItem[] = [];
+      setMessages((prev) => [...prev, userMessage]);
+      setInputValue("");
+      setIsSending(true);
 
-    budgets.forEach((budget) => {
-      const catName = budget.category?.name;
-      if (!catName) return;
-      const spent = categorySpent[catName] || 0;
+      const currentRequestId = ++activeRequestRef.current;
 
-      const limit = convertAmount(
-        Number(budget.originalAmount || 0),
-        budget.originalCurrency || "USD",
-        currency
-      );
-      if (limit === 0) return;
+      try {
+        const res = await aiService.ask(query, personaKey, activeWorkspaceId);
 
-      const overspend = spent - limit;
-      if (overspend <= 0) return;
-
-      const severity = overspend > limit * 0.3 ? "high" : "medium";
-      const overspendFormatted = formatAmount(overspend);
-
-      warningList.push({
-        id: budget.id,
-        categoryName: catName,
-        severity,
-        overspendAmount: `${overspendFormatted} over budget`,
-        simpleDescription:
-          severity === "high"
-            ? `You have spent way too much on ${catName}. Try to cut back this week.`
-            : `You are over budget on ${catName}. Consider reducing small purchases.`,
-      });
-    });
-
-    return warningList;
-  }, [transactions, budgets, convertAmount, currency, formatAmount]);
-
-  // --- HANDLE USER QUESTION (100% backend driven with race condition protection) ---
-  const handleQuerySubmit = useCallback(async (question: string) => {
-    if (!activeWorkspaceId) return;
-    
-    const requestId = ++activeRequestRef.current;
-    setIsCardVisible(true);
-    setIsLoading(true);
-    setAiResponse("");
-
-    try {
-      const response = await aiService.ask(question, activePersona, activeWorkspaceId);
-      
-      // Ensures stale out-of-order responses are discarded if a newer request was sent
-      if (requestId === activeRequestRef.current) {
-        setAiResponse(response.response);
-      }
-    } catch (error: unknown) {
-      if (requestId === activeRequestRef.current) {
-        console.error("AI Request Error:", error);
-        let errorMessage = "Failed to get AI response.";
-        if (error instanceof Error) {
-          errorMessage = error.message;
+        if (currentRequestId === activeRequestRef.current && res?.response) {
+          const buddyMessage: ChatMessage = {
+            id: generateId("chat-buddy"),
+            sender: "buddy",
+            text: res.response,
+            timestamp: getFormattedTime(),
+          };
+          setMessages((prev) => [...prev, buddyMessage]);
         }
-        setAiResponse(`Error: ${errorMessage}`);
-        toast.error(errorMessage);
+      } catch (err: unknown) {
+        if (currentRequestId === activeRequestRef.current) {
+          const msg =
+            err instanceof Error ? err.message : "Failed to compile financial insight.";
+          toast.error(msg);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: generateId("chat-error"),
+              sender: "buddy",
+              text: "Signal glitch while querying the ledger engine. Please resend your prompt.",
+              timestamp: getFormattedTime(),
+            },
+          ]);
+        }
+      } finally {
+        if (currentRequestId === activeRequestRef.current) {
+          setIsSending(false);
+        }
       }
-    } finally {
-      if (requestId === activeRequestRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [activeWorkspaceId, activePersona]);
+    },
+    [inputValue, isSending, activeWorkspaceId, personaKey]
+  );
 
-  // --- RENDER ---
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSendMessage();
+  };
+
   return (
-    <div className={styles.insightsPageContainer}>
-      <header className={styles.insightsMainHeaderCardBox}>
-        <div className={styles.titleTextGroup}>
-          <div className={styles.titleWithBadgeRow}>
-            <h1 className={styles.mainTitleHeading}>AI Money Insights</h1>
-            <span className={styles.liveAnalyticsBadgeElement}>Live</span>
-          </div>
-          <p className={styles.subtitleDescription}>
-            Your AI checks your spending, finds waste, and helps you save.
-          </p>
-        </div>
+    <div className={`${styles.pageContainer} ${persona.themeClass}`}>
+      <div className={styles.ambientAuraTop} />
+      <div className={styles.ambientAuraBottom} />
 
-        <div className={styles.personaControlFrame}>
-          <label className={styles.personaControlLabel}>AI Personality:</label>
-          <div className={styles.personaPillsDeck}>
-            <button
-              type="button"
-              className={`${styles.personaPillBtn} ${activePersona === "auditor" ? styles.personaActiveAuditor : ""}`}
-              onClick={() => setActivePersona("auditor")}
-            >
-              Strict Auditor
-            </button>
-            <button
-              type="button"
-              className={`${styles.personaPillBtn} ${activePersona === "coach" ? styles.personaActiveCoach : ""}`}
-              onClick={() => setActivePersona("coach")}
-            >
-              Money Coach
-            </button>
-            <button
-              type="button"
-              className={`${styles.personaPillBtn} ${activePersona === "minimalist" ? styles.personaActiveMinimalist : ""}`}
-              onClick={() => setActivePersona("minimalist")}
-            >
-              Minimalist
-            </button>
+      <header className={styles.heroDeckContainer}>
+        <div className={styles.heroGlowBanner} />
+
+        <div className={styles.heroDeckContent}>
+          <div className={styles.avatarShowcaseArea}>
+            <div className={styles.avatarAuraHalo} />
+            <div className={styles.avatarMainBlob}>
+              {persona.avatarIcon}
+            </div>
+          </div>
+
+          <div className={styles.identityMetaDeck}>
+            <div className={styles.heroTagRow}>
+              <span className={styles.showmanBadge}>{persona.badge}</span>
+              <div className={styles.liveMatrixIndicator}>
+                <span className={styles.pulsePing} />
+                <span className={styles.liveMatrixText}>{persona.statusText}</span>
+              </div>
+            </div>
+
+            <h1 className={styles.heroMainTitle}>
+              {formatTitleCase(userName)}’s <span className={styles.gradientTitleText}>{persona.title}</span>
+            </h1>
+
+            <div className={styles.guideBlock}>
+              <FiHelpCircle className={styles.guideIcon} />
+              <p className={styles.guideText}>{persona.guideText}</p>
+            </div>
+          </div>
+
+          <div className={styles.hudStatCapsules}>
+            {globalUser?.financialGoal && (
+              <div className={styles.statCapsule}>
+                <div className={styles.capsuleIconBox}>
+                  <FiTarget />
+                </div>
+                <div className={styles.capsuleText}>
+                  <span className={styles.capsuleLabel}>Target Quest</span>
+                  <strong>{globalUser.financialGoal.replace("_", " ")}</strong>
+                </div>
+              </div>
+            )}
+            <div className={styles.statCapsule}>
+              <div className={styles.capsuleIconBox}>
+                <FiTrendingUp />
+              </div>
+              <div className={styles.capsuleText}>
+                <span className={styles.capsuleLabel}>Ledger Unit</span>
+                <strong>{currency} System</strong>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <AiChatConsole
-        activePersona={activePersona}
-        onQueryStart={handleQuerySubmit}
-        isExternalLoading={isLoading}
-        isDataReady={!!activeWorkspaceId && !isDataLoading}
-      />
+      <main className={styles.chatChamberContainer} aria-label="AI Buddy Conversation">
+        <div className={styles.messagesViewport}>
+          {isLoadingGreeting ? (
+            <div className={styles.loaderStateArea}>
+              <div className={styles.loadingSpinnerRing}>
+                <FaBolt className={styles.sparkBolt} />
+              </div>
+              <p>Calibrating companion persona and compiling transactions...</p>
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`${styles.dialogueRow} ${
+                  msg.sender === "user" ? styles.dialogueUser : styles.dialogueBuddy
+                }`}
+              >
+                {msg.sender === "buddy" && (
+                  <div className={styles.companionBubbleAvatar}>
+                    {persona.avatarIcon}
+                  </div>
+                )}
 
-      <AiResponseCard
-        isVisible={isCardVisible}
-        isLoading={isLoading}
-        activePersona={activePersona}
-        response={aiResponse}
-      />
+                <div
+                  className={`${styles.dialogueGlassCard} ${
+                    msg.sender === "user"
+                      ? styles.glassCardUser
+                      : styles.glassCardBuddy
+                  }`}
+                >
+                  <p className={styles.dialogueText}>{msg.text}</p>
+                  <span className={styles.dialogueTimestamp}>
+                    {msg.timestamp}
+                  </span>
+                </div>
 
-      {/* ✅ NOW PASSES hasBudgets PROP TO ACTIVATE REAL BUDGET CHECK */}
-      <AiLeakWarnings
-        warnings={warnings}
-        isLoading={isDataLoading}
-        hasBudgets={budgets.length > 0}
-      />
+                {msg.sender === "user" && (
+                  <div className={styles.userBubbleAvatar}>
+                    <FiUser />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
 
-      <footer className={styles.footerContainerBlock}>
+          {isSending && (
+            <div className={`${styles.dialogueRow} ${styles.dialogueBuddy}`}>
+              <div className={styles.companionBubbleAvatar}>
+                {persona.avatarIcon}
+              </div>
+              <div className={`${styles.dialogueGlassCard} ${styles.glassCardBuddy}`}>
+                <div className={styles.cyberTypingBeats}>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className={styles.promptLaunchpad}>
+          <div className={styles.launchpadHeader}>
+            <FiZap className={styles.launchpadZapIcon} />
+            <span>Power Queries:</span>
+          </div>
+          <div className={styles.launchpadChipsDeck}>
+            {persona.suggestions.map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={styles.powerChipBtn}
+                onClick={() => handleSendMessage(item.query)}
+                disabled={isSending || isLoadingGreeting}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={handleFormSubmit} className={styles.composerConsoleBar}>
+          <div className={styles.composerInnerShell}>
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={`Deploy a question to your ${persona.title}...`}
+              disabled={isSending || isLoadingGreeting}
+              maxLength={500}
+              className={styles.composerNativeInput}
+            />
+            <button
+              type="submit"
+              disabled={isSending || !inputValue.trim() || isLoadingGreeting}
+              className={styles.launchActionButton}
+              aria-label="Send query"
+            >
+              <span>{isSending ? "Synthesizing..." : "Ask Buddy"}</span>
+              <FiSend className={styles.sendIcon} />
+            </button>
+          </div>
+        </form>
+      </main>
+
+      <footer className={styles.footerWrap}>
         <DashboardFooter />
       </footer>
     </div>
   );
 }
-/* === SECTION 3 END === */

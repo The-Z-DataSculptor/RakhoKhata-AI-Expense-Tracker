@@ -10,8 +10,6 @@
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
-  /* Provides a minimum height but allows it to grow naturally */
-  min-height: calc(100vh - 80px); 
   padding-bottom: 0; 
   box-sizing: border-box;
 }
@@ -21,11 +19,10 @@
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
   padding: 1.5rem;
-  box-shadow: var(--shadow-soft);
-  /* Prevents the header from shrinking when content grows */
+  box-shadow: var(--shadow-soft, 0 4px 15px rgba(16, 4, 63, 0.02));
   flex-shrink: 0; 
 }
 
@@ -41,14 +38,14 @@
 .mainTitleHeading {
   font-size: 1.65rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   margin: 0;
   letter-spacing: -0.02em;
 }
 
 .subTitleDescription {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   margin: 0;
   font-weight: 500;
   line-height: 1.4;
@@ -69,19 +66,19 @@
   gap: 0.5rem;
   padding: 0.65rem 1rem;
   background-color: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  color: var(--text-secondary, #4e4a6b);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 8px);
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
 }
 
 .bulkActionButton:hover {
-  background-color: var(--surface-muted);
-  color: var(--text-primary);
-  border-color: var(--text-muted);
+  background-color: var(--surface-muted, #f9f8ff);
+  color: var(--text-primary, #10043f);
+  border-color: var(--color-primary, #613bbf);
 }
 
 .dynamicWarningBadgeCount {
@@ -102,13 +99,13 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.65rem 1.25rem;
-  background-color: var(--color-primary);
+  background-color: var(--color-primary, #613bbf);
   color: #ffffff;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 8px);
   font-size: 0.82rem;
   font-weight: 700;
-  transition: var(--transition-fast);
+  transition: var(--transition-fast, all 0.2s ease);
   cursor: pointer;
 }
 
@@ -122,13 +119,11 @@
    ========================================================================== */
 .statsWrapperDeck {
   width: 100%;
-  /* FIX: Prevents the 4 stat boxes from getting squeezed or crushed */
   flex-shrink: 0; 
 }
 
 .mainContentStage {
   width: 100%;
-  /* FIX: Forces the main content to take up available space, preventing squeezing */
   flex-grow: 1; 
   display: flex;
   flex-direction: column;
@@ -136,11 +131,9 @@
 
 .footerContainerBlock {
   width: 100%;
-  /* Ensures the footer always stays at the bottom of the content */
   margin-top: auto; 
   padding-bottom: 1.5rem; 
-  transition: var(--transition-fast);
-  /* Prevents the footer from shrinking */
+  transition: var(--transition-fast, all 0.2s ease);
   flex-shrink: 0; 
 }
 
@@ -153,27 +146,33 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
+  background-color: rgba(16, 4, 63, 0.45);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
 .modalContentCard {
   width: 100%;
   max-width: 420px;
   background-color: var(--bg-surface, #ffffff);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 12px);
   position: relative;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 24px 60px -12px rgba(16, 4, 63, 0.15);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
-.modalContentCard :global(.CategoryForm_formCard__3pXmK) {
+/* Stable override for embedded forms without volatile webpack hash classes */
+.modalContentCard form {
   border: none !important;
   box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* ==========================================================================
@@ -198,5 +197,6 @@
     width: 100%;
     justify-content: center;
     box-sizing: border-box;
+    min-height: 48px;
   }
 }

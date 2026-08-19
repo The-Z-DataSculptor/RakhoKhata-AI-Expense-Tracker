@@ -20,35 +20,31 @@ function buildErrorResponse(message: string): { error: string } {
 }
 
 /**
- * WHY THIS FIX WAS MADE: Ensures an IP address is ALWAYS successfully extracted, and runs it
- * through express-rate-limit's own `ipKeyGenerator` helper so IPv6 addresses are safely
- * normalized to their containing subnet. Using the raw IP string directly
- * lets a single IPv6 user rotate through addresses in their assigned block and bypass limits.
+ * Extracts and normalizes client IP for IPv4 and IPv6 subnet clustering
  */
 export function extractClientIp(req: Request): string {
-  // 1. Check Express-resolved IP address (populated when 'trust proxy' is configured)
+  // 1. Express-resolved IP
   if (req.ip && typeof req.ip === "string" && req.ip.trim().length > 0) {
     return ipKeyGenerator(req.ip.trim());
   }
 
-  // 2. Fallback to direct socket remote address
+  // 2. Socket remote address fallback
   const socketRemoteAddress = req.socket?.remoteAddress;
   if (socketRemoteAddress && typeof socketRemoteAddress === "string" && socketRemoteAddress.trim().length > 0) {
     return ipKeyGenerator(socketRemoteAddress.trim());
   }
 
-  // 3. Fallback to local loopback address if network interface details are unavailable
+  // 3. Fallback
   return "127.0.0.1";
 }
 
 /**
- * WHY THIS FIX WAS MADE: Exported getUserOrIpKey so it can be reused in route-specific limiters 
- * (like vault PIN attempts) without duplicating IP extraction logic.
+ * Single-pool identifier: Binds limits to the authenticated user ID regardless of IP/network changes.
+ * Falls back to IP only if the user is unauthenticated.
  */
 export function getUserOrIpKey(req: Request): string {
   const authReq = req as AuthenticatedRequest;
 
-  // Prefer authenticated user ID if session is active
   if (authReq.user?.userId) {
     return `user_${authReq.user.userId}`;
   }
@@ -56,13 +52,12 @@ export function getUserOrIpKey(req: Request): string {
     return `user_${authReq.user.id}`;
   }
 
-  // Fallback to validated client IP address
   const clientIp = extractClientIp(req);
   return `ip_${clientIp}`;
 }
 
 /**
- * Checks if rate limiting should be skipped during automated testing
+ * Skips limiter during test automation or when explicitly disabled via env
  */
 function shouldSkipLimiter(): boolean {
   return process.env.DISABLE_RATE_LIMIT === "true";
@@ -74,12 +69,11 @@ function shouldSkipLimiter(): boolean {
    ========================================================================== */
 
 /**
- * Global API Rate Limiter
- * Restricts overall standard HTTP traffic to 1,000 requests per 15-minute window per client IP.
+ * Global API Rate Limiter (1,000 req / 15 min per IP)
  */
 export const globalApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes window
-  max: 1000, // Maximum 1000 requests per window
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   statusCode: 429,
   skip: shouldSkipLimiter,
   keyGenerator: (req: Request) => `global_${extractClientIp(req)}`,
@@ -92,15 +86,14 @@ export const globalApiLimiter = rateLimit({
 });
 
 /**
- * Strict Auth Endpoint Limiter
- * Restricts sensitive authentication attempts (login, password reset) to 10 failed requests per 15 minutes per IP.
+ * Strict Auth Limiter (10 failed attempts / 15 min)
  */
 export const strictAuthLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes window
-  max: 10, // Maximum 10 failed attempts
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   statusCode: 429,
   skip: shouldSkipLimiter,
-  skipSuccessfulRequests: true, // Successful logins do not count toward failure threshold
+  skipSuccessfulRequests: true,
   keyGenerator: (req: Request) => `auth_${extractClientIp(req)}`,
   validate: { keyGeneratorIpFallback: false },
   message: buildErrorResponse(
@@ -111,12 +104,16 @@ export const strictAuthLimiter = rateLimit({
 });
 
 /**
- * AI Service Integration Rate Limiter
- * Restricts expensive AI document/receipt scan operations to 15 calls per hour per authenticated user or IP.
+ * Master Unified AI Service Rate Limiter
+ * Shared 15 calls/hour cap across:
+ * - AI Greetings (Dashboard & Insights)
+ * - Timeline Audits (Today, Week, Month)
+ * - Interactive AI Q&A / Power Queries
+ * - OCR Receipt & Document Scanners
  */
 export const aiApiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 15, // Maximum 15 AI requests per hour
+  max: 15, // Strictly 15 combined AI operations per hour
   statusCode: 429,
   skip: shouldSkipLimiter,
   keyGenerator: getUserOrIpKey,
@@ -129,12 +126,11 @@ export const aiApiLimiter = rateLimit({
 });
 
 /**
- * Database Write Operation Rate Limiter
- * Protects mutation endpoints (create/update/delete) from flood spamming (150 requests per 5 minutes per user/IP).
+ * Database Mutations Limiter (150 write ops / 5 min)
  */
 export const writeActionsLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes window
-  max: 150, // Maximum 150 write operations per window
+  windowMs: 5 * 60 * 1000,
+  max: 150,
   statusCode: 429,
   skip: shouldSkipLimiter,
   keyGenerator: getUserOrIpKey,

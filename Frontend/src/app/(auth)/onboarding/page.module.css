@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #0b0520; /* Matches deep cyberpunk workspace canvas */
+  background-color: #0b0520;
   position: relative;
   overflow: hidden;
   padding: 2rem;
@@ -100,7 +100,6 @@
   position: relative;
 }
 
-/* Connecting track line matrix */
 .stepperTracker::before {
   content: '';
   position: absolute;
@@ -152,7 +151,6 @@
   font-size: 0.95rem;
 }
 
-/* Hidden by default on desktop */
 .mobileStepTracker {
   display: none;
 }
@@ -354,11 +352,11 @@
 }
 
 .selectionCard {
-  border: 2px solid #e5e1f4;
+  border: 1.5px solid #e5e1f4;
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1rem 1.15rem;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -370,6 +368,7 @@
 .selectionCard:hover {
   border-color: #c4b5fd;
   background-color: #f8f7fd;
+  transform: translateY(-1px);
 }
 
 .cardActive {
@@ -384,9 +383,35 @@
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
 }
 
-.cardEmoji {
-  font-size: 1.8rem;
+/* Card Icon Box */
+.cardIconBox,
+.aiIconBox {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
   flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.cardActive .cardIconBox {
+  background-color: #8b5cf6;
+  color: #ffffff;
+}
+
+.aiCardActive .aiIconBox {
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+.cardText {
+  flex: 1;
+  min-width: 0;
 }
 
 .cardText h4 {
@@ -480,7 +505,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 6: RESPONSIVE MOBILE ADAPTATIONS (≤ 850px / ≤ 768px) ===
+   === SECTION 6: RESPONSIVE MOBILE ADAPTATIONS (<= 850px) ===
    ========================================================================== */
 @media (max-width: 850px) {
   .wizardMasterLayout {
@@ -525,12 +550,10 @@
     display: none;
   }
 
-  /* Hide vertical desktop stepper on mobile */
   .stepperTracker {
     display: none; 
   }
 
-  /* Show dedicated mobile step progress indicator */
   .mobileStepTracker {
     display: flex;
     flex-direction: column;
@@ -607,13 +630,9 @@
     gap: 0.65rem;
   }
 
-  /*
-   * iOS Auto-Zoom Fix: font-size: 1rem (16px) or above strictly enforced
-   * to prevent iOS Safari/Chrome from forcibly zooming in on focused inputs.
-   */
   .textInput,
   .selectInput {
-    font-size: 1rem !important; /* 16px threshold */
+    font-size: 1rem !important;
     min-height: 48px;
     padding: 0.75rem 0.85rem;
   }
@@ -626,7 +645,6 @@
     align-items: center;
   }
 
-  /* Touch-optimized 48px height minimum selection cards */
   .selectionCard {
     min-height: 48px;
     padding: 0.85rem;
@@ -650,7 +668,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 7: EXTRA SMALL SCREENS (≤ 480px) ===
+   === SECTION 7: EXTRA SMALL SCREENS (<= 480px) ===
    ========================================================================== */
 @media (max-width: 480px) {
   .wizardMasterLayout {
@@ -665,8 +683,11 @@
     font-size: 1.2rem;
   }
 
-  .cardEmoji {
-    font-size: 1.5rem;
+  .cardIconBox,
+  .aiIconBox {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
   }
 
   .cardText h4 {
@@ -677,4 +698,3 @@
     font-size: 0.75rem;
   }
 }
-/* === SECTION 7 END === */

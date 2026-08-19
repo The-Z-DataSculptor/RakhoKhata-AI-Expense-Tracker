@@ -464,20 +464,29 @@ export default function TransactionsPage() {
       }
 
       if (payload.id) {
-        await transactionService.delete(payload.id);
+        await transactionService.update(payload.id, {
+          originalAmount: payload.originalAmount,
+          originalCurrency: payload.originalCurrency,
+          baseAmountUSD: payload.baseAmountUSD,
+          type: payload.type as "INCOME" | "EXPENSE",
+          description: payload.description,
+          date: payload.date,
+          categoryId: payload.categoryId,
+          amount: payload.originalAmount,
+        });
+      } else {
+        await transactionService.create({
+          originalAmount: payload.originalAmount,
+          originalCurrency: payload.originalCurrency,
+          baseAmountUSD: payload.baseAmountUSD,
+          type: payload.type as "INCOME" | "EXPENSE",
+          description: payload.description,
+          date: payload.date,
+          workspaceId: activeWorkspaceId,
+          categoryId: payload.categoryId,
+          amount: payload.originalAmount,
+        });
       }
-
-      await transactionService.create({
-        originalAmount: payload.originalAmount,
-        originalCurrency: payload.originalCurrency,
-        baseAmountUSD: payload.baseAmountUSD,
-        type: payload.type as "INCOME" | "EXPENSE",
-        description: payload.description,
-        date: payload.date,
-        workspaceId: activeWorkspaceId,
-        categoryId: payload.categoryId,
-        amount: payload.originalAmount,
-      });
 
       await refreshLedgerData();
       handleClosePopupModal();
@@ -802,7 +811,9 @@ export default function TransactionsPage() {
 
                 <div className={styles.mappingSelectorsGridRow}>
                   <div className={styles.formGroupWrapperField}>
-                    <label htmlFor="mapDateCol">Transaction Date *</label>
+                    <label htmlFor="mapDateCol" className={styles.fieldLayoutInputLabel}>
+                      Transaction Date *
+                    </label>
                     <select
                       id="mapDateCol"
                       value={colMap.date}
@@ -818,7 +829,9 @@ export default function TransactionsPage() {
                     </select>
                   </div>
                   <div className={styles.formGroupWrapperField}>
-                    <label htmlFor="mapDescCol">Description / Narrative *</label>
+                    <label htmlFor="mapDescCol" className={styles.fieldLayoutInputLabel}>
+                      Description / Narrative *
+                    </label>
                     <select
                       id="mapDescCol"
                       value={colMap.description}
@@ -834,7 +847,9 @@ export default function TransactionsPage() {
                     </select>
                   </div>
                   <div className={styles.formGroupWrapperField}>
-                    <label htmlFor="mapAmountCol">Transaction Amount *</label>
+                    <label htmlFor="mapAmountCol" className={styles.fieldLayoutInputLabel}>
+                      Transaction Amount *
+                    </label>
                     <select
                       id="mapAmountCol"
                       value={colMap.amount}
@@ -850,7 +865,9 @@ export default function TransactionsPage() {
                     </select>
                   </div>
                   <div className={styles.formGroupWrapperField}>
-                    <label htmlFor="mapCurrCol">Currency Code (Optional)</label>
+                    <label htmlFor="mapCurrCol" className={styles.fieldLayoutInputLabel}>
+                      Currency Code (Optional)
+                    </label>
                     <select
                       id="mapCurrCol"
                       value={colMap.currency}
@@ -869,7 +886,9 @@ export default function TransactionsPage() {
 
                 <div className={styles.stagerFallbackSubFormBlock}>
                   <div className={styles.formGroupWrapperField}>
-                    <label htmlFor="fallbackCurrInput">Fallback Currency</label>
+                    <label htmlFor="fallbackCurrInput" className={styles.fieldLayoutInputLabel}>
+                      Fallback Currency
+                    </label>
                     <input
                       id="fallbackCurrInput"
                       type="text"
@@ -881,7 +900,9 @@ export default function TransactionsPage() {
                     />
                   </div>
                   <div className={styles.formGroupWrapperField}>
-                    <label htmlFor="fallbackTypeSelect">Default Cash Flow Type</label>
+                    <label htmlFor="fallbackTypeSelect" className={styles.fieldLayoutInputLabel}>
+                      Default Cash Flow Type
+                    </label>
                     <select
                       id="fallbackTypeSelect"
                       value={fallbackType}
@@ -947,6 +968,7 @@ export default function TransactionsPage() {
                           </td>
                           <td>
                             <select
+                              aria-label={`Category for ${row.description}`}
                               value={row.categoryId}
                               onChange={(e) => {
                                 const newId = e.target.value;

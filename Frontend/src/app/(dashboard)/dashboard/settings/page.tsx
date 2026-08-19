@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/settings/page.tsx
+// Frontend/src/app/(dashboard)/dashboard/settings/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -23,11 +23,21 @@ import {
   FiTarget,
   FiCpu,
   FiChevronDown,
+  FiZap,
+  FiAward,
+  FiSearch,
+  FiSmile,
+  FiTrendingUp,
+  FiActivity,
+  FiCompass,
+  FiHeart,
+  FiEye,
+  FiBarChart2,
+  FiCheckCircle,
 } from "react-icons/fi";
 import { toast } from "sonner";
 import styles from "./page.module.css";
 
-// Static reference data
 const CURRENCIES = [
   "USD", "PKR", "EUR", "GBP", "JPY", "INR", "CAD", "AUD", "AED", "SAR",
   "SGD", "CHF", "CNY", "HKD", "NZD", "SEK", "KRW", "NOK", "MXN",
@@ -63,33 +73,32 @@ const EXTENDED_LANGUAGES = [
 ];
 
 const OCCUPATIONS = [
-  { id: "salaried", label: "Salaried Employee" },
-  { id: "freelancer", label: "Freelancer / Contractor" },
-  { id: "entrepreneur", label: "Entrepreneur / Business" },
-  { id: "student", label: "Student" },
-  { id: "gig_worker", label: "Gig Worker / Creator" },
-  { id: "prefer_not_to_say", label: "Prefer Not to Say" },
+  { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
+  { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
+  { id: "entrepreneur", label: "Entrepreneur / Business", desc: "Focuses on business revenue" },
+  { id: "student", label: "Student", desc: "Living on a tight budget" },
+  { id: "gig_worker", label: "Gig Worker / Creator", desc: "Flexible earnings" },
+  { id: "prefer_not_to_say", label: "Prefer Not to Say", desc: "Keep it private and unlisted" },
 ];
 
 const FINANCIAL_GOALS = [
-  { id: "hustler", emoji: "🚀", label: "The Hustler", desc: "Managing multiple gigs & side incomes." },
-  { id: "saver", emoji: "🏦", label: "The Saver", desc: "Building a rock-solid emergency fund." },
-  { id: "tight_budgeter", emoji: "🔍", label: "The Budgeter", desc: "Finding leaks & living paycheck-to-paycheck." },
-  { id: "zen_master", emoji: "🧘‍♂️", label: "The Zen Master", desc: "Zero stress. Just watching cash flow." },
-  { id: "wealth_builder", emoji: "📈", label: "The Wealth Builder", desc: "Focusing heavily on compound growth." },
-  { id: "debt_destroyer", emoji: "🔨", label: "The Debt Destroyer", desc: "Aggressively crushing loans." },
-  { id: "nomad", emoji: "🗺️", label: "The Nomad", desc: "Handling multi-currency global life." },
-  { id: "privacy_sentinel", emoji: "🛡️", label: "Prefer Private", desc: "Keep my goals unanalyzed." },
+  { id: "hustler", icon: <FiZap />, title: "The Hustler", desc: "Managing gigs & multiple income streams." },
+  { id: "saver", icon: <FiAward />, title: "The Saver", desc: "Building an emergency fund or buying a home." },
+  { id: "tight_budgeter", icon: <FiSearch />, title: "The Budgeter", desc: "Living paycheck-to-paycheck, finding leaks." },
+  { id: "zen_master", icon: <FiSmile />, title: "The Zen Master", desc: "Just tracking cash flows with zero stress." },
+  { id: "wealth_builder", icon: <FiTrendingUp />, title: "The Wealth Builder", desc: "Investing, growing assets, and compound growth." },
+  { id: "debt_destroyer", icon: <FiActivity />, title: "The Debt Destroyer", desc: "Aggressively tackling outstanding loans & debt." },
+  { id: "nomad", icon: <FiCompass />, title: "The Nomad / Expat", desc: "Working globally, handling multi-currency accounts." },
+  { id: "privacy_sentinel", icon: <FiShield />, title: "Prefer Private", desc: "Do not categorize or analyze my financial intentions." },
 ];
 
 const AI_PERSONAS = [
-  { id: "savage_roaster", emoji: "🔥", label: "Savage Roaster", desc: "Tough love. Playfully roasts your spending." },
-  { id: "supportive_coach", emoji: "🤝", label: "Supportive Coach", desc: "Warm mentor. Celebrates wins gently." },
-  { id: "forensic_detective", emoji: "🕵️‍♂️", label: "Forensic Detective", desc: "Hyper-analytical. Finds hidden leaks." },
-  { id: "silent_accountant", emoji: "📊", label: "Silent Accountant", desc: "Pure business. Raw mathematical logic." },
+  { id: "savage_roaster", icon: <FiZap />, title: "Savage Roaster", desc: "Tough love. Will playfully challenge your unnecessary spending habits." },
+  { id: "supportive_coach", icon: <FiHeart />, title: "Supportive Coach", desc: "Warm mentor. Celebrates wins and guides your journey gently." },
+  { id: "forensic_detective", icon: <FiEye />, title: "Forensic Detective", desc: "Hyper-analytical. Finds subtle recurring and hidden spending leaks." },
+  { id: "silent_accountant", icon: <FiBarChart2 />, title: "Silent Accountant", desc: "Professional precision. Direct financial ledger calculations without banter." },
 ];
 
-// Helper to clear AI Buddy greeting caches on ANY settings change
 const clearAiBuddyCache = () => {
   if (typeof window !== "undefined") {
     try {
@@ -111,12 +120,10 @@ export default function SettingsPage() {
   const { setCurrencyWithWorkspace } = useCurrency();
   const { refreshUser, updateUserInState } = useUser();
 
-  // ----- UI / loading states -----
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "location" | "vibe" | "ai" | "security">("general");
 
-  // ----- Profile fields -----
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("");
@@ -126,25 +133,24 @@ export default function SettingsPage() {
   const [financialGoal, setFinancialGoal] = useState("");
   const [aiPersona, setAiPersona] = useState("");
 
-  // ----- Password change fields -----
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // ----- Workspace rename / delete -----
+  // Workspace rename / delete state
   const [renameInput, setRenameInput] = useState<string>(activeWorkspace?.name || "");
   const [prevWorkspaceId, setPrevWorkspaceId] = useState<string | undefined>(activeWorkspaceId);
   const [isWorkspaceSaving, setIsWorkspaceSaving] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // ----- Vault security -----
+  // Vault security
   const [isVaultSecurityEnabled, setIsVaultSecurityEnabled] = useState<boolean>(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
 
-  // Synchronize rename input when active workspace changes
+  // FIX: Recommended React pattern for adjusting state during render when props/context change
   if (activeWorkspaceId !== prevWorkspaceId) {
     setPrevWorkspaceId(activeWorkspaceId);
     setRenameInput(activeWorkspace?.name || "");
@@ -188,7 +194,7 @@ export default function SettingsPage() {
       const status = await vaultAuthService.checkStatus();
       setIsVaultSecurityEnabled(status.hasPin);
     } catch {
-      // keep existing state
+      // retain state
     } finally {
       setIsSecurityLoading(false);
     }
@@ -283,6 +289,7 @@ export default function SettingsPage() {
       await userService.updateProfile({ aiPersona });
       updateUserInState({ aiPersona });
       clearAiBuddyCache();
+      await refreshUser();
       await refetchProfile();
       toast.success("AI personality updated!");
     } catch (error: unknown) {
@@ -315,9 +322,6 @@ export default function SettingsPage() {
     } finally { setIsChangingPassword(false); }
   };
 
-  // ---------------------------------------------------------------------------
-  // WORKSPACE ACTIONS
-  // ---------------------------------------------------------------------------
   const handleRenameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = renameInput.trim();
@@ -349,9 +353,6 @@ export default function SettingsPage() {
     } finally { setDeletingId(null); }
   };
 
-  // ---------------------------------------------------------------------------
-  // VAULT SECURITY HANDLERS
-  // ---------------------------------------------------------------------------
   const handleSecurityToggle = () => {
     setPinModalMode(isVaultSecurityEnabled ? "DISABLE" : "SETUP");
     setIsPinModalOpen(true);
@@ -366,9 +367,6 @@ export default function SettingsPage() {
     await fetchVaultPinStatus();
   };
 
-  // ---------------------------------------------------------------------------
-  // LANGUAGE TOGGLING
-  // ---------------------------------------------------------------------------
   const toggleLanguage = (lang: string) => {
     setLanguages((prev) =>
       prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
@@ -636,23 +634,30 @@ export default function SettingsPage() {
                     <label className={styles.fieldLabelText}>Occupation Style</label>
                     <select value={occupation} onChange={(e) => setOccupation(e.target.value)} className={styles.selectInput}>
                       <option value="">Select an occupation...</option>
-                      {OCCUPATIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                      {OCCUPATIONS.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label} — {o.desc}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className={styles.inputFieldGroup}>
                     <label className={styles.fieldLabelText}>Primary Financial Goal</label>
-                    <div className={styles.richCardsGrid}>
+                    <div className={styles.selectionCardsGrid}>
                       {FINANCIAL_GOALS.map((g) => (
                         <div
                           key={g.id}
                           onClick={() => setFinancialGoal(g.id)}
-                          className={`${styles.richCard} ${financialGoal === g.id ? styles.richCardActive : ""}`}
+                          className={`${styles.selectionCard} ${financialGoal === g.id ? styles.selectionCardActive : ""}`}
                         >
-                          <span className={styles.richCardEmoji}>{g.emoji}</span>
-                          <div className={styles.richCardText}>
-                            <h4>{g.label}</h4>
+                          <div className={styles.cardIconBox}>{g.icon}</div>
+                          <div className={styles.cardText}>
+                            <h4>{g.title}</h4>
                             <p>{g.desc}</p>
                           </div>
+                          {financialGoal === g.id && (
+                            <FiCheckCircle className={styles.checkIcon} />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -673,18 +678,21 @@ export default function SettingsPage() {
                     <h3 className={styles.panelTitle}>AI Companion</h3>
                     <p className={styles.panelDescription}>Select the personality tone for your financial AI assistant.</p>
                   </div>
-                  <div className={styles.richCardsGrid}>
+                  <div className={styles.selectionCardsGridVertical}>
                     {AI_PERSONAS.map((p) => (
                       <div
                         key={p.id}
                         onClick={() => setAiPersona(p.id)}
-                        className={`${styles.richCard} ${aiPersona === p.id ? styles.richCardActive : ""}`}
+                        className={`${styles.selectionCard} ${styles.aiCard} ${aiPersona === p.id ? styles.aiCardActive : ""}`}
                       >
-                        <span className={styles.richCardEmoji}>{p.emoji}</span>
-                        <div className={styles.richCardText}>
-                          <h4>{p.label}</h4>
+                        <div className={styles.aiIconBox}>{p.icon}</div>
+                        <div className={styles.cardText}>
+                          <h4>{p.title}</h4>
                           <p>{p.desc}</p>
                         </div>
+                        {aiPersona === p.id && (
+                          <FiCheckCircle className={styles.checkIcon} />
+                        )}
                       </div>
                     ))}
                   </div>

@@ -1,3 +1,5 @@
+/* D:\Developer\Expense-Tracker\Frontend\src\app\(marketing)\about\page.module.css
+
 /* ==========================================================================
    === SECTION 1: CANVAS & HERO ===
    ========================================================================== */
@@ -6,11 +8,12 @@
   min-height: 100vh;
   background-color: var(--background);
   color: var(--text-primary);
-  padding: 6rem 1.5rem 5rem 1.5rem;
+  padding: 6.5rem 1.5rem 5rem 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .heroSection {
@@ -20,6 +23,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 }
 
 .badge {
@@ -43,8 +47,8 @@
 }
 
 .heroHeadline {
-  font-family: var(--font-navbar);
-  font-size: 2.75rem;
+  font-family: var(--font-navbar, system-ui, sans-serif);
+  font-size: clamp(2rem, 5vw, 2.75rem);
   font-weight: 800;
   line-height: 1.18;
   letter-spacing: -0.025em;
@@ -54,14 +58,14 @@
 
 .gradientText {
   color: var(--color-primary);
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-light) 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-light, #8a63f2) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .heroSubtext {
-  font-size: 1.1rem;
+  font-size: clamp(1rem, 2vw, 1.1rem);
   line-height: 1.65;
   color: var(--text-muted);
   max-width: 650px;
@@ -104,8 +108,11 @@
   align-items: center;
   justify-content: center;
   color: var(--color-primary);
-  font-size: 1.5rem;
   flex-shrink: 0;
+}
+
+.avatarIcon {
+  font-size: 1.6rem;
 }
 
 .founderName {
@@ -133,7 +140,7 @@
 }
 
 .quoteBox {
-  background: var(--primary-soft-faint);
+  background: var(--primary-soft-faint, rgba(97, 59, 191, 0.04));
   border-left: 4px solid var(--color-primary);
   padding: 1.25rem 1.5rem;
   margin: 1.75rem 0;
@@ -150,7 +157,7 @@
    ========================================================================== */
 .pillarsSection {
   width: 100%;
-  max-width: 1160px;
+  max-width: 1200px;
   margin-bottom: 5rem;
 }
 
@@ -177,7 +184,7 @@
 }
 
 .sectionTitle {
-  font-size: 2.25rem;
+  font-size: clamp(1.85rem, 4vw, 2.25rem);
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.025em;
@@ -318,7 +325,7 @@
   border-radius: var(--radius-lg);
   padding: 3.5rem 2rem;
   text-align: center;
-  color: var(--text-on-primary);
+  color: var(--text-on-primary, #ffffff);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -326,7 +333,7 @@
 }
 
 .ctaHeadline {
-  font-size: 2.1rem;
+  font-size: clamp(1.65rem, 4vw, 2.1rem);
   font-weight: 800;
   margin-bottom: 0.85rem;
   letter-spacing: -0.02em;
@@ -347,8 +354,9 @@
   justify-content: center;
 }
 
-.primaryCtaBtn, .secondaryCtaBtn {
-  font-family: var(--font-navbar);
+.primaryCtaBtn, 
+.secondaryCtaBtn {
+  font-family: var(--font-navbar, system-ui, sans-serif);
   padding: 0.95rem 1.85rem;
   border-radius: var(--radius-md);
   font-weight: 700;
@@ -357,9 +365,11 @@
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
-  transition: var(--transition-fast);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
+/* Primary Button (White fill -> soft surface on hover) */
 .primaryCtaBtn {
   background-color: var(--bg-surface);
   color: var(--color-primary);
@@ -367,19 +377,22 @@
 }
 
 .primaryCtaBtn:hover {
-  transform: translateY(-2px);
   background-color: var(--surface-muted);
+  color: var(--color-primary-dark);
+  transform: translateY(-2px);
 }
 
+/* Secondary Button (Frosted transparent -> crisp high-contrast white hover) */
 .secondaryCtaBtn {
-  background-color: transparent;
-  color: var(--text-on-primary);
-  border: 1px solid var(--primary-soft-strong);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .secondaryCtaBtn:hover {
-  background-color: var(--primary-soft);
-  border-color: var(--text-on-primary);
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: #ffffff;
+  color: #ffffff !important; /* Preserves crisp readable text against global link hover */
   transform: translateY(-2px);
 }
 
@@ -387,20 +400,27 @@
    === SECTION 6: RESPONSIVE QUERIES ===
    ========================================================================== */
 @media (max-width: 768px) {
-  .heroHeadline {
-    font-size: 2.15rem;
+  .aboutCanvas {
+    padding: 5.5rem 1rem 4rem 1rem;
   }
 
-  .storyCard, .roadmapCard {
-    padding: 2rem 1.5rem;
+  .heroSection {
+    margin-bottom: 3rem;
   }
 
-  .sectionTitle {
-    font-size: 1.85rem;
+  .storySection,
+  .pillarsSection,
+  .roadmapSection {
+    margin-bottom: 3.5rem;
   }
 
-  .ctaHeadline {
-    font-size: 1.65rem;
+  .storyCard, 
+  .roadmapCard {
+    padding: 2rem 1.25rem;
+  }
+
+  .ctaCard {
+    padding: 2.75rem 1.25rem;
   }
 
   .ctaActions {
@@ -408,8 +428,10 @@
     width: 100%;
   }
 
-  .primaryCtaBtn, .secondaryCtaBtn {
+  .primaryCtaBtn, 
+  .secondaryCtaBtn {
     width: 100%;
+    min-height: 44px;
     justify-content: center;
   }
 }

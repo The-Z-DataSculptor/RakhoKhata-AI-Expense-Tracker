@@ -6,10 +6,9 @@ import {
   FiZap,
   FiLock,
   FiLoader,
-  FiStar,
-  FiSmile,
   FiCalendar,
   FiTrendingUp,
+  FiCompass,
 } from "react-icons/fi";
 import { FaFire, FaUserSecret, FaCalculator } from "react-icons/fa6";
 import { toast } from "sonner";
@@ -196,7 +195,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
         console.error("Failed to generate contextual AI greeting:", error);
         if (isMounted)
           setFullTargetText(
-            "Secure network link functional. Click a report scope below to process your ledger grids."
+            "Financial link active. Select an audit timeframe below to compile your ledger."
           );
       } finally {
         if (isMounted) setIsLoadingGreeting(false);
@@ -215,14 +214,13 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     globalUser?.name,
     globalUser?.occupation,
     globalUser?.financialGoal,
-    globalUser?.currency
+    globalUser?.currency,
   ]);
 
   const handleTriggerAnalysis = async (scope: TimelineScope) => {
     if (cooldowns[scope] || isProcessingAnalysis) return;
     const currentCalls = getDailyCallCount();
-    
-    // Updated limit check to 3
+
     if (currentCalls >= 3) {
       toast.error(
         "You have reached your limit of 3 AI reports today. Please try again tomorrow!"
@@ -231,7 +229,7 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
     }
     setIsProcessingAnalysis(true);
     setFullTargetText(
-      "Querying the database... pulling your category rules... checking budgets..."
+      "Reading transaction categories... checking budget velocities... analyzing burns..."
     );
     try {
       const result = await aiService.executeAnalysis(scope, activeWorkspaceId!);
@@ -284,14 +282,14 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       return <FaUserSecret className={styles.companionBrandIcon} />;
     if (personaKey === "silent_accountant")
       return <FaCalculator className={styles.companionBrandIcon} />;
-    return <FiSmile className={styles.companionBrandIcon} />;
+    return <FiCompass className={styles.companionBrandIcon} />;
   };
 
-  const getPersonaColor = () => {
-    if (personaKey === "savage_roaster") return "var(--color-danger)";
-    if (personaKey === "forensic_detective") return "var(--color-info)";
-    if (personaKey === "silent_accountant") return "var(--text-secondary)";
-    return "var(--color-primary)";
+  const getPersonaRoleName = () => {
+    if (personaKey === "savage_roaster") return "Financial Critic";
+    if (personaKey === "forensic_detective") return "Ledger Auditor";
+    if (personaKey === "silent_accountant") return "Precision Strategist";
+    return "Growth Co-Pilot";
   };
 
   const scopeConfig = {
@@ -323,24 +321,17 @@ export default function AiBuddyConsole({ activeWorkspaceId }: AiBuddyConsoleProp
       <div className={styles.innerLayout}>
         <div className={styles.companionStatusRow}>
           <div className={styles.companionBadge}>
-            <div
-              className={styles.avatarBlob}
-              style={{
-                borderColor: getPersonaColor(),
-                boxShadow: `0 0 20px ${getPersonaColor()}33`,
-              }}
-            >
+            <div className={styles.avatarBlob}>
               {renderPersonaIcon()}
             </div>
             <div className={styles.identityMeta}>
               <h4>
-                <FiStar className={styles.sparkleIcon} />
                 {userName
-                  ? `${formatTitleCase(userName)}'s Companion`
-                  : "AI Companion Node"}
+                  ? `${formatTitleCase(userName)}’s ${getPersonaRoleName()}`
+                  : getPersonaRoleName()}
               </h4>
               <p>
-                Persona:{" "}
+                Mode:{" "}
                 <span className={styles.highlightText}>
                   {personaKey.replace("_", " ")}
                 </span>

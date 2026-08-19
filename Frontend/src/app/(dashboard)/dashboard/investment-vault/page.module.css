@@ -9,12 +9,11 @@
   width: 100%;
   max-width: 1250px;
   margin: 0 auto;
-  gap: 1.75rem;
-  padding: 1.5rem 2rem 0 2rem;
+  gap: 1.5rem;
   position: relative;
   box-sizing: border-box;
   animation: fadeIn 0.3s ease-out;
-  min-height: calc(100vh - 80px);
+  padding-bottom: 0;
 }
 
 .loadingSpinnerContainer {
@@ -25,14 +24,13 @@
 }
 
 .loadingPulseText {
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   font-size: 0.88rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   animation: pulse 1.5s ease-in-out infinite;
 }
-/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: CONTENT GRID CONTAINER ALIGNMENT ===
@@ -41,8 +39,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
-/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: MODAL LAYBOX WINDOW WRAPPERS ===
@@ -53,14 +51,14 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(9, 5, 29, 0.45);
-  backdrop-filter: blur(5px);
+  background-color: rgba(16, 4, 63, 0.45);
+  backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
   padding: 1rem;
-  animation: fadeIn var(--transition-fast);
+  animation: fadeIn var(--transition-fast, 0.2s ease);
 }
 
 .modalContent {
@@ -68,7 +66,6 @@
   max-width: 550px;
   animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: VISUAL ANCHOR ANIMATIONS & KEYFRAMES ===
@@ -76,9 +73,10 @@
 .footerContainerBlock {
   width: 100%;
   margin-top: auto; 
-  padding-top: 2.5rem; 
-  padding-bottom: 1.0rem; 
-  transition: var(--transition-fast);
+  padding-top: 2rem; 
+  padding-bottom: 1.5rem; 
+  transition: var(--transition-fast, all 0.2s ease);
+  flex-shrink: 0;
 }
 
 @keyframes fadeIn {
@@ -95,4 +93,12 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: RESPONSIVE ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .vaultMainPageWrapper {
+    gap: 1.15rem;
+  }
+}

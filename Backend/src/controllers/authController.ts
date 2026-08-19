@@ -100,7 +100,10 @@ function extractSingleString(value: unknown): string | undefined {
   return undefined;
 }
 
-function extractOptionalString(value: unknown): string | null {
+function extractOptionalString(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
   }
@@ -133,9 +136,6 @@ async function fetchWithTimeout(
   }
 }
 
-/**
- * Signs a state value using HMAC-SHA256 to make the state parameter self-verifiable.
- */
 function signState(value: string): string {
   const signature = crypto
     .createHmac("sha256", STATE_SECRET)
@@ -144,9 +144,6 @@ function signState(value: string): string {
   return `${value}.${signature}`;
 }
 
-/**
- * Verifies a signed state token. Returns the original value if valid, null otherwise.
- */
 function verifySignedState(signed: string): string | null {
   const parts = signed.split(".");
   if (parts.length !== 2) return null;
@@ -156,7 +153,6 @@ function verifySignedState(signed: string): string | null {
     .update(value)
     .digest("hex");
 
-  // Use timing-safe comparison with length check to prevent exceptions
   const sigBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expectedSig);
   if (sigBuffer.length !== expectedBuffer.length) {
@@ -168,15 +164,11 @@ function verifySignedState(signed: string): string | null {
       return value;
     }
   } catch {
-    // Buffers of different lengths will throw, but we already checked
+    // Return null if length or comparisons mismatch
   }
   return null;
 }
 
-/**
- * Hashes a raw token using SHA-256 before saving to the database.
- * We NEVER store raw tokens in the database — only their hashes.
- */
 function hashToken(rawToken: string): string {
   return crypto.createHash("sha256").update(rawToken).digest("hex");
 }
@@ -192,8 +184,15 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
     const fullName = extractSingleString(body.fullName);
     const email = extractSingleString(body.email);
     const password = extractSingleString(body.password);
-    const country = extractOptionalString(body.country);
-    const currency = extractSingleString(body.currency) || "PKR";
+    const country = extractOptionalString(body.country) ?? null;
+    const currency = extractSingleString(body.currency) || "USD";
+    const occupation = extractOptionalString(body.occupation) || "prefer_not_to_say";
+    const financialGoal = extractOptionalString(body.financialGoal) || "zen_master";
+    const aiPersona = extractOptionalString(body.aiPersona) || "supportive_coach";
+
+    const languages: string[] = Array.isArray(body.languages)
+      ? body.languages.filter((l): l is string => typeof l === "string" && l.trim().length > 0)
+      : [];
 
     if (!fullName || !email || !password) {
       res.status(400).json(buildErrorResponse("Full name, email, and password are required."));
@@ -223,11 +222,12 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
           passwordHash,
           country,
           currency,
+          languages,
+          occupation,
+          financialGoal,
+          aiPersona,
           isEmailVerified: false,
-          occupation: "prefer_not_to_say",
-          financialGoal: "zen_master",
-          aiPersona: "supportive_coach",
-          isOnboardingCompleted: false,
+          isOnboardingCompleted: true,
           workspaces: {
             create: [
               {
@@ -245,20 +245,18 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
         },
       });
 
-      // Store the HASHED token in the VerificationToken table (never the raw token)
       await tx.verificationToken.create({
         data: {
           tokenHash: hashToken(rawVerificationToken),
           type: TokenType.EMAIL_VERIFICATION,
           identifier: normalizedEmail,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       });
 
       return user;
     });
 
-    // Build the full verification link to send in the email
     const verifyLink = `${APP_FRONTEND_URL}/verify-email?token=${rawVerificationToken}`;
     await sendVerificationEmail(normalizedEmail, newUser.name, verifyLink);
 
@@ -269,6 +267,7 @@ export const registerUser = async (req: Request, res: ExpressResponse): Promise<
         name: newUser.name,
         email: newUser.email,
         isEmailVerified: newUser.isEmailVerified,
+        isOnboardingCompleted: newUser.isOnboardingCompleted,
       },
     });
   } catch (error: unknown) {
@@ -378,19 +377,22 @@ export const updateProfile = async (req: AuthenticatedRequest, res: ExpressRespo
     }
 
     const body = req.body as UpdateProfileRequestBody;
-    const updateData: Record<string, string | null> = {};
+    const updateData: Record<string, unknown> = {};
 
-    const name = extractOptionalString(body.name);
+    const name = extractSingleString(body.name);
     if (name !== undefined) updateData.name = name;
 
     const country = extractOptionalString(body.country);
     if (country !== undefined) updateData.country = country;
 
-    const currency = extractOptionalString(body.currency);
+    const currency = extractSingleString(body.currency);
     if (currency !== undefined) updateData.currency = currency;
 
-    const languages = extractOptionalString(body.languages);
-    if (languages !== undefined) updateData.languages = languages;
+    if (Array.isArray(body.languages)) {
+      updateData.languages = body.languages.filter(
+        (l): l is string => typeof l === "string" && l.trim().length > 0
+      );
+    }
 
     const occupation = extractOptionalString(body.occupation);
     if (occupation !== undefined) updateData.occupation = occupation;
@@ -441,7 +443,7 @@ export const changePassword = async (req: AuthenticatedRequest, res: ExpressResp
       return;
     }
     if (newPassword.length < 8) {
-      res.status(400).json(buildErrorResponse("New password must be at least 8 characters."));
+      res.status(400).json(buildErrorResponse("Password must be at least 8 characters."));
       return;
     }
 
@@ -463,7 +465,6 @@ export const changePassword = async (req: AuthenticatedRequest, res: ExpressResp
       data: { passwordHash: newHash },
     });
 
-    // 3 arguments: email, userName, changeLabel
     await sendSecurityAlertEmail(user.email, user.name, "Your password was changed.");
 
     res.status(200).json({ message: "Password changed successfully." });
@@ -484,13 +485,11 @@ export const requestPasswordReset = async (req: Request, res: ExpressResponse): 
     const normalizedEmail = email.toLowerCase();
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-    // Always return the same message so attackers can't guess if an email exists
     if (!user) {
       res.status(200).json({ message: "If an account exists, a reset link has been sent." });
       return;
     }
 
-    // Remove any old password reset tokens for this email first
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: normalizedEmail,
@@ -499,7 +498,7 @@ export const requestPasswordReset = async (req: Request, res: ExpressResponse): 
     });
 
     const rawResetToken = crypto.randomBytes(32).toString("hex");
-    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
 
     await prisma.verificationToken.create({
       data: {
@@ -510,7 +509,6 @@ export const requestPasswordReset = async (req: Request, res: ExpressResponse): 
       },
     });
 
-    // 3 arguments: email, userName, resetLink
     const resetLink = `${APP_FRONTEND_URL}/reset-password?token=${rawResetToken}`;
     await sendPasswordResetEmail(normalizedEmail, user.name, resetLink);
 
@@ -535,7 +533,6 @@ export const resetForgottenPassword = async (req: Request, res: ExpressResponse)
       return;
     }
 
-    // Look up the hashed token in the VerificationToken table
     const verificationToken = await prisma.verificationToken.findFirst({
       where: {
         tokenHash: hashToken(token),
@@ -551,7 +548,6 @@ export const resetForgottenPassword = async (req: Request, res: ExpressResponse)
 
     const newHash = await bcrypt.hash(newPassword, 12);
 
-    // Update password and delete the used token in one transaction
     await prisma.$transaction([
       prisma.user.update({
         where: { email: verificationToken.identifier },
@@ -577,7 +573,6 @@ export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<v
       return;
     }
 
-    // Find the token by its SHA-256 hash
     const verificationToken = await prisma.verificationToken.findFirst({
       where: {
         tokenHash: hashToken(token),
@@ -591,7 +586,6 @@ export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<v
       return;
     }
 
-    // Mark user as verified and delete the used token so it can't be reused
     await prisma.$transaction([
       prisma.user.update({
         where: { email: verificationToken.identifier },
@@ -630,7 +624,6 @@ export const resendVerificationEmail = async (req: AuthenticatedRequest, res: Ex
       return;
     }
 
-    // Clean up any old verification tokens for this email
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: user.email,
@@ -644,11 +637,10 @@ export const resendVerificationEmail = async (req: AuthenticatedRequest, res: Ex
         tokenHash: hashToken(rawToken),
         type: TokenType.EMAIL_VERIFICATION,
         identifier: user.email,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
 
-    // 3 arguments: email, userName, verifyLink
     const verifyLink = `${APP_FRONTEND_URL}/verify-email?token=${rawToken}`;
     await sendVerificationEmail(user.email, user.name, verifyLink);
 
@@ -667,9 +659,28 @@ export const completeOnboarding = async (req: AuthenticatedRequest, res: Express
       return;
     }
 
+    const body = req.body as RegisterRequestBody;
+    const country = extractOptionalString(body.country) ?? null;
+    const currency = extractSingleString(body.currency) || "USD";
+    const occupation = extractOptionalString(body.occupation) || "prefer_not_to_say";
+    const financialGoal = extractOptionalString(body.financialGoal) || "zen_master";
+    const aiPersona = extractOptionalString(body.aiPersona) || "supportive_coach";
+    
+    const languages: string[] = Array.isArray(body.languages)
+      ? body.languages.filter((l): l is string => typeof l === "string" && l.trim().length > 0)
+      : [];
+
     await prisma.user.update({
       where: { id: userId },
-      data: { isOnboardingCompleted: true },
+      data: {
+        country,
+        currency,
+        languages,
+        occupation,
+        financialGoal,
+        aiPersona,
+        isOnboardingCompleted: true,
+      },
     });
 
     res.status(200).json({ message: "Onboarding completed successfully." });
@@ -698,24 +709,18 @@ export const getExchangeRates = async (_req: Request, res: ExpressResponse): Pro
    === SECTION 4: GOOGLE OAUTH CONTROLLERS ===
    ========================================================================== */
 
-/**
- * GET /api/auth/google
- */
 export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     res.status(500).json(buildErrorResponse("Google OAuth credentials missing on server."));
     return;
   }
 
-  // 1. Generate a random state value
   const stateValue = crypto.randomBytes(16).toString("hex");
-  // 2. Create a signed token that will be sent to Google and returned back
   const stateToken = signState(stateValue);
 
-  // 3. Set a cookie as a secondary/fallback check, using dynamic COOKIE_OPTIONS
   res.cookie("oauth_state", stateToken, {
     ...COOKIE_OPTIONS,
-    maxAge: 10 * 60 * 1000, // 10 minutes
+    maxAge: 10 * 60 * 1000,
     path: "/",
   });
 
@@ -736,23 +741,16 @@ export const redirectToGoogle = (_req: Request, res: ExpressResponse): void => {
   res.redirect(`${rootAuthUrl}?${queryOptions.toString()}`);
 };
 
-/**
- * GET /api/auth/google/callback
- */
 export const handleGoogleCallback = async (req: Request, res: ExpressResponse): Promise<void> => {
   const code = extractSingleString(req.query.code);
   const stateFromQuery = extractSingleString(req.query.state);
   const stateFromCookie = extractSingleString(req.cookies?.oauth_state);
 
-  // Clear the cookie immediately – we no longer rely solely on it
   res.clearCookie("oauth_state", { path: "/" });
 
-  // --- State validation using the signed token ---
-  // Primary method: verify the HMAC signature embedded in the state parameter
   const verifiedStateValue = stateFromQuery ? verifySignedState(stateFromQuery) : null;
 
   if (!verifiedStateValue) {
-    // Fallback: compare raw state with cookie (if both exist and match)
     if (!stateFromQuery || !stateFromCookie || stateFromQuery !== stateFromCookie) {
       console.error("OAuth state mismatch - no valid signature and cookie mismatch");
       res.status(400).send("OAuth authentication failed: Invalid state parameter.");
@@ -846,7 +844,7 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
               avatarUrl: picture || null,
               isEmailVerified: true,
               emailVerifiedAt: new Date(),
-              currency: "PKR",
+              currency: "USD",
               occupation: "prefer_not_to_say",
               financialGoal: "zen_master",
               aiPersona: "supportive_coach",
@@ -855,12 +853,12 @@ export const handleGoogleCallback = async (req: Request, res: ExpressResponse): 
                 create: [
                   {
                     name: "Personal",
-                    currency: "PKR",
+                    currency: "USD",
                     categories: { create: formatDefaultCategories(SHARED_DEFAULT_PERSONAL_CATEGORIES) },
                   },
                   {
                     name: "Business",
-                    currency: "PKR",
+                    currency: "USD",
                     categories: { create: formatDefaultCategories(SHARED_DEFAULT_BUSINESS_CATEGORIES) },
                   },
                 ],

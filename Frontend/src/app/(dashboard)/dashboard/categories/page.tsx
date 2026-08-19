@@ -1,3 +1,4 @@
+// src/app/(dashboard)/dashboard/categories/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -68,7 +69,7 @@ export default function CategoriesPage() {
     try {
       const [catData, txData] = await Promise.all([
         categoryService.getByWorkspace(activeWorkspaceId),
-        transactionService.getByWorkspace(activeWorkspaceId)
+        transactionService.getByWorkspace(activeWorkspaceId),
       ]);
 
       const fetchedTxs = txData?.transactions || [];
@@ -77,7 +78,7 @@ export default function CategoriesPage() {
       setTransactions(fetchedTxs);
 
       const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category) => {
-        const txCount = fetchedTxs.filter(tx => tx.categoryId === dbCat.id).length;
+        const txCount = fetchedTxs.filter((tx) => tx.categoryId === dbCat.id).length;
         return {
           id: dbCat.id,
           workspaceId: dbCat.workspaceId,
@@ -112,7 +113,7 @@ export default function CategoriesPage() {
         if (isMounted) setIsLoading(true);
         const [catData, txData] = await Promise.all([
           categoryService.getByWorkspace(activeWorkspaceId),
-          transactionService.getByWorkspace(activeWorkspaceId)
+          transactionService.getByWorkspace(activeWorkspaceId),
         ]);
 
         if (isMounted) {
@@ -122,7 +123,7 @@ export default function CategoriesPage() {
           setTransactions(fetchedTxs);
 
           const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category) => {
-            const txCount = fetchedTxs.filter(tx => tx.categoryId === dbCat.id).length;
+            const txCount = fetchedTxs.filter((tx) => tx.categoryId === dbCat.id).length;
             return {
               id: dbCat.id,
               workspaceId: dbCat.workspaceId,
@@ -166,27 +167,14 @@ export default function CategoriesPage() {
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
+  // Replaced destructive delete-then-create with non-destructive direct update calls
   const handleApplyCategory = async (categoryId: string, transactionIds: string[]) => {
     if (!activeWorkspaceId) return;
     try {
       setIsLoading(true);
-      const safeTransactionsList = transactions || [];
       await Promise.all(
         (transactionIds || []).map(async (id) => {
-          const tx = safeTransactionsList.find(t => t.id === id);
-          if (!tx) return;
-
-          await transactionService.delete(id);
-          await transactionService.create({
-            originalAmount: Number(tx.originalAmount ?? 0),
-            originalCurrency: tx.originalCurrency || "USD",
-            baseAmountUSD: Number(tx.baseAmountUSD ?? 0),
-            type: tx.type,
-            description: tx.description || "Imported Ledger Record Entry",
-            date: tx.date,
-            workspaceId: activeWorkspaceId,
-            categoryId: categoryId,
-          });
+          await transactionService.update(id, { categoryId });
         })
       );
 
@@ -259,13 +247,13 @@ export default function CategoriesPage() {
     }
   };
 
-  const unassignedNode = (categories || []).find(c => c.name.toLowerCase().includes("unassigned"));
+  const unassignedNode = (categories || []).find((c) => c.name.toLowerCase().includes("unassigned"));
   const unassignedUUID = unassignedNode ? unassignedNode.id : "";
 
   const filteredUnassigned: UnassignedTransactionRecord[] = useMemo(() => {
     return (transactions || [])
-      .filter(tx => tx.categoryId === unassignedUUID)
-      .map(tx => {
+      .filter((tx) => tx.categoryId === unassignedUUID)
+      .map((tx) => {
         let safeDateStr = "";
         const rawDate = tx.date as unknown;
         if (typeof rawDate === "string") {
@@ -281,17 +269,17 @@ export default function CategoriesPage() {
           date: safeDateStr,
           merchant: tx.description || "Imported Statement Entry",
           amount: Number(tx.baseAmountUSD ?? 0),
-          workspaceId: tx.workspaceId
+          workspaceId: tx.workspaceId,
         };
       });
   }, [transactions, unassignedUUID]);
 
   const categoryOptions: CategoryOption[] = useMemo(() => {
     return (categories || [])
-      .filter(cat => !cat.name.toLowerCase().includes("unassigned"))
+      .filter((cat) => !cat.name.toLowerCase().includes("unassigned"))
       .map((cat) => ({
         id: cat.id,
-        name: cat.name
+        name: cat.name,
       }));
   }, [categories]);
 
@@ -306,8 +294,8 @@ export default function CategoriesPage() {
     const safeTxs = transactions || [];
     const safeCats = categories || [];
 
-    safeTxs.forEach(tx => {
-      const cat = safeCats.find(c => c.id === tx.categoryId);
+    safeTxs.forEach((tx) => {
+      const cat = safeCats.find((c) => c.id === tx.categoryId);
       const catName = cat?.name || "Unknown";
 
       let txAmountWorkspace: number;

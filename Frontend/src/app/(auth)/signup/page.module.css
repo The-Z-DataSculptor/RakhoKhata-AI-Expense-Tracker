@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #0b0520; /* Deep Cyberpunk background */
+  background-color: #0b0520;
   position: relative;
   overflow: hidden;
   padding: 2rem;
@@ -38,7 +38,6 @@
   position: relative;
   z-index: 10;
 }
-/* === SECTION 1 END === */
 
 /* ==========================================================================
    === SECTION 2: SIDEBAR PROGRESS ===
@@ -100,7 +99,6 @@
   position: relative;
 }
 
-/* Connecting line */
 .stepperTracker::before {
   content: '';
   position: absolute;
@@ -152,11 +150,9 @@
   font-size: 0.95rem;
 }
 
-/* Hidden by default on desktop */
 .mobileStepTracker {
   display: none;
 }
-/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: FORM BODY ===
@@ -256,7 +252,6 @@
   color: #7e7a9c;
   margin: -0.25rem 0 0.5rem 0;
 }
-/* === SECTION 3 END === */
 
 /* ==========================================================================
    === SECTION 4: INITIAL CHOICE METHOD SELECTION CARDS ===
@@ -385,7 +380,6 @@
   color: #613bbf;
   text-decoration: underline;
 }
-/* === SECTION 4 END === */
 
 /* ==========================================================================
    === SECTION 5: TAGS & CARDS (INTERACTIVE UI) ===
@@ -469,9 +463,6 @@
   background: rgba(139, 92, 246, 0.2);
   border-radius: 10px;
 }
-.scrollableLanguagesContainer::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.4);
-}
 
 .cardsGrid {
   display: grid;
@@ -486,11 +477,11 @@
 }
 
 .selectionCard {
-  border: 2px solid #e5e1f4;
+  border: 1.5px solid #e5e1f4;
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1rem 1.15rem;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -502,6 +493,7 @@
 .selectionCard:hover {
   border-color: #c4b5fd;
   background-color: #f8f7fd;
+  transform: translateY(-1px);
 }
 
 .cardActive {
@@ -516,9 +508,34 @@
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
 }
 
-.cardEmoji {
-  font-size: 1.8rem;
+.cardIconBox,
+.aiIconBox {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
   flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.cardActive .cardIconBox {
+  background-color: #8b5cf6;
+  color: #ffffff;
+}
+
+.aiCardActive .aiIconBox {
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+.cardText {
+  flex: 1;
+  min-width: 0;
 }
 
 .cardText h4 {
@@ -546,7 +563,6 @@
 .aiCardActive .checkIcon {
   color: #10b981;
 }
-/* === SECTION 5 END === */
 
 /* ==========================================================================
    === SECTION 6: WIZARD FOOTER CONTROLS ===
@@ -612,7 +628,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 7: RESPONSIVE MOBILE ADAPTATIONS (≤ 850px / ≤ 768px) ===
+   === SECTION 7: RESPONSIVE MOBILE ADAPTATIONS (<= 850px) ===
    ========================================================================== */
 @media (max-width: 850px) {
   .wizardMasterLayout {
@@ -657,12 +673,10 @@
     display: none;
   }
 
-  /* Hide vertical desktop stepper on mobile */
   .stepperTracker {
     display: none; 
   }
 
-  /* Show dedicated mobile step progress indicator */
   .mobileStepTracker {
     display: flex;
     flex-direction: column;
@@ -739,10 +753,6 @@
     gap: 0.65rem;
   }
 
-  /*
-   * iOS Auto-Zoom Fix: Enforce >= 16px (1rem) font threshold
-   * to strictly block mobile browsers from forcefully zooming inputs.
-   */
   .textInput,
   .selectInput {
     font-size: 1rem !important;
@@ -758,7 +768,6 @@
     align-items: center;
   }
 
-  /* Touch-optimized 48px minimum target sizes */
   .selectionCard,
   .methodChoiceCard {
     min-height: 48px;
@@ -783,7 +792,7 @@
 }
 
 /* ==========================================================================
-   === SECTION 8: EXTRA SMALL SCREENS (≤ 480px) ===
+   === SECTION 8: EXTRA SMALL SCREENS (<= 480px) ===
    ========================================================================== */
 @media (max-width: 480px) {
   .wizardMasterLayout {
@@ -798,8 +807,11 @@
     font-size: 1.2rem;
   }
 
-  .cardEmoji {
-    font-size: 1.5rem;
+  .cardIconBox,
+  .aiIconBox {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
   }
 
   .cardText h4 {
@@ -810,4 +822,3 @@
     font-size: 0.75rem;
   }
 }
-/* === SECTION 8 END === */

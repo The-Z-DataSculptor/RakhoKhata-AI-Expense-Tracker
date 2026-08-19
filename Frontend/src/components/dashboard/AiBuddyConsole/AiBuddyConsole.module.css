@@ -1,19 +1,48 @@
 /* src/components/dashboard/AiBuddyConsole/AiBuddyConsole.module.css */
 
-/* ==========================================================================
-   === SECTION 1: CONTAINER WITH DISSOLVING GRADIENT LENS OVERLAYS ==========
-   ========================================================================== */
 .terminalContainer {
   width: 100%;
-  background: var(--bg-surface);
+  background: var(--bg-surface, #ffffff);
   border-radius: var(--radius-lg, 20px);
-  border: 1px solid var(--border-color);
-  padding: 2rem;
+  border: 1px solid var(--border-color, #e5e1f4);
+  padding: 1.75rem;
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
-  box-shadow: var(--shadow-soft), 0 0 60px var(--primary-soft-faint);
+  box-shadow: var(--shadow-soft, 0 4px 20px rgba(16, 4, 63, 0.04)), var(--neon-glow);
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 1. Savage Roaster Theme */
+.themeRoaster {
+  --neon-primary: #ef4444;
+  --neon-gradient: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+  --neon-soft: rgba(239, 68, 68, 0.15);
+  --neon-glow: 0 0 30px rgba(239, 68, 68, 0.18);
+}
+
+/* 2. Forensic Detective Theme */
+.themeDetective {
+  --neon-primary: #0284c7;
+  --neon-gradient: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+  --neon-soft: rgba(2, 132, 199, 0.15);
+  --neon-glow: 0 0 30px rgba(2, 132, 199, 0.18);
+}
+
+/* 3. Silent Accountant Theme */
+.themeAccountant {
+  --neon-primary: #6366f1;
+  --neon-gradient: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+  --neon-soft: rgba(99, 102, 241, 0.15);
+  --neon-glow: 0 0 30px rgba(99, 102, 241, 0.18);
+}
+
+/* 4. Supportive Coach Theme */
+.themeCoach {
+  --neon-primary: #8b5cf6;
+  --neon-gradient: linear-gradient(135deg, #10b981 0%, #8b5cf6 100%);
+  --neon-soft: rgba(139, 92, 246, 0.15);
+  --neon-glow: 0 0 30px rgba(139, 92, 246, 0.18);
 }
 
 .lensGlowOverlay {
@@ -22,7 +51,7 @@
   left: -20%;
   width: 60%;
   height: 120%;
-  background: radial-gradient(circle, var(--primary-soft) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--neon-soft) 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 }
@@ -33,10 +62,9 @@
   right: -10%;
   width: 45%;
   height: 75%;
-  background: radial-gradient(circle at 60% 60%, var(--success-soft) 0%, rgba(22, 163, 74, 0.02) 50%, transparent 75%);
+  background: radial-gradient(circle at 60% 60%, rgba(22, 163, 74, 0.08) 0%, transparent 75%);
   pointer-events: none;
   z-index: 1;
-  transition: background 0.3s ease;
 }
 
 .innerLayout {
@@ -47,14 +75,11 @@
   gap: 1.5rem;
 }
 
-/* ==========================================================================
-   === SECTION 2: STATUS & IDENTITY ROW ====================================
-   ========================================================================== */
 .companionStatusRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
   padding-bottom: 1rem;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -67,67 +92,43 @@
 }
 
 .avatarBlob {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft-hover));
-  border: 2px solid var(--color-primary);
+  width: 48px;
+  height: 48px;
+  background: var(--bg-surface, #ffffff);
+  border: 2px solid var(--neon-primary);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--neon-primary);
   transition: all 0.3s ease;
-  animation: avatarPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 16px var(--neon-soft);
   flex-shrink: 0;
 }
 
 .companionBrandIcon {
-  font-size: 1.25rem;
-}
-
-.themeRoaster .companionBrandIcon { color: var(--color-danger); }
-.themeCoach .companionBrandIcon { color: var(--color-success); }
-.themeDetective .companionBrandIcon { color: var(--color-info); }
-.themeAccountant .companionBrandIcon { color: var(--text-secondary); }
-
-@keyframes avatarPulse {
-  0%, 100% { box-shadow: 0 0 20px var(--primary-soft); }
-  50% { box-shadow: 0 0 40px var(--primary-soft-strong); }
+  font-size: 1.35rem;
 }
 
 .identityMeta h4 {
   margin: 0;
-  color: var(--text-primary);
-  font-size: 0.95rem;
+  color: var(--text-primary, #10043f);
+  font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.3px;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.sparkleIcon {
-  color: var(--color-warning);
-  font-size: 0.9rem;
-  animation: sparkle 2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-@keyframes sparkle {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  50% { transform: scale(1.2) rotate(20deg); }
 }
 
 .identityMeta p {
-  margin: 0.15rem 0 0 0;
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  font-weight: 500;
+  margin: 0.2rem 0 0 0;
+  color: var(--text-secondary, #4e4a6b);
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .highlightText {
   text-transform: uppercase;
-  font-weight: 700;
-  color: var(--color-primary);
+  font-weight: 800;
+  color: var(--neon-primary);
 }
 
 .livePulseIndicator {
@@ -135,18 +136,18 @@
   align-items: center;
   gap: 0.75rem;
   font-family: monospace;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
 }
 
 .greenPulseDot {
-  width: 10px;
-  height: 10px;
-  background: var(--color-success);
+  width: 9px;
+  height: 9px;
+  background: var(--color-success, #16a34a);
   border-radius: 50%;
   display: inline-block;
-  box-shadow: 0 0 20px var(--color-success);
+  box-shadow: 0 0 12px var(--color-success, #16a34a);
   animation: pulseBlink 1.8s infinite ease-in-out;
   flex-shrink: 0;
 }
@@ -167,7 +168,7 @@
   display: block;
   width: 3px;
   height: 100%;
-  background: var(--color-success);
+  background: var(--color-success, #16a34a);
   border-radius: 2px;
   animation: barPulse 1.2s ease-in-out infinite;
 }
@@ -181,39 +182,35 @@
 }
 
 .pulseLabel {
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
 }
 
-/* ==========================================================================
-   === SECTION 3: DISPLAY MONITOR AREA =====================================
-   ========================================================================== */
 .displayMonitorArea {
-  min-height: 110px;
+  min-height: 90px;
   display: flex;
   align-items: flex-start;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
 }
 
 .streamedNarrationText {
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   font-size: 1.05rem;
   line-height: 1.65;
   font-weight: 500;
   margin: 0;
   letter-spacing: -0.1px;
-  transition: color 0.3s ease;
 }
 
 .quoteMark {
-  color: var(--color-primary);
+  color: var(--neon-primary);
   font-size: 1.4rem;
   font-weight: 900;
-  opacity: 0.4;
+  opacity: 0.5;
   margin: 0 4px;
 }
 
 .typingCaretCursor {
-  color: var(--color-primary);
+  color: var(--neon-primary);
   font-weight: 900;
   margin-left: 2px;
   animation: caretBlink 0.8s steps(2, start) infinite;
@@ -225,17 +222,17 @@
 
 .loaderState {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-muted, #7e7a9c);
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .spinnerIcon {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   animation: spinnerRotate 1.2s linear infinite;
-  color: var(--color-primary);
+  color: var(--neon-primary);
 }
 
 @keyframes spinnerRotate {
@@ -243,21 +240,18 @@
   to { transform: rotate(360deg); }
 }
 
-/* ==========================================================================
-   === SECTION 4: THE STEPPED NEON PULSE ENGINE FOR ACTION BUTTONS =========
-   ========================================================================== */
 .actionGridFooter {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1rem;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color, #e5e1f4);
   padding-top: 1.25rem;
 }
 
 .timelineActionButton {
   position: relative;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-color);
+  background: var(--surface-muted, #f8fafc);
+  border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 12px);
   padding: 0.85rem 1rem;
   cursor: pointer;
@@ -280,20 +274,20 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  background: radial-gradient(circle at center, var(--color-primary), transparent 70%);
+  background: radial-gradient(circle at center, var(--neon-primary), transparent 70%);
   transition: opacity 0.4s ease;
   z-index: 1;
 }
 
 .timelineActionButton:hover:not(:disabled) .btnGlow {
-  opacity: 0.12;
+  opacity: 0.15;
 }
 
 .scopeIconWrapper {
   display: flex;
   align-items: center;
   font-size: 1.05rem;
-  color: var(--color-primary); 
+  color: var(--neon-primary); 
   transition: transform 0.2s;
   flex-shrink: 0;
 }
@@ -301,12 +295,10 @@
 .btnLabelCapital {
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-primary, #10043f);
   letter-spacing: -0.1px;
-  transition: color 0.2s;
 }
 
-/* DYNAMIC NEON GREEN PULSE TIMING CHAIN */
 .btnIconActive {
   font-size: 0.85rem;
   animation: energyWaveEngine 2.4s infinite linear;
@@ -319,226 +311,49 @@
 
 @keyframes energyWaveEngine {
   0%, 100% {
-    color: var(--text-muted);
+    color: var(--text-muted, #7e7a9c);
     opacity: 0.4;
     transform: scale(1);
-    filter: drop-shadow(0 0 0 transparent);
   }
   20%, 50% {
     color: var(--color-success, #16a34a);
     opacity: 1;
     transform: scale(1.15);
-    filter: drop-shadow(0 0 8px var(--color-success));
+    filter: drop-shadow(0 0 8px var(--color-success, #16a34a));
   }
   70% {
-    color: var(--text-muted);
+    color: var(--text-muted, #7e7a9c);
     opacity: 0.4;
     transform: scale(1);
-    filter: drop-shadow(0 0 0 transparent);
   }
 }
 
-/* Active Hover Modifiers */
-.scopeToday:hover:not(:disabled) { border-color: var(--color-danger); background: var(--danger-soft); }
-.scopeWeek:hover:not(:disabled) { border-color: var(--color-primary); background: var(--primary-soft); }
-.scopeMonth:hover:not(:disabled) { border-color: var(--color-info); background: var(--info-soft); }
+.scopeToday:hover:not(:disabled) { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+.scopeWeek:hover:not(:disabled) { border-color: var(--neon-primary); background: var(--neon-soft); }
+.scopeMonth:hover:not(:disabled) { border-color: #0284c7; background: rgba(2, 132, 199, 0.08); }
 
-.timelineActionButton:hover:not(:disabled) .scopeIconWrapper {
-  transform: scale(1.08);
-}
-.timelineActionButton:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-/* Locked States */
 .buttonLockedState {
-  background: var(--surface-outline) !important;
-  border: 1px dashed var(--border-color) !important;
+  background: var(--surface-outline, #f1f5f9) !important;
+  border: 1px dashed var(--border-color, #e5e1f4) !important;
   cursor: not-allowed !important;
-  transform: none !important;
-  box-shadow: none !important;
-  opacity: 0.5;
+  opacity: 0.55;
 }
-.buttonLockedState .btnLabelCapital { color: var(--text-muted) !important; }
-.btnIcon { font-size: 0.9rem; color: var(--text-muted); flex-shrink: 0; }
 
-/* ==========================================================================
-   === SECTION 5: PERSONA THEME OUTLINES ====================================
-   ========================================================================== */
-.themeRoaster .highlightText { color: var(--color-danger); }
-.themeRoaster .typingCaretCursor, .themeRoaster .quoteMark { color: var(--color-danger); }
-.themeRoaster .lensGlowOverlay { background: radial-gradient(circle, var(--danger-soft) 0%, transparent 70%); }
+.buttonLockedState .btnLabelCapital { color: var(--text-muted, #7e7a9c) !important; }
+.btnIcon { font-size: 0.9rem; color: var(--text-muted, #7e7a9c); flex-shrink: 0; }
 
-.themeDetective .highlightText { color: var(--color-info); }
-.themeDetective .typingCaretCursor, .themeDetective .quoteMark { color: var(--color-info); }
-.themeDetective .lensGlowOverlay { background: radial-gradient(circle, var(--info-soft) 0%, transparent 70%); }
-
-.themeAccountant .highlightText { color: var(--text-secondary); }
-.themeAccountant .typingCaretCursor, .themeAccountant .quoteMark { color: var(--text-secondary); }
-.themeAccountant .lensGlowOverlay { background: radial-gradient(circle, var(--primary-soft-faint) 0%, transparent 70%); }
-
-.themeCoach .highlightText { color: var(--color-success); }
-.themeCoach .typingCaretCursor, .themeCoach .quoteMark { color: var(--color-success); }
-.themeCoach .lensGlowOverlay { background: radial-gradient(circle, var(--success-soft) 0%, transparent 70%); }
-
-/* ==========================================================================
-   === SECTION 6: RESPONSIVE ADAPTATIONS (≤ 768px) =========================
-   ========================================================================== */
 @media (max-width: 768px) {
   .terminalContainer {
     padding: 1.25rem;
     border-radius: var(--radius-lg, 16px);
   }
 
-  .innerLayout {
-    gap: 1.15rem;
-  }
-
-  .companionStatusRow {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 0.85rem;
-    gap: 0.5rem;
-    width: 100%;
-  }
-
-  .companionBadge {
-    gap: 0.65rem;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .avatarBlob {
-    width: 40px;
-    height: 40px;
-  }
-
-  .companionBrandIcon {
-    font-size: 1.15rem;
-  }
-
-  .identityMeta {
-    min-width: 0;
-  }
-
-  .identityMeta h4 {
-    font-size: 0.88rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .identityMeta p {
-    font-size: 0.72rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .livePulseIndicator {
-    flex-shrink: 0;
-    gap: 0.45rem;
-    font-size: 0.68rem;
-  }
-
-  .pulseBars {
-    display: none; /* Hide decorative frequency bars on mobile to maximize space */
-  }
-
-  .displayMonitorArea {
-    min-height: 90px;
-    padding: 0.25rem 0;
-  }
-
-  .streamedNarrationText {
-    font-size: 0.98rem;
-    line-height: 1.55;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .quoteMark {
-    font-size: 1.2rem;
-    margin: 0 2px;
-  }
-
   .actionGridFooter {
     grid-template-columns: 1fr;
     gap: 0.65rem;
-    padding-top: 1rem;
   }
 
-  /* 48px Touch-friendly target height for action buttons */
   .timelineActionButton {
     min-height: 48px;
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md, 12px);
-  }
-
-  .btnInnerFlex {
-    width: 100%;
-    justify-content: center;
   }
 }
-
-/* ==========================================================================
-   === SECTION 7: EXTRA SMALL SCREENS (≤ 480px) =============================
-   ========================================================================== */
-@media (max-width: 480px) {
-  .terminalContainer {
-    padding: 1rem;
-    border-radius: 14px;
-  }
-
-  .companionStatusRow {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.65rem;
-  }
-
-  .companionBadge {
-    width: 100%;
-  }
-
-  .livePulseIndicator {
-    width: 100%;
-    justify-content: space-between;
-    padding-top: 0.4rem;
-    border-top: 1px dashed var(--border-color);
-  }
-
-  .avatarBlob {
-    width: 36px;
-    height: 36px;
-  }
-
-  .companionBrandIcon {
-    font-size: 1.05rem;
-  }
-
-  .identityMeta h4 {
-    font-size: 0.85rem;
-  }
-
-  .identityMeta p {
-    font-size: 0.7rem;
-  }
-
-  .streamedNarrationText {
-    font-size: 0.92rem;
-    line-height: 1.5;
-  }
-
-  .btnLabelCapital {
-    font-size: 0.82rem;
-  }
-
-  .timelineActionButton {
-    min-height: 46px;
-  }
-}
-/* === SECTION 7 END === */

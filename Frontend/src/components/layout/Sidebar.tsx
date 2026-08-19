@@ -52,7 +52,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Categories", href: "/dashboard/categories", icon: <FiFolder size={18} />, group: "core" },
   { label: "Budgets", href: "/dashboard/budgets", icon: <FiPieChart size={18} />, group: "core" },
   { label: "Investment Vault", href: "/dashboard/investment-vault", icon: <FiShield size={18} />, group: "growth" },
-  { label: "AI Insights", href: "/dashboard/ai-insights", icon: <FiCpu size={18} />, group: "intelligence" },
+  { label: "AI Companion", href: "/dashboard/ai-insights", icon: <FiCpu size={18} />, group: "intelligence" },
 ];
 
 export default function Sidebar({ user: propUser }: SidebarProps) {

@@ -49,6 +49,10 @@ export const metadata: Metadata = {
   authors: [{ name: "Rakho Khaata Team", url: "https://rakhokhaata.com" }],
   creator: "Rakho Khaata",
   publisher: "Rakho Khaata",
+  // ----- Google Search Console Verification (Fixed) -----
+  verification: {
+    google: "jooqJjiZkKb5_IUlSR1IxiP1J6tW7hU2-YpKcr6I6vw",
+  },
   alternates: {
     canonical: "/",
   },

@@ -31,14 +31,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://rakhokhaata.com"),
   title: {
-    default: "RakhoKhaata – Smart Expense & Investment Ledger",
-    template: "%s | RakhoKhaata",
+    default: "Rakho Khaata – Your Friendly AI Money Coach & Expense Tracker",
+    template: "%s | Rakho Khaata",
   },
   description:
-    "Track personal & business expenses, manage multi-currency ledgers, set visual category budgets, and leverage AI financial coaching in isolated workspaces.",
+    "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, and chat with AI.",
   keywords: [
     "Expense Tracker",
-    "RakhoKhaata",
+    "Rakho Khaata",
     "Financial Ledger",
     "Multi-Currency Tracker",
     "Category Budget Planner",
@@ -46,9 +46,9 @@ export const metadata: Metadata = {
     "Freelancer Expense Manager",
     "Visual Budget App",
   ],
-  authors: [{ name: "RakhoKhaata Team", url: "https://rakhokhaata.com" }],
-  creator: "RakhoKhaata",
-  publisher: "RakhoKhaata",
+  authors: [{ name: "Rakho Khaata Team", url: "https://rakhokhaata.com" }],
+  creator: "Rakho Khaata",
+  publisher: "Rakho Khaata",
   alternates: {
     canonical: "/",
   },
@@ -73,17 +73,17 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "RakhoKhaata – Smart Expense & Investment Ledger",
+    title: "Rakho Khaata – Your Friendly AI Money Coach & Expense Tracker",
     description:
-      "Precision multi-currency expense tracking, visual budget progress rings, and isolated workspace management.",
+      "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, and chat with AI.",
     url: "https://rakhokhaata.com",
-    siteName: "RakhoKhaata",
+    siteName: "Rakho Khaata",
     images: [
       {
         url: "/og-banner.png",
         width: 1200,
         height: 630,
-        alt: "RakhoKhaata Financial Ledger Dashboard Preview",
+        alt: "Rakho Khaata Financial Ledger Dashboard Preview",
       },
     ],
     locale: "en_US",
@@ -91,9 +91,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RakhoKhaata – Smart Expense & Investment Ledger",
+    title: "Rakho Khaata – Your Friendly AI Money Coach & Expense Tracker",
     description:
-      "Precision multi-currency expense tracking, visual category budgets, and isolated workspaces.",
+      "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, and chat with AI.",
     images: ["/og-banner.png"],
   },
 };

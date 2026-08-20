@@ -1,3 +1,4 @@
+// src/app/robots.ts
 import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
@@ -9,19 +10,16 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: [
-          "/dashboard/",
-          "/ai-insights/",
-          "/budgets/",
-          "/categories/",
-          "/investment-vault/",
-          "/transactions/",
-          "/settings/",
+          // Blocks /dashboard and EVERYTHING under /dashboard/*
+          "/dashboard",
+          // Auth flows
           "/login",
           "/signup",
           "/onboarding",
           "/reset-password",
           "/reset-vault-pin",
           "/verify-email",
+          // Other private pages
           "/beta",
         ],
       },

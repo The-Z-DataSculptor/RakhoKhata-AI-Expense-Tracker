@@ -1,0 +1,762 @@
+/* ==========================================================================
+   === SECTION 1: CONTAINER & HEADER ===
+   ========================================================================== */
+.previewSection {
+  width: 100%;
+  padding: 4.5rem 1.5rem;
+  background-color: var(--surface-muted);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1080px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerBlock {
+  text-align: center;
+  max-width: 720px;
+  margin-bottom: 2.25rem;
+}
+
+.interactiveIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.shieldIcon {
+  color: var(--color-primary);
+}
+
+.previewTitle {
+  font-family: var(--font-navbar, inherit);
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 0.85rem;
+}
+
+.previewSubtitle {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 2: TOP INTERACTIVE CONTROLS BAR ===
+   ========================================================================== */
+.controlsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.currencyToggleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: var(--bg-surface);
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-soft);
+}
+
+.barLabel {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 0.3rem;
+  padding-left: 0.35rem;
+}
+
+.currencyBtn {
+  padding: 0.45rem 0.85rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.currencyBtn:hover {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.currencyBtnActive {
+  background-color: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+}
+
+.lockStateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.15rem;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+}
+
+.lockStateBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--surface-highlight);
+}
+
+/* ==========================================================================
+   === SECTION 3: MOCKUP WINDOW CONTAINER ===
+   ========================================================================== */
+.mockupFrame {
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.windowTopBar {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
+  gap: 1.25rem;
+}
+
+.windowControls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.circleDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dotRed { background-color: var(--color-danger); }
+.dotYellow { background-color: var(--color-warning); }
+.dotGreen { background-color: var(--color-success); }
+
+.windowUrlField {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  flex: 1;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboardBody {
+  padding: 1.75rem;
+  background-color: var(--background);
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   === SECTION 4: PIN LOCK SCREEN SIMULATOR ===
+   ========================================================================== */
+.lockScreenWrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.lockCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2.75rem 2.25rem;
+  max-width: 440px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+}
+
+.lockIconCircle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.lockCardTitle {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.lockCardSubtitle {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 1.75rem;
+}
+
+.pinInputRow {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.pinInputBox {
+  width: 52px;
+  height: 58px;
+  border-radius: 12px;
+  border: 2px solid var(--border-color);
+  background-color: var(--surface-muted);
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.pinInputBox:focus {
+  border-color: var(--color-primary);
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.pinInputError {
+  border-color: var(--color-danger) !important;
+  color: var(--color-danger) !important;
+}
+
+.pinErrorText {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.pinHintText {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.shakeAnimation {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* ==========================================================================
+   === SECTION 5: UNLOCKED SUMMARY CARDS ===
+   ========================================================================== */
+.unlockedContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.summaryCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.summaryCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.6rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.summaryCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summaryLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.statusPill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pillActive { background-color: var(--success-soft); color: var(--color-success); }
+.pillInfo { background-color: var(--primary-soft); color: var(--color-primary); }
+.pillEncrypted { background-color: var(--warning-soft); color: var(--color-warning); }
+
+.pulseDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--color-success);
+}
+
+.summaryMainMetric {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.metricSuccess {
+  color: var(--color-success);
+}
+
+.summaryFooterText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px dashed var(--border-color);
+  padding-top: 0.5rem;
+}
+
+.summaryFooterText strong {
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   === SECTION 6: ASSET ACCORDION TABLE ===
+   ========================================================================== */
+.assetTableContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tableHeaderRow {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.2fr 1.2fr 60px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.textRight {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.assetList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.assetCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+}
+
+.assetCard:hover {
+  border-color: var(--primary-soft-strong);
+}
+
+.assetCardExpanded {
+  border-color: var(--color-primary);
+}
+
+.assetRowMain {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.2fr 1.2fr 60px;
+  padding: 1.15rem 1.25rem;
+  align-items: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.assetRowMain:hover {
+  background-color: var(--surface-muted);
+}
+
+.cellIdentity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.assetAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.identityText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.assetName {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.assetTicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.cellData {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dataPrimary {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.dataSecondary {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.chevronWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+/* ==========================================================================
+   === SECTION 7: EXPANDED DRAWER & TIMELINE ===
+   ========================================================================== */
+.drawerContent {
+  padding: 1.5rem;
+  background-color: var(--surface-muted);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.memoBox {
+  display: flex;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.memoLeftAccent {
+  width: 5px;
+  background-color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.memoBody {
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.memoHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.memoQuote {
+  margin: 0;
+  font-size: 0.92rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.timelineSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.timelineTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.timelineTitleRow h5 {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timelineList {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-left: 1.25rem;
+}
+
+.timelineTrackLine {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 20px;
+  width: 2px;
+  background-color: var(--border-color);
+  z-index: 1;
+}
+
+.timelineEntry {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  z-index: 2;
+}
+
+.timelineDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--surface-muted);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.timelineCard {
+  flex: 1;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timelineCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.timelineTitleStack {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nodeTitle {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.nodeIdBadge {
+  font-family: monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.nodeDate {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.nodeNoteText {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.nodeReceiptGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 0.75rem;
+}
+
+.receiptCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.receiptLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.receiptValue {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   === SECTION 8: RESPONSIVENESS ===
+   ========================================================================== */
+@media (max-width: 992px) {
+  .summaryCardsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .previewSection {
+    padding: 3.5rem 1rem;
+  }
+
+  .previewTitle {
+    font-size: 1.75rem;
+  }
+
+  .controlsBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .currencyToggleGroup,
+  .lockStateBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tableHeaderRow {
+    display: none;
+  }
+
+  .assetRowMain {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .cellData {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 0.45rem 0.65rem;
+    background-color: var(--surface-muted);
+    border-radius: var(--radius-md);
+  }
+
+  .textRight {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .nodeReceiptGrid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+}

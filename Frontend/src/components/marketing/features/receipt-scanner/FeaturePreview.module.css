@@ -1,0 +1,617 @@
+
+/*src/components/marketing/features/receipt-scanner/FeaturePreview.module.css*/
+/* ==========================================================================
+   === SECTION 1: CONTAINER & HEADER ===
+   ========================================================================== */
+.previewSection {
+  width: 100%;
+  padding: 4.5rem 1.5rem;
+  background-color: var(--surface-muted);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1120px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerBlock {
+  text-align: center;
+  max-width: 720px;
+  margin-bottom: 2.25rem;
+}
+
+.interactiveIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.zapIcon {
+  color: var(--color-primary);
+}
+
+.previewTitle {
+  font-family: var(--font-navbar, inherit);
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 0.85rem;
+}
+
+.previewSubtitle {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 2: TOP CONTROLS & TOGGLES ===
+   ========================================================================== */
+.switcherBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sampleButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: var(--bg-surface);
+  padding: 0.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-soft);
+  flex-wrap: wrap;
+}
+
+.switchLabel {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0 0.5rem 0 0.25rem;
+}
+
+.sampleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.sampleBtn:hover {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.sampleBtnActive {
+  background-color: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+}
+
+.methodToggleGroup {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface);
+  padding: 0.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  gap: 0.35rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.methodBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.methodBtn:hover {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.methodBtnActive {
+  background-color: var(--surface-highlight) !important;
+  color: var(--color-primary) !important;
+  border: 1px solid var(--border-color);
+}
+
+/* ==========================================================================
+   === SECTION 3: MOCKUP WINDOW FRAME ===
+   ========================================================================== */
+.mockupFrame {
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.windowTopBar {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
+  gap: 1.25rem;
+}
+
+.windowControls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.circleDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dotRed { background-color: var(--color-danger); }
+.dotYellow { background-color: var(--color-warning); }
+.dotGreen { background-color: var(--color-success); }
+
+.windowUrlField {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  flex: 1;
+  max-width: 580px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboardBody {
+  position: relative;
+  padding: 1.75rem;
+  background-color: var(--background);
+}
+
+/* ==========================================================================
+   === SECTION 4: AI SCANNING OVERLAY ===
+   ========================================================================== */
+.scanningOverlayBackdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(16, 4, 63, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  border-radius: 0 0 16px 16px;
+}
+
+.scanningCoreCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 380px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.scanningSpinnerVector {
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.scanningCardTitle {
+  font-family: var(--font-navbar, inherit);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 0.4rem;
+}
+
+.scanningCardSubtitle {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   === SECTION 5: SPLIT GRID: RAW SLIP VS FORM ===
+   ========================================================================== */
+.scannerSplitGrid {
+  display: grid;
+  grid-template-columns: 0.95fr 1.35fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Left: Receipt Paper */
+.paperReceiptCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  font-family: monospace;
+}
+
+.receiptTopHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.slipTypeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.timestampMuted {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.rawTextDisplay {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Right: Accurate Transaction Form Card */
+.formCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.formCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent-light) 100%);
+}
+
+.headerArea {
+  margin-bottom: 1.5rem;
+}
+
+.formTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.formTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.aiVerifiedPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background-color: var(--primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--primary-soft-strong);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+}
+
+.formSubtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0;
+}
+
+.formLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.formRowSideBySide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.inputField,
+.selectField,
+.inputFieldCurrency,
+.segmentedControl {
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.inputField,
+.selectField,
+.inputFieldCurrency {
+  width: 100%;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+.inputField:focus,
+.selectField:focus,
+.inputFieldCurrency:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.segmentedControl {
+  display: flex;
+  background-color: var(--background);
+  border: 1px solid var(--border-color);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  width: 100%;
+  align-items: stretch;
+}
+
+.segmentOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: calc(var(--radius-md) - 2px);
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition-fast);
+}
+
+.segmentActiveExpense {
+  background-color: var(--danger-soft);
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.segmentActiveIncome {
+  background-color: var(--success-soft);
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.selectField {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2rem;
+}
+
+.selectChevron {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.currencyInputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputFieldCurrency {
+  padding-right: 3.85rem;
+  font-weight: 700;
+}
+
+.currencyBadge {
+  position: absolute;
+  right: 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background-color: var(--surface-outline);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.submitBtn {
+  flex: 1;
+  height: 42px;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+}
+
+.submitBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.cancelBtn {
+  height: 42px;
+  padding: 0 1.15rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.cancelBtn:hover {
+  background-color: var(--surface-muted);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ==========================================================================
+   === SECTION 6: RESPONSIVENESS ===
+   ========================================================================== */
+@media (max-width: 900px) {
+  .scannerSplitGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .previewSection {
+    padding: 3.5rem 1rem;
+  }
+
+  .previewTitle {
+    font-size: 1.75rem;
+  }
+
+  .switcherBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sampleButtonGroup,
+  .methodToggleGroup {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .formRowSideBySide {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .buttonGroup {
+    flex-direction: column-reverse;
+  }
+
+  .submitBtn,
+  .cancelBtn {
+    width: 100%;
+  }
+}

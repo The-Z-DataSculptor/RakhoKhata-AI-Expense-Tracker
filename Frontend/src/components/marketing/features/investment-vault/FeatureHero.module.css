@@ -1,0 +1,231 @@
+/* ==========================================================================
+   === SECTION 1: HERO CONTAINER & BACKGROUND LIGHTING ===
+   ========================================================================== */
+.heroSection {
+  position: relative;
+  width: 100%;
+  padding: 6.5rem 1.5rem 3.5rem;
+  background-color: var(--bg-surface);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.heroGlowBackground {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 400px;
+  background: radial-gradient(
+    circle,
+    var(--primary-soft) 0%,
+    var(--primary-soft-faint) 60%,
+    transparent 100%
+  );
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.heroContainer {
+  position: relative;
+  max-width: 900px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   === SECTION 2: BADGE PILL & TYPOGRAPHY ===
+   ========================================================================== */
+.badgeWrapper {
+  margin-bottom: 1.5rem;
+}
+
+.badgePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  background-color: var(--primary-soft);
+  border: 1px solid var(--primary-soft-strong);
+  border-radius: 9999px;
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.badgePulseDot {
+  width: 7px;
+  height: 7px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--primary-soft-strong);
+  animation: pulseBeacon 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.heroTitle {
+  font-family: var(--font-navbar, inherit);
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  margin: 0 0 1.25rem;
+  max-width: 820px;
+}
+
+.heroDescription {
+  font-size: 1.12rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin: 0 0 2.25rem;
+}
+
+/* ==========================================================================
+   === SECTION 3: CTA BUTTONS & TRUST SIGNALS ===
+   ========================================================================== */
+.ctaGroup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2.75rem;
+}
+
+.primaryCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.6rem;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+}
+
+.primaryCtaBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.arrowIcon {
+  transition: var(--transition-fast);
+}
+
+.primaryCtaBtn:hover .arrowIcon {
+  transform: translateX(3px);
+}
+
+.secondaryCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 1.4rem;
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  transition: var(--transition-fast);
+}
+
+.secondaryCtaBtn:hover {
+  background-color: var(--surface-highlight);
+  border-color: var(--color-primary);
+}
+
+.trustBadgesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 750px;
+}
+
+.trustBadgeItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.checkIcon {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   === SECTION 4: ANIMATIONS & RESPONSIVENESS ===
+   ========================================================================== */
+@keyframes pulseBeacon {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Updated top padding from 4.5rem to 8rem to prevent navbar collision */
+  .heroSection {
+    padding: 8rem 1rem 2.25rem;
+  }
+
+  .heroTitle {
+    font-size: 2.05rem;
+  }
+
+  .heroDescription {
+    font-size: 0.96rem;
+    line-height: 1.55;
+    margin-bottom: 1.75rem;
+  }
+
+  .ctaGroup {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .primaryCtaBtn,
+  .secondaryCtaBtn {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    font-size: 0.92rem;
+  }
+
+  .trustBadgesRow {
+    gap: 0.75rem 1.25rem;
+    justify-content: center;
+  }
+
+  .trustBadgeItem {
+    font-size: 0.78rem;
+  }
+}

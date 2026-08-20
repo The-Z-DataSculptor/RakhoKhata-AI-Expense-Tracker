@@ -1,0 +1,174 @@
+
+/* D:\Developer\Expense-Tracker\Frontend\src\components\marketing\features\multi-currency-tracker\FeatureBenefits.module.css */
+/* ==========================================================================
+   === SECTION 1: BENEFITS WRAPPER & HEADER ===
+   ========================================================================== */
+.benefitsSection {
+  width: 100%;
+  padding: 5.5rem 1.5rem;
+  background-color: var(--bg-surface);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1120px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerBlock {
+  text-align: center;
+  max-width: 720px;
+  margin-bottom: 3.25rem;
+}
+
+.title {
+  font-family: var(--font-navbar, inherit);
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 0.85rem;
+}
+
+.subtitle {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 2: 3-COLUMN CARDS GRID ===
+   ========================================================================== */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.benefitCard {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+}
+
+.benefitCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary-soft-strong);
+}
+
+/* ==========================================================================
+   === SECTION 3: PROBLEM & SOLUTION BLOCKS ===
+   ========================================================================== */
+.problemBox {
+  padding: 1.6rem;
+  background-color: var(--danger-soft);
+  border-bottom: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.solutionBox {
+  padding: 1.6rem;
+  background-color: var(--success-soft);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.badgeHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.labelProblem {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-danger);
+  letter-spacing: 0.04em;
+}
+
+.iconProblem {
+  color: var(--color-danger);
+  flex-shrink: 0;
+}
+
+.labelSolution {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-success);
+  letter-spacing: 0.04em;
+}
+
+.iconSolution {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+.problemText {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+.solutionText {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   === SECTION 4: RESPONSIVENESS ===
+   ========================================================================== */
+@media (max-width: 992px) {
+  .cardsGrid {
+    grid-template-columns: 1fr;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .benefitsSection {
+    padding: 3.5rem 1rem;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .problemBox, 
+  .solutionBox {
+    padding: 1.25rem 1rem;
+  }
+
+  .problemText,
+  .solutionText {
+    font-size: 0.88rem;
+  }
+}

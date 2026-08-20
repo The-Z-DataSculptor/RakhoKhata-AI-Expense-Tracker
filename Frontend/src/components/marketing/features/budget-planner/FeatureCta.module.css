@@ -1,0 +1,125 @@
+/* ==========================================================================
+   === SECTION 1: CONTAINER & CARD ===
+   ========================================================================== */
+.ctaSection {
+  width: 100%;
+  padding: 5.5rem 1.5rem;
+  background-color: var(--bg-surface);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1040px;
+  width: 100%;
+}
+
+.ctaCard {
+  position: relative;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--surface-muted) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 4rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.glowLight {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 250px;
+  background: radial-gradient(
+    circle,
+    var(--primary-soft) 0%,
+    var(--primary-soft-faint) 60%,
+    transparent 100%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.title {
+  position: relative;
+  font-family: var(--font-navbar);
+  font-size: 2.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 1rem;
+  max-width: 680px;
+  z-index: 2;
+}
+
+.description {
+  position: relative;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 580px;
+  margin: 0 0 2.25rem;
+  z-index: 2;
+}
+
+.actionBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  font-size: 0.96rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.9rem 1.85rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+  z-index: 2;
+  margin-bottom: 2rem;
+}
+
+.actionBtn:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-2px);
+}
+
+.bulletsRow {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  z-index: 2;
+}
+
+.bulletItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.checkIcon {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .ctaSection { padding: 3.5rem 1rem; }
+  .ctaCard { padding: 3rem 1.25rem; }
+  .title { font-size: 1.75rem; }
+  .actionBtn { width: 100%; justify-content: center; }
+  .bulletsRow { gap: 0.75rem; flex-direction: column; }
+}

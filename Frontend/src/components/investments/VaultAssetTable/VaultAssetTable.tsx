@@ -3,7 +3,7 @@
 /* ==========================================================================
    === SECTION 1: IMPORTS & SYSTEM ICONS ===
    ========================================================================== */
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import { HydratedAsset } from "@/app/(dashboard)/dashboard/investment-vault/page";
 import styles from "./VaultAssetTable.module.css";
@@ -34,9 +34,6 @@ const PlusIcon = () => (
 );
 /* === SECTION 1 END === */
 
-/* ==========================================================================
-   === SECTION 2: TYPES & INTERFACES ===
-   ========================================================================== */
 interface SafeHistoryNode {
   id?: string;
   title?: string;
@@ -53,42 +50,231 @@ interface VaultAssetTableProps {
   onDeleteAsset: (id: string) => void;
   onEditClick?: (asset: HydratedAsset) => void;
   sourceCurrency: string;
-  /** Opens the add investment modal (used in empty state CTA) */
   onAddAssetClick?: () => void;
-}
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: HELPERS ===
-   ========================================================================== */
-function extractNoteFromUserNote(input?: string): string {
-  if (!input || typeof input !== "string") return "";
-
-  const trimmed = input.trim();
-  if (trimmed.startsWith("{")) {
-    try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (parsed !== null && typeof parsed === "object" && "rawNote" in parsed) {
-        const obj = parsed as Record<string, unknown>;
-        return typeof obj.rawNote === "string" ? obj.rawNote : "";
-      }
-      if (typeof parsed === "string") return parsed;
-    } catch {
-      return input;
-    }
-  }
-  return input;
 }
 
 function generateEntryId(idString?: string): string {
   if (!idString) return "0000";
-  const clean = idString.replace(/[^a-zA-Z0-9]/g, '');
+  const clean = idString.replace(/[^a-zA-Z0-9]/g, "");
   return clean.length >= 4 ? clean.slice(-4).toUpperCase() : clean.toUpperCase().padStart(4, "0");
 }
-/* === SECTION 3 END === */
 
 /* ==========================================================================
-   === SECTION 4: MAIN COMPONENT LOGIC & RENDER ===
+   === SECTION 2: MEMOIZED INDIVIDUAL ASSET ROW ===
+   ========================================================================== */
+interface AssetRowProps {
+  asset: HydratedAsset;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  onEdit?: (asset: HydratedAsset) => void;
+  onDelete: (id: string) => void;
+  sourceCurrency: string;
+}
+
+const MemoizedAssetRow = memo(function AssetRow({
+  asset,
+  isExpanded,
+  onToggle,
+  onEdit,
+  onDelete,
+  sourceCurrency,
+}: AssetRowProps) {
+  const { formatAmount, convertAmount } = useCurrency();
+
+  const safeQuantity = Number(asset.quantityOwned) || 0;
+  const safeInvested = Number(asset.totalInvested) || 0;
+  const averageCostPerUnit = safeQuantity > 0 ? safeInvested / safeQuantity : 0;
+  const safeHistory = Array.isArray(asset.history) ? asset.history : [];
+
+  return (
+    <div className={`${styles.assetCard} ${isExpanded ? styles.activeCard : ""}`}>
+      <div className={styles.rowGrid} onClick={() => onToggle(asset.id)}>
+        {/* Asset identity */}
+        <div className={styles.cell}>
+          <div className={styles.assetIdentity}>
+            <span className={styles.avatar}>{asset.icon || "🪙"}</span>
+            <div className={styles.identityTextStack}>
+              <h3 className={styles.assetName}>{asset.name || "Untitled Asset"}</h3>
+              <span className={styles.ticker}>{asset.symbol || "ASSET"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quantity */}
+        <div className={styles.cell}>
+          <div className={styles.dataStack}>
+            <span className={styles.primaryNumber}>
+              {safeQuantity} <span className={styles.inlineTickerSymbol}>{asset.symbol || ""}</span>
+            </span>
+            <span className={styles.secondaryLabel}>owned</span>
+          </div>
+        </div>
+
+        {/* Total Invested */}
+        <div className={styles.cell}>
+          <div className={styles.dataStack}>
+            <span className={styles.primaryValueNumber}>
+              {formatAmount(safeInvested, sourceCurrency)}
+            </span>
+            <span className={styles.secondarySpentLabel}>total spent</span>
+          </div>
+        </div>
+
+        {/* Average Cost per Unit */}
+        <div className={styles.cell}>
+          <div className={styles.dataStack}>
+            <span className={styles.primaryValueNumber}>
+              {formatAmount(averageCostPerUnit, sourceCurrency)}
+            </span>
+            <span className={styles.secondarySpentLabel}>per {asset.symbol || "unit"}</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className={styles.cell} style={{ justifyContent: "flex-end" }}>
+          <div className={styles.actionsGroup}>
+            {onEdit && (
+              <button
+                type="button"
+                className={styles.iconBtn}
+                title="Edit this item"
+                aria-label={`Edit ${asset.name || "asset"}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(asset);
+                }}
+              >
+                <PencilIcon />
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.iconBtn}
+              title="Delete this item"
+              aria-label={`Delete ${asset.name || "asset"}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(asset.id);
+              }}
+            >
+              <TrashIcon />
+            </button>
+            <div className={`${styles.accordionIndicatorArrow} ${isExpanded ? styles.arrowRotated : ""}`}>
+              <ChevronDownIcon />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* EXPANDED DRAWER */}
+      {isExpanded && (
+        <div className={styles.drawerContent}>
+          {/* Strategy Note */}
+          <div className={styles.journalMemoBox}>
+            <div className={styles.journalLeftBorder} />
+            <div className={styles.journalBody}>
+              <span className={styles.journalTitleBadge}>
+                <BookOpenIcon /> My Notes
+              </span>
+              <p className={styles.journalQuote}>
+                &quot;{asset.userNote || "No notes saved for this item yet."}&quot;
+              </p>
+            </div>
+          </div>
+
+          {/* Timeline Section */}
+          <div className={styles.historySection}>
+            <div className={styles.historySectionTitleLine}>
+              <HistoryIcon />
+              <h4 className={styles.historySectionTitle}>Activity History</h4>
+            </div>
+
+            <div className={styles.modernTimelineContainer}>
+              <div className={styles.timelineTrack} />
+
+              {safeHistory.length > 0 ? (
+                safeHistory.map((item, hIndex) => {
+                  const historyItem = item as unknown as SafeHistoryNode;
+                  const isInitial = historyItem.title?.includes("Initial");
+
+                  const rawQuantityNumber = parseFloat(String(historyItem.amountAtTime || "0"));
+                  const safeRawQuantity = isNaN(rawQuantityNumber) ? 0 : rawQuantityNumber;
+                  const rawInvested = Number(historyItem.investedAtTime || 0);
+
+                  let investedAmount = rawInvested;
+                  if (asset.originalCurrency && asset.originalCurrency !== sourceCurrency) {
+                    investedAmount = convertAmount(rawInvested, asset.originalCurrency, sourceCurrency);
+                  }
+
+                  const executionPrice = safeRawQuantity > 0 ? investedAmount / safeRawQuantity : 0;
+                  const uniqueHistoryKey = historyItem.id || `history-${hIndex}`;
+
+                  return (
+                    <div key={uniqueHistoryKey} className={styles.timelineNode}>
+                      <div className={`${styles.timelineDot} ${isInitial ? styles.dotInitial : styles.dotUpdate}`}>
+                        {isInitial ? <RocketIcon /> : <ActivityIcon />}
+                      </div>
+
+                      <div className={styles.timelineContentCard}>
+                        <div className={styles.nodeHeaderRow}>
+                          <div className={styles.nodeTitleBlock}>
+                            <span className={styles.nodeTitle}>{historyItem.title || "Item Updated"}</span>
+                            <span className={styles.nodeHashTag}>ID: {generateEntryId(historyItem.id)}</span>
+                          </div>
+                          <span className={styles.nodeDateBadge}>{historyItem.date || "N/A"}</span>
+                        </div>
+
+                        <div className={styles.nodeNoteBox}>
+                          <span className={styles.memoLabel}>NOTE:</span>
+                          <span className={styles.memoText}>{historyItem.note || "You updated this item."}</span>
+                        </div>
+
+                        <div className={styles.receiptMetricsGrid}>
+                          <div className={styles.receiptCell}>
+                            <span className={styles.receiptLabel}>Amount Owned</span>
+                            <span className={styles.receiptValue}>{historyItem.amountAtTime ?? "0"}</span>
+                          </div>
+
+                          <div className={styles.receiptCell}>
+                            <span className={styles.receiptLabel}>Total Spent</span>
+                            <span className={styles.receiptValue}>
+                              {historyItem.investedAtTime !== undefined
+                                ? formatAmount(investedAmount, sourceCurrency)
+                                : "—"}
+                            </span>
+                          </div>
+
+                          <div className={styles.receiptCell}>
+                            <span className={styles.receiptLabel}>Price Per Item</span>
+                            <span className={styles.receiptValue}>
+                              {executionPrice > 0
+                                ? formatAmount(executionPrice, sourceCurrency)
+                                : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className={styles.timelineNode}>
+                  <div className={`${styles.timelineDot} ${styles.dotEmpty}`} />
+                  <div className={styles.timelineContentCard}>
+                    <p className={styles.emptyTimelineText}>No history found for this item.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+/* ==========================================================================
+   === SECTION 3: MAIN TABLE COMPONENT ===
    ========================================================================== */
 export function VaultAssetTable({
   assets,
@@ -97,12 +283,10 @@ export function VaultAssetTable({
   sourceCurrency,
   onAddAssetClick,
 }: VaultAssetTableProps) {
-  const { formatAmount, convertAmount } = useCurrency();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const safeAssets = Array.isArray(assets) ? assets : [];
 
-  // ---------------------- EMPTY STATE ----------------------
   if (safeAssets.length === 0) {
     return (
       <section className={styles.container}>
@@ -131,7 +315,6 @@ export function VaultAssetTable({
     );
   }
 
-  // ---------------------- ASSET LIST (original) ----------------------
   return (
     <section className={styles.container}>
       <div className={styles.tableHeader}>
@@ -143,210 +326,18 @@ export function VaultAssetTable({
       </div>
 
       <div className={styles.assetList}>
-        {safeAssets.map((asset, index) => {
-          const uniqueAssetKey = asset.id || `asset-row-${index}`;
-          const isExpanded = expandedId === asset.id;
-
-          const safeQuantity = Number(asset.quantityOwned) || 0;
-          const safeInvested = Number(asset.totalInvested) || 0;
-
-          const averageCostPerUnit = safeQuantity > 0 ? safeInvested / safeQuantity : 0;
-          const displayNote = extractNoteFromUserNote(asset.userNote);
-          const safeHistory = Array.isArray(asset.history) ? asset.history : [];
-
-          return (
-            <div
-              key={uniqueAssetKey}
-              className={`${styles.assetCard} ${isExpanded ? styles.activeCard : ""}`}
-            >
-              <div
-                className={styles.rowGrid}
-                onClick={() => setExpandedId(isExpanded ? null : asset.id)}
-              >
-                {/* Asset identity */}
-                <div className={styles.cell}>
-                  <div className={styles.assetIdentity}>
-                    <span className={styles.avatar}>{asset.icon || "🪙"}</span>
-                    <div className={styles.identityTextStack}>
-                      <h3 className={styles.assetName}>{asset.name || "Untitled Asset"}</h3>
-                      <span className={styles.ticker}>{asset.symbol || "ASSET"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quantity */}
-                <div className={styles.cell}>
-                  <div className={styles.dataStack}>
-                    <span className={styles.primaryNumber}>
-                      {safeQuantity} <span className={styles.inlineTickerSymbol}>{asset.symbol || ""}</span>
-                    </span>
-                    <span className={styles.secondaryLabel}>owned</span>
-                  </div>
-                </div>
-
-                {/* Total Invested */}
-                <div className={styles.cell}>
-                  <div className={styles.dataStack}>
-                    <span className={styles.primaryValueNumber}>
-                      {formatAmount(safeInvested, sourceCurrency)}
-                    </span>
-                    <span className={styles.secondarySpentLabel}>total spent</span>
-                  </div>
-                </div>
-
-                {/* Average Cost per Unit */}
-                <div className={styles.cell}>
-                  <div className={styles.dataStack}>
-                    <span className={styles.primaryValueNumber}>
-                      {formatAmount(averageCostPerUnit, sourceCurrency)}
-                    </span>
-                    <span className={styles.secondarySpentLabel}>per {asset.symbol || "unit"}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className={styles.cell} style={{ justifyContent: "flex-end" }}>
-                  <div className={styles.actionsGroup}>
-                    {onEditClick && (
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        title="Edit this item"
-                        aria-label={`Edit ${asset.name || "asset"}`}
-                        onClick={(e) => { e.stopPropagation(); onEditClick(asset); }}
-                      >
-                        <PencilIcon />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.iconBtn}
-                      title="Delete this item"
-                      aria-label={`Delete ${asset.name || "asset"}`}
-                      onClick={(e) => { e.stopPropagation(); onDeleteAsset(asset.id); }}
-                    >
-                      <TrashIcon />
-                    </button>
-                    <div className={`${styles.accordionIndicatorArrow} ${isExpanded ? styles.arrowRotated : ""}`}>
-                      <ChevronDownIcon />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* EXPANDED DRAWER */}
-              {isExpanded && (
-                <div className={styles.drawerContent}>
-                  
-                  {/* Strategy Note */}
-                  <div className={styles.journalMemoBox}>
-                    <div className={styles.journalLeftBorder} />
-                    <div className={styles.journalBody}>
-                      <span className={styles.journalTitleBadge}>
-                        <BookOpenIcon /> My Notes
-                      </span>
-                      <p className={styles.journalQuote}>
-                        &quot;{displayNote || "No notes saved for this item yet."}&quot;
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Timeline Section */}
-                  <div className={styles.historySection}>
-                    <div className={styles.historySectionTitleLine}>
-                      <HistoryIcon />
-                      <h4 className={styles.historySectionTitle}>Activity History</h4>
-                    </div>
-
-                    <div className={styles.modernTimelineContainer}>
-                      <div className={styles.timelineTrack} />
-
-                      {safeHistory.length > 0 ? (
-                        safeHistory.map((item, hIndex) => {
-                          const historyItem = item as unknown as SafeHistoryNode;
-                          const isInitial = historyItem.title?.includes("Initial");
-                          
-                          const rawQuantityNumber = parseFloat(String(historyItem.amountAtTime || "0"));
-                          const safeRawQuantity = isNaN(rawQuantityNumber) ? 0 : rawQuantityNumber;
-                          
-                          const rawInvested = Number(historyItem.investedAtTime || 0);
-
-                          // WHY THIS FIX WAS MADE: Dynamically converts historical invested capital 
-                          // to the user's active display currency if originalCurrency differs.
-                          let investedAmount = rawInvested;
-                          if (asset.originalCurrency && asset.originalCurrency !== sourceCurrency) {
-                            investedAmount = convertAmount(rawInvested, asset.originalCurrency, sourceCurrency);
-                          }
-
-                          const executionPrice = safeRawQuantity > 0 ? investedAmount / safeRawQuantity : 0;
-                          const uniqueHistoryKey = historyItem.id || `history-${hIndex}`;
-                          
-                          return (
-                            <div key={uniqueHistoryKey} className={styles.timelineNode}>
-                              <div className={`${styles.timelineDot} ${isInitial ? styles.dotInitial : styles.dotUpdate}`}>
-                                {isInitial ? <RocketIcon /> : <ActivityIcon />}
-                              </div>
-
-                              <div className={styles.timelineContentCard}>
-                                <div className={styles.nodeHeaderRow}>
-                                  <div className={styles.nodeTitleBlock}>
-                                    <span className={styles.nodeTitle}>{historyItem.title || "Item Updated"}</span>
-                                    <span className={styles.nodeHashTag}>ID: {generateEntryId(historyItem.id)}</span>
-                                  </div>
-                                  <span className={styles.nodeDateBadge}>{historyItem.date || "N/A"}</span>
-                                </div>
-
-                                <div className={styles.nodeNoteBox}>
-                                  <span className={styles.memoLabel}>NOTE:</span>
-                                  <span className={styles.memoText}>{historyItem.note || "You updated this item."}</span>
-                                </div>
-
-                                <div className={styles.receiptMetricsGrid}>
-                                  <div className={styles.receiptCell}>
-                                    <span className={styles.receiptLabel}>Amount Owned</span>
-                                    <span className={styles.receiptValue}>{historyItem.amountAtTime ?? "0"}</span>
-                                  </div>
-                                  
-                                  <div className={styles.receiptCell}>
-                                    <span className={styles.receiptLabel}>Total Spent</span>
-                                    <span className={styles.receiptValue}>
-                                      {historyItem.investedAtTime !== undefined
-                                        ? formatAmount(investedAmount, sourceCurrency)
-                                        : "—"}
-                                    </span>
-                                  </div>
-
-                                  <div className={styles.receiptCell}>
-                                    <span className={styles.receiptLabel}>Price Per Item</span>
-                                    <span className={styles.receiptValue}>
-                                      {executionPrice > 0
-                                        ? formatAmount(executionPrice, sourceCurrency)
-                                        : "—"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className={styles.timelineNode}>
-                          <div className={`${styles.timelineDot} ${styles.dotEmpty}`} />
-                          <div className={styles.timelineContentCard}>
-                            <p className={styles.emptyTimelineText}>No history found for this item.</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {safeAssets.map((asset) => (
+          <MemoizedAssetRow
+            key={asset.id}
+            asset={asset}
+            isExpanded={expandedId === asset.id}
+            onToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
+            onEdit={onEditClick}
+            onDelete={onDeleteAsset}
+            sourceCurrency={sourceCurrency}
+          />
+        ))}
       </div>
     </section>
   );
 }
-/* === SECTION 4 END === */

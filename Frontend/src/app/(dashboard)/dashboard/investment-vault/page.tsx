@@ -65,6 +65,38 @@ interface ParsedStrategyData {
   rawNote: string;
   changeLog: InvestmentHistoryNode[];
 }
+
+/** Fast single-pass safe JSON parser to avoid main-thread blocking */
+function parseStrategyData(rawNote: string | undefined): ParsedStrategyData {
+  const fallback: ParsedStrategyData = {
+    displayName: "",
+    displayIcon: "💰",
+    rawNote: "",
+    changeLog: [],
+  };
+
+  if (!rawNote || typeof rawNote !== "string") return fallback;
+  const trimmed = rawNote.trim();
+  if (!trimmed.startsWith("{")) {
+    return { ...fallback, rawNote: trimmed };
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return {
+        displayName: typeof parsed.displayName === "string" ? parsed.displayName : "",
+        displayIcon: typeof parsed.displayIcon === "string" ? parsed.displayIcon : "💰",
+        rawNote: typeof parsed.rawNote === "string" ? parsed.rawNote : "",
+        changeLog: Array.isArray(parsed.changeLog) ? parsed.changeLog : [],
+      };
+    }
+  } catch {
+    return { ...fallback, rawNote: trimmed };
+  }
+
+  return fallback;
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -76,17 +108,16 @@ export default function InvestmentVaultPage() {
 
   const [isVaultUnlocked, setIsVaultUnlocked] = useState<boolean>(false);
   const [hasDatabasePin, setHasDatabasePin] = useState<boolean>(true);
-  const [assets, setAssets] = useState<HydratedAsset[]>([]);
+  const [rawInvestments, setRawInvestments] = useState<BackendInvestmentItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const [isSavingAsset, setIsSavingAsset] = useState<boolean>(false);
-
   const [editingAsset, setEditingAsset] = useState<HydratedAsset | null>(null);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState<boolean>(false);
 
-  // Verify whether the vault requires PIN authentication on initial mount
+  // Security status sync
   useEffect(() => {
     let isMounted = true;
     const verifySecurityStatus = async () => {
@@ -106,7 +137,7 @@ export default function InvestmentVaultPage() {
     return () => { isMounted = false; };
   }, [refreshKey]);
 
-  // Fetch vault holdings securely when workspace and lock state are validated
+  // Fetch data
   useEffect(() => {
     let isMounted = true;
     if (!activeWorkspaceId || (hasDatabasePin && !isVaultUnlocked)) {
@@ -120,77 +151,7 @@ export default function InvestmentVaultPage() {
 
         if (isMounted) {
           const typedResponse = response as { investments: BackendInvestmentItem[] };
-          const fetchedAssets = (typedResponse.investments || []).map((item: BackendInvestmentItem) => {
-            const parsedDetails: ParsedStrategyData = {
-              displayName: "",
-              displayIcon: "💰",
-              rawNote: "",
-              changeLog: []
-            };
-
-            const rawData: unknown = item.strategyNote;
-
-            try {
-              if (typeof rawData === 'string' && rawData.trim()) {
-                let currentData: unknown = rawData;
-                let parseDepth = 0;
-                
-                while (typeof currentData === 'string' && parseDepth < 3) {
-                  const trimmed = currentData.trim();
-                  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-                    break;
-                  }
-                  currentData = JSON.parse(currentData) as unknown;
-                  parseDepth++;
-                }
-
-                if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
-                  const safeData = currentData as Record<string, unknown>;
-                  parsedDetails.displayName = typeof safeData.displayName === 'string' ? safeData.displayName : "";
-                  parsedDetails.displayIcon = typeof safeData.displayIcon === 'string' ? safeData.displayIcon : "💰";
-                  parsedDetails.rawNote = typeof safeData.rawNote === 'string' ? safeData.rawNote : "";
-                  parsedDetails.changeLog = Array.isArray(safeData.changeLog) ? (safeData.changeLog as InvestmentHistoryNode[]) : [];
-                }
-              }
-            } catch (jsonError) {
-              console.error("Failed to parse strategy note safely:", jsonError);
-            }
-
-            const rawQuantity = Number(item.quantity) || 0;
-            const originalAmount = Number(item.originalAmount || 0);
-            const originalCurrency = item.originalCurrency || "USD";
-            const baseAmountUSD = Number(item.baseAmountUSD || 0);
-
-            let localizedTotalInvested: number;
-            if (originalCurrency === currency) {
-              localizedTotalInvested = originalAmount;
-            } else {
-              localizedTotalInvested = convertAmount(baseAmountUSD, "USD", currency);
-            }
-
-            const localizedUnitPrice = rawQuantity > 0 ? Number((localizedTotalInvested / rawQuantity).toFixed(4)) : 0;
-
-            return {
-              id: item.id,
-              workspaceId: item.workspaceId,
-              symbol: item.assetSymbol,
-              categoryClass: item.categoryClass,
-              isCustomProfile: item.isCustomProfile,
-              totalInvested: localizedTotalInvested,
-              quantityOwned: rawQuantity,
-              currentPrice: localizedUnitPrice,
-              capitalCurrency: originalCurrency,
-              name: parsedDetails.displayName || item.name || `${item.assetSymbol} Position`,
-              icon: parsedDetails.displayIcon || item.icon || "💰",
-              userNote: parsedDetails.rawNote || "",
-              history: parsedDetails.changeLog || [],
-              originalAmount,
-              originalCurrency,
-              baseAmountUSD,
-            };
-          });
-
-          setAssets(fetchedAssets);
+          setRawInvestments(typedResponse.investments || []);
         }
       } catch (error) {
         console.error("Fetch holdings error:", error);
@@ -205,7 +166,47 @@ export default function InvestmentVaultPage() {
     fetchVaultHoldings();
 
     return () => { isMounted = false; };
-  }, [activeWorkspaceId, refreshKey, isVaultUnlocked, hasDatabasePin, currency, convertAmount]);
+  }, [activeWorkspaceId, refreshKey, isVaultUnlocked, hasDatabasePin]);
+
+  // Memoized asset hydration (recomputes instantly on currency switch without network refetch)
+  const assets: HydratedAsset[] = useMemo(() => {
+    return rawInvestments.map((item) => {
+      const parsedDetails = parseStrategyData(item.strategyNote);
+      const rawQuantity = Number(item.quantity) || 0;
+      const originalAmount = Number(item.originalAmount || 0);
+      const originalCurrency = item.originalCurrency || "USD";
+      const baseAmountUSD = Number(item.baseAmountUSD || 0);
+
+      let localizedTotalInvested: number;
+      if (originalCurrency === currency) {
+        localizedTotalInvested = originalAmount;
+      } else {
+        localizedTotalInvested = convertAmount(baseAmountUSD, "USD", currency);
+      }
+
+      const localizedUnitPrice =
+        rawQuantity > 0 ? Number((localizedTotalInvested / rawQuantity).toFixed(4)) : 0;
+
+      return {
+        id: item.id,
+        workspaceId: item.workspaceId,
+        symbol: item.assetSymbol,
+        categoryClass: item.categoryClass,
+        isCustomProfile: item.isCustomProfile,
+        totalInvested: localizedTotalInvested,
+        quantityOwned: rawQuantity,
+        currentPrice: localizedUnitPrice,
+        capitalCurrency: originalCurrency,
+        name: parsedDetails.displayName || item.name || `${item.assetSymbol} Position`,
+        icon: parsedDetails.displayIcon || item.icon || "💰",
+        userNote: parsedDetails.rawNote || "",
+        history: parsedDetails.changeLog.length > 0 ? parsedDetails.changeLog : (item.history || []),
+        originalAmount,
+        originalCurrency,
+        baseAmountUSD,
+      };
+    });
+  }, [rawInvestments, currency, convertAmount]);
 
   const handleEditClick = useCallback((asset: HydratedAsset) => {
     setEditingAsset(asset);

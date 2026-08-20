@@ -1,0 +1,180 @@
+/* ==========================================================================
+   === SECTION 1: CTA SECTION & BANNER CARD ===
+   ========================================================================== */
+.ctaSection {
+  width: 100%;
+  padding: 5.5rem 1.5rem 6.5rem;
+  background-color: var(--bg-surface);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1080px;
+  width: 100%;
+}
+
+.ctaCard {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    var(--bg-surface) 0%,
+    var(--surface-muted) 50%,
+    var(--surface-highlight) 100%
+  );
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 4.5rem 2rem;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cardGlow {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(
+    circle,
+    var(--primary-soft) 0%,
+    var(--primary-soft-faint) 70%,
+    transparent 100%
+  );
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.cardContent {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ==========================================================================
+   === SECTION 2: TYPOGRAPHY & BUTTONS ===
+   ========================================================================== */
+.title {
+  font-family: var(--font-navbar, inherit);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 1.25rem;
+}
+
+.description {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0 0 2.5rem;
+  max-width: 600px;
+}
+
+.actionGroup {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2.25rem;
+  width: 100%;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1rem 2rem;
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-fast);
+}
+
+.ctaButton:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-2px);
+}
+
+.arrowIcon {
+  transition: var(--transition-fast);
+}
+
+.ctaButton:hover .arrowIcon {
+  transform: translateX(4px);
+}
+
+/* ==========================================================================
+   === SECTION 3: GUARANTEE TRUST ROW ===
+   ========================================================================== */
+.guaranteeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.guaranteeItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.checkIcon {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   === SECTION 4: RESPONSIVENESS ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .ctaSection {
+    padding: 3.5rem 1rem 4.5rem;
+  }
+
+  .ctaCard {
+    padding: 3rem 1.25rem;
+    border-radius: 18px;
+  }
+
+  .title {
+    font-size: 1.85rem;
+  }
+
+  .description {
+    font-size: 0.96rem;
+    margin-bottom: 2rem;
+  }
+
+  .ctaButton {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    font-size: 0.95rem;
+  }
+
+  .guaranteeRow {
+    gap: 0.85rem;
+    flex-direction: column;
+  }
+
+  .guaranteeItem {
+    font-size: 0.82rem;
+  }
+}

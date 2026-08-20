@@ -1,0 +1,459 @@
+/* ==========================================================================
+   === SECTION 1: PREVIEW CONTAINER & HEADERS ===
+   ========================================================================== */
+.previewSection {
+  width: 100%;
+  padding: 4.5rem 1.5rem;
+  background-color: var(--surface-muted);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1080px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerBlock {
+  text-align: center;
+  max-width: 720px;
+  margin-bottom: 2.25rem;
+}
+
+.interactiveIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.globeIcon {
+  color: var(--color-primary);
+}
+
+.previewTitle {
+  font-family: var(--font-navbar, inherit);
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 0.85rem;
+}
+
+.previewSubtitle {
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ==========================================================================
+   === SECTION 2: INTERACTIVE SWITCHER BAR ===
+   ========================================================================== */
+.switcherBar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.switchLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.toggleGroup {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface);
+  padding: 0.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  gap: 0.35rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.currencyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.95rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.currencyBtn:hover {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.currencyBtnActive {
+  background-color: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
+  box-shadow: 0 2px 8px var(--primary-soft-strong);
+}
+
+.checkMini {
+  margin-left: 0.15rem;
+}
+
+/* ==========================================================================
+   === SECTION 3: MOCKUP FRAME & DASHBOARD UI ===
+   ========================================================================== */
+.mockupFrame {
+  width: 100%;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.windowTopBar {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
+  gap: 1.25rem;
+}
+
+.windowControls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.circleDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dotRed { background-color: var(--color-danger); }
+.dotYellow { background-color: var(--color-warning); }
+.dotGreen { background-color: var(--color-success); }
+
+.windowUrlField {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  flex: 1;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboardBody {
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background-color: var(--background);
+}
+
+.workspaceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.activeWorkspaceBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.exchangeRatePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background-color: var(--primary-soft);
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--primary-soft-strong);
+}
+
+.livePulse {
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-success);
+  border-radius: 50%;
+  animation: pulseBeacon 2s infinite;
+}
+
+/* 3 CARDS */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.metricCard {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.highlightCard {
+  background-color: var(--surface-highlight);
+  border-color: var(--primary-soft-strong);
+}
+
+.metricLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.metricIconBox {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconGreen { background-color: var(--success-soft); color: var(--color-success); }
+.iconRed { background-color: var(--danger-soft); color: var(--color-danger); }
+.iconPurple { background-color: var(--primary-soft); color: var(--color-primary); }
+
+.metricValue {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0.35rem 0 0.1rem;
+}
+
+.highlightText {
+  color: var(--color-primary);
+}
+
+.metricMetaText {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* LEDGER TABLE */
+.ledgerSection {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ledgerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--surface-muted);
+}
+
+.ledgerTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.autoConvertedBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.txTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.82rem;
+}
+
+.txTable th {
+  padding: 0.75rem 1.25rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--surface-muted);
+}
+
+.txTable td {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.txTable tr:last-child td {
+  border-bottom: none;
+}
+
+.txNameCell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  color: var(--text-primary) !important;
+}
+
+.txTypeIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.txGreen { background-color: var(--color-success); }
+.txRed { background-color: var(--color-danger); }
+
+.categoryBadge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background-color: var(--surface-outline);
+  color: var(--color-primary);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.originalCodeCell {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.txAmountCell {
+  font-weight: 700;
+  text-align: right;
+}
+
+.amountIncome { color: var(--color-success); }
+.amountExpense { color: var(--color-danger); }
+
+@keyframes pulseBeacon {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* ==========================================================================
+   === SECTION 4: RESPONSIVENESS ===
+   ========================================================================== */
+@media (max-width: 768px) {
+  .previewSection {
+    padding: 3rem 1rem;
+  }
+
+  .previewTitle {
+    font-size: 1.75rem;
+  }
+
+  .previewSubtitle {
+    font-size: 0.92rem;
+  }
+
+  .switcherBar {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .toggleGroup {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .currencyBtn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .dashboardBody {
+    padding: 1rem;
+    gap: 1.15rem;
+  }
+
+  .metricsGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .metricCard {
+    padding: 1rem;
+  }
+
+  .metricValue {
+    font-size: 1.4rem;
+  }
+
+  .workspaceRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .exchangeRatePill {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .txTable th, 
+  .txTable td {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.78rem;
+  }
+}

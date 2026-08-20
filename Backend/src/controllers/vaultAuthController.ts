@@ -53,7 +53,6 @@ function isValidPinFormat(pin: unknown): pin is string {
 
 /**
  * GET /api/auth/vault/pin-status
- * Checks whether the logged-in user currently has a vault PIN configured.
  */
 export const checkVaultPinStatus = async (
   req: AuthenticatedRequest,
@@ -76,8 +75,7 @@ export const checkVaultPinStatus = async (
       return;
     }
 
-    const hasPin = Boolean(user.vaultPin);
-    res.status(200).json({ hasPin });
+    res.status(200).json({ hasPin: Boolean(user.vaultPin) });
   } catch (error: unknown) {
     console.error("Check Vault PIN Error:", error);
     res.status(500).json(buildErrorResponse("Unable to verify PIN status."));
@@ -86,7 +84,6 @@ export const checkVaultPinStatus = async (
 
 /**
  * POST /api/auth/vault/pin-setup
- * Configures a new 4-digit PIN, requiring current PIN verification if one is already set.
  */
 export const setupVaultPin = async (
   req: AuthenticatedRequest,
@@ -150,7 +147,6 @@ export const setupVaultPin = async (
 
 /**
  * POST /api/auth/vault/pin-verify
- * Verifies a 4-digit PIN against the user's stored bcrypt hash.
  */
 export const verifyVaultPin = async (
   req: AuthenticatedRequest,
@@ -204,7 +200,6 @@ export const verifyVaultPin = async (
 
 /**
  * POST /api/auth/vault/pin-disable
- * Removes the vault PIN after verifying the user's current PIN for security.
  */
 export const disableVaultPin = async (
   req: AuthenticatedRequest,
@@ -267,7 +262,6 @@ export const disableVaultPin = async (
 
 /**
  * POST /api/auth/vault/pin-request-reset
- * Generates a single-use tokenized link and emails it to the user.
  */
 export const requestVaultPinReset = async (
   req: AuthenticatedRequest,
@@ -290,14 +284,13 @@ export const requestVaultPinReset = async (
       return;
     }
 
-    // Remove old tokens – log errors instead of swallowing them
     await prisma.verificationToken.deleteMany({
       where: { identifier: user.email, type: "PASSWORD_RESET" },
     }).catch((err) => console.error("Verification token cleanup error:", err));
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // Expires in 15 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.verificationToken.create({
       data: {
@@ -323,7 +316,7 @@ export const requestVaultPinReset = async (
 
 /**
  * POST /api/auth/vault/pin-reset-confirm
- * Resets the Vault PIN using the single-use token received in email.
+ * Optimized to perform single-transaction update and immediately trigger notifications without extra queries.
  */
 export const resetVaultPinWithToken = async (
   req: AuthenticatedRequest,
@@ -351,17 +344,16 @@ export const resetVaultPinWithToken = async (
     }
 
     if (new Date() > tokenRecord.expiresAt) {
-      // Delete expired token with logging
       await prisma.verificationToken.delete({ where: { id: tokenRecord.id } })
         .catch((err) => console.error("Verification token cleanup error:", err));
       res.status(400).json(buildErrorResponse("Reset link expired. Please request a new one."));
       return;
     }
 
-    // Move user lookup inside the transaction to avoid race conditions
     const hashedPin = await bcrypt.hash(newPin, BCRYPT_SALT_ROUNDS);
 
-    await prisma.$transaction(async (tx) => {
+    // Atomically update PIN, delete single-use token, and return user ID in 1 step
+    const updatedUserId = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { email: tokenRecord.identifier },
         select: { id: true },
@@ -379,16 +371,14 @@ export const resetVaultPinWithToken = async (
       await tx.verificationToken.delete({
         where: { id: tokenRecord.id },
       });
+
+      return user.id;
     });
 
-    // Notification after transaction success
-    const user = await prisma.user.findUnique({
-      where: { email: tokenRecord.identifier },
-      select: { id: true },
-    });
-    if (user) {
-      await createVaultPinResetNotification(user.id);
-    }
+    // Notify asynchronously
+    createVaultPinResetNotification(updatedUserId).catch((err) =>
+      console.error("Async notification error:", err)
+    );
 
     res.status(200).json({
       success: true,
@@ -403,4 +393,3 @@ export const resetVaultPinWithToken = async (
     res.status(500).json(buildErrorResponse("Failed to reset vault PIN."));
   }
 };
-/* === SECTION 2 END === */

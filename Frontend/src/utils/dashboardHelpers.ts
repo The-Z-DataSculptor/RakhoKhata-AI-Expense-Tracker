@@ -5,13 +5,12 @@
    ========================================================================== */
 import { TimePeriod } from "@/components/dashboard/TimeSwitcher/TimeSwitcher";
 
-// ---------- Core domain types ----------
 export interface Transaction {
   id: string;
-  originalAmount: number;   // exact amount entered by the user
-  originalCurrency: string; // e.g., "PKR"
-  baseAmountUSD: number;    // immutable USD anchor
-  amount?: number;          // legacy field (kept for backward compatibility)
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmountUSD: number;
+  amount?: number;
   type: "INCOME" | "EXPENSE";
   description: string;
   date: string;
@@ -47,18 +46,17 @@ export interface DashboardMetrics {
 
 export interface CategoryBreakdownItem {
   name: string;
-  value: number;   // converted to workspace currency
+  value: number;
   color: string;
   isFixed: boolean;
 }
 
 export interface CashFlowDataPoint {
   label: string;
-  Income: number;   // converted to workspace currency
-  Expenses: number; // converted to workspace currency
+  Income: number;
+  Expenses: number;
 }
 
-// Type alias for the currency converter function
 export type ConvertFn = (amount: number, from: string, to: string) => number;
 /* === SECTION 1 END === */
 
@@ -71,31 +69,36 @@ function getCurrentMonthRange(): { start: Date; end: Date } {
   const year = now.getFullYear();
   const month = now.getMonth();
   const start = new Date(year, month, 1);
-  const end = new Date(year, month + 1, 0);
+  const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
   return { start, end };
 }
 
+/**
+ * FIX #3: For 7d and 14d, accurately look back 7 or 14 days from today 
+ * rather than hardcoding the 1st through 7th of the calendar month.
+ */
 function getPeriodDateRange(period: TimePeriod): {
   start: Date;
   end: Date;
 } | null {
-  if (period === "all") return null; 
+  if (period === "all") return null;
+
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const start = new Date(year, month, 1);
-  let dayEnd: number;
-  
-  switch (period) {
-    case "7d": dayEnd = 7; break;
-    case "14d": dayEnd = 14; break;
-    case "30d": dayEnd = 30; break;
-    default: dayEnd = 30;
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  if (period === "7d") {
+    start.setDate(start.getDate() - 6); // Look back 7 rolling days
+  } else if (period === "14d") {
+    start.setDate(start.getDate() - 13); // Look back 14 rolling days
+  } else if (period === "30d") {
+    // Current calendar month range
+    return getCurrentMonthRange();
   }
-  
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const actualEnd = Math.min(dayEnd, lastDay);
-  const end = new Date(year, month, actualEnd, 23, 59, 59);
+
   return { start, end };
 }
 
@@ -105,7 +108,7 @@ function getPeriodDaysAndMonthDays(period: TimePeriod): {
 } {
   const { start, end } = getCurrentMonthRange();
   const monthDays =
-    Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
   switch (period) {
     case "7d": return { periodDays: 7, monthDays };
@@ -118,8 +121,8 @@ function getPeriodDaysAndMonthDays(period: TimePeriod): {
 
 export function getPeriodLabel(period: TimePeriod): string {
   switch (period) {
-    case "7d": return "this week";
-    case "14d": return "in the first half";
+    case "7d": return "past 7 days";
+    case "14d": return "past 14 days";
     case "30d": return "this month";
     case "all": return "overall";
     default: return "this month";
@@ -148,7 +151,7 @@ export function filterTransactionsByPeriod(
 ): Transaction[] {
   const safeTransactions = transactions || [];
   const range = getPeriodDateRange(period);
-  if (!range) return safeTransactions; 
+  if (!range) return safeTransactions;
   return filterTransactionsByDateRange(safeTransactions, range.start, range.end);
 }
 
@@ -161,7 +164,6 @@ function isFixedExpense(tx: Transaction): boolean {
   );
 }
 
-/** Computes metrics correctly standardizing to the workspace currency */
 export function computeMetrics(
   transactions: Transaction[],
   period: TimePeriod,
@@ -179,8 +181,8 @@ export function computeMetrics(
 
   (monthTxs || []).forEach((tx) => {
     const rawValue = Number(tx.originalAmount);
-    const value = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
-      ? rawValue 
+    const value = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase()
+      ? rawValue
       : convertAmount(rawValue, tx.originalCurrency, workspaceCurrency);
 
     if (tx.type === "INCOME") {
@@ -202,11 +204,11 @@ export function computeMetrics(
 
   if (period === "all") {
     let totalIncome = 0, totalExpenses = 0, totalFixed = 0, totalFlexible = 0;
-    
+
     safeTransactions.forEach((tx) => {
       const rawValue = Number(tx.originalAmount);
-      const value = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
-        ? rawValue 
+      const value = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase()
+        ? rawValue
         : convertAmount(rawValue, tx.originalCurrency, workspaceCurrency);
 
       if (tx.type === "INCOME") totalIncome += value;
@@ -227,13 +229,13 @@ export function computeMetrics(
     const { periodDays, monthDays } = getPeriodDaysAndMonthDays(period);
     const scale = periodDays / monthDays;
     const round = (n: number) => Math.round(n * 100) / 100;
-    
+
     actualIncome = round(monthIncome * scale);
     actualExpenses = round(monthExpenses * scale);
     actualFixed = round(monthFixed * scale);
     actualFlexible = round(monthFlexible * scale);
     actualSafe = round(monthSafe * scale);
-    
+
     projectedIncome = monthIncome;
     projectedExpenses = monthExpenses;
     projectedFixed = monthFixed;
@@ -257,7 +259,6 @@ export function computeMetrics(
   };
 }
 
-/** Groups expenses standardizing to workspace currency */
 export function computeCategoryBreakdown(
   transactions: Transaction[],
   workspaceCurrency: string,
@@ -271,9 +272,9 @@ export function computeCategoryBreakdown(
     const name = tx.category?.name || "Uncategorized";
     const color = tx.category?.color || "var(--text-muted)";
     const rawAmount = Number(tx.originalAmount);
-    
-    const amount = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
-      ? rawAmount 
+
+    const amount = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase()
+      ? rawAmount
       : convertAmount(rawAmount, tx.originalCurrency, workspaceCurrency);
 
     const existing = categoryMap.get(name);
@@ -303,10 +304,14 @@ function getWeekNumber(date: Date): number {
   return Math.ceil((days + firstDayOfYear.getDay() + 1) / 7);
 }
 
+/**
+ * FIX #2: Corrected day ordering so index 0 corresponds to Sunday (`getDay()`), 
+ * matching standard JS Date indexing.
+ */
 function sortGroupKeys(groups: Map<string, { income: number; expenses: number }>, groupBy: "day" | "week" | "month"): string[] {
   const keys = Array.from(groups.keys());
   if (groupBy === "day") {
-    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const dayOrder = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return keys.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
   }
   if (groupBy === "month") {
@@ -325,7 +330,7 @@ export function computeCashFlowData(
   const safeTransactions = transactions || [];
   const range = getPeriodDateRange(period);
 
-  const aggregate = (txs: Transaction[], groupBy: "day" | "week" | "month") => {
+  const aggregate = (txs: Transaction[], groupBy: "day" | "week" | "month", includeYearKey = false) => {
     const groups = new Map<string, { income: number; expenses: number }>();
     (txs || []).forEach((tx) => {
       const date = new Date(tx.date);
@@ -337,14 +342,15 @@ export function computeCashFlowData(
         key = `Week ${getWeekNumber(date)}`;
       } else {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        key = monthNames[date.getMonth()];
+        // FIX #1: Include year in key for all-time data to prevent NaN sorting crashes
+        key = includeYearKey ? `${monthNames[date.getMonth()]} ${date.getFullYear()}` : monthNames[date.getMonth()];
       }
-      
+
       const entry = groups.get(key) || { income: 0, expenses: 0 };
       const rawAmount = Number(tx.originalAmount);
-      
-      const amount = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase() 
-        ? rawAmount 
+
+      const amount = tx.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase()
+        ? rawAmount
         : convertAmount(rawAmount, tx.originalCurrency, workspaceCurrency);
 
       if (tx.type === "INCOME") entry.income += amount;
@@ -359,18 +365,18 @@ export function computeCashFlowData(
     const dates = safeTransactions.map((tx) => new Date(tx.date));
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
     const filtered = safeTransactions.filter((tx) => new Date(tx.date) >= minDate);
-    const groups = aggregate(filtered, "month");
+    const groups = aggregate(filtered, "month", true);
     const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
+
     const sorted = Array.from(groups.keys()).sort((a, b) => {
       const [ma, ya] = a.split(" ");
       const [mb, yb] = b.split(" ");
       return (
-        new Date(parseInt(ya), monthOrder.indexOf(ma), 1).getTime() -
-        new Date(parseInt(yb), monthOrder.indexOf(mb), 1).getTime()
+        new Date(parseInt(ya || "2026", 10), monthOrder.indexOf(ma), 1).getTime() -
+        new Date(parseInt(yb || "2026", 10), monthOrder.indexOf(mb), 1).getTime()
       );
     });
-    
+
     return sorted.map((key) => {
       const g = groups.get(key)!;
       return {
@@ -386,7 +392,7 @@ export function computeCashFlowData(
   if ((filtered || []).length === 0) return [];
 
   const groupBy: "day" | "week" | "month" = period === "30d" ? "week" : "day";
-  const groups = aggregate(filtered, groupBy);
+  const groups = aggregate(filtered, groupBy, false);
   const sortedKeys = sortGroupKeys(groups, groupBy);
 
   return sortedKeys.map((key) => {

@@ -4,7 +4,7 @@
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { Request, Response as ExpressResponse } from "express";
+import { Request } from "express";
 import { AuthenticatedRequest } from "./authMiddleware";
 /* === SECTION 1 END === */
 
@@ -12,36 +12,32 @@ import { AuthenticatedRequest } from "./authMiddleware";
    === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
-/**
- * Standardized JSON error response builder matching application-wide conventions
- */
 function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
 
 /**
- * Extracts and normalizes client IP for IPv4 and IPv6 subnet clustering
+ * Normalizes IP strings safely against reverse-proxy headers and IPv6 mapping
  */
 export function extractClientIp(req: Request): string {
-  // 1. Express-resolved IP
-  if (req.ip && typeof req.ip === "string" && req.ip.trim().length > 0) {
-    return ipKeyGenerator(req.ip.trim());
+  let candidateIp = req.ip || req.socket?.remoteAddress || "127.0.0.1";
+
+  if (typeof candidateIp === "string") {
+    candidateIp = candidateIp.trim();
+    // Normalize IPv4-mapped IPv6 addresses (e.g., ::ffff:127.0.0.1 -> 127.0.0.1)
+    if (candidateIp.startsWith("::ffff:")) {
+      candidateIp = candidateIp.substring(7);
+    }
+    try {
+      return ipKeyGenerator(candidateIp);
+    } catch {
+      return candidateIp;
+    }
   }
 
-  // 2. Socket remote address fallback
-  const socketRemoteAddress = req.socket?.remoteAddress;
-  if (socketRemoteAddress && typeof socketRemoteAddress === "string" && socketRemoteAddress.trim().length > 0) {
-    return ipKeyGenerator(socketRemoteAddress.trim());
-  }
-
-  // 3. Fallback
   return "127.0.0.1";
 }
 
-/**
- * Single-pool identifier: Binds limits to the authenticated user ID regardless of IP/network changes.
- * Falls back to IP only if the user is unauthenticated.
- */
 export function getUserOrIpKey(req: Request): string {
   const authReq = req as AuthenticatedRequest;
 
@@ -52,13 +48,9 @@ export function getUserOrIpKey(req: Request): string {
     return `user_${authReq.user.id}`;
   }
 
-  const clientIp = extractClientIp(req);
-  return `ip_${clientIp}`;
+  return `ip_${extractClientIp(req)}`;
 }
 
-/**
- * Skips limiter during test automation or when explicitly disabled via env
- */
 function shouldSkipLimiter(): boolean {
   return process.env.DISABLE_RATE_LIMIT === "true";
 }
@@ -68,9 +60,6 @@ function shouldSkipLimiter(): boolean {
    === SECTION 3: RATE LIMITER MIDDLEWARES ===
    ========================================================================== */
 
-/**
- * Global API Rate Limiter (1,000 req / 15 min per IP)
- */
 export const globalApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
@@ -85,9 +74,6 @@ export const globalApiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-/**
- * Strict Auth Limiter (10 failed attempts / 15 min)
- */
 export const strictAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -103,34 +89,23 @@ export const strictAuthLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-/**
- * Master Unified AI Service Rate Limiter
- * Shared 15 calls/hour cap across:
- * - AI Greetings (Dashboard & Insights)
- * - Timeline Audits (Today, Week, Month)
- * - Interactive AI Q&A / Power Queries
- * - OCR Receipt & Document Scanners
- */
 export const aiApiLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 15, // Strictly 15 combined AI operations per hour
+  windowMs: 60 * 60 * 1000,
+  max: 20,
   statusCode: 429,
   skip: shouldSkipLimiter,
   keyGenerator: getUserOrIpKey,
   validate: { keyGeneratorIpFallback: false },
   message: buildErrorResponse(
-    "You have reached your hourly limit of 15 AI financial insights. Please try again in an hour."
+    "You have reached your hourly limit of 20 AI operations. Please try again in an hour."
   ),
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-/**
- * Database Mutations Limiter (150 write ops / 5 min)
- */
 export const writeActionsLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 150,
+  max: 200,
   statusCode: 429,
   skip: shouldSkipLimiter,
   keyGenerator: getUserOrIpKey,
@@ -141,4 +116,3 @@ export const writeActionsLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-/* === SECTION 3 END === */

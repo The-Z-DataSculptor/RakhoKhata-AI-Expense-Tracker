@@ -220,6 +220,7 @@ async function fetchAndCalculateWorkspaceMetrics(
     prisma.transaction.findMany({
       where: {
         workspaceId: workspaceId,
+        deletedAt: null,
         date: { gte: startDate, lte: endDate },
       },
       include: { category: true },

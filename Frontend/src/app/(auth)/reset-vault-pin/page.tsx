@@ -45,7 +45,6 @@ function ResetVaultPinForm() {
       try {
         setIsSubmitting(true);
 
-        // Uses vaultAuthService which delegates to apiFetch (/api/...)
         const response = await vaultAuthService.resetPinWithToken(token, pin);
 
         if (response.success) {

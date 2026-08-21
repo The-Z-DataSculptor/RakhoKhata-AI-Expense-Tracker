@@ -1,9 +1,16 @@
+// Frontend/src/components/transactions/ImportWizardModal/ImportWizardModal.tsx
 "use client";
 
-import React, { useState, useCallback } from "react";
-import * as XLSX from "xlsx";
-import Papa from "papaparse";
-import { FiUploadCloud, FiChevronRight, FiFileText, FiAlertCircle } from "react-icons/fi";
+/* ==========================================================================
+   === SECTION 1: IMPORTS & TYPES ===
+   ========================================================================== */
+import React, { useState, useCallback, useMemo } from "react";
+import {
+  FiUploadCloud,
+  FiChevronRight,
+  FiAlertCircle,
+  FiSliders,
+} from "react-icons/fi";
 import { Category } from "@/utils/api";
 import { toast } from "sonner";
 import styles from "./ImportWizardModal.module.css";
@@ -29,12 +36,21 @@ interface ImportWizardModalProps {
   onCommitImport: (stagedRows: StagedTransactionRow[]) => Promise<void>;
 }
 
+const UPLOAD_BATCH_CHUNK_SIZE = 300;
+const MAX_PREVIEW_RENDER_ROWS = 50;
+/* === SECTION 1 END === */
+
+/* ==========================================================================
+   === SECTION 2: PARSING HELPERS ===
+   ========================================================================== */
 const safeParseSpreadsheetDate = (rawVal: unknown): string => {
   const fallbackToday = new Date().toISOString().substring(0, 10);
   if (!rawVal) return fallbackToday;
 
   if (rawVal instanceof Date) {
-    return !isNaN(rawVal.getTime()) ? rawVal.toISOString().substring(0, 10) : fallbackToday;
+    return !isNaN(rawVal.getTime())
+      ? rawVal.toISOString().substring(0, 10)
+      : fallbackToday;
   }
 
   const strVal = String(rawVal).trim();
@@ -47,7 +63,7 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
     }
   }
 
-  let parsed = new Date(strVal);
+  const parsed = new Date(strVal);
   if (!isNaN(parsed.getTime())) {
     return parsed.toISOString().substring(0, 10);
   }
@@ -58,9 +74,9 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
     const month = parseInt(parts[1], 10) - 1;
     const year = parseInt(parts[2], 10);
     if (year > 1000 && month >= 0 && month < 12 && day > 0 && day <= 31) {
-      parsed = new Date(year, month, day);
-      if (!isNaN(parsed.getTime())) {
-        return parsed.toISOString().substring(0, 10);
+      const manualDate = new Date(year, month, day);
+      if (!isNaN(manualDate.getTime())) {
+        return manualDate.toISOString().substring(0, 10);
       }
     }
   }
@@ -68,6 +84,64 @@ const safeParseSpreadsheetDate = (rawVal: unknown): string => {
   return fallbackToday;
 };
 
+function sniffHeaderRowIndex(rawMatrix: (string | unknown)[][]): number {
+  if (!rawMatrix || rawMatrix.length === 0) return 0;
+
+  const HEADER_KEYWORDS = [
+    "date",
+    "trans",
+    "description",
+    "details",
+    "narration",
+    "narrative",
+    "particulars",
+    "amount",
+    "debit",
+    "credit",
+    "withdrawal",
+    "deposit",
+    "balance",
+    "type",
+  ];
+
+  let bestRowIndex = 0;
+  let maxKeywordMatches = 0;
+  const scanDepth = Math.min(rawMatrix.length, 25);
+
+  for (let r = 0; r < scanDepth; r++) {
+    const row = rawMatrix[r];
+    if (!Array.isArray(row)) continue;
+
+    let rowScore = 0;
+    const cellTexts = row.map((cell) =>
+      String(cell || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+    );
+
+    for (const text of cellTexts) {
+      if (!text) continue;
+      for (const kw of HEADER_KEYWORDS) {
+        if (text.includes(kw)) {
+          rowScore++;
+          break;
+        }
+      }
+    }
+
+    if (rowScore > maxKeywordMatches) {
+      maxKeywordMatches = rowScore;
+      bestRowIndex = r;
+    }
+  }
+
+  return maxKeywordMatches >= 2 ? bestRowIndex : 0;
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: COMPONENT LOGIC ===
+   ========================================================================== */
 export default function ImportWizardModal({
   isOpen,
   onClose,
@@ -80,63 +154,134 @@ export default function ImportWizardModal({
   const [rawFileHeaders, setRawFileHeaders] = useState<string[]>([]);
   const [rawParsedRows, setRawParsedRows] = useState<ParsedRowData[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+  const [detectedHeaderIndex, setDetectedHeaderIndex] = useState<number>(0);
+  const [availableHeaderRowIndices, setAvailableHeaderRowIndices] = useState<number[]>([]);
+  const [fullRawMatrix, setFullRawMatrix] = useState<(string | unknown)[][]>([]);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [colMap, setColMap] = useState({
     date: "",
     description: "",
     amount: "",
-    currency: "",
     type: "",
   });
-  const [fallbackCurrency, setFallbackCurrency] = useState<string>(workspaceCurrency);
-  const [fallbackType, setFallbackType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
+
+  const [defaultType, setDefaultType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [stagedPreviewRows, setStagedPreviewRows] = useState<StagedTransactionRow[]>([]);
 
   const autoGuessFileHeaders = useCallback((headers: string[]) => {
     const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const mapping = { date: "", description: "", amount: "", currency: "", type: "" };
+    const mapping = {
+      date: "",
+      description: "",
+      amount: "",
+      type: "",
+    };
 
     for (const header of headers || []) {
       const normal = clean(header);
-      if (!mapping.date && (normal.includes("date") || normal.includes("time"))) mapping.date = header;
-      if (!mapping.description && (normal.includes("desc") || normal.includes("narrative") || normal.includes("detail")))
+
+      if (!mapping.date && (normal.includes("date") || normal.includes("time") || normal.includes("txn"))) {
+        mapping.date = header;
+      }
+      if (
+        !mapping.description &&
+        (normal.includes("desc") ||
+          normal.includes("narrat") ||
+          normal.includes("particular") ||
+          normal.includes("detail") ||
+          normal.includes("memo") ||
+          normal.includes("payee"))
+      ) {
         mapping.description = header;
-      if (!mapping.amount && (normal.includes("amount") || normal.includes("value") || normal.includes("paid") || normal.includes("price")))
+      }
+      if (
+        !mapping.amount &&
+        (normal === "amount" ||
+          normal.includes("transamount") ||
+          normal.includes("netamount") ||
+          normal.includes("value") ||
+          normal.includes("paid") ||
+          normal.includes("debit") ||
+          normal.includes("credit"))
+      ) {
         mapping.amount = header;
-      if (!mapping.currency && (normal.includes("curr") || normal.includes("code"))) mapping.currency = header;
-      if (!mapping.type && (normal.includes("type") || normal.includes("class"))) mapping.type = header;
+      }
+      if (!mapping.type && (normal.includes("type") || normal.includes("flow") || normal.includes("class"))) {
+        mapping.type = header;
+      }
     }
 
     setColMap(mapping);
   }, []);
 
+  const processMatrixWithHeaderIndex = useCallback(
+    (matrix: (string | unknown)[][], headerRowIdx: number) => {
+      if (!matrix || matrix.length <= headerRowIdx) {
+        toast.error("Invalid spreadsheet format or empty rows.");
+        return;
+      }
+
+      const rawHeaders = (matrix[headerRowIdx] || []).map((h, i) =>
+        h ? String(h).trim() : `Column_${i + 1}`
+      );
+      const dataRows = matrix.slice(headerRowIdx + 1);
+
+      const parsedObjects: ParsedRowData[] = dataRows
+        .filter((row) => row && row.some((cell) => cell !== undefined && String(cell).trim() !== ""))
+        .map((row) => {
+          const rowObj: ParsedRowData = {};
+          rawHeaders.forEach((headerKey, colIndex) => {
+            rowObj[headerKey] = row[colIndex] !== undefined ? String(row[colIndex]).trim() : "";
+          });
+          return rowObj;
+        });
+
+      if (rawHeaders.length > 0 && parsedObjects.length > 0) {
+        setRawFileHeaders(rawHeaders);
+        setRawParsedRows(parsedObjects);
+        setDetectedHeaderIndex(headerRowIdx);
+        autoGuessFileHeaders(rawHeaders);
+        setImportStep(2);
+      } else {
+        toast.error("No valid transaction rows found under the selected header.");
+      }
+    },
+    [autoGuessFileHeaders]
+  );
+
+  // Dynamically import xlsx and papaparse on demand to keep bundle lean
   const handleFileExtractionStream = useCallback(
-    (file: File) => {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("File size exceeds 10 MB limit.");
+    async (file: File) => {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error("File size exceeds 25 MB limit.");
         return;
       }
 
       const lowerName = file.name.toLowerCase();
-      if (lowerName.endsWith(".csv")) {
-        Papa.parse<ParsedRowData>(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const fields = Array.isArray(results.meta.fields) ? results.meta.fields : [];
-            const dataRows = Array.isArray(results.data) ? results.data : [];
 
-            if (fields.length > 0 && dataRows.length > 0) {
-              setRawFileHeaders(fields);
-              setRawParsedRows(dataRows);
-              autoGuessFileHeaders(fields);
-              setImportStep(2);
-            } else {
-              toast.error("CSV file appears to be empty or corrupt.");
+      if (lowerName.endsWith(".csv")) {
+        const Papa = (await import("papaparse")).default;
+        Papa.parse<(string | unknown)[]>(file, {
+          header: false,
+          skipEmptyLines: false,
+          complete: (results) => {
+            const matrix = Array.isArray(results.data) ? results.data : [];
+            if (matrix.length === 0) {
+              toast.error("CSV file appears to be empty.");
+              return;
             }
+
+            const headerIdx = sniffHeaderRowIndex(matrix);
+            setFullRawMatrix(matrix);
+            setAvailableHeaderRowIndices(
+              Array.from({ length: Math.min(matrix.length, 25) }, (_, i) => i)
+            );
+            processMatrixWithHeaderIndex(matrix, headerIdx);
           },
         });
       } else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+        const XLSX = await import("xlsx");
         const reader = new FileReader();
         reader.onload = (evt) => {
           const data = evt.target?.result;
@@ -144,35 +289,40 @@ export default function ImportWizardModal({
             toast.error("Failed to read Excel file.");
             return;
           }
-          const workbook = XLSX.read(data, { type: "binary", cellDates: true, dateNF: "yyyy-mm-dd" });
+          const workbook = XLSX.read(data, {
+            type: "binary",
+            cellDates: true,
+            dateNF: "yyyy-mm-dd",
+          });
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
-          const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
+          const matrix = XLSX.utils.sheet_to_json<(string | unknown)[]>(sheet, {
+            header: 1,
+            blankrows: false,
+          });
 
-          if (Array.isArray(rows) && rows.length > 0) {
-            const headers = (rows[0] || []).map((h) => String(h));
-            const body = XLSX.utils.sheet_to_json<ParsedRowData>(sheet);
-            const safeBody = Array.isArray(body) ? body : [];
-
-            setRawFileHeaders(headers);
-            setRawParsedRows(safeBody);
-            autoGuessFileHeaders(headers);
-            setImportStep(2);
+          if (Array.isArray(matrix) && matrix.length > 0) {
+            const headerIdx = sniffHeaderRowIndex(matrix);
+            setFullRawMatrix(matrix);
+            setAvailableHeaderRowIndices(
+              Array.from({ length: Math.min(matrix.length, 25) }, (_, i) => i)
+            );
+            processMatrixWithHeaderIndex(matrix, headerIdx);
           } else {
             toast.error("Excel sheet appears to be empty.");
           }
         };
         reader.readAsBinaryString(file);
       } else {
-        toast.error("Unsupported file type. Please upload a .csv or .xlsx file.");
+        toast.error("Unsupported format. Please provide a .csv, .xlsx, or .xls file.");
       }
     },
-    [autoGuessFileHeaders]
+    [processMatrixWithHeaderIndex]
   );
 
   const handleComputeMappingVerification = () => {
     if (!colMap.date || !colMap.description || !colMap.amount) {
-      toast.error("Please map the Date, Description, and Amount columns.");
+      toast.error("Please map Date, Description, and Amount columns.");
       return;
     }
 
@@ -181,59 +331,90 @@ export default function ImportWizardModal({
     const defaultCategoryId = unassignedCategory?.id || safeCategories[0]?.id || "";
     const safeParsedRows = Array.isArray(rawParsedRows) ? rawParsedRows : [];
 
-    const previewRows: StagedTransactionRow[] = safeParsedRows.map((row, idx) => {
+    const previewRows: StagedTransactionRow[] = [];
+
+    safeParsedRows.forEach((row, idx) => {
       let rawAmount = parseFloat(String(row[colMap.amount] || "0").replace(/[^0-9.-]/g, ""));
-      let detectedType: "INCOME" | "EXPENSE" = fallbackType;
+      let detectedType: "INCOME" | "EXPENSE" = defaultType;
 
       if (colMap.type && row[colMap.type]) {
         const typeStr = String(row[colMap.type]).toUpperCase();
-        if (typeStr.includes("INC") || typeStr.includes("CR") || typeStr.includes("DEP"))
+        if (typeStr.includes("INC") || typeStr.includes("CR") || typeStr.includes("DEP")) {
           detectedType = "INCOME";
-        else if (typeStr.includes("EXP") || typeStr.includes("DR") || typeStr.includes("WD"))
+        } else if (typeStr.includes("EXP") || typeStr.includes("DR") || typeStr.includes("WD")) {
           detectedType = "EXPENSE";
+        }
       } else if (rawAmount < 0) {
         detectedType = "EXPENSE";
         rawAmount = Math.abs(rawAmount);
       }
 
-      let rowCurrency = fallbackCurrency;
-      if (colMap.currency && row[colMap.currency]) {
-        rowCurrency = String(row[colMap.currency]).toUpperCase().trim().substring(0, 3);
-      }
+      if (isNaN(rawAmount) || (rawAmount <= 0 && !row[colMap.description])) return;
 
       let categoryId = defaultCategoryId;
-      const description = String(row[colMap.description] || "").toLowerCase();
-      if (description.includes("salary") || description.includes("dividend")) {
+      const desc = String(row[colMap.description] || "").toLowerCase();
+
+      if (desc.includes("salary") || desc.includes("dividend") || desc.includes("revenue") || desc.includes("payroll")) {
         const found = safeCategories.find(
           (c) => c.name.toLowerCase().includes("salary") || c.name.toLowerCase().includes("revenue")
         );
         if (found) categoryId = found.id;
-      } else if (description.includes("rent") || description.includes("housing")) {
+      } else if (desc.includes("rent") || desc.includes("housing")) {
         const found = safeCategories.find(
           (c) => c.name.toLowerCase().includes("rent") || c.name.toLowerCase().includes("housing")
         );
         if (found) categoryId = found.id;
+      } else if (desc.includes("uber") || desc.includes("fuel") || desc.includes("shell") || desc.includes("careem")) {
+        const found = safeCategories.find(
+          (c) => c.name.toLowerCase().includes("transport") || c.name.toLowerCase().includes("fuel")
+        );
+        if (found) categoryId = found.id;
       }
 
-      return {
+      previewRows.push({
         index: idx,
         date: safeParseSpreadsheetDate(row[colMap.date]),
         description: String(row[colMap.description] || "Imported Transaction"),
-        amount: isNaN(rawAmount) ? 0 : rawAmount,
-        currency: rowCurrency,
+        amount: Math.abs(rawAmount),
+        currency: workspaceCurrency,
         type: detectedType,
         categoryId,
-      };
+      });
     });
+
+    if (previewRows.length === 0) {
+      toast.error("No valid transactions found with current column mapping.");
+      return;
+    }
 
     setStagedPreviewRows(previewRows);
     setImportStep(3);
   };
 
   const handleFinalCommit = async () => {
-    await onCommitImport(stagedPreviewRows);
+    if (stagedPreviewRows.length === 0) return;
+
+    const totalRows = stagedPreviewRows.length;
+    const totalChunks = Math.ceil(totalRows / UPLOAD_BATCH_CHUNK_SIZE);
+
+    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+      const start = chunkIdx * UPLOAD_BATCH_CHUNK_SIZE;
+      const end = start + UPLOAD_BATCH_CHUNK_SIZE;
+      const slice = stagedPreviewRows.slice(start, end);
+
+      setUploadProgress(`Importing batch ${chunkIdx + 1} of ${totalChunks} (${slice.length} rows)...`);
+      await onCommitImport(slice);
+    }
+
+    setUploadProgress(null);
     setImportStep(1);
+    setFullRawMatrix([]);
+    onClose();
   };
+
+  const renderedPreviewRows = useMemo(() => {
+    return stagedPreviewRows.slice(0, MAX_PREVIEW_RENDER_ROWS);
+  }, [stagedPreviewRows]);
 
   if (!isOpen) return null;
 
@@ -248,10 +429,11 @@ export default function ImportWizardModal({
         className={`${styles.modalContentCard} ${styles.wizardExpansionLarge}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* HEADER */}
         <div className={styles.wizardHeaderDeck}>
           <div className={styles.wizardHeaderTitleBlock}>
             <h3 className={styles.wizardMainTitle}>Statement Import Wizard</h3>
-            <span className={styles.wizardBadgePill}>Engine v2.4</span>
+            <span className={styles.wizardBadgePill}>Bulk Entry</span>
           </div>
           <div className={styles.stepperPipelineLayout}>
             <div className={importStep === 1 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
@@ -261,17 +443,17 @@ export default function ImportWizardModal({
             <FiChevronRight className={styles.stepperArrowIcon} />
             <div className={importStep === 2 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
               <span className={styles.stepperStepNumber}>2</span>
-              <span>Map Headers</span>
+              <span>Map Columns</span>
             </div>
             <FiChevronRight className={styles.stepperArrowIcon} />
             <div className={importStep === 3 ? styles.stepperNodeActive : styles.stepperNodeMuted}>
               <span className={styles.stepperStepNumber}>3</span>
-              <span>Review & Commit</span>
+              <span>Review & Sync</span>
             </div>
           </div>
         </div>
 
-        {/* Step 1: Upload */}
+        {/* STEP 1: UPLOAD */}
         {importStep === 1 && (
           <div
             className={`${styles.dropzoneFrameZone} ${isDraggingOver ? styles.dropzoneActiveTint : ""}`}
@@ -284,14 +466,16 @@ export default function ImportWizardModal({
               e.preventDefault();
               setIsDraggingOver(false);
               const file = e.dataTransfer.files?.[0];
-              if (file) handleFileExtractionStream(file);
+              if (file) void handleFileExtractionStream(file);
             }}
           >
             <div className={styles.dropzoneIconWrapper}>
               <FiUploadCloud className={styles.dropzoneUploadIcon} />
             </div>
-            <p className={styles.dropzoneMainTitleText}>Drag & drop bank statement here</p>
-            <p className={styles.dropzoneSubtextMeta}>Supports .csv, .xlsx, .xls (max 10 MB)</p>
+            <p className={styles.dropzoneMainTitleText}>Drag & drop your bank statement here</p>
+            <p className={styles.dropzoneSubtextMeta}>
+              Supports .csv, .xlsx, .xls (up to 25 MB)
+            </p>
             <span className={styles.dropzoneBrowseBtn}>Browse Computer</span>
             <input
               type="file"
@@ -299,165 +483,221 @@ export default function ImportWizardModal({
               className={styles.nativeFullHiddenFileInputControl}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleFileExtractionStream(file);
+                if (file) void handleFileExtractionStream(file);
               }}
             />
           </div>
         )}
 
-        {/* Step 2: Map Columns */}
+        {/* STEP 2: MAP COLUMNS */}
         {importStep === 2 && (
           <div className={styles.wizardFormCoreBody}>
-            <div className={`${styles.wizardInfoAlertBox} ${styles.alertInfoBlue}`}>
-              <FiFileText size={18} className={styles.alertIconFlex} />
-              <div>
-                <strong>Header Alignment Required:</strong> Map the columns from your file to ledger fields.
+            <div className={styles.headerAdjustmentDeck}>
+              <div className={styles.headerAdjustmentLabelBlock}>
+                <FiSliders className={styles.headerTunerIcon} />
+                <span>Header Row Detected at Line #{detectedHeaderIndex + 1}</span>
               </div>
-            </div>
-
-            <div className={styles.mappingSelectorsGridRow}>
-              <div className={styles.formGroupWrapperField}>
-                <label htmlFor="mapDateCol" className={styles.fieldLayoutInputLabel}>
-                  Transaction Date *
-                </label>
+              <div className={styles.headerSelectGroup}>
+                <label htmlFor="headerRowSelect">Change row:</label>
                 <select
-                  id="mapDateCol"
-                  value={colMap.date}
-                  onChange={(e) => setColMap((p) => ({ ...p, date: e.target.value }))}
-                  className={styles.premiumFieldSelectControl}
+                  id="headerRowSelect"
+                  value={detectedHeaderIndex}
+                  onChange={(e) => {
+                    const nextIdx = Number(e.target.value);
+                    processMatrixWithHeaderIndex(fullRawMatrix, nextIdx);
+                  }}
+                  className={styles.headerSmallSelect}
                 >
-                  <option value="">-- Select Column --</option>
-                  {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.formGroupWrapperField}>
-                <label htmlFor="mapDescCol" className={styles.fieldLayoutInputLabel}>
-                  Description / Narrative *
-                </label>
-                <select
-                  id="mapDescCol"
-                  value={colMap.description}
-                  onChange={(e) => setColMap((p) => ({ ...p, description: e.target.value }))}
-                  className={styles.premiumFieldSelectControl}
-                >
-                  <option value="">-- Select Column --</option>
-                  {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.formGroupWrapperField}>
-                <label htmlFor="mapAmountCol" className={styles.fieldLayoutInputLabel}>
-                  Transaction Amount *
-                </label>
-                <select
-                  id="mapAmountCol"
-                  value={colMap.amount}
-                  onChange={(e) => setColMap((p) => ({ ...p, amount: e.target.value }))}
-                  className={styles.premiumFieldSelectControl}
-                >
-                  <option value="">-- Select Column --</option>
-                  {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.formGroupWrapperField}>
-                <label htmlFor="mapCurrCol" className={styles.fieldLayoutInputLabel}>
-                  Currency Code (Optional)
-                </label>
-                <select
-                  id="mapCurrCol"
-                  value={colMap.currency}
-                  onChange={(e) => setColMap((p) => ({ ...p, currency: e.target.value }))}
-                  className={styles.premiumFieldSelectControl}
-                >
-                  <option value="">-- Fallback Only ({fallbackCurrency}) --</option>
-                  {(Array.isArray(rawFileHeaders) ? rawFileHeaders : []).map((h) => (
-                    <option key={h} value={h}>
-                      {h}
+                  {availableHeaderRowIndices.map((idx) => (
+                    <option key={idx} value={idx}>
+                      Row {idx + 1}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className={styles.stagerFallbackSubFormBlock}>
-              <div className={styles.formGroupWrapperField}>
-                <label htmlFor="fallbackCurrInput" className={styles.fieldLayoutInputLabel}>
-                  Fallback Currency
-                </label>
-                <input
-                  id="fallbackCurrInput"
-                  type="text"
-                  maxLength={3}
-                  value={fallbackCurrency}
-                  onChange={(e) => setFallbackCurrency(e.target.value.toUpperCase())}
-                  className={styles.premiumFieldInputTextControl}
-                  placeholder="PKR"
-                />
-              </div>
-              <div className={styles.formGroupWrapperField}>
-                <label htmlFor="fallbackTypeSelect" className={styles.fieldLayoutInputLabel}>
-                  Default Cash Flow Type
-                </label>
-                <select
-                  id="fallbackTypeSelect"
-                  value={fallbackType}
-                  onChange={(e) => setFallbackType(e.target.value as "INCOME" | "EXPENSE")}
-                  className={styles.premiumFieldSelectControl}
-                >
-                  <option value="EXPENSE">Expense (Debit / Outflow)</option>
-                  <option value="INCOME">Income (Credit / Inflow)</option>
-                </select>
-              </div>
-            </div>
+            <div className={styles.formLayout}>
+              {/* Row 1: Date & Flow Type */}
+              <div className={styles.formRowSideBySide}>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="mapDateCol">
+                    Transaction Date Column *
+                  </label>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      id="mapDateCol"
+                      value={colMap.date}
+                      onChange={(e) => setColMap((p) => ({ ...p, date: e.target.value }))}
+                      className={styles.selectField}
+                    >
+                      <option value="">-- Select Column --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-            <div className={styles.wizardActionFooterToolbar}>
-              <button type="button" onClick={() => setImportStep(1)} className={styles.wizardCancelControlBtn}>
-                Back
-              </button>
-              <button type="button" onClick={handleComputeMappingVerification} className={styles.wizardPrimaryConfirmBtn}>
-                Generate Preview
-              </button>
+                <div className={styles.fieldGroup}>
+                  <span className={styles.label}>Default Flow Classification</span>
+                  <div className={styles.segmentedControl}>
+                    <label
+                      className={`${styles.segmentOption} ${
+                        defaultType === "EXPENSE" ? styles.segmentActiveExpense : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        value="EXPENSE"
+                        name="flowType"
+                        checked={defaultType === "EXPENSE"}
+                        onChange={() => setDefaultType("EXPENSE")}
+                        className={styles.hiddenRadioControl}
+                      />
+                      Expense
+                    </label>
+                    <label
+                      className={`${styles.segmentOption} ${
+                        defaultType === "INCOME" ? styles.segmentActiveIncome : ""
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        value="INCOME"
+                        name="flowType"
+                        checked={defaultType === "INCOME"}
+                        onChange={() => setDefaultType("INCOME")}
+                        className={styles.hiddenRadioControl}
+                      />
+                      Income
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Description */}
+              <div className={styles.fieldGroup}>
+                <label className={styles.label} htmlFor="mapDescCol">
+                  Ledger Description / Payee Column *
+                </label>
+                <div className={styles.selectWrapper}>
+                  <select
+                    id="mapDescCol"
+                    value={colMap.description}
+                    onChange={(e) => setColMap((p) => ({ ...p, description: e.target.value }))}
+                    className={styles.selectField}
+                  >
+                    <option value="">-- Select Column --</option>
+                    {rawFileHeaders.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Amount Column & Optional Type Column */}
+              <div className={styles.formRowSideBySide}>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="mapAmountCol">
+                    Transaction Value / Amount Column *
+                  </label>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      id="mapAmountCol"
+                      value={colMap.amount}
+                      onChange={(e) => setColMap((p) => ({ ...p, amount: e.target.value }))}
+                      className={styles.selectField}
+                    >
+                      <option value="">-- Select Column --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="mapTypeCol">
+                    Type Column (Optional)
+                  </label>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      id="mapTypeCol"
+                      value={colMap.type}
+                      onChange={(e) => setColMap((p) => ({ ...p, type: e.target.value }))}
+                      className={styles.selectField}
+                    >
+                      <option value="">-- None (Use {defaultType}) --</option>
+                      {rawFileHeaders.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.buttonGroup}>
+                <button
+                  type="button"
+                  onClick={() => setImportStep(1)}
+                  className={styles.cancelBtn}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleComputeMappingVerification}
+                  className={styles.submitBtn}
+                >
+                  Generate Preview
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 3: Review & Commit */}
+        {/* STEP 3: REVIEW & BATCH SYNC */}
         {importStep === 3 && (
           <div className={styles.wizardFormCoreBody}>
             <div className={`${styles.wizardInfoAlertBox} ${styles.alertWarningAmber}`}>
               <FiAlertCircle size={18} className={styles.alertIconFlex} />
               <div>
-                <strong>Staging Area:</strong> Unmapped records will be placed in <b>Unassigned</b>.
+                <strong>Validated Ingestion:</strong> Staged <b>{stagedPreviewRows.length}</b> records.
+                {stagedPreviewRows.length > MAX_PREVIEW_RENDER_ROWS && (
+                  <span> (Displaying preview of first {MAX_PREVIEW_RENDER_ROWS} rows).</span>
+                )}
               </div>
             </div>
+
+            {uploadProgress && (
+              <div className={styles.batchProgressBarContainer}>
+                <div className={styles.batchProgressIndicatorBar} />
+                <span className={styles.batchProgressText}>{uploadProgress}</span>
+              </div>
+            )}
 
             <div className={styles.previewDataGridContainerWindow}>
               <table className={styles.previewTableViewportLayout}>
                 <thead className={styles.previewTableHeaderStickyDeck}>
                   <tr>
-                    <th>Posting Date</th>
+                    <th>Date</th>
                     <th>Description</th>
-                    <th>Value Amount</th>
-                    <th>Flow Type</th>
+                    <th>Amount</th>
+                    <th>Type</th>
                     <th>Category Allocation</th>
                   </tr>
                 </thead>
                 <tbody className={styles.previewTableBodyRowCluster}>
-                  {(Array.isArray(stagedPreviewRows) ? stagedPreviewRows : []).map((row, rIdx) => (
+                  {renderedPreviewRows.map((row, rIdx) => (
                     <tr key={row.index}>
                       <td className={styles.tableCellDate}>{row.date}</td>
                       <td className={styles.tableCellTruncateText} title={row.description}>
@@ -469,7 +709,9 @@ export default function ImportWizardModal({
                       <td>
                         <span
                           className={
-                            row.type === "INCOME" ? styles.badgeTypeIncomePill : styles.badgeTypeExpensePill
+                            row.type === "INCOME"
+                              ? styles.badgeTypeIncomePill
+                              : styles.badgeTypeExpensePill
                           }
                         >
                           {row.type}
@@ -482,14 +724,14 @@ export default function ImportWizardModal({
                           onChange={(e) => {
                             const newId = e.target.value;
                             setStagedPreviewRows((prev) =>
-                              (Array.isArray(prev) ? prev : []).map((pr, idx) =>
+                              prev.map((pr, idx) =>
                                 idx === rIdx ? { ...pr, categoryId: newId } : pr
                               )
                             );
                           }}
                           className={styles.tableCellInlineSelectControl}
                         >
-                          {(Array.isArray(categories) ? categories : []).map((cat) => (
+                          {categories.map((cat) => (
                             <option key={cat.id} value={cat.id}>
                               {cat.name}
                             </option>
@@ -504,24 +746,24 @@ export default function ImportWizardModal({
 
             <div className={styles.wizardActionFooterToolbar}>
               <span className={styles.wizardCounterSummaryMetaText}>
-                {stagedPreviewRows.length} transactions ready to sync.
+                Total {stagedPreviewRows.length} transactions ready to sync.
               </span>
-              <div className={styles.flexButtonGroupRow}>
+              <div className={styles.buttonGroupRight}>
                 <button
                   type="button"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || Boolean(uploadProgress)}
                   onClick={() => setImportStep(2)}
-                  className={styles.wizardCancelControlBtn}
+                  className={styles.cancelBtn}
                 >
                   Back
                 </button>
                 <button
                   type="button"
-                  disabled={isSubmitting}
-                  onClick={handleFinalCommit}
-                  className={styles.wizardCommitExecutionBtn}
+                  disabled={isSubmitting || Boolean(uploadProgress)}
+                  onClick={() => void handleFinalCommit()}
+                  className={styles.submitBtn}
                 >
-                  {isSubmitting ? "Syncing..." : "Commit Statement Import"}
+                  {isSubmitting || uploadProgress ? "Syncing..." : "Commit Batch Import"}
                 </button>
               </div>
             </div>

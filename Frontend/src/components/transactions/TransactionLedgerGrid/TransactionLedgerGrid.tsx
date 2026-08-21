@@ -1,10 +1,10 @@
-// src/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid.tsx
+// Frontend/src/components/transactions/TransactionLedgerGrid/TransactionLedgerGrid.tsx
 "use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS ===
    ========================================================================== */
-import React from "react";
+import React, { memo } from "react";
 import { 
   FiArrowUpRight, 
   FiArrowDownLeft, 
@@ -43,7 +43,7 @@ interface TransactionLedgerGridProps {
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: COMPONENT LOGIC & HELPERS ===
+   === SECTION 3: HELPERS ===
    ========================================================================== */
 const formatOriginalCurrency = (amount: unknown, currency?: string): string => {
   const numericVal = Number(amount);
@@ -57,7 +57,194 @@ const checkIsDebtCategory = (catName?: string): boolean => {
   const lowercase = catName.toLowerCase();
   return lowercase.includes("owed") || lowercase.includes("debts");
 };
+/* === SECTION 3 END === */
 
+/* ==========================================================================
+   === SECTION 4: MEMOIZED ROW COMPONENTS (PERFORMANCE SHIELD) ===
+   ========================================================================== */
+
+interface DesktopRowProps {
+  row: TransactionRecord;
+  isChecked: boolean;
+  onToggleSelect: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onSendReminder?: (row: TransactionRecord) => void;
+}
+
+const DesktopTableRow = memo(function DesktopTableRow({
+  row,
+  isChecked,
+  onToggleSelect,
+  onEdit,
+  onDelete,
+  onSendReminder,
+}: DesktopRowProps) {
+  const isIncome = row.type === "income";
+  const isDebt = checkIsDebtCategory(row.category);
+
+  return (
+    <tr className={`${styles.zebraStripeRowNode} ${isChecked ? styles.selectedRowHighlightNode : ""}`}>
+      <td style={{ textAlign: "center" }}>
+        <input
+          type="checkbox"
+          className={styles.rowSelectionCheckboxInput}
+          checked={isChecked}
+          onChange={() => onToggleSelect(row.id)}
+          aria-label={`Select transaction ${row.description || ""}`}
+        />
+      </td>
+      <td className={styles.calendarDateCellText}>{row.date || "N/A"}</td>
+      <td className={styles.descriptiveDetailsCellText} title={row.description}>
+        {row.description || "Untitled Transaction"}
+      </td>
+      <td>
+        <span className={styles.categoryLabelBadgeToken}>
+          {row.category || "Unassigned"}
+        </span>
+      </td>
+      <td className={styles.numericAmountCellTextPositioner}>
+        <div className={`${styles.inlineAmountFlexCluster} ${isIncome ? styles.incomeColorAccentNode : styles.expenseColorAccentNode}`}>
+          {isIncome ? <FiArrowDownLeft size={14} /> : <FiArrowUpRight size={14} />}
+          <span>{formatOriginalCurrency(row.originalAmount, row.originalCurrency)}</span>
+        </div>
+      </td>
+      <td>
+        <div className={styles.actionUtilitesButtonDock}>
+          {isDebt && onSendReminder ? (
+            <button
+              type="button"
+              className={styles.rowUtilityIconButtonNode}
+              style={{ color: "var(--color-primary, #6366f1)" }}
+              onClick={() => onSendReminder(row)}
+              title="Send debt reminder link"
+              aria-label={`Send debt reminder for ${row.description}`}
+            >
+              <FiBell size={13} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.rowUtilityIconButtonNode} ${styles.invisibleLayoutSlot}`}
+              disabled
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+          )}
+          <button
+            type="button"
+            className={styles.rowUtilityIconButtonNode}
+            onClick={() => onEdit(row.id)}
+            title="Edit record"
+            aria-label={`Edit ${row.description}`}
+          >
+            <FiEdit2 size={13} />
+          </button>
+          <button
+            type="button"
+            className={`${styles.rowUtilityIconButtonNode} ${styles.dangerHoverPillNode}`}
+            onClick={() => onDelete(row.id)}
+            title="Delete record"
+            aria-label={`Delete ${row.description}`}
+          >
+            <FiTrash2 size={13} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+interface MobileRowProps {
+  row: TransactionRecord;
+  isChecked: boolean;
+  onToggleSelect: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onSendReminder?: (row: TransactionRecord) => void;
+}
+
+const MobileRowItem = memo(function MobileRowItem({
+  row,
+  isChecked,
+  onToggleSelect,
+  onEdit,
+  onDelete,
+  onSendReminder,
+}: MobileRowProps) {
+  const isIncome = row.type === "income";
+  const isDebt = checkIsDebtCategory(row.category);
+
+  return (
+    <div className={`${styles.mobileCompactRowItem} ${isChecked ? styles.mobileRowChecked : ""}`}>
+      <div className={styles.mobileRowLeft}>
+        <input
+          type="checkbox"
+          className={styles.rowSelectionCheckboxInput}
+          checked={isChecked}
+          onChange={() => onToggleSelect(row.id)}
+        />
+        <div className={`${styles.mobileIconBadge} ${isIncome ? styles.incomeIconBg : styles.expenseIconBg}`}>
+          {isIncome ? <FiArrowDownLeft size={14} /> : <FiArrowUpRight size={14} />}
+        </div>
+      </div>
+
+      <div className={styles.mobileRowMiddle}>
+        <h4 className={styles.mobileRowTitle} title={row.description}>
+          {row.description || "Untitled Transaction"}
+        </h4>
+        <div className={styles.mobileRowMetaLine}>
+          <span className={styles.mobileCategoryTag}>{row.category || "Unassigned"}</span>
+          <span className={styles.mobileDotDivider}>•</span>
+          <span className={styles.mobileRowDate}>{row.date || "N/A"}</span>
+        </div>
+      </div>
+
+      <div className={styles.mobileRowRight}>
+        <span className={`${styles.mobileRowAmount} ${isIncome ? styles.incomeColorAccentNode : styles.expenseColorAccentNode}`}>
+          {isIncome ? "+" : "-"}{formatOriginalCurrency(row.originalAmount, row.originalCurrency)}
+        </span>
+
+        <div className={styles.mobileRowActions}>
+          {isDebt && onSendReminder && (
+            <button
+              type="button"
+              className={styles.mobileMiniActionBtn}
+              onClick={() => onSendReminder(row)}
+              title="Send reminder"
+              aria-label={`Send debt reminder for ${row.description}`}
+            >
+              <FiBell size={12} />
+            </button>
+          )}
+          <button
+            type="button"
+            className={styles.mobileMiniActionBtn}
+            onClick={() => onEdit(row.id)}
+            title="Edit"
+            aria-label={`Edit ${row.description}`}
+          >
+            <FiEdit2 size={12} />
+          </button>
+          <button
+            type="button"
+            className={`${styles.mobileMiniActionBtn} ${styles.mobileDeleteMiniBtn}`}
+            onClick={() => onDelete(row.id)}
+            title="Delete"
+            aria-label={`Delete ${row.description}`}
+          >
+            <FiTrash2 size={12} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+/* === SECTION 4 END === */
+
+/* ==========================================================================
+   === SECTION 5: MASTER GRID COMPONENT ===
+   ========================================================================== */
 export default function TransactionLedgerGrid({
   records,
   onEditRecord,
@@ -70,21 +257,15 @@ export default function TransactionLedgerGrid({
   const validatedRecords = Array.isArray(records) ? records : [];
   const safeSelectedIds = Array.isArray(selectedIds) ? selectedIds : [];
 
-  const isAllOnPageSelected = 
-    validatedRecords.length > 0 && 
+  const isAllOnPageSelected =
+    validatedRecords.length > 0 &&
     validatedRecords.every((row) => safeSelectedIds.includes(row.id));
 
   const currentPageIds = validatedRecords.map((row) => row.id);
-  /* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: RENDER (JSX) ===
-     ========================================================================== */
   return (
     <div className={styles.ledgerTableViewportWrapper}>
       {validatedRecords.length === 0 ? (
-        
-        /* 🚀 UPDATED PREMIUM EMPTY STATE – matches dashboard design, no button */
         <div className={styles.emptyStateContainerBlock} role="status">
           <div className={styles.emptyStateGlassCard}>
             <div className={styles.emptyStateIconWrapper}>
@@ -96,7 +277,6 @@ export default function TransactionLedgerGrid({
             </p>
           </div>
         </div>
-
       ) : (
         <>
           {/* DESKTOP HIGH-DENSITY TABLE */}
@@ -121,94 +301,23 @@ export default function TransactionLedgerGrid({
                 </tr>
               </thead>
               <tbody>
-                {validatedRecords.map((singleRowItem, index) => {
-                  const isIncomeType = singleRowItem.type === "income";
-                  const isRowChecked = safeSelectedIds.includes(singleRowItem.id);
-                  const isDebt = checkIsDebtCategory(singleRowItem.category);
-                  const uniqueKey = singleRowItem.id || `row-${index}`;
-
-                  return (
-                    <tr 
-                      key={uniqueKey} 
-                      className={`${styles.zebraStripeRowNode} ${isRowChecked ? styles.selectedRowHighlightNode : ""}`}
-                    >
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          type="checkbox"
-                          className={styles.rowSelectionCheckboxInput}
-                          checked={isRowChecked}
-                          onChange={() => onToggleSelectRow(singleRowItem.id)}
-                          aria-label={`Select transaction ${singleRowItem.description || ""}`}
-                        />
-                      </td>
-                      <td className={styles.calendarDateCellText}>{singleRowItem.date || "N/A"}</td>
-                      <td className={styles.descriptiveDetailsCellText} title={singleRowItem.description}>
-                        {singleRowItem.description || "Untitled Transaction"}
-                      </td>
-                      <td>
-                        <span className={styles.categoryLabelBadgeToken}>
-                          {singleRowItem.category || "Unassigned"}
-                        </span>
-                      </td>
-                      <td className={styles.numericAmountCellTextPositioner}>
-                        <div className={`${styles.inlineAmountFlexCluster} ${isIncomeType ? styles.incomeColorAccentNode : styles.expenseColorAccentNode}`}>
-                          {isIncomeType ? <FiArrowDownLeft size={14} /> : <FiArrowUpRight size={14} />}
-                          <span>{formatOriginalCurrency(singleRowItem.originalAmount, singleRowItem.originalCurrency)}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className={styles.actionUtilitesButtonDock}>
-                          {isDebt && onSendReminder ? (
-                            <button
-                              type="button"
-                              className={styles.rowUtilityIconButtonNode}
-                              style={{ color: "var(--color-primary, #6366f1)" }}
-                              onClick={() => onSendReminder(singleRowItem)}
-                              title="Send debt reminder link"
-                              aria-label={`Send debt reminder for ${singleRowItem.description}`}
-                            >
-                              <FiBell size={13} />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className={`${styles.rowUtilityIconButtonNode} ${styles.invisibleLayoutSlot}`}
-                              disabled
-                              tabIndex={-1}
-                              aria-hidden="true"
-                            />
-                          )}
-                          <button
-                            type="button"
-                            className={styles.rowUtilityIconButtonNode}
-                            onClick={() => onEditRecord(singleRowItem.id)}
-                            title="Edit record"
-                            aria-label={`Edit ${singleRowItem.description}`}
-                          >
-                            <FiEdit2 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.rowUtilityIconButtonNode} ${styles.dangerHoverPillNode}`}
-                            onClick={() => onDeleteRecord(singleRowItem.id)}
-                            title="Delete record"
-                            aria-label={`Delete ${singleRowItem.description}`}
-                          >
-                            <FiTrash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {validatedRecords.map((singleRowItem) => (
+                  <DesktopTableRow
+                    key={singleRowItem.id}
+                    row={singleRowItem}
+                    isChecked={safeSelectedIds.includes(singleRowItem.id)}
+                    onToggleSelect={onToggleSelectRow}
+                    onEdit={onEditRecord}
+                    onDelete={onDeleteRecord}
+                    onSendReminder={onSendReminder}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* HIGH-DENSITY MOBILE COMPACT LIST */}
           <div className={styles.mobileCardsStackViewportFrame}>
-            
-            {/* MOBILE BULK SELECT TOOLBAR */}
             <div className={styles.mobileSelectAllHeaderBar}>
               <label className={styles.mobileSelectAllLabel}>
                 <input
@@ -223,92 +332,22 @@ export default function TransactionLedgerGrid({
               </label>
             </div>
 
-            {/* COMPACT LIST CONTAINER */}
             <div className={styles.mobileCompactListWrapper}>
-              {validatedRecords.map((singleRowItem, index) => {
-                const isIncomeType = singleRowItem.type === "income";
-                const isRowChecked = safeSelectedIds.includes(singleRowItem.id);
-                const isDebt = checkIsDebtCategory(singleRowItem.category);
-                const uniqueKey = singleRowItem.id || `mobile-row-${index}`;
-
-                return (
-                  <div 
-                    key={uniqueKey} 
-                    className={`${styles.mobileCompactRowItem} ${isRowChecked ? styles.mobileRowChecked : ""}`}
-                  >
-                    {/* LEFT SECTION: CHECKBOX & FLOW ICON */}
-                    <div className={styles.mobileRowLeft}>
-                      <input
-                        type="checkbox"
-                        className={styles.rowSelectionCheckboxInput}
-                        checked={isRowChecked}
-                        onChange={() => onToggleSelectRow(singleRowItem.id)}
-                      />
-                      <div className={`${styles.mobileIconBadge} ${isIncomeType ? styles.incomeIconBg : styles.expenseIconBg}`}>
-                        {isIncomeType ? <FiArrowDownLeft size={14} /> : <FiArrowUpRight size={14} />}
-                      </div>
-                    </div>
-
-                    {/* MIDDLE SECTION: DESCRIPTION & CATEGORY/DATE */}
-                    <div className={styles.mobileRowMiddle}>
-                      <h4 className={styles.mobileRowTitle} title={singleRowItem.description}>
-                        {singleRowItem.description || "Untitled Transaction"}
-                      </h4>
-                      <div className={styles.mobileRowMetaLine}>
-                        <span className={styles.mobileCategoryTag}>{singleRowItem.category || "Unassigned"}</span>
-                        <span className={styles.mobileDotDivider}>•</span>
-                        <span className={styles.mobileRowDate}>{singleRowItem.date || "N/A"}</span>
-                      </div>
-                    </div>
-
-                    {/* RIGHT SECTION: AMOUNT & COMPACT ACTIONS */}
-                    <div className={styles.mobileRowRight}>
-                      <span className={`${styles.mobileRowAmount} ${isIncomeType ? styles.incomeColorAccentNode : styles.expenseColorAccentNode}`}>
-                        {isIncomeType ? "+" : "-"}{formatOriginalCurrency(singleRowItem.originalAmount, singleRowItem.originalCurrency)}
-                      </span>
-
-                      <div className={styles.mobileRowActions}>
-                        {isDebt && onSendReminder && (
-                          <button
-                            type="button"
-                            className={styles.mobileMiniActionBtn}
-                            onClick={() => onSendReminder(singleRowItem)}
-                            title="Send reminder"
-                            aria-label={`Send debt reminder for ${singleRowItem.description}`}
-                          >
-                            <FiBell size={12} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className={styles.mobileMiniActionBtn}
-                          onClick={() => onEditRecord(singleRowItem.id)}
-                          title="Edit"
-                          aria-label={`Edit ${singleRowItem.description}`}
-                        >
-                          <FiEdit2 size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.mobileMiniActionBtn} ${styles.mobileDeleteMiniBtn}`}
-                          onClick={() => onDeleteRecord(singleRowItem.id)}
-                          title="Delete"
-                          aria-label={`Delete ${singleRowItem.description}`}
-                        >
-                          <FiTrash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-
-                  </div>
-                );
-              })}
+              {validatedRecords.map((singleRowItem) => (
+                <MobileRowItem
+                  key={singleRowItem.id}
+                  row={singleRowItem}
+                  isChecked={safeSelectedIds.includes(singleRowItem.id)}
+                  onToggleSelect={onToggleSelectRow}
+                  onEdit={onEditRecord}
+                  onDelete={onDeleteRecord}
+                  onSendReminder={onSendReminder}
+                />
+              ))}
             </div>
-
           </div>
         </>
       )}
     </div>
   );
 }
-/* === SECTION 4 END === */

@@ -113,7 +113,63 @@ const clearAiBuddyCache = () => {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: COMPONENT STATE & HANDLERS ===
+   === SECTION 2: WORKSPACE RENAME SUBCOMPONENT ===
+   ========================================================================== */
+interface WorkspaceRenameFormProps {
+  initialName: string;
+  workspaceId: string;
+  onRenamed: (newName: string) => void;
+}
+
+function WorkspaceRenameForm({ initialName, workspaceId, onRenamed }: WorkspaceRenameFormProps) {
+  const [renameInput, setRenameInput] = useState(initialName);
+  const [isWorkspaceSaving, setIsWorkspaceSaving] = useState(false);
+
+  const handleRenameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = renameInput.trim();
+    if (!trimmed || !workspaceId) return;
+
+    setIsWorkspaceSaving(true);
+    try {
+      await workspaceService.update(workspaceId, { name: trimmed });
+      onRenamed(trimmed);
+      clearAiBuddyCache();
+      toast.success("Workspace renamed!");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to rename workspace.";
+      toast.error(message);
+    } finally {
+      setIsWorkspaceSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleRenameSubmit} className={styles.renameFormBlock}>
+      <div className={styles.inputFieldGroup}>
+        <label className={styles.fieldLabelText}>Change Current Workspace Name</label>
+        <div className={styles.inputActionCluster}>
+          <input
+            type="text"
+            value={renameInput}
+            onChange={(e) => setRenameInput(e.target.value)}
+            placeholder="e.g., Personal Finances"
+            required
+            className={styles.primaryTextInputElement}
+          />
+          <button type="submit" className={styles.saveActionSubmitBtn} disabled={isWorkspaceSaving}>
+            {isWorkspaceSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiEdit2 size={14} />}
+            <span>{isWorkspaceSaving ? "Saving..." : "Save Name"}</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+/* === SECTION 2 END === */
+
+/* ==========================================================================
+   === SECTION 3: MASTER SETTINGS COMPONENT ===
    ========================================================================== */
 export default function SettingsPage() {
   const { workspaces, activeWorkspace, activeWorkspaceId, deleteWorkspace, updateWorkspaceInState } = useWorkspace();
@@ -138,10 +194,6 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Workspace rename / delete state
-  const [renameInput, setRenameInput] = useState<string>(activeWorkspace?.name || "");
-  const [prevWorkspaceId, setPrevWorkspaceId] = useState<string | undefined>(activeWorkspaceId);
-  const [isWorkspaceSaving, setIsWorkspaceSaving] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Vault security
@@ -150,45 +202,45 @@ export default function SettingsPage() {
   const [isSecurityLoading, setIsSecurityLoading] = useState<boolean>(true);
   const [pinModalMode, setPinModalMode] = useState<"SETUP" | "DISABLE" | "CHANGE">("SETUP");
 
-  // FIX: Recommended React pattern for adjusting state during render when props/context change
-  if (activeWorkspaceId !== prevWorkspaceId) {
-    setPrevWorkspaceId(activeWorkspaceId);
-    setRenameInput(activeWorkspace?.name || "");
-  }
-
-  // ---------------------------------------------------------------------------
-  // PROFILE DATA FETCHING
-  // ---------------------------------------------------------------------------
+  // PROFILE & VAULT PIN DATA FETCHING
   useEffect(() => {
     let cancelled = false;
-    const loadProfile = async () => {
+    const loadSettingsData = async () => {
       setIsProfileLoading(true);
+      setIsSecurityLoading(true);
       try {
-        const response = await userService.getProfile();
+        const [profileRes, pinStatus] = await Promise.all([
+          userService.getProfile(),
+          vaultAuthService.checkStatus(),
+        ]);
+
         if (!cancelled) {
-          const user = response.user;
-          setName(user.name || "");
-          setEmail(user.email || "");
-          setCountry(user.country || "");
-          setCurrency(user.currency || activeWorkspace?.currency || "USD");
-          setLanguages(user.languages || []);
-          setOccupation(user.occupation || "");
-          setFinancialGoal(user.financialGoal || "");
-          setAiPersona(user.aiPersona || "");
+          if (profileRes.user) {
+            const user = profileRes.user;
+            setName(user.name || "");
+            setEmail(user.email || "");
+            setCountry(user.country || "");
+            setCurrency(user.currency || activeWorkspace?.currency || "USD");
+            setLanguages(user.languages || []);
+            setOccupation(user.occupation || "");
+            setFinancialGoal(user.financialGoal || "");
+            setAiPersona(user.aiPersona || "");
+          }
+          setIsVaultSecurityEnabled(pinStatus.hasPin);
         }
       } catch {
-        if (!cancelled) toast.error("Could not load your profile data.");
+        if (!cancelled) toast.error("Could not load your settings data.");
       } finally {
-        if (!cancelled) setIsProfileLoading(false);
+        if (!cancelled) {
+          setIsProfileLoading(false);
+          setIsSecurityLoading(false);
+        }
       }
     };
-    loadProfile();
+    void loadSettingsData();
     return () => { cancelled = true; };
   }, [activeWorkspace?.currency]);
 
-  // ---------------------------------------------------------------------------
-  // VAULT PIN STATUS
-  // ---------------------------------------------------------------------------
   const fetchVaultPinStatus = async () => {
     try {
       const status = await vaultAuthService.checkStatus();
@@ -200,37 +252,20 @@ export default function SettingsPage() {
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    const init = async () => {
-      try {
-        const status = await vaultAuthService.checkStatus();
-        if (!cancelled) setIsVaultSecurityEnabled(status.hasPin);
-      } catch {
-        // ignore
-      } finally {
-        if (!cancelled) setIsSecurityLoading(false);
-      }
-    };
-    init();
-    return () => { cancelled = true; };
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // SAVE ACTIONS
-  // ---------------------------------------------------------------------------
   const refetchProfile = async () => {
     await refreshUser();
     const response = await userService.getProfile();
-    const user = response.user;
-    setName(user.name || "");
-    setEmail(user.email || "");
-    setCountry(user.country || "");
-    setCurrency(user.currency || "");
-    setLanguages(user.languages || []);
-    setOccupation(user.occupation || "");
-    setFinancialGoal(user.financialGoal || "");
-    setAiPersona(user.aiPersona || "");
+    if (response?.user) {
+      const user = response.user;
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setCountry(user.country || "");
+      setCurrency(user.currency || "");
+      setLanguages(user.languages || []);
+      setOccupation(user.occupation || "");
+      setFinancialGoal(user.financialGoal || "");
+      setAiPersona(user.aiPersona || "");
+    }
   };
 
   const handleSaveBasicInfo = async () => {
@@ -255,6 +290,7 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       await userService.updateProfile({ country, currency, languages });
+      updateUserInState({ country, currency, languages });
       
       if (activeWorkspaceId && currency) {
         await setCurrencyWithWorkspace(currency, activeWorkspaceId);
@@ -322,23 +358,6 @@ export default function SettingsPage() {
     } finally { setIsChangingPassword(false); }
   };
 
-  const handleRenameSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = renameInput.trim();
-    if (!trimmed || !activeWorkspace) return;
-
-    setIsWorkspaceSaving(true);
-    try {
-      await workspaceService.update(activeWorkspace.id, { name: trimmed });
-      updateWorkspaceInState(activeWorkspace.id, { name: trimmed });
-      clearAiBuddyCache();
-      toast.success("Workspace renamed!");
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to rename workspace.";
-      toast.error(message);
-    } finally { setIsWorkspaceSaving(false); }
-  };
-
   const handleDeleteClick = async (targetWorkspaceId: string) => {
     if (targetWorkspaceId === activeWorkspaceId) {
       toast.error("You cannot delete the active workspace.");
@@ -373,11 +392,7 @@ export default function SettingsPage() {
     );
   };
   const allLanguages = [...PRIORITY_LANGUAGES, ...EXTENDED_LANGUAGES];
-/* === SECTION 2 END === */
 
-/* ==========================================================================
-   === SECTION 3: RENDER COMPONENT ===
-   ========================================================================== */
   if (isProfileLoading) {
     return (
       <div className={styles.settingsCanvasDeck}>
@@ -391,7 +406,6 @@ export default function SettingsPage() {
 
   return (
     <div className={styles.settingsCanvasDeck}>
-      {/* Header */}
       <header className={styles.dashboardHeaderCardBox}>
         <div className={styles.headingBlock}>
           <h1 className={styles.mainHeadline}>Settings</h1>
@@ -417,25 +431,16 @@ export default function SettingsPage() {
           </div>
 
           <div className={styles.cardBodyContent}>
-            <form onSubmit={handleRenameSubmit} className={styles.renameFormBlock}>
-              <div className={styles.inputFieldGroup}>
-                <label className={styles.fieldLabelText}>Change Current Workspace Name</label>
-                <div className={styles.inputActionCluster}>
-                  <input
-                    type="text"
-                    value={renameInput}
-                    onChange={(e) => setRenameInput(e.target.value)}
-                    placeholder="e.g., Personal Finances"
-                    required
-                    className={styles.primaryTextInputElement}
-                  />
-                  <button type="submit" className={styles.saveActionSubmitBtn} disabled={isWorkspaceSaving}>
-                    {isWorkspaceSaving ? <FiLoader className={styles.loadingSpinnerAnimation} /> : <FiEdit2 size={14} />}
-                    <span>{isWorkspaceSaving ? "Saving..." : "Save Name"}</span>
-                  </button>
-                </div>
-              </div>
-            </form>
+            <WorkspaceRenameForm
+              key={activeWorkspaceId || "default-ws"}
+              workspaceId={activeWorkspace?.id || ""}
+              initialName={activeWorkspace?.name || ""}
+              onRenamed={(newName) => {
+                if (activeWorkspace?.id) {
+                  updateWorkspaceInState(activeWorkspace.id, { name: newName });
+                }
+              }}
+            />
 
             <div className={styles.dividerSplitLine} />
 

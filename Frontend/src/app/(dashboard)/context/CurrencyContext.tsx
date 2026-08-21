@@ -13,6 +13,7 @@ import React, {
 } from "react";
 import { getExchangeRates } from "@/utils/exchangeRate";
 import { workspaceService } from "@/utils/api";
+import { useWorkspace } from "./WorkspaceContext";
 import { toast } from "sonner";
 
 // ----- Fallback exchange rates used when the API is unavailable -----
@@ -99,6 +100,7 @@ export function CurrencyProvider({
   );
   const [rates, setRates] = useState<Record<string, number>>(FALLBACK_RATES);
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(true);
+  const { updateWorkspaceInState } = useWorkspace();
 
   // 1. Load fresh exchange rates on mount
   useEffect(() => {
@@ -118,7 +120,7 @@ export function CurrencyProvider({
         if (!cancelled) setIsLoadingRates(false);
       }
     };
-    fetchRates();
+    void fetchRates();
     return () => {
       cancelled = true;
     };
@@ -139,7 +141,6 @@ export function CurrencyProvider({
     async (newCurrency: string, workspaceId: string) => {
       const formattedCurrency = newCurrency.toUpperCase();
 
-      // Optimistically update local state immediately
       setCurrency(formattedCurrency);
       setIsLoadingRates(true);
 
@@ -150,14 +151,15 @@ export function CurrencyProvider({
       }
 
       try {
-        // Fetch fresh rates
         const freshRates = await getExchangeRates();
         setRates(freshRates);
 
-        // ⬇️ FIXED: Uses workspaceService.update to send request via same-origin relative route (/api)
         await workspaceService.update(workspaceId, {
           currency: formattedCurrency,
         });
+
+        // Synchronize currency update across WorkspaceContext state as well
+        updateWorkspaceInState(workspaceId, { currency: formattedCurrency });
 
         toast.success(
           `Currency switched to ${formattedCurrency} and saved!`
@@ -169,7 +171,7 @@ export function CurrencyProvider({
         setIsLoadingRates(false);
       }
     },
-    []
+    [updateWorkspaceInState]
   );
 
   // 4. Convert amount between currencies

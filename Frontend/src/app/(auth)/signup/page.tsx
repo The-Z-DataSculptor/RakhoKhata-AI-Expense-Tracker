@@ -1,4 +1,4 @@
-// src/app/(auth)/signup/page.tsx
+// Frontend/src/app/(auth)/signup/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   FiUser,
@@ -30,7 +31,7 @@ import {
   FiBarChart2,
   FiEye,
 } from "react-icons/fi";
-
+import { apiFetch } from "@/utils/api";
 import { signupSchema } from "@/schemas/auth";
 import {
   WORLD_CURRENCIES,
@@ -40,10 +41,8 @@ import {
 } from "@/constants/geoData";
 import styles from "./page.module.css";
 
-/** Signup registration flow mode */
 type SignupMethod = "CHOOSE" | "EMAIL";
 
-/** Shape of the form data used throughout the wizard */
 interface SignupFormData {
   fullName: string;
   email: string;
@@ -57,14 +56,12 @@ interface SignupFormData {
   aiPersona: string;
 }
 
-/** Occupation options */
 interface OccupationOption {
   id: string;
   label: string;
   desc: string;
 }
 
-/** Financial goal card */
 interface FinancialGoal {
   id: string;
   icon: React.ReactNode;
@@ -72,7 +69,6 @@ interface FinancialGoal {
   desc: string;
 }
 
-/** AI persona card */
 interface AiPersona {
   id: string;
   icon: React.ReactNode;
@@ -80,7 +76,6 @@ interface AiPersona {
   desc: string;
 }
 
-// Static data arrays – defined outside the component to avoid re-creation
 const OCCUPATIONS: OccupationOption[] = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
@@ -91,81 +86,21 @@ const OCCUPATIONS: OccupationOption[] = [
 ];
 
 const FINANCIAL_GOALS: FinancialGoal[] = [
-  { 
-    id: "hustler", 
-    icon: <FiZap />, 
-    title: "The Hustler", 
-    desc: "Managing gigs & multiple income streams." 
-  },
-  { 
-    id: "saver", 
-    icon: <FiAward />, 
-    title: "The Saver", 
-    desc: "Building an emergency fund or buying a home." 
-  },
-  { 
-    id: "tight_budgeter", 
-    icon: <FiSearch />, 
-    title: "The Budgeter", 
-    desc: "Living paycheck-to-paycheck, finding leaks." 
-  },
-  { 
-    id: "zen_master", 
-    icon: <FiSmile />, 
-    title: "The Zen Master", 
-    desc: "Just tracking cash flows with zero stress." 
-  },
-  { 
-    id: "wealth_builder", 
-    icon: <FiTrendingUp />, 
-    title: "The Wealth Builder", 
-    desc: "Investing, growing assets, and compound growth." 
-  },
-  { 
-    id: "debt_destroyer", 
-    icon: <FiActivity />, 
-    title: "The Debt Destroyer", 
-    desc: "Aggressively tackling outstanding loans & debt." 
-  },
-  { 
-    id: "nomad", 
-    icon: <FiCompass />, 
-    title: "The Nomad / Expat", 
-    desc: "Working globally, handling multi-currency accounts." 
-  },
-  { 
-    id: "privacy_sentinel", 
-    icon: <FiShield />, 
-    title: "Prefer Private", 
-    desc: "Do not categorize or analyze my financial intentions." 
-  },
+  { id: "hustler", icon: <FiZap />, title: "The Hustler", desc: "Managing gigs & multiple income streams." },
+  { id: "saver", icon: <FiAward />, title: "The Saver", desc: "Building an emergency fund or buying a home." },
+  { id: "tight_budgeter", icon: <FiSearch />, title: "The Budgeter", desc: "Living paycheck-to-paycheck, finding leaks." },
+  { id: "zen_master", icon: <FiSmile />, title: "The Zen Master", desc: "Just tracking cash flows with zero stress." },
+  { id: "wealth_builder", icon: <FiTrendingUp />, title: "The Wealth Builder", desc: "Investing, growing assets, and compound growth." },
+  { id: "debt_destroyer", icon: <FiActivity />, title: "The Debt Destroyer", desc: "Aggressively tackling outstanding loans & debt." },
+  { id: "nomad", icon: <FiCompass />, title: "The Nomad / Expat", desc: "Working globally, handling multi-currency accounts." },
+  { id: "privacy_sentinel", icon: <FiShield />, title: "Prefer Private", desc: "Do not categorize or analyze my financial intentions." },
 ];
 
 const AI_PERSONAS: AiPersona[] = [
-  { 
-    id: "savage_roaster", 
-    icon: <FiZap />, 
-    title: "Savage Roaster", 
-    desc: "Tough love. Will playfully challenge your unnecessary spending habits." 
-  },
-  { 
-    id: "supportive_coach", 
-    icon: <FiHeart />, 
-    title: "Supportive Coach", 
-    desc: "Warm mentor. Celebrates wins and guides your journey gently." 
-  },
-  { 
-    id: "forensic_detective", 
-    icon: <FiEye />, 
-    title: "Forensic Detective", 
-    desc: "Hyper-analytical. Finds subtle recurring and hidden spending leaks." 
-  },
-  { 
-    id: "silent_accountant", 
-    icon: <FiBarChart2 />, 
-    title: "Silent Accountant", 
-    desc: "Professional precision. Direct financial ledger calculations without banter." 
-  },
+  { id: "savage_roaster", icon: <FiZap />, title: "Savage Roaster", desc: "Tough love. Will playfully challenge your unnecessary spending habits." },
+  { id: "supportive_coach", icon: <FiHeart />, title: "Supportive Coach", desc: "Warm mentor. Celebrates wins and guides your journey gently." },
+  { id: "forensic_detective", icon: <FiEye />, title: "Forensic Detective", desc: "Hyper-analytical. Finds subtle recurring and hidden spending leaks." },
+  { id: "silent_accountant", icon: <FiBarChart2 />, title: "Silent Accountant", desc: "Professional precision. Direct financial ledger calculations without banter." },
 ];
 
 const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
@@ -176,6 +111,7 @@ const STEP_TITLES = ["Account", "Region", "Goals", "AI Assistant"];
    ========================================================================== */
 
 export default function SignupPage() {
+  const router = useRouter();
   const [signupMethod, setSignupMethod] = useState<SignupMethod>("CHOOSE");
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -194,7 +130,6 @@ export default function SignupPage() {
     aiPersona: "",
   });
 
-  // Auto-detect region from timezone (runs once on mount)
   useEffect(() => {
     const timer = setTimeout(() => {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -226,7 +161,6 @@ export default function SignupPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Country change -> auto-sets currency & language
   const handleCountryChange = (selectedCountryName: string) => {
     const matchedCountry = WORLD_COUNTRIES.find(
       (c) => c.name === selectedCountryName
@@ -247,7 +181,6 @@ export default function SignupPage() {
     });
   };
 
-  // Language toggling
   const toggleLanguage = (lang: string) => {
     setFormData((prev) => {
       const current = prev.languages;
@@ -258,7 +191,6 @@ export default function SignupPage() {
     });
   };
 
-  // Step navigation with explicit field validations
   const handleNext = () => {
     if (step === 1) {
       const validation = signupSchema.safeParse(formData);
@@ -302,7 +234,6 @@ export default function SignupPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
-  // Final submission validation
   const submitForm = async () => {
     if (!formData.aiPersona) {
       toast.error("Please pick an AI assistant personality style to complete registration.");
@@ -311,27 +242,13 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/auth/signup", {
+      const res = await apiFetch<{ message: string }>("/auth/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        credentials: "include",
       });
 
-      const result: unknown = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
-            : "Registration failed.";
-        throw new Error(errorMessage);
-      }
-
-      toast.success("Account created! Please check your email to verify your account.");
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 2500);
+      toast.success(res.message || "Account created! Please verify your email.");
+      router.push("/login");
     } catch (error: unknown) {
       console.error("Signup Error:", error);
       const message =
@@ -361,7 +278,6 @@ export default function SignupPage() {
           </div>
 
           <div className={styles.methodChoiceGrid}>
-            {/* Google OAuth Option */}
             <a
               href="/api/auth/google"
               className={`${styles.methodChoiceCard} ${styles.googleChoiceCard}`}
@@ -403,7 +319,6 @@ export default function SignupPage() {
               <span>or create an account manually</span>
             </div>
 
-            {/* Email Registration Option */}
             <button
               type="button"
               onClick={() => {
@@ -730,7 +645,6 @@ export default function SignupPage() {
       <div className={styles.ambientGlow} />
 
       <div className={styles.wizardContainer}>
-        {/* Progress sidebar */}
         <div className={styles.progressSidebar}>
           <Link href="/" className={styles.backHomeBtn}>
             ← Cancel
@@ -769,7 +683,6 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Mobile-only step tracker */}
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
               {signupMethod === "CHOOSE" ? (
@@ -791,7 +704,6 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Form body */}
         <div className={styles.formBody}>
           <div className={styles.formContentArea}>
             {renderStepContent()}

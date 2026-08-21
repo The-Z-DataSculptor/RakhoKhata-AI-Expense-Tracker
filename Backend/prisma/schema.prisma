@@ -12,7 +12,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // Note: Connection URLs for Prisma 7 are managed entirely in `prisma.config.ts`
 }
 
 /**
@@ -21,7 +20,7 @@ datasource db {
 
 /**
  * ==========================================================================
- * === SECTION 2: DATABASE ENUMS (STRICT TYPE SAFETY) ===
+ * === SECTION 2: DATABASE ENUMS ===
  * ==========================================================================
  */
 
@@ -58,14 +57,13 @@ model User {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
-  passwordHash String? // Nullable for passwordless Google OAuth signups
-  avatarUrl    String? // Stores dynamic social avatar image URLs
+  passwordHash String?
+  avatarUrl    String?
   vaultPin     String?
   uiTheme      UITheme  @default(DARK)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Dynamic Onboarding & Global AI Preferences
   country       String?
   currency      String?
   languages     String[]
@@ -73,19 +71,15 @@ model User {
   financialGoal String?
   aiPersona     String?
 
-  // Onboarding Setup Tracker
   isOnboardingCompleted Boolean @default(false)
 
-  // Security & Email Verification States
   isEmailVerified     Boolean   @default(false)
   emailVerifiedAt     DateTime?
   emailDeliveryStatus String    @default("DELIVERED")
 
-  // Automated Digest Toggles
   weeklyDigestEnabled  Boolean @default(true)
   monthlyReportEnabled Boolean @default(true)
 
-  // Relational Connections
   workspaces    Workspace[]
   notifications Notification[]
   accounts      Account[]
@@ -96,16 +90,13 @@ model User {
 model Account {
   id                String   @id @default(uuid())
   userId            String
-  provider          String // e.g., "GOOGLE"
-  providerAccountId String // Unique provider ID from Google
+  provider          String
+  providerAccountId String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  // Relationships
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // WHY THIS FIX WAS MADE: Composite index accelerates authorization lookups when checking
-  // if an account provider maps to a specific user during OAuth authentication.
   @@unique([provider, providerAccountId])
   @@index([userId])
   @@map("accounts")
@@ -129,15 +120,12 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relationships
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   categories   Category[]
   transactions Transaction[]
   budgets      Budget[]
   investments  Investment[]
 
-  // WHY THIS FIX WAS MADE: Composite index on userId and workspace id allows ultra-fast
-  // BOLA/IDOR ownership checks during API requests before executing mutations.
   @@index([userId, id])
   @@map("workspaces")
 }
@@ -155,7 +143,7 @@ model Workspace {
 model Category {
   id           String          @id @default(uuid())
   name         String
-  type         TransactionType // ENUM: Strict type constraint
+  type         TransactionType
   color        String
   isFixed      Boolean         @default(false)
   isRecurring  Boolean         @default(false)
@@ -166,13 +154,10 @@ model Category {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  // Relationships
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   budgets      Budget[]
 
-  // WHY THIS FIX WAS MADE: Prevents creation of duplicate categories with the exact same name
-  // and transaction type within the same workspace, maintaining ledger data integrity.
   @@unique([workspaceId, name, type])
   @@index([workspaceId])
   @@map("categories")
@@ -181,28 +166,29 @@ model Category {
 model Transaction {
   id String @id @default(uuid())
 
-  // Permanent original currency values (Decimal avoids floating point math bugs)
   originalAmount   Decimal @db.Decimal(12, 2)
   originalCurrency String  @default("USD")
   baseAmountUSD    Decimal @db.Decimal(12, 2)
 
-  type        TransactionType // ENUM: Strict type constraint
+  type        TransactionType
   description String
   date        DateTime
   workspaceId String
-  categoryId  String? // Optional so deleting a category won't wipe transaction history
+  categoryId  String?
+
+  // Soft delete column for recycle bin recovery
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relationships
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   category  Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  // Indexes to prevent full table scans in PostgreSQL
   @@index([workspaceId])
-  @@index([workspaceId, date]) // High performance dashboard date filtering
-  @@index([categoryId]) // Category filtering
+  @@index([workspaceId, date])
+  @@index([workspaceId, deletedAt])
+  @@index([categoryId])
   @@map("transactions")
 }
 
@@ -230,12 +216,9 @@ model Budget {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relationships
   category  Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  // WHY THIS FIX WAS MADE: Enforces a unique constraint per category and date range inside a workspace
-  // to prevent overlapping budgets from causing double-counting errors in summary metrics.
   @@unique([workspaceId, categoryId, startDate, endDate])
   @@index([workspaceId])
   @@index([categoryId])
@@ -258,7 +241,6 @@ model Investment {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Relationships
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
@@ -294,29 +276,21 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relationships
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Composite index optimized for unread/recent user notifications
   @@index([userId, isRead, createdAt])
   @@map("notifications")
 }
 
 model VerificationToken {
   id         String    @id @default(uuid())
-  tokenHash  String    @unique // Unique constraint creates a B-Tree index automatically
-  type       TokenType // ENUM: Restricts token categories
-  identifier String // E.g., target user email address
+  tokenHash  String    @unique
+  type       TokenType
+  identifier String
   expiresAt  DateTime
   createdAt  DateTime  @default(now())
 
-  // WHY THIS FIX WAS MADE: Dedicated index on expiresAt allows background cron processes to clean up
-  // expired verification tokens instantly without performing full sequential table scans.
   @@index([identifier])
   @@index([expiresAt])
   @@map("verification_tokens")
 }
-
-/**
- * === SECTION 7 END ===
- */

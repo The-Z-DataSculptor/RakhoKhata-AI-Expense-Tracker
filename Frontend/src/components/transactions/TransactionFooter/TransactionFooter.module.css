@@ -1,8 +1,5 @@
-/* src/components/transactions/TransactionFooter/TransactionFooter.module.css */
+/* Frontend/src/components/transactions/TransactionFooter/TransactionFooter.module.css */
 
-/* ==========================================================================
-   === SECTION 1: MASTER BOTTOM FOOTER CONTAINER ===
-   ========================================================================== */
 .footerDeckContainer {
   margin-top: 0.75rem; 
   width: 100%;
@@ -18,9 +15,6 @@
   box-shadow: none; 
 }
 
-/* ==========================================================================
-   === SECTION 2: METRIC AND USER-FRIENDLY SUMMARY TRACK ===
-   ========================================================================== */
 .metaStatNode {
   display: flex;
   align-items: center;
@@ -72,14 +66,34 @@
   color: #c5221f;
 }
 
-/* ==========================================================================
-   === SECTION 4: EXPORT ACTION DECK BUTTONS WITH SPLIT CONTROLS ===
-   ========================================================================== */
 .actionButtonBlock {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+}
+
+.trashCanTriggerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg, 12px);
+  background-color: var(--surface-muted, #f1eefc);
+  border: 1px solid var(--border-color, #e5e1f4);
+  color: var(--text-secondary, #4e4a6b);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s);
+  box-shadow: 0 2px 4px rgba(16, 4, 63, 0.04);
+}
+
+.trashCanTriggerBtn:hover {
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: var(--color-danger, #dc2626);
+  transform: translateY(-1px);
 }
 
 .splitButtonWrapper {
@@ -95,7 +109,7 @@
 }
 
 .excelThemeOverride {
-  --btn-bg: #107c41; /* Microsoft Excel Brand Green */
+  --btn-bg: #107c41;
   --btn-glow: rgba(16, 124, 65, 0.15);
   box-shadow: 0 2px 4px var(--btn-glow);
 }
@@ -113,7 +127,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1.1rem;
   font-size: 0.85rem;
   font-weight: 600;
   transition: opacity var(--transition-fast, 0.15s);
@@ -138,10 +152,6 @@
   opacity: 0.92;
 }
 
-.splitButtonWrapper:active:not(:has(button:disabled)) {
-  transform: translateY(0);
-}
-
 .mainActionBtn:disabled,
 .dropdownArrowTrigger:disabled {
   background-color: var(--border-color, #e5e1f4);
@@ -154,12 +164,9 @@
   transform: rotate(180deg);
 }
 
-/* ==========================================================================
-   === SECTION 5: FLOATING CONTEXT MENU DROPDOWN LIST ===
-   ========================================================================== */
 .floatingRangeMenu {
   position: absolute;
-  bottom: 125%; /* Opens upwards to avoid cutting off screen edge bounds */
+  bottom: 125%;
   right: 0;
   width: 170px;
   background-color: var(--background-card, #ffffff);
@@ -199,9 +206,6 @@
   font-weight: 600;
 }
 
-/* ==========================================================================
-   === SECTION 6: RESPONSIVE FLEX LAYOUT COMPACT RULES ===
-   ========================================================================== */
 @media (max-width: 960px) {
   .footerDeckContainer {
     flex-direction: column;
@@ -222,9 +226,14 @@
     gap: 0.65rem;
   }
 
+  .trashCanTriggerBtn,
   .splitButtonWrapper {
     width: 100%;
     box-shadow: none;
+  }
+
+  .trashCanTriggerBtn {
+    justify-content: center;
   }
 
   .mainActionBtn {

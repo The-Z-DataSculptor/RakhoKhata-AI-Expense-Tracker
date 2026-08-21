@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/investment-vault/page.tsx
+// Frontend/src/app/(dashboard)/dashboard/investment-vault/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -66,7 +66,6 @@ interface ParsedStrategyData {
   changeLog: InvestmentHistoryNode[];
 }
 
-/** Fast single-pass safe JSON parser to avoid main-thread blocking */
 function parseStrategyData(rawNote: string | undefined): ParsedStrategyData {
   const fallback: ParsedStrategyData = {
     displayName: "",
@@ -117,7 +116,6 @@ export default function InvestmentVaultPage() {
   const [editingAsset, setEditingAsset] = useState<HydratedAsset | null>(null);
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState<boolean>(false);
 
-  // Security status sync
   useEffect(() => {
     let isMounted = true;
     const verifySecurityStatus = async () => {
@@ -133,11 +131,10 @@ export default function InvestmentVaultPage() {
         console.error("Failed to sync security credentials:", err);
       }
     };
-    verifySecurityStatus();
+    void verifySecurityStatus();
     return () => { isMounted = false; };
   }, [refreshKey]);
 
-  // Fetch data
   useEffect(() => {
     let isMounted = true;
     if (!activeWorkspaceId || (hasDatabasePin && !isVaultUnlocked)) {
@@ -163,12 +160,11 @@ export default function InvestmentVaultPage() {
       }
     };
 
-    fetchVaultHoldings();
+    void fetchVaultHoldings();
 
     return () => { isMounted = false; };
   }, [activeWorkspaceId, refreshKey, isVaultUnlocked, hasDatabasePin]);
 
-  // Memoized asset hydration (recomputes instantly on currency switch without network refetch)
   const assets: HydratedAsset[] = useMemo(() => {
     return rawInvestments.map((item) => {
       const parsedDetails = parseStrategyData(item.strategyNote);
@@ -184,8 +180,9 @@ export default function InvestmentVaultPage() {
         localizedTotalInvested = convertAmount(baseAmountUSD, "USD", currency);
       }
 
+      // Increased decimal precision to 8 for fractional crypto assets
       const localizedUnitPrice =
-        rawQuantity > 0 ? Number((localizedTotalInvested / rawQuantity).toFixed(4)) : 0;
+        rawQuantity > 0 ? Number((localizedTotalInvested / rawQuantity).toFixed(8)) : 0;
 
       return {
         id: item.id,

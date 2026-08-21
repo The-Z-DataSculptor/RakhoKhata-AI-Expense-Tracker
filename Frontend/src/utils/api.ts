@@ -4,21 +4,19 @@
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
 export const getApiBaseUrl = (): string => {
-  if (typeof window === "undefined") {
-    let baseUrl =
-      process.env.INTERNAL_API_URL ||
-      process.env.API_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5000";
+  let rawUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.INTERNAL_API_URL ||
+    process.env.API_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
 
-    baseUrl = baseUrl.replace(/\/+$/, "");
-    if (!baseUrl.endsWith("/api")) {
-      baseUrl += "/api";
-    }
-    return baseUrl;
+  rawUrl = rawUrl.replace(/\/+$/, "");
+
+  if (!rawUrl.endsWith("/api")) {
+    rawUrl += "/api";
   }
 
-  return "/api";
+  return rawUrl;
 };
 
 export type AiPersonaType =
@@ -55,6 +53,7 @@ export interface Transaction {
   originalAmount: number;
   originalCurrency: string;
   baseAmountUSD: number;
+  deletedAt?: string | null;
 }
 
 export interface Budget {
@@ -143,18 +142,20 @@ export interface Workspace {
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: GENERIC FETCH WRAPPER WITH RESILIENCE & RETRIES ===
+   === SECTION 2: GENERIC FETCH WRAPPER WITH EXPONENTIAL BACKOFF ===
    ========================================================================== */
 export const apiFetch = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {},
-  retries: number = 2
+  retries: number = 3,
+  backoffMs: number = 800
 ): Promise<T> => {
   const baseUrl = getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
+    Accept: "application/json",
     ...(options.headers as Record<string, string>),
   };
 
@@ -163,7 +164,7 @@ export const apiFetch = async <T = unknown>(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   const mergedOptions: RequestInit = {
     ...options,
@@ -188,9 +189,14 @@ export const apiFetch = async <T = unknown>(
     }
 
     if (!response.ok) {
-      if (retries > 0 && response.status >= 502 && response.status <= 504) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return apiFetch<T>(endpoint, options, retries - 1);
+      const isRetryableStatus =
+        response.status === 408 ||
+        response.status === 429 ||
+        (response.status >= 500 && response.status <= 504);
+
+      if (retries > 0 && isRetryableStatus) {
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return apiFetch<T>(endpoint, options, retries - 1, backoffMs * 1.5);
       }
 
       let errorMessage = `Request failed with status ${response.status}`;
@@ -212,30 +218,38 @@ export const apiFetch = async <T = unknown>(
   } catch (error: unknown) {
     clearTimeout(timeoutId);
 
-    if (retries > 0 && error instanceof Error && error.name !== "AbortError") {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return apiFetch<T>(endpoint, options, retries - 1);
+    if (retries > 0) {
+      const isAbort = error instanceof Error && error.name === "AbortError";
+      const isNetworkFail =
+        error instanceof Error &&
+        (error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError") ||
+          error.message.includes("ECONNRESET") ||
+          isAbort);
+
+      if (isNetworkFail) {
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return apiFetch<T>(endpoint, options, retries - 1, backoffMs * 1.5);
+      }
     }
 
     if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Connection timed out. Please check your network connection.");
+      throw new Error("Connection timed out. Server is taking longer than usual to respond.");
     }
 
-    if (
-      error instanceof Error &&
-      !error.message.startsWith("Failed to fetch")
-    ) {
+    if (error instanceof Error && !error.message.startsWith("Failed to fetch")) {
       throw error;
     }
+
     throw new Error(
-      "Unable to connect to the financial backend. Please check your connection and ensure the server is running."
+      "Unable to connect to the backend engine. Please check your network and ensure the API server is active."
     );
   }
 };
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: STRONGLY‑TYPED SERVICES ===
+   === SECTION 3: STRONGLY-TYPED SERVICES ===
    ========================================================================== */
 export const transactionService = {
   getByWorkspace: (workspaceId: string) =>
@@ -272,6 +286,30 @@ export const transactionService = {
     apiFetch<{ message: string }>(`/transactions/${id}`, {
       method: "DELETE",
     }),
+
+  getTrash: (workspaceId: string) =>
+    apiFetch<{ trashed: Transaction[] }>(
+      `/transactions/trash?workspaceId=${workspaceId}`,
+      { method: "GET" }
+    ),
+
+  restore: (id: string) =>
+    apiFetch<{ message: string; transaction: Transaction }>(
+      `/transactions/${id}/restore`,
+      { method: "POST" }
+    ),
+
+  permanentDelete: (id: string) =>
+    apiFetch<{ message: string }>(
+      `/transactions/${id}/permanent`,
+      { method: "DELETE" }
+    ),
+
+  emptyTrash: (workspaceId: string) =>
+    apiFetch<{ message: string; count: number }>(
+      `/transactions/trash/empty?workspaceId=${workspaceId}`,
+      { method: "DELETE" }
+    ),
 };
 
 export const categoryService = {

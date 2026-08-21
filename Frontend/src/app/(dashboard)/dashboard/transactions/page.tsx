@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/transactions/page.tsx
+// Frontend/src/app/(dashboard)/dashboard/transactions/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -20,10 +20,10 @@ import TransactionFooter from "@/components/transactions/TransactionFooter/Trans
 import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFooter";
 import { TransactionForm } from "@/components/forms/TransactionForm/TransactionForm";
 
-// Modularized Components
 import ImportWizardModal, { StagedTransactionRow } from "@/components/transactions/ImportWizardModal/ImportWizardModal";
 import ReceiptScannerOverlay, { ReceiptScannerOverlayHandle } from "@/components/transactions/ReceiptScannerOverlay/ReceiptScannerOverlay";
 import DebtReminderModal from "@/components/transactions/DebtReminderModal/DebtReminderModal";
+import TrashCanModal from "@/components/transactions/TrashCanModal/TrashCanModal";
 
 import styles from "./page.module.css";
 
@@ -45,35 +45,30 @@ interface FormPayload {
    ========================================================================== */
 export default function TransactionsPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const workspaceCurrency = activeWorkspace?.currency || "PKR";
+  const workspaceCurrency = activeWorkspace?.currency || "USD";
   const { convertAmount } = useCurrency();
 
-  // ----- Data state -----
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
 
-  // ----- Filter & Pagination state -----
-  const [searchQuery, setSearchQuery] = useState<string>("" );
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedType, setSelectedType] = useState<TransactionTypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
 
-  // ----- Modals state -----
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeReminderTx, setActiveReminderTx] = useState<TransactionRecord | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [isSubmittingImport, setIsSubmittingImport] = useState<boolean>(false);
+  const [isTrashOpen, setIsTrashOpen] = useState<boolean>(false);
 
   const scannerRef = useRef<ReceiptScannerOverlayHandle>(null);
 
-  // ---------------------------------------------------------------------------
-  // DATA FETCHING
-  // ---------------------------------------------------------------------------
   const refreshLedgerData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
@@ -114,15 +109,12 @@ export default function TransactionsPage() {
       }
     };
 
-    loadInitialData();
+    void loadInitialData();
     return () => {
       isMounted = false;
     };
   }, [activeWorkspaceId]);
 
-  // ---------------------------------------------------------------------------
-  // RECEIPT SCANNING (AI)
-  // ---------------------------------------------------------------------------
   const handleReceiptScanProcessing = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeWorkspaceId) return;
@@ -147,9 +139,13 @@ export default function TransactionsPage() {
 
       const safeCategories = Array.isArray(categories) ? categories : [];
       const unassignedCategory = safeCategories.find(
-        (c) => c.name.toLowerCase() === "unassigned"
+        (c) => c.name.toLowerCase() === "unassigned" || c.name.toLowerCase().includes("unassigned")
       );
-      const defaultCategoryId = unassignedCategory?.id || safeCategories[0]?.id || "";
+      const defaultCategoryId = unassignedCategory?.id || safeCategories[0]?.id;
+
+      if (!defaultCategoryId) {
+        throw new Error("No categories found in this workspace. Please create a category first.");
+      }
 
       const scannedTransaction: Partial<Transaction> = {
         description: parsedResult.merchant || "AI Scanned Receipt",
@@ -181,9 +177,6 @@ export default function TransactionsPage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // SPREADSHEET IMPORT COMMIT
-  // ---------------------------------------------------------------------------
   const handleCommitBulkDataToBackend = async (stagedRows: StagedTransactionRow[]) => {
     if (!activeWorkspaceId) return;
     setIsSubmittingImport(true);
@@ -216,18 +209,15 @@ export default function TransactionsPage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // CRUD ACTIONS
-  // ---------------------------------------------------------------------------
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = useCallback(() => {
     setEditingTransaction(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleClosePopupModal = () => {
+  const handleClosePopupModal = useCallback(() => {
     setIsModalOpen(false);
     setEditingTransaction(null);
-  };
+  }, []);
 
   const handleUpsertTransaction = async (payload: FormPayload) => {
     try {
@@ -236,29 +226,30 @@ export default function TransactionsPage() {
         return;
       }
 
+      // Convert original currency to workspace currency for amount field
+      const workspaceConvertedAmount =
+        payload.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase()
+          ? payload.originalAmount
+          : convertAmount(payload.originalAmount, payload.originalCurrency, workspaceCurrency);
+
+      const requestBody = {
+        originalAmount: payload.originalAmount,
+        originalCurrency: payload.originalCurrency,
+        baseAmountUSD: payload.baseAmountUSD,
+        type: payload.type as "INCOME" | "EXPENSE",
+        description: payload.description,
+        date: payload.date,
+        categoryId: payload.categoryId,
+        workspaceId: activeWorkspaceId,
+        amount: workspaceConvertedAmount,
+      };
+
       if (payload.id) {
-        await transactionService.update(payload.id, {
-          originalAmount: payload.originalAmount,
-          originalCurrency: payload.originalCurrency,
-          baseAmountUSD: payload.baseAmountUSD,
-          type: payload.type as "INCOME" | "EXPENSE",
-          description: payload.description,
-          date: payload.date,
-          categoryId: payload.categoryId,
-          amount: payload.originalAmount,
-        });
+        await transactionService.update(payload.id, requestBody);
+        toast.success("Transaction updated successfully.");
       } else {
-        await transactionService.create({
-          originalAmount: payload.originalAmount,
-          originalCurrency: payload.originalCurrency,
-          baseAmountUSD: payload.baseAmountUSD,
-          type: payload.type as "INCOME" | "EXPENSE",
-          description: payload.description,
-          date: payload.date,
-          workspaceId: activeWorkspaceId,
-          categoryId: payload.categoryId,
-          amount: payload.originalAmount,
-        });
+        await transactionService.create(requestBody);
+        toast.success("Transaction recorded successfully.");
       }
 
       await refreshLedgerData();
@@ -269,33 +260,48 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleEditRecordTrigger = (targetId: string) => {
-    const safeTransactions = Array.isArray(transactions) ? transactions : [];
-    const match = safeTransactions.find((t) => t.id === targetId);
-    if (match) {
-      setEditingTransaction(match);
-      setIsModalOpen(true);
-    }
-  };
+  const handleEditRecordTrigger = useCallback((targetId: string) => {
+    setTransactions((currentTx) => {
+      const match = currentTx.find((t) => t.id === targetId);
+      if (match) {
+        setEditingTransaction(match);
+        setIsModalOpen(true);
+      }
+      return currentTx;
+    });
+  }, []);
 
-  const handleDeleteRecordTrigger = async (targetId: string) => {
+  const handleDeleteRecordTrigger = useCallback(async (targetId: string) => {
     try {
       await transactionService.delete(targetId);
-      setTransactions((prev) => (Array.isArray(prev) ? prev : []).filter((item) => item.id !== targetId));
+      setTransactions((prev) => {
+        const updated = (Array.isArray(prev) ? prev : []).filter((item) => item.id !== targetId);
+        return updated;
+      });
       setSelectedRecordIds((prev) => (Array.isArray(prev) ? prev : []).filter((id) => id !== targetId));
-      toast.success("Transaction deleted.");
+      
+      // Auto-recalibrate pagination index if current page exceeds newly calculated total pages
+      setTimeout(() => {
+        setCurrentPage((currPage) => {
+          const remainingCount = transactions.length - 1;
+          const maxPages = Math.ceil(remainingCount / itemsPerPage) || 1;
+          return currPage > maxPages ? maxPages : currPage;
+        });
+      }, 0);
+
+      toast.success("Transaction moved to Recycle Bin.");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to delete transaction.";
       toast.error(message);
     }
-  };
+  }, [transactions.length, itemsPerPage]);
 
   const handleBulkDeleteExecution = async () => {
     try {
       const safeSelectedIds = Array.isArray(selectedRecordIds) ? selectedRecordIds : [];
       await Promise.all(safeSelectedIds.map((id) => transactionService.delete(id)));
 
-      toast.success(`Successfully deleted ${safeSelectedIds.length} transactions.`);
+      toast.success(`Moved ${safeSelectedIds.length} transactions to Recycle Bin.`);
       setTransactions((prev) => (Array.isArray(prev) ? prev : []).filter((row) => !safeSelectedIds.includes(row.id)));
       setSelectedRecordIds([]);
       setCurrentPage(1);
@@ -306,34 +312,30 @@ export default function TransactionsPage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // SELECTION
-  // ---------------------------------------------------------------------------
-  const handleToggleSingleRowSelection = (targetId: string) => {
+  const handleToggleSingleRowSelection = useCallback((targetId: string) => {
     setSelectedRecordIds((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
       return safePrev.includes(targetId) ? safePrev.filter((id) => id !== targetId) : [...safePrev, targetId];
     });
-  };
+  }, []);
 
-  const handleToggleSelectAllOnPage = (visiblePageIds: string[]) => {
+  const handleToggleSelectAllOnPage = useCallback((visiblePageIds: string[]) => {
     setSelectedRecordIds((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
       const safeVisible = Array.isArray(visiblePageIds) ? visiblePageIds : [];
       const allSelected = safeVisible.every((id) => safePrev.includes(id));
       return allSelected ? safePrev.filter((id) => !safeVisible.includes(id)) : Array.from(new Set([...safePrev, ...safeVisible]));
     });
-  };
+  }, []);
 
-  // ---------------------------------------------------------------------------
-  // FILTERING & AGGREGATIONS
-  // ---------------------------------------------------------------------------
   const filteredTransactions = useMemo(() => {
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
+    const query = searchQuery.toLowerCase().trim();
+    const typeUpper = selectedType.toUpperCase();
+
     return safeTransactions.filter((tx) => {
-      const query = searchQuery.toLowerCase().trim();
       const matchesSearch = !query || (tx.description || "").toLowerCase().includes(query);
-      const matchesType = selectedType === "all" || (tx.type || "").toUpperCase() === selectedType.toUpperCase();
+      const matchesType = selectedType === "all" || (tx.type || "").toUpperCase() === typeUpper;
       const matchesCategory = selectedCategory === "all" || tx.categoryId === selectedCategory;
       return matchesSearch && matchesType && matchesCategory;
     });
@@ -357,22 +359,22 @@ export default function TransactionsPage() {
   }, [filteredTransactions, workspaceCurrency, convertAmount]);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const safeFiltered = Array.isArray(filteredTransactions) ? filteredTransactions : [];
-  const pagedTransactions = safeFiltered.slice(startIndex, startIndex + itemsPerPage);
+  const pagedTransactions = useMemo(() => {
+    return filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredTransactions, startIndex, itemsPerPage]);
 
   const gridRows: TransactionRecord[] = useMemo(() => {
-    const safePaged = Array.isArray(pagedTransactions) ? pagedTransactions : [];
-    return safePaged.map((tx) => ({
+    return pagedTransactions.map((tx) => ({
       id: tx.id,
       date: tx.date ? String(tx.date).substring(0, 10) : "",
       description: tx.description || "",
       category: tx.category?.name || "General",
       originalAmount: Number(tx.originalAmount ?? tx.amount ?? 0),
-      originalCurrency: tx.originalCurrency ?? "USD",
+      originalCurrency: tx.originalCurrency ?? workspaceCurrency,
       amount: Number(tx.amount || 0),
       type: (tx.type || "expense").toLowerCase() as "income" | "expense",
     }));
-  }, [pagedTransactions]);
+  }, [pagedTransactions, workspaceCurrency]);
 
   const categoryOptionsForFilter = useMemo(() => {
     const safeCategories = Array.isArray(categories) ? categories : [];
@@ -381,7 +383,6 @@ export default function TransactionsPage() {
 
   return (
     <div className={styles.ledgerCanvasWrapper}>
-      {/* 1. Header with direct actions */}
       <TransactionHeader
         totalCount={filteredTransactions.length}
         onAddTransactionClick={handleOpenCreateModal}
@@ -390,7 +391,6 @@ export default function TransactionsPage() {
         onCameraScannerSelect={() => scannerRef.current?.triggerCameraInput()}
       />
 
-      {/* 2. Filter Bar */}
       <TransactionFilterBar
         searchQuery={searchQuery}
         onSearchChange={(val) => {
@@ -410,7 +410,6 @@ export default function TransactionsPage() {
         }}
       />
 
-      {/* 3. Main Data Grid */}
       <main className={styles.mainContentStage}>
         {isLoading ? (
           <div className={styles.inlineLoadingContainer}>
@@ -430,7 +429,6 @@ export default function TransactionsPage() {
         )}
       </main>
 
-      {/* 4. Pagination */}
       <div className={styles.paginationControlRowDeck}>
         <div className={styles.capacitySelectorFlexCluster}>
           <span className={styles.capacityLabelText}>Rows per page:</span>
@@ -456,15 +454,14 @@ export default function TransactionsPage() {
         />
       </div>
 
-      {/* 5. Footer Totals */}
       <TransactionFooter
         totalIncome={calculatedIncomeTotal}
         totalExpenses={calculatedExpenseTotal}
         sourceCurrency={workspaceCurrency}
         activeWorkspaceId={activeWorkspaceId}
+        onOpenTrashCan={() => setIsTrashOpen(true)}
       />
 
-      {/* 6. Modals & Overlays */}
       <ReceiptScannerOverlay
         ref={scannerRef}
         isScanning={isScanning}
@@ -485,7 +482,13 @@ export default function TransactionsPage() {
         onClose={() => setActiveReminderTx(null)}
       />
 
-      {/* Transaction Upsert Modal */}
+      <TrashCanModal
+        isOpen={isTrashOpen}
+        onClose={() => setIsTrashOpen(false)}
+        workspaceId={activeWorkspaceId}
+        onLedgerChange={refreshLedgerData}
+      />
+
       {isModalOpen && (
         <div className={styles.modalOverlayBackdrop} onClick={handleClosePopupModal}>
           <div className={styles.modalContentCard} onClick={(e) => e.stopPropagation()}>
@@ -500,7 +503,6 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Bulk Action Floating Toolbelt */}
       <BulkActionToolBelt
         selectedCount={selectedRecordIds.length}
         onClearSelection={() => setSelectedRecordIds([])}

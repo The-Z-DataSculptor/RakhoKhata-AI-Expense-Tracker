@@ -1,3 +1,4 @@
+// Frontend/src/app/(dashboard)/dashboard/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -18,8 +19,8 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter/DashboardFoo
 import AiBuddyConsole from "@/components/dashboard/AiBuddyConsole/AiBuddyConsole";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
-import { useUser } from "@/app/(dashboard)/context/UserContext"; // NEW
-import { transactionService } from "@/utils/api";
+import { useUser } from "@/app/(dashboard)/context/UserContext";
+import { transactionService, apiFetch } from "@/utils/api";
 import {
   filterTransactionsByPeriod,
   computeMetrics,
@@ -35,47 +36,42 @@ import styles from "./page.module.css";
 /* ==========================================================================
    === SECTION 2: DATA FETCHING & TRANSFORMATION ===
    ========================================================================== */
-export default function DashboardPage() {
+export default function DashboardOverviewPage() {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  const workspaceCurrency = activeWorkspace?.currency || "PKR";
+  const workspaceCurrency = activeWorkspace?.currency || "USD";
   const { convertAmount } = useCurrency();
-  const { user } = useUser(); // NEW
+  const { user } = useUser();
 
   const [activeTimeline, setActiveTimeline] = useState<TimePeriod>("30d");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [reloadCounter, setReloadCounter] = useState<number>(0);
 
-  // Determine if email is verified (default to true to avoid flash)
   const isEmailVerified = user?.isEmailVerified ?? true;
 
   useEffect(() => {
-    let isMounted = true;
+    if (!activeWorkspaceId) return;
 
-    const fetchTransactions = async () => {
-      if (!activeWorkspaceId) {
-        if (isMounted) setIsLoading(false);
-        return;
-      }
+    let isCancelled = false;
 
+    const loadWorkspaceLedger = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await transactionService.getByWorkspace(
-          activeWorkspaceId
-        );
-        if (!isMounted) return;
+        const response = await transactionService.getByWorkspace(activeWorkspaceId);
+        if (isCancelled) return;
 
         const rawTransactions = Array.isArray(response?.transactions)
           ? response.transactions
           : [];
 
-        const mapped = rawTransactions.map((apiTx: ApiTransaction) => {
+        const mapped: Transaction[] = rawTransactions.map((apiTx: ApiTransaction) => {
           const originalAmount = Number(
             apiTx.originalAmount ?? apiTx.amount ?? 0
           );
-          const originalCurrency = apiTx.originalCurrency || "PKR";
+          const originalCurrency = apiTx.originalCurrency || workspaceCurrency;
 
           let baseAmountUSD: number;
           if (
@@ -118,20 +114,36 @@ export default function DashboardPage() {
 
         setTransactions(mapped);
       } catch (fetchError) {
-        if (isMounted) {
+        if (!isCancelled) {
           console.error("Failed to fetch transactions:", fetchError);
           setError("Could not load your transactions. Please try again.");
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchTransactions();
+    void loadWorkspaceLedger();
+
     return () => {
-      isMounted = false;
+      isCancelled = true;
     };
-  }, [activeWorkspaceId, convertAmount]);
+  }, [activeWorkspaceId, convertAmount, reloadCounter, workspaceCurrency]);
+
+  const handleResendVerification = async () => {
+    try {
+      await apiFetch<{ message: string }>("/auth/resend-verification", {
+        method: "POST",
+      });
+      toast.success("Verification email sent! Check your inbox.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to resend verification email.";
+      toast.error(message);
+    }
+  };
   /* === SECTION 2 END === */
 
   /* ==========================================================================
@@ -198,7 +210,6 @@ export default function DashboardPage() {
      ========================================================================== */
   return (
     <div className={styles.workspaceWrapper}>
-      {/* Verification banner – only if email is not verified */}
       {!isEmailVerified && (
         <div className={styles.verificationBanner}>
           <div className={styles.bannerContent}>
@@ -206,29 +217,9 @@ export default function DashboardPage() {
             <span>
               Your email is not verified. Please check your inbox or{" "}
               <button
+                type="button"
                 className={styles.bannerResendBtn}
-                onClick={async () => {
-                  try {
-                    const res = await fetch("/api/auth/resend-verification", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                    });
-                    const data: unknown = await res.json();
-                    if (!res.ok) {
-                      const errorMsg =
-                        typeof data === "object" && data !== null && "error" in data
-                          ? (data as { error: string }).error
-                          : "Failed to resend verification email.";
-                      throw new Error(errorMsg);
-                    }
-                    toast.success("Verification email sent! Check your inbox.");
-                  } catch (err: unknown) {
-                    const message =
-                      err instanceof Error ? err.message : "An unexpected error occurred.";
-                    toast.error(message);
-                  }
-                }}
+                onClick={handleResendVerification}
               >
                 resend verification email
               </button>
@@ -240,15 +231,17 @@ export default function DashboardPage() {
 
       {isLoading ? (
         <div className={styles.loadingState}>
+          <div className={styles.spinner} />
           <p>Loading your financial data...</p>
         </div>
       ) : error ? (
         <div className={styles.errorState}>
           <p>{error}</p>
-          <button onClick={() => window.location.reload()}>Retry</button>
+          <button type="button" onClick={() => setReloadCounter((c) => c + 1)}>
+            Retry
+          </button>
         </div>
       ) : transactions.length === 0 ? (
-        /* 🚀 NEW PREMIUM EMPTY STATE */
         <div className={styles.emptyStateContainer}>
           <div className={styles.emptyStateGlassCard}>
             <div className={styles.emptyStateIconWrapper}>
@@ -270,7 +263,6 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* AI Companion Console */}
           <section
             className={styles.metricsRowStage}
             aria-label="AI Guardian Companion"
@@ -278,7 +270,6 @@ export default function DashboardPage() {
             <AiBuddyConsole activeWorkspaceId={activeWorkspaceId} />
           </section>
 
-          {/* Header with period switcher */}
           <header className={styles.dashboardHeaderCardBox}>
             <div className={styles.headingBlock}>
               <div className={styles.titleWithBadgeRow}>
@@ -299,7 +290,6 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          {/* Summary metric cards */}
           <section className={styles.metricsRowStage} aria-label="Quick Summary">
             <MetricRow
               metrics={metrics}
@@ -309,7 +299,6 @@ export default function DashboardPage() {
             />
           </section>
 
-          {/* Spending allocation bar */}
           <section
             className={styles.gaugeRowStage}
             aria-label="Spending Control Guide"
@@ -323,7 +312,6 @@ export default function DashboardPage() {
             />
           </section>
 
-          {/* Charts */}
           <main className={styles.isolatedStage}>
             <div className={styles.chartWrapperNode}>
               <CashFlowChart
@@ -341,11 +329,9 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* Global footer */}
       <footer className={styles.footerContainerBlock}>
         <DashboardFooter />
       </footer>
     </div>
   );
 }
-/* === SECTION 4 END === */

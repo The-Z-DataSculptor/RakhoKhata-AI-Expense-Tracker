@@ -1,3 +1,4 @@
+// Frontend/src/app/(auth)/login/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -10,10 +11,11 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-
+import { apiFetch } from "@/utils/api";
 import { loginSchema, type LoginFormData } from "@/schemas/auth";
 import styles from "./page.module.css";
 /* === SECTION 1 END === */
@@ -30,7 +32,7 @@ interface LoginSuccessPayload {
     id: string;
     email: string;
     isOnboardingCompleted: boolean;
-    isEmailVerified?: boolean;   // NEW
+    isEmailVerified?: boolean;
   };
 }
 
@@ -55,6 +57,7 @@ function marketTrendLabel(trend: MarketTrend): string {
    ========================================================================== */
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -87,26 +90,11 @@ export default function LoginPage() {
 
   const handleLoginSubmit = async (data: LoginFormData) => {
     try {
-      const response = await fetch(`/api/auth/login`, {
+      const payload = await apiFetch<LoginSuccessPayload>("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-        credentials: "include",
       });
 
-      const result: unknown = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
-            : "Authentication failed. Please verify credentials.";
-        throw new Error(errorMessage);
-      }
-
-      const payload = result as LoginSuccessPayload;
-
-      // Show verification reminder if email not verified
       if (payload.user?.isEmailVerified === false) {
         toast.info("Please check your inbox to verify your email address.", {
           duration: 5000,
@@ -115,12 +103,8 @@ export default function LoginPage() {
         toast.success("Welcome back! Loading your session...");
       }
 
-      const targetPath =
-        payload.user?.isOnboardingCompleted ? "/dashboard" : "/onboarding";
-
-      setTimeout(() => {
-        window.location.href = targetPath;
-      }, 500);
+      const targetPath = payload.user?.isOnboardingCompleted ? "/dashboard" : "/onboarding";
+      router.push(targetPath);
     } catch (error: unknown) {
       console.error("Login Error:", error);
       const message =
@@ -131,9 +115,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPasswordSubmit = async (
-    e: React.FormEvent
-  ) => {
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const trimmedEmail = forgotEmail.trim();
@@ -144,32 +126,12 @@ export default function LoginPage() {
 
     setIsForgotSubmitting(true);
     try {
-      const response = await fetch(
-        `/api/auth/request-password-reset`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: trimmedEmail.toLowerCase() }),
-          credentials: "include",
-        }
-      );
+      const res = await apiFetch<{ message: string }>("/auth/request-password-reset", {
+        method: "POST",
+        body: JSON.stringify({ email: trimmedEmail.toLowerCase() }),
+      });
 
-      const result: unknown = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
-            : "Failed to process password reset request.";
-        throw new Error(errorMessage);
-      }
-
-      const successMessage =
-        typeof result === "object" && result !== null && "message" in result
-          ? (result as { message: string }).message
-          : "Recovery email dispatched.";
-
-      toast.success(successMessage);
+      toast.success(res.message || "Recovery email dispatched.");
       setShowForgotModal(false);
       setForgotEmail("");
     } catch (error: unknown) {
@@ -322,8 +284,7 @@ export default function LoginPage() {
           <div className={styles.formHeader}>
             <h1 className={styles.mainTitle}>Welcome Back</h1>
             <p className={styles.subtext}>
-              Log in to RakhoKhaata to manage your finances and track your
-              goals.
+              Log in to RakhoKhaata to manage your finances and track your goals.
             </p>
           </div>
 

@@ -1,3 +1,4 @@
+// Frontend/src/app/(auth)/verify-email/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -7,7 +8,8 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import styles from "../login/page.module.css"; // Reuses login layout
+import { apiFetch } from "@/utils/api";
+import styles from "../login/page.module.css";
 
 type VerificationStatus = "loading" | "success" | "error";
 /* === SECTION 1 END === */
@@ -16,10 +18,6 @@ type VerificationStatus = "loading" | "success" | "error";
    === SECTION 2: VERIFY EMAIL FORM COMPONENT ===
    ========================================================================== */
 
-/**
- * Inner component that reads the token from the URL and performs email verification.
- * Must be wrapped in a Suspense boundary because of `useSearchParams()`.
- */
 function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,7 +28,6 @@ function VerifyEmailForm() {
 
   useEffect(() => {
     const executeVerification = async () => {
-      // If the token is missing, we cannot proceed
       if (!token) {
         setStatus("error");
         setErrorMessage(
@@ -40,28 +37,14 @@ function VerifyEmailForm() {
       }
 
       try {
-        // Uses relative /api endpoint for same-origin proxy rewrites
-        const response = await fetch("/api/auth/verify-email", {
+        await apiFetch<{ message: string }>("/auth/verify-email", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
-          credentials: "include",
         });
-
-        const result: unknown = await response.json();
-
-        if (!response.ok) {
-          const errorText =
-            typeof result === "object" && result !== null && "error" in result
-              ? (result as { error: string }).error
-              : "Verification failed or link expired.";
-          throw new Error(errorText);
-        }
 
         setStatus("success");
         toast.success("Account activated successfully!");
 
-        // Redirect to login after a short delay
         setTimeout(() => {
           router.push("/login");
         }, 2000);
@@ -73,7 +56,6 @@ function VerifyEmailForm() {
             ? error.message
             : "A network problem occurred during verification.";
 
-        // If the error indicates an expired token, give a clear message
         if (message.toLowerCase().includes("expired")) {
           setErrorMessage(
             "Your verification link has expired. Please log in and click 'Resend Verification Email' from the dashboard."
@@ -84,7 +66,7 @@ function VerifyEmailForm() {
       }
     };
 
-    executeVerification();
+    void executeVerification();
   }, [token, router]);
 
   return (
@@ -171,9 +153,6 @@ function VerifyEmailForm() {
    === SECTION 3: RENDER ===
    ========================================================================== */
 
-/**
- * Page wrapper that supplies a Suspense boundary for `useSearchParams`.
- */
 export default function VerifyEmailPage() {
   return (
     <div className={styles.fullScreenMasterLayout} suppressHydrationWarning>
@@ -223,4 +202,3 @@ export default function VerifyEmailPage() {
     </div>
   );
 }
-/* === SECTION 3 END === */

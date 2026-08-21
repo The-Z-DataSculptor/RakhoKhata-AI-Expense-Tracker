@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/categories/page.tsx
+// Frontend/src/app/(dashboard)/dashboard/categories/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -40,6 +40,17 @@ export interface CategoryRecord {
 type UnassignedTransactionRecord = DrawerTxRecord & {
   workspaceId: string;
 };
+
+async function runConcurrentChunks<T>(
+  items: T[],
+  chunkSize: number,
+  workerFn: (item: T) => Promise<void>
+): Promise<void> {
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    await Promise.all(chunk.map((item) => workerFn(item)));
+  }
+}
 /* === SECTION 2 END === */
 
 /* ==========================================================================
@@ -77,7 +88,7 @@ export default function CategoriesPage() {
 
       setTransactions(fetchedTxs);
 
-      const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category) => {
+      const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category & { isFixed?: boolean }) => {
         const txCount = fetchedTxs.filter((tx) => tx.categoryId === dbCat.id).length;
         return {
           id: dbCat.id,
@@ -104,44 +115,12 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     let isMounted = true;
-    if (!activeWorkspaceId) {
-      return;
-    }
+    if (!activeWorkspaceId) return;
 
     const initialWorkspaceSync = async () => {
       try {
         if (isMounted) setIsLoading(true);
-        const [catData, txData] = await Promise.all([
-          categoryService.getByWorkspace(activeWorkspaceId),
-          transactionService.getByWorkspace(activeWorkspaceId),
-        ]);
-
-        if (isMounted) {
-          const fetchedTxs = txData?.transactions || [];
-          const fetchedCats = catData?.categories || [];
-
-          setTransactions(fetchedTxs);
-
-          const mappedCategories: CategoryRecord[] = fetchedCats.map((dbCat: Category) => {
-            const txCount = fetchedTxs.filter((tx) => tx.categoryId === dbCat.id).length;
-            return {
-              id: dbCat.id,
-              workspaceId: dbCat.workspaceId,
-              name: dbCat.name,
-              type: dbCat.type.toLowerCase() as "income" | "expense" | "both",
-              iconSlug: "FiFolder",
-              accentColor: dbCat.color,
-              transactionCount: txCount,
-              isRecurring: dbCat.isRecurring ?? false,
-              frequency: toFrequencyUnion(dbCat.frequency),
-              dueDay: dbCat.dueDay ?? 1,
-              reminderDays: dbCat.reminderDays ?? 3,
-              isFixed: dbCat.isFixed ?? false,
-            };
-          });
-
-          setCategories(mappedCategories);
-        }
+        await refreshCategoryData();
       } catch (error: unknown) {
         console.error("Category Sync Failure:", error);
         if (isMounted) {
@@ -153,13 +132,12 @@ export default function CategoriesPage() {
       }
     };
 
-    initialWorkspaceSync();
+    void initialWorkspaceSync();
 
     return () => {
       isMounted = false;
     };
-  }, [activeWorkspaceId]);
-  /* === SECTION 3 END === */
+  }, [activeWorkspaceId, refreshCategoryData]);
 
   /* ==========================================================================
      === SECTION 4: ACTION HANDLERS & COMPUTED DATA ===
@@ -167,23 +145,24 @@ export default function CategoriesPage() {
   const handleOpenBulkDrawer = () => setIsBulkDrawerOpen(true);
   const handleCloseBulkDrawer = () => setIsBulkDrawerOpen(false);
 
-  // Replaced destructive delete-then-create with non-destructive direct update calls
   const handleApplyCategory = async (categoryId: string, transactionIds: string[]) => {
-    if (!activeWorkspaceId) return;
-    try {
-      setIsLoading(true);
-      await Promise.all(
-        (transactionIds || []).map(async (id) => {
-          await transactionService.update(id, { categoryId });
-        })
-      );
+    if (!activeWorkspaceId || !transactionIds || transactionIds.length === 0) return;
+    
+    setIsLoading(true);
+    const toastId = toast.loading(`Categorizing ${transactionIds.length} transactions...`);
 
-      toast.success(`Successfully re-assigned ${transactionIds.length} transactions!`);
+    try {
+      await runConcurrentChunks(transactionIds, 5, async (id) => {
+        await transactionService.update(id, { categoryId });
+      });
+
+      toast.success(`Successfully re-assigned ${transactionIds.length} transactions!`, { id: toastId });
       setIsBulkDrawerOpen(false);
       await refreshCategoryData();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to process mass tag allocation routines.";
-      toast.error(msg);
+      toast.error(msg, { id: toastId });
+      await refreshCategoryData();
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +185,7 @@ export default function CategoriesPage() {
         type: savedCategory.type.toUpperCase(),
         color: savedCategory.accentColor,
         workspaceId: activeWorkspaceId!,
-        isFixed: false,
+        isFixed: savedCategory.isFixed ?? editingCategory?.isFixed ?? false,
         isRecurring: savedCategory.isRecurring ?? false,
         frequency: savedCategory.frequency || "MONTHLY",
         dueDay: savedCategory.dueDay ?? 1,
@@ -247,12 +226,15 @@ export default function CategoriesPage() {
     }
   };
 
-  const unassignedNode = (categories || []).find((c) => c.name.toLowerCase().includes("unassigned"));
+  const unassignedNode = (categories || []).find((c) => {
+    const name = c.name.toLowerCase().trim();
+    return name === "unassigned (needs sorting)" || name === "unassigned";
+  });
   const unassignedUUID = unassignedNode ? unassignedNode.id : "";
 
   const filteredUnassigned: UnassignedTransactionRecord[] = useMemo(() => {
     return (transactions || [])
-      .filter((tx) => tx.categoryId === unassignedUUID)
+      .filter((tx) => !tx.categoryId || tx.categoryId === unassignedUUID)
       .map((tx) => {
         let safeDateStr = "";
         const rawDate = tx.date as unknown;
@@ -264,19 +246,28 @@ export default function CategoriesPage() {
           safeDateStr = new Date().toISOString().substring(0, 10);
         }
 
+        const rawAmount = Number(tx.originalAmount ?? tx.amount ?? 0);
+        const currencyConvertedAmount =
+          tx.originalCurrency?.toUpperCase() === workspaceCurrency.toUpperCase()
+            ? rawAmount
+            : convertAmount(Number(tx.baseAmountUSD ?? rawAmount), "USD", workspaceCurrency);
+
         return {
           id: tx.id,
           date: safeDateStr,
           merchant: tx.description || "Imported Statement Entry",
-          amount: Number(tx.baseAmountUSD ?? 0),
+          amount: currencyConvertedAmount,
           workspaceId: tx.workspaceId,
         };
       });
-  }, [transactions, unassignedUUID]);
+  }, [transactions, unassignedUUID, workspaceCurrency, convertAmount]);
 
   const categoryOptions: CategoryOption[] = useMemo(() => {
     return (categories || [])
-      .filter((cat) => !cat.name.toLowerCase().includes("unassigned"))
+      .filter((cat) => {
+        const name = cat.name.toLowerCase().trim();
+        return name !== "unassigned (needs sorting)" && name !== "unassigned";
+      })
       .map((cat) => ({
         id: cat.id,
         name: cat.name,
@@ -296,20 +287,20 @@ export default function CategoriesPage() {
 
     safeTxs.forEach((tx) => {
       const cat = safeCats.find((c) => c.id === tx.categoryId);
-      const catName = cat?.name || "Unknown";
+      const catName = cat?.name || "Unassigned";
 
       let txAmountWorkspace: number;
       if (tx.originalCurrency === workspaceCurrency) {
-        txAmountWorkspace = Number(tx.originalAmount || 0);
+        txAmountWorkspace = Number(tx.originalAmount || tx.amount || 0);
       } else {
-        txAmountWorkspace = convertAmount(Number(tx.baseAmountUSD || 0), "USD", workspaceCurrency);
+        txAmountWorkspace = convertAmount(Number(tx.baseAmountUSD ?? tx.amount ?? 0), "USD", workspaceCurrency);
       }
 
       if (!categorySums[catName]) categorySums[catName] = { amountWorkspace: 0, count: 0 };
       categorySums[catName].amountWorkspace += txAmountWorkspace;
       categorySums[catName].count += 1;
 
-      if (tx.type === "EXPENSE") {
+      if ((tx.type || "").toUpperCase() === "EXPENSE") {
         totalExpWorkspace += txAmountWorkspace;
         if (categorySums[catName].amountWorkspace > topExp.amountWorkspace) {
           topExp = { name: catName, amountWorkspace: categorySums[catName].amountWorkspace };
@@ -346,15 +337,12 @@ export default function CategoriesPage() {
       return 0;
     });
   }, [categories]);
-  /* === SECTION 4 END === */
 
-  /* ==========================================================================
-     === SECTION 5: RENDER UI ===
-     ========================================================================== */
-  if (isLoading) {
+  if (isLoading && categories.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[500px]">
-        <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">Syncing Category Analytics...</p>
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} />
+        <p className={styles.loadingText}>Syncing Category Analytics...</p>
       </div>
     );
   }
@@ -428,4 +416,3 @@ export default function CategoriesPage() {
     </div>
   );
 }
-/* === SECTION 5 END === */

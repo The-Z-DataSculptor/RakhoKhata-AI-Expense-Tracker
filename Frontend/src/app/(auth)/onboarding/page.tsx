@@ -1,4 +1,4 @@
-// src/app/(auth)/onboarding/page.tsx
+// Frontend/src/app/(auth)/onboarding/page.tsx
 "use client";
 
 /* ==========================================================================
@@ -6,6 +6,7 @@
    ========================================================================== */
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   FiGlobe,
@@ -28,7 +29,7 @@ import {
   FiEye,
   FiAward,
 } from "react-icons/fi";
-
+import { apiFetch } from "@/utils/api";
 import {
   WORLD_CURRENCIES,
   WORLD_COUNTRIES,
@@ -37,14 +38,12 @@ import {
 } from "@/constants/geoData";
 import styles from "./page.module.css";
 
-/** Occupation options for the onboarding form */
 interface OccupationOption {
   id: string;
   label: string;
   desc: string;
 }
 
-/** Financial goal cards */
 interface FinancialGoal {
   id: string;
   icon: React.ReactNode;
@@ -52,7 +51,6 @@ interface FinancialGoal {
   desc: string;
 }
 
-/** AI persona cards */
 interface AiPersona {
   id: string;
   icon: React.ReactNode;
@@ -60,7 +58,6 @@ interface AiPersona {
   desc: string;
 }
 
-// Static data for the wizard – defined outside component to avoid re-creation on every render
 const OCCUPATIONS: OccupationOption[] = [
   { id: "salaried", label: "Salaried Employee", desc: "Fixed monthly paycheck" },
   { id: "freelancer", label: "Freelancer / Contractor", desc: "Irregular client payouts" },
@@ -71,86 +68,25 @@ const OCCUPATIONS: OccupationOption[] = [
 ];
 
 const FINANCIAL_GOALS: FinancialGoal[] = [
-  { 
-    id: "hustler", 
-    icon: <FiZap />, 
-    title: "The Hustler", 
-    desc: "Managing gigs & multiple income streams." 
-  },
-  { 
-    id: "saver", 
-    icon: <FiAward />, 
-    title: "The Saver", 
-    desc: "Building an emergency fund or buying a home." 
-  },
-  { 
-    id: "tight_budgeter", 
-    icon: <FiSearch />, 
-    title: "The Budgeter", 
-    desc: "Living paycheck-to-paycheck, finding leaks." 
-  },
-  { 
-    id: "zen_master", 
-    icon: <FiSmile />, 
-    title: "The Zen Master", 
-    desc: "Just tracking cash flows with zero stress." 
-  },
-  { 
-    id: "wealth_builder", 
-    icon: <FiTrendingUp />, 
-    title: "The Wealth Builder", 
-    desc: "Investing, growing assets, and compound growth." 
-  },
-  { 
-    id: "debt_destroyer", 
-    icon: <FiActivity />, 
-    title: "The Debt Destroyer", 
-    desc: "Aggressively tackling outstanding loans & debt." 
-  },
-  { 
-    id: "nomad", 
-    icon: <FiCompass />, 
-    title: "The Nomad / Expat", 
-    desc: "Working globally, handling multi-currency accounts." 
-  },
-  { 
-    id: "privacy_sentinel", 
-    icon: <FiShield />, 
-    title: "Prefer Private", 
-    desc: "Do not categorize or analyze my financial intentions." 
-  },
+  { id: "hustler", icon: <FiZap />, title: "The Hustler", desc: "Managing gigs & multiple income streams." },
+  { id: "saver", icon: <FiAward />, title: "The Saver", desc: "Building an emergency fund or buying a home." },
+  { id: "tight_budgeter", icon: <FiSearch />, title: "The Budgeter", desc: "Living paycheck-to-paycheck, finding leaks." },
+  { id: "zen_master", icon: <FiSmile />, title: "The Zen Master", desc: "Just tracking cash flows with zero stress." },
+  { id: "wealth_builder", icon: <FiTrendingUp />, title: "The Wealth Builder", desc: "Investing, growing assets, and compound growth." },
+  { id: "debt_destroyer", icon: <FiActivity />, title: "The Debt Destroyer", desc: "Aggressively tackling outstanding loans & debt." },
+  { id: "nomad", icon: <FiCompass />, title: "The Nomad / Expat", desc: "Working globally, handling multi-currency accounts." },
+  { id: "privacy_sentinel", icon: <FiShield />, title: "Prefer Private", desc: "Do not categorize or analyze my financial intentions." },
 ];
 
 const AI_PERSONAS: AiPersona[] = [
-  { 
-    id: "savage_roaster", 
-    icon: <FiZap />, 
-    title: "Savage Roaster", 
-    desc: "Tough love. Will playfully challenge your unnecessary spending habits." 
-  },
-  { 
-    id: "supportive_coach", 
-    icon: <FiHeart />, 
-    title: "Supportive Coach", 
-    desc: "Warm mentor. Celebrates wins and guides your journey gently." 
-  },
-  { 
-    id: "forensic_detective", 
-    icon: <FiEye />, 
-    title: "Forensic Detective", 
-    desc: "Hyper-analytical. Finds subtle recurring and hidden spending leaks." 
-  },
-  { 
-    id: "silent_accountant", 
-    icon: <FiBarChart2 />, 
-    title: "Silent Accountant", 
-    desc: "Professional precision. Direct financial ledger calculations without banter." 
-  },
+  { id: "savage_roaster", icon: <FiZap />, title: "Savage Roaster", desc: "Tough love. Will playfully challenge your unnecessary spending habits." },
+  { id: "supportive_coach", icon: <FiHeart />, title: "Supportive Coach", desc: "Warm mentor. Celebrates wins and guides your journey gently." },
+  { id: "forensic_detective", icon: <FiEye />, title: "Forensic Detective", desc: "Hyper-analytical. Finds subtle recurring and hidden spending leaks." },
+  { id: "silent_accountant", icon: <FiBarChart2 />, title: "Silent Accountant", desc: "Professional precision. Direct financial ledger calculations without banter." },
 ];
 
 const STEP_TITLES = ["Region", "Goals", "AI Assistant"];
 
-/** Shape of the onboarding form data – submitted to the backend */
 interface OnboardingFormData {
   country: string;
   currency: string;
@@ -166,6 +102,7 @@ interface OnboardingFormData {
    ========================================================================== */
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -179,7 +116,6 @@ export default function OnboardingPage() {
     aiPersona: "",
   });
 
-  // AUTO-DETECT REGION FROM TIMEZONE (runs once on mount)
   useEffect(() => {
     const timer = setTimeout(() => {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -211,7 +147,6 @@ export default function OnboardingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // COUNTRY CHANGE – AUTO-SETS CURRENCY & LANGUAGE
   const handleCountryChange = (selectedCountryName: string) => {
     const matchedCountry = WORLD_COUNTRIES.find(
       (country) => country.name === selectedCountryName
@@ -232,7 +167,6 @@ export default function OnboardingPage() {
     });
   };
 
-  // TOGGLE LANGUAGE SELECTION
   const toggleLanguage = (language: string) => {
     setFormData((prev) => {
       const currentLanguages = prev.languages;
@@ -246,7 +180,6 @@ export default function OnboardingPage() {
     });
   };
 
-  // STEP NAVIGATION
   const goNext = () => {
     if (step === 1 && !formData.country) {
       toast.error("Please choose your home country before continuing.");
@@ -261,31 +194,16 @@ export default function OnboardingPage() {
 
   const goPrev = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  // FINAL SUBMISSION (Uses relative /api route for cookie pass-through)
   const submitForm = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/auth/complete-onboarding", {
+      const res = await apiFetch<{ message: string }>("/auth/complete-onboarding", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        credentials: "include",
       });
 
-      const result: unknown = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
-            : "Profile initialization failed.";
-        throw new Error(errorMessage);
-      }
-
-      toast.success("Profile customized! Redirecting...");
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1500);
+      toast.success(res.message || "Profile customized! Redirecting...");
+      router.push("/dashboard");
     } catch (error: unknown) {
       console.error("Onboarding Submit Error:", error);
       const message =
@@ -304,7 +222,7 @@ export default function OnboardingPage() {
 
   const renderStepContent = () => {
     switch (step) {
-      case 1: // Region & Currency
+      case 1:
         return (
           <div className={styles.stepContainer}>
             <div className={styles.stepHeader}>
@@ -420,7 +338,7 @@ export default function OnboardingPage() {
           </div>
         );
 
-      case 2: // Financial Goals
+      case 2:
         return (
           <div className={styles.stepContainer}>
             <div className={styles.stepHeader}>
@@ -480,7 +398,7 @@ export default function OnboardingPage() {
           </div>
         );
 
-      case 3: // AI Persona
+      case 3:
         return (
           <div className={styles.stepContainer}>
             <div className={styles.stepHeader}>
@@ -534,7 +452,6 @@ export default function OnboardingPage() {
       <div className={styles.ambientGlow} />
 
       <div className={styles.wizardContainer}>
-        {/* Progress sidebar – visible on desktop */}
         <div className={styles.progressSidebar}>
           <Link href="/login" className={styles.backHomeBtn}>
             ← Abort Setup
@@ -566,7 +483,6 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          {/* Mobile-only step tracker */}
           <div className={styles.mobileStepTracker}>
             <span className={styles.mobileStepBadge}>
               Step {step} of 3: <strong>{STEP_TITLES[step - 1]}</strong>
@@ -580,7 +496,6 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Form body */}
         <div className={styles.formBody}>
           <div className={styles.formContentArea}>
             {renderStepContent()}

@@ -1,0 +1,416 @@
+/* Frontend/src/components/transactions/TrashCanModal/TrashCanModal.module.css */
+
+.modalOverlayBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(9, 5, 29, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.modalContentCard {
+  width: 100%;
+  max-width: 620px;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-lg, 16px);
+  position: relative;
+  box-shadow: 0 24px 60px -12px rgba(16, 4, 63, 0.2);
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 4rem);
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--surface-muted, #f9f8ff);
+}
+
+.headerTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.iconCircle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(220, 38, 38, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trashIcon {
+  font-size: 1.2rem;
+  color: var(--color-danger, #dc2626);
+}
+
+.modalMainTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0;
+}
+
+.modalSubTitle {
+  font-size: 0.78rem;
+  color: var(--text-muted, #7e7a9c);
+  margin: 0.15rem 0 0 0;
+}
+
+.closeIconButton {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #7e7a9c);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.closeIconButton:hover {
+  background-color: var(--surface-muted, #f1eefc);
+  color: var(--text-primary, #10043f);
+}
+
+.modalBody {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 260px;
+}
+
+.centerLoadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted, #7e7a9c);
+  gap: 0.75rem;
+}
+
+.spinnerIcon {
+  font-size: 1.8rem;
+  animation: spin 1s linear infinite;
+  color: var(--color-primary, #613bbf);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.emptyTrashState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.emptyIconCircle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--surface-muted, #f1eefc);
+  color: var(--text-muted, #7e7a9c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.emptyTrashState h4 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary, #10043f);
+  margin: 0 0 0.35rem 0;
+}
+
+.emptyTrashState p {
+  font-size: 0.85rem;
+  color: var(--text-muted, #7e7a9c);
+  max-width: 320px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.trashItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.trashCardRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background-color: var(--surface-muted, #f9f8ff);
+  border: 1px solid var(--border-color, #e5e1f4);
+  border-radius: var(--radius-md, 10px);
+  gap: 1rem;
+  transition: border-color 0.15s ease;
+}
+
+.trashCardRow:hover {
+  border-color: rgba(97, 59, 191, 0.3);
+}
+
+.itemMetaLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.itemTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemSubDetailLine {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+}
+
+.categoryBadge {
+  font-weight: 700;
+  color: var(--color-primary, #613bbf);
+}
+
+.dotDivider {
+  color: var(--text-muted, #7e7a9c);
+}
+
+.dateLabel {
+  color: var(--text-muted, #7e7a9c);
+  font-family: var(--font-mono, monospace);
+}
+
+.itemActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.amountText {
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+}
+
+.incomeAccent {
+  color: var(--color-success, #16a34a);
+}
+
+.expenseAccent {
+  color: var(--color-danger, #dc2626);
+}
+
+.actionButtonsDock {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.restoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  background-color: var(--color-primary, #613bbf);
+  color: #ffffff;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.restoreBtn:hover {
+  opacity: 0.9;
+}
+
+.permDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background-color: rgba(220, 38, 38, 0.08);
+  color: var(--color-danger, #dc2626);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.permDeleteBtn:hover {
+  background-color: var(--color-danger, #dc2626);
+  color: #ffffff;
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color, #e5e1f4);
+  background-color: var(--surface-muted, #f9f8ff);
+}
+
+.itemCountText {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #7e7a9c);
+}
+
+.footerButtonsGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.emptyAllBtn {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 8px;
+  background-color: transparent;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--color-danger, #dc2626);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.emptyAllBtn:hover {
+  background-color: rgba(220, 38, 38, 0.08);
+}
+
+.closeFooterBtn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 8px;
+  background-color: var(--surface-muted, #f1eefc);
+  border: 1px solid var(--border-color, #e5e1f4);
+  color: var(--text-primary, #10043f);
+  cursor: pointer;
+}
+
+/* SAFETY CONFIRM OVERLAY */
+.confirmBackdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(9, 5, 29, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.confirmCard {
+  background-color: #ffffff;
+  border-radius: 14px;
+  padding: 1.75rem;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  animation: scaleIn 0.2s ease-out;
+}
+
+.warningIconBadge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: rgba(220, 38, 38, 0.1);
+  color: var(--color-danger, #dc2626);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+}
+
+.confirmTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #10043f;
+  margin: 0 0 0.5rem 0;
+}
+
+.confirmText {
+  font-size: 0.84rem;
+  color: #7e7a9c;
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+}
+
+.confirmActionsRow {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cancelConfirmBtn,
+.dangerConfirmBtn {
+  flex: 1;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cancelConfirmBtn {
+  background-color: transparent;
+  border: 1px solid #e5e1f4;
+  color: #4e4a6b;
+}
+
+.dangerConfirmBtn {
+  background-color: var(--color-danger, #dc2626);
+  border: 1px solid transparent;
+  color: #ffffff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}

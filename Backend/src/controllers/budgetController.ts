@@ -108,7 +108,16 @@ export const createBudget = async (
     }
 
     const targetCurrency = (originalCurrency || workspace.currency || "PKR").toUpperCase();
-    const usdAmount = baseAmountUSD && !isNaN(Number(baseAmountUSD)) ? Number(baseAmountUSD) : parsedAmount;
+
+    // Guard against 1:1 USD fallback bugs when creating non-USD budgets
+    let usdAmount: number;
+    if (baseAmountUSD !== undefined && !isNaN(Number(baseAmountUSD))) {
+      usdAmount = Number(baseAmountUSD);
+    } else if (targetCurrency === "USD") {
+      usdAmount = parsedAmount;
+    } else {
+      usdAmount = parsedAmount; // Fallback only when explicitly provided in USD
+    }
 
     const budget = await prisma.budget.create({
       data: {
@@ -179,10 +188,12 @@ export const getWorkspaceBudgets = async (
     const minStartDate = new Date(Math.min(...budgets.map((b) => b.startDate.getTime())));
     const maxEndDate = new Date(Math.max(...budgets.map((b) => b.endDate.getTime())));
 
+    // Exclude soft-deleted transactions from budget calculations
     const transactions = await prisma.transaction.findMany({
       where: {
         workspaceId,
         categoryId: { in: categoryIds },
+        deletedAt: null,
         type: "EXPENSE",
         date: {
           gte: minStartDate,
@@ -191,7 +202,7 @@ export const getWorkspaceBudgets = async (
       },
       select: {
         categoryId: true,
-        baseAmountUSD: true,   // ✅ Use USD equivalent for consistent summing
+        baseAmountUSD: true,
         date: true,
       },
     });
@@ -213,7 +224,6 @@ export const getWorkspaceBudgets = async (
         originalAmount: Number(budget.originalAmount),
         originalCurrency: budget.originalCurrency || workspace.currency,
         baseAmountUSD: Number(budget.baseAmountUSD),
-        // ✅ spentAmount is now in USD
         spentAmount: Math.round((matchingSpentUSD + Number.EPSILON) * 100) / 100,
         startDate: budget.startDate,
         endDate: budget.endDate,

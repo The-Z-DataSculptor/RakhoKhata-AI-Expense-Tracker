@@ -57,6 +57,15 @@ export default function AiInsightsPage() {
     (globalUser?.aiPersona as AiPersonaType) || "supportive_coach";
   const userName = globalUser?.name || "Friend";
 
+  // Use refs to read latest values in fallback without re-triggering greeting effects
+  const userNameRef = useRef(userName);
+  const currencyRef = useRef(currency);
+
+  useEffect(() => {
+    userNameRef.current = userName;
+    currencyRef.current = currency;
+  }, [userName, currency]);
+
   const formatTitleCase = (name: string): string => {
     if (!name) return "";
     return name
@@ -140,6 +149,7 @@ export default function AiInsightsPage() {
 
   const persona = getPersonaDetails();
 
+  // Load greeting ONLY when activeWorkspaceId changes, preserving conversation history
   useEffect(() => {
     let isMounted = true;
 
@@ -165,7 +175,7 @@ export default function AiInsightsPage() {
         }
       } catch {
         if (isMounted) {
-          const fallbackText = `Hey ${formatTitleCase(userName)}! Your command center is primed in ${currency}. What financial move are we analyzing today?`;
+          const fallbackText = `Hey ${formatTitleCase(userNameRef.current)}! Your command center is primed in ${currencyRef.current}. What financial move are we analyzing today?`;
           setMessages([
             {
               id: generateId("fallback-greeting"),
@@ -180,12 +190,12 @@ export default function AiInsightsPage() {
       }
     };
 
-    fetchInitialGreeting();
+    void fetchInitialGreeting();
 
     return () => {
       isMounted = false;
     };
-  }, [activeWorkspaceId, currency, userName, personaKey]);
+  }, [activeWorkspaceId]);
 
   const handleSendMessage = useCallback(
     async (textToSend?: string) => {

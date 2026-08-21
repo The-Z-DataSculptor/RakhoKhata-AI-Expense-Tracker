@@ -6,11 +6,12 @@
 import http from "http";
 import { Socket } from "net";
 import app from "./server";
-import { prisma } from "./db";
+import { prisma, closeDatabaseConnections } from "./db";
 import { initNotificationScheduler } from "./services/notificationService";
 import { initBillReminderCron } from "./workers/billReminderWorker";
 import { initCleanupCron } from "./workers/cleanupUnverifiedAccountsWorker";
-import { initVerificationReminderCron } from "./workers/verificationReminderWorker";   // <-- NEW
+import { initVerificationReminderCron } from "./workers/verificationReminderWorker";
+import { initTrashCleanupCron } from "./workers/cleanupTrashWorker";
 /* === SECTION 1 END === */
 
 /* ==========================================================================
@@ -31,7 +32,7 @@ const isWorkerEnabled =
 
 const server = http.createServer(app);
 
-// Keep-alive timeouts aligned with Nginx reverse proxy standards
+// Keepalive matches reverse proxies (e.g. Nginx, Hostinger)
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
 server.requestTimeout = 120000;
@@ -77,7 +78,6 @@ function listenPromise(
     ) {
       serverInstance.listen(portOrPath);
     } else {
-      // Explicitly bind to 0.0.0.0 so Hostinger's IPv4 proxy (127.0.0.1) connects successfully
       serverInstance.listen(Number(portOrPath), "0.0.0.0");
     }
   });
@@ -85,13 +85,9 @@ function listenPromise(
 
 async function startServer(): Promise<void> {
   try {
-    // Bind HTTP server first so Hostinger reverse proxy finds active process
     await listenPromise(server, rawPort);
-    console.log(
-      `🚀 Financial secure core engine active on port/socket: ${rawPort}`
-    );
+    console.log(`🚀 Financial secure core engine active on port/socket: ${rawPort}`);
 
-    // Try database connection non-blockingly
     try {
       await prisma.$connect();
       console.log("✅ Database connection established successfully.");
@@ -100,13 +96,12 @@ async function startServer(): Promise<void> {
     }
 
     if (isWorkerEnabled) {
-      console.log(
-        "⚙️ Background cron schedulers initializing on this node..."
-      );
+      console.log("⚙️ Background cron schedulers initializing on this node...");
       initNotificationScheduler();
       initBillReminderCron();
       initCleanupCron();
-      initVerificationReminderCron();   // <-- NEW
+      initVerificationReminderCron();
+      initTrashCleanupCron();
     }
   } catch (error: unknown) {
     console.error("❌ Fatal error binding HTTP server:", error);
@@ -142,7 +137,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
       openSockets.clear();
     });
 
-    await prisma.$disconnect();
+    await closeDatabaseConnections();
     console.log("🔌 Database connections closed cleanly.");
 
     clearTimeout(forceExitTimeout);
@@ -161,4 +156,3 @@ process.once("SIGTERM", () => {
 });
 
 void startServer();
-/* === SECTION 3 END === */

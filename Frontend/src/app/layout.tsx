@@ -4,7 +4,10 @@
    ========================================================================== */
 import type { Metadata, Viewport } from "next";
 import { Mulish } from "next/font/google";
+import Script from "next/script";
+import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext";
 import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
+import { UserProvider } from "@/app/(dashboard)/context/UserContext";
 import ToastProvider from "@/components/providers/ToastProvider";
 import "./globals.css";
 
@@ -49,7 +52,6 @@ export const metadata: Metadata = {
   authors: [{ name: "Rakho Khaata Team", url: "https://rakhokhaata.com" }],
   creator: "Rakho Khaata",
   publisher: "Rakho Khaata",
-  // ----- Google Search Console Verification (Fixed) -----
   verification: {
     google: "jooqJjiZkKb5_IUlSR1IxiP1J6tW7hU2-YpKcr6I6vw",
   },
@@ -132,16 +134,20 @@ export default function RootLayout({
   return (
     <html lang="en" className={mulish.variable} suppressHydrationWarning>
       <head>
-        {/* Placed in <head> to prevent React 19 console warning & eliminate FOUC */}
-        <script
+        <Script
+          id="theme-initializer"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themeInitializerScript }}
-          suppressHydrationWarning
         />
       </head>
       <body>
-        <CurrencyProvider>
-          <ToastProvider>{children}</ToastProvider>
-        </CurrencyProvider>
+        <WorkspaceProvider>
+          <UserProvider>
+            <CurrencyProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </CurrencyProvider>
+          </UserProvider>
+        </WorkspaceProvider>
       </body>
     </html>
   );

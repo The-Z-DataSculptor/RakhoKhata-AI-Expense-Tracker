@@ -670,7 +670,7 @@ export const completeOnboarding = async (req: AuthenticatedRequest, res: Express
       ? body.languages.filter((l): l is string => typeof l === "string" && l.trim().length > 0)
       : [];
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         country,
@@ -682,6 +682,15 @@ export const completeOnboarding = async (req: AuthenticatedRequest, res: Express
         isOnboardingCompleted: true,
       },
     });
+
+    // Re-issue updated session token cookie with isOnboardingCompleted: true
+    const newToken = await generateSessionToken(
+      updatedUser.id,
+      updatedUser.email,
+      updatedUser.isEmailVerified,
+      true
+    );
+    res.cookie("token", newToken, COOKIE_OPTIONS);
 
     res.status(200).json({ message: "Onboarding completed successfully." });
   } catch (error: unknown) {

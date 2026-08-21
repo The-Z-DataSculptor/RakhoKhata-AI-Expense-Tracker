@@ -27,10 +27,6 @@ const app = express();
    === SECTION 2: GLOBAL MIDDLEWARE & SECURITY CONFIG ===
    ========================================================================== */
 
-// ------- Trust proxy configuration for reverse proxy (Hostinger, Nginx, etc.) -------
-// This tells Express to trust the X-Forwarded-* headers from the first proxy.
-// In production (e.g., behind Hostinger), set TRUST_PROXY="1" or "true".
-// If you have multiple proxies, set it to the number of proxies or a comma-separated list.
 const rawTrustProxy = process.env.TRUST_PROXY || "1";
 let parsedTrustProxy: boolean | number | string;
 if (rawTrustProxy === "true") {
@@ -40,11 +36,9 @@ if (rawTrustProxy === "true") {
 } else if (!isNaN(Number(rawTrustProxy))) {
   parsedTrustProxy = Number(rawTrustProxy);
 } else {
-  // Could be a string like "loopback, linklocal, uniquelocal" or IP ranges
   parsedTrustProxy = rawTrustProxy;
 }
 app.set("trust proxy", parsedTrustProxy);
-// -------------------------------------------------------------------------
 
 app.use(
   helmet({
@@ -116,7 +110,7 @@ app.get("/api/health", async (_req: Request, res: Response) => {
       database: "Connected",
       timestamp: new Date().toISOString(),
     });
-  } catch (error: unknown) {
+  } catch (_error: unknown) {
     res.status(200).json({
       status: "active",
       message: "API Active (Database connecting...)",

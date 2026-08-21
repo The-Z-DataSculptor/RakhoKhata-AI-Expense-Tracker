@@ -23,6 +23,39 @@
 }
 
 /* ==========================================================================
+   === SECTION 1.1: LOADING STATES (ADDED) ===
+   ========================================================================== */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color, #e5e1f4);
+  border-top-color: var(--color-primary, #613bbf);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  color: var(--text-muted, #7e7a9c);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
    === SECTION 2: CONTAINER BOX CARDS HEADER SYSTEM ===
    ========================================================================== */
 .dashboardHeaderCardBox {

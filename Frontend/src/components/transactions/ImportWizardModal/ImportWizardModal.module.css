@@ -1,11 +1,18 @@
+/* D:\Developer\Expense-Tracker\Frontend\src\components\transactions\ImportWizardModal\ImportWizardModal.module.css */
+
+
+/* ==========================================================================
+   === SECTION 1: MODAL BACKDROP & CARD ===
+   ========================================================================== */
 .modalOverlayBackdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(16, 4, 63, 0.45);
-  backdrop-filter: blur(8px);
+  background-color: rgba(9, 5, 29, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +29,7 @@
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 16px);
   position: relative;
-  box-shadow: 0 24px 60px -12px rgba(16, 4, 63, 0.15);
+  box-shadow: var(--shadow-soft, 0 24px 60px -12px rgba(16, 4, 63, 0.15));
   animation: scaleFormIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   box-sizing: border-box;
   max-height: calc(100vh - 3rem);
@@ -30,12 +37,24 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.wizardExpansionLarge {
-  max-width: 860px !important;
-  border-radius: var(--radius-lg, 18px);
-  box-shadow: 0 32px 80px -12px rgba(16, 4, 63, 0.2);
+.modalContentCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent-light) 100%);
 }
 
+.wizardExpansionLarge {
+  max-width: 780px !important;
+  border-radius: var(--radius-lg, 18px);
+}
+
+/* ==========================================================================
+   === SECTION 2: WIZARD HEADER & STEPPER ===
+   ========================================================================== */
 .wizardHeaderDeck {
   display: flex;
   align-items: center;
@@ -50,7 +69,6 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
 }
 
 .wizardMainTitle {
@@ -59,13 +77,9 @@
   letter-spacing: -0.02em;
   color: var(--text-primary, #10043f);
   margin: 0;
-  line-height: 1.2;
 }
 
 .wizardBadgePill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -75,14 +89,12 @@
   padding: 0.25rem 0.65rem;
   border-radius: 20px;
   border: 1px solid rgba(97, 59, 191, 0.2);
-  line-height: 1;
 }
 
 .stepperPipelineLayout {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
 .stepperNodeActive,
@@ -102,26 +114,23 @@
   font-weight: 800;
   color: #ffffff;
   background-color: var(--color-primary, #613bbf);
-  border: 1px solid var(--color-primary, #613bbf);
 }
 
 .stepperNodeMuted {
   font-weight: 600;
   color: var(--text-muted, #7e7a9c);
   background-color: var(--surface-muted, #f1eefc);
-  border: 1px solid transparent;
 }
 
 .stepperStepNumber {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   font-size: 0.7rem;
   font-weight: 800;
-  flex-shrink: 0;
 }
 
 .stepperNodeActive .stepperStepNumber {
@@ -136,15 +145,17 @@
 
 .stepperArrowIcon {
   color: var(--text-muted, #7e7a9c);
-  flex-shrink: 0;
 }
 
 .wizardFormCoreBody {
-  padding: 1.75rem;
+  padding: 2rem 1.75rem;
 }
 
+/* ==========================================================================
+   === SECTION 3: STEP 1 - DROPZONE ===
+   ========================================================================== */
 .dropzoneFrameZone {
-  margin: 2.25rem 1.75rem;
+  margin: 2.5rem 1.75rem;
   padding: 3.5rem 2rem;
   display: flex;
   flex-direction: column;
@@ -153,7 +164,7 @@
   border: 2px dashed var(--border-color, #e5e1f4);
   border-radius: var(--radius-lg, 16px);
   background: var(--surface-muted, #f9f8ff);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s ease;
   position: relative;
   cursor: pointer;
 }
@@ -161,14 +172,11 @@
 .dropzoneFrameZone:hover {
   border-color: var(--color-primary, #613bbf);
   background-color: rgba(97, 59, 191, 0.04);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px -4px rgba(97, 59, 191, 0.12);
 }
 
 .dropzoneActiveTint {
   border-color: var(--color-primary, #613bbf) !important;
   background-color: rgba(97, 59, 191, 0.08) !important;
-  box-shadow: inset 0 0 16px rgba(97, 59, 191, 0.1) !important;
 }
 
 .nativeFullHiddenFileInputControl {
@@ -191,22 +199,11 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 1.25rem;
-  transition: transform 0.2s ease;
-}
-
-.dropzoneFrameZone:hover .dropzoneIconWrapper {
-  transform: scale(1.1);
-  background: var(--color-primary, #613bbf);
 }
 
 .dropzoneUploadIcon {
   font-size: 2rem;
   color: var(--color-primary, #613bbf);
-  transition: color 0.2s ease;
-}
-
-.dropzoneFrameZone:hover .dropzoneUploadIcon {
-  color: #ffffff;
 }
 
 .dropzoneMainTitleText {
@@ -214,14 +211,12 @@
   font-weight: 800;
   color: var(--text-primary, #10043f);
   margin-bottom: 0.35rem;
-  text-align: center;
 }
 
 .dropzoneSubtextMeta {
   font-size: 0.82rem;
   color: var(--text-muted, #7e7a9c);
   font-weight: 500;
-  text-align: center;
   margin-bottom: 1.25rem;
 }
 
@@ -233,10 +228,168 @@
   border: 1px solid var(--border-color, #e5e1f4);
   padding: 0.52rem 1.25rem;
   border-radius: var(--radius-md, 8px);
-  box-shadow: 0 2px 6px rgba(16, 4, 63, 0.04);
   pointer-events: none;
 }
 
+/* ==========================================================================
+   === SECTION 4: STEP 2 - FORM CONTROLS (ALIGNED WITH TRANSACTIONFORM) ===
+   ========================================================================== */
+.headerAdjustmentDeck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--surface-muted, #f1eefc);
+  border: 1px solid var(--border-color, #e5e1f4);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md, 10px);
+  margin-bottom: 1.5rem;
+}
+
+.headerAdjustmentLabelBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-primary, #613bbf);
+}
+
+.headerTunerIcon {
+  font-size: 1.1rem;
+}
+
+.headerSelectGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #4e4a6b);
+  font-weight: 600;
+}
+
+.headerSmallSelect {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e1f4);
+  background-color: #ffffff;
+  font-weight: 700;
+  color: var(--text-primary, #10043f);
+  cursor: pointer;
+}
+
+.formLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.formRowSideBySide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  line-height: 1.2;
+}
+
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.selectField {
+  width: 100%;
+  height: 44px;
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e7a9c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 14px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.selectField:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.segmentedControl {
+  display: flex;
+  background-color: var(--background);
+  border: 1px solid var(--border-color);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  width: 100%;
+  height: 44px;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.segmentOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: calc(var(--radius-md) - 3px);
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.hiddenRadioControl {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.segmentActiveExpense {
+  background-color: var(--danger-soft);
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.segmentActiveIncome {
+  background-color: var(--success-soft);
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   === SECTION 5: STEP 3 - PREVIEW & PROGRESS ===
+   ========================================================================== */
 .wizardInfoAlertBox {
   display: flex;
   align-items: flex-start;
@@ -245,22 +398,12 @@
   border-radius: var(--radius-md, 12px);
   font-size: 0.88rem;
   line-height: 1.5;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
 }
 
 .alertIconFlex {
   flex-shrink: 0;
   margin-top: 0.15rem;
-}
-
-.alertInfoBlue {
-  background-color: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  color: #2563eb;
-}
-
-.alertInfoBlue strong {
-  color: #1d4ed8;
 }
 
 .alertWarningAmber {
@@ -273,82 +416,39 @@
   color: #92400e;
 }
 
-.alertWarningAmber b {
-  color: var(--text-primary, #10043f);
-}
-
-.mappingSelectorsGridRow {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.formGroupWrapperField {
+.batchProgressBarContainer {
+  margin-bottom: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.fieldLayoutInputLabel {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--text-primary, #10043f);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.premiumFieldSelectControl,
-.premiumFieldInputTextControl {
+.batchProgressIndicatorBar {
   width: 100%;
-  height: 44px;
-  padding: 0 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--border-color, #e5e1f4);
-  background-color: var(--surface-muted, #f9f8ff);
-  color: var(--text-primary, #10043f);
-  outline: none;
-  transition: all 0.2s ease-in-out;
-  box-sizing: border-box;
-  font-family: inherit;
+  height: 6px;
+  background-color: var(--color-primary, #613bbf);
+  border-radius: 99px;
+  animation: pulseBar 1.5s infinite ease-in-out;
 }
 
-.premiumFieldSelectControl {
-  appearance: none;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23613bbf' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 14px;
-  padding-right: 2.5rem;
+.batchProgressText {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-primary, #613bbf);
+  text-align: center;
 }
 
-.premiumFieldSelectControl:focus,
-.premiumFieldInputTextControl:focus {
-  border-color: var(--color-primary, #613bbf);
-  background-color: var(--bg-surface, #ffffff);
-  box-shadow: 0 0 0 3px rgba(97, 59, 191, 0.1);
-}
-
-.stagerFallbackSubFormBlock {
-  border: 1px dashed var(--border-color, #e5e1f4);
-  padding: 1.25rem;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-  background-color: var(--surface-muted, #f9f8ff);
-  border-radius: var(--radius-md, 12px);
-  margin-bottom: 1.5rem;
+@keyframes pulseBar {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
 }
 
 .previewDataGridContainerWindow {
-  max-height: 340px;
+  max-height: 320px;
   overflow-y: auto;
   border: 1px solid var(--border-color, #e5e1f4);
   border-radius: var(--radius-md, 12px);
-  box-shadow: inset 0 1px 3px rgba(16, 4, 63, 0.02);
 }
 
 .previewTableViewportLayout {
@@ -367,22 +467,17 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   font-size: 0.74rem;
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border-color, #e5e1f4);
   z-index: 10;
 }
 
 .previewTableBodyRowCluster tr {
   border-bottom: 1px solid var(--border-color, #e5e1f4);
-  transition: background-color 0.15s ease;
-}
-
-.previewTableBodyRowCluster tr:hover {
-  background-color: var(--surface-muted, #f9f8ff);
 }
 
 .previewTableBodyRowCluster td {
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 1rem;
   color: var(--text-primary, #10043f);
   vertical-align: middle;
 }
@@ -431,7 +526,7 @@
 }
 
 .tableCellInlineSelectControl {
-  padding: 0.4rem 0.6rem;
+  padding: 0.35rem 0.6rem;
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 6px;
@@ -443,6 +538,68 @@
   cursor: pointer;
 }
 
+/* ==========================================================================
+   === SECTION 6: BUTTONS & FOOTER ACTIONS ===
+   ========================================================================== */
+.buttonGroup {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.buttonGroupRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.submitBtn,
+.cancelBtn {
+  width: 160px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.submitBtn {
+  background-color: var(--color-primary);
+  color: var(--text-on-primary);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.cancelBtn {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.submitBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .wizardActionFooterToolbar {
   display: flex;
   align-items: center;
@@ -452,62 +609,10 @@
   margin-top: 1.5rem;
 }
 
-.flexButtonGroupRow {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .wizardCounterSummaryMetaText {
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted, #7e7a9c);
-}
-
-.wizardCancelControlBtn {
-  padding: 0.65rem 1.35rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--border-color, #e5e1f4);
-  background-color: transparent;
-  color: var(--text-secondary, #4e4a6b);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.wizardCancelControlBtn:hover {
-  background-color: var(--surface-muted, #f9f8ff);
-  color: var(--text-primary, #10043f);
-}
-
-.wizardPrimaryConfirmBtn {
-  padding: 0.65rem 1.6rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid transparent;
-  background-color: var(--color-primary, #613bbf);
-  color: #ffffff;
-  cursor: pointer;
-}
-
-.wizardCommitExecutionBtn {
-  padding: 0.65rem 1.6rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid transparent;
-  background-color: var(--color-success, #16a34a);
-  color: #ffffff;
-  cursor: pointer;
-}
-
-.wizardCancelControlBtn:disabled,
-.wizardPrimaryConfirmBtn:disabled,
-.wizardCommitExecutionBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 @keyframes fadeInOverlay {
@@ -520,6 +625,9 @@
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ==========================================================================
+   === SECTION 7: RESPONSIVE ===
+   ========================================================================== */
 @media (max-width: 768px) {
   .modalOverlayBackdrop {
     padding: 0.75rem;
@@ -539,34 +647,31 @@
     justify-content: space-between;
   }
   .wizardFormCoreBody {
-    padding: 1.25rem;
+    padding: 1.25rem 1rem;
   }
-  .dropzoneFrameZone {
-    margin: 1.25rem 0.5rem;
-    padding: 2.25rem 1.25rem;
-  }
-  .mappingSelectorsGridRow,
-  .stagerFallbackSubFormBlock {
+  .formRowSideBySide {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.15rem;
   }
-  .premiumFieldSelectControl,
-  .premiumFieldInputTextControl {
-    font-size: 1rem;
-    min-height: 48px;
+  .selectField,
+  .segmentedControl {
+    height: 48px;
+    font-size: 1rem !important;
   }
   .wizardActionFooterToolbar {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
-  .flexButtonGroupRow {
-    width: 100%;
+  .buttonGroupRight,
+  .buttonGroup {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.65rem;
   }
-  .wizardCancelControlBtn,
-  .wizardPrimaryConfirmBtn,
-  .wizardCommitExecutionBtn {
-    flex: 1;
-    min-height: 48px;
+  .submitBtn,
+  .cancelBtn {
+    width: 100%;
+    height: 48px;
   }
 }

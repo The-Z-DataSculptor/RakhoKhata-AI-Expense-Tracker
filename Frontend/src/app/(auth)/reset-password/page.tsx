@@ -8,12 +8,9 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { apiFetch } from "@/utils/api";
 import styles from "../login/page.module.css"; // Reuses login layout styles
 
-/**
- * Checks whether a password meets the minimum length requirement.
- * The backend performs additional validation (complexity, history, etc.).
- */
 function isValidPassword(password: string): boolean {
   return password.length >= 8;
 }
@@ -23,49 +20,35 @@ function isValidPassword(password: string): boolean {
    === SECTION 2: RESET PASSWORD FORM COMPONENT ===
    ========================================================================== */
 
-/**
- * Inner form component that reads the reset token from the URL and
- * allows the user to set a new password.
- */
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  // Extract the token from the query string (e.g., ?token=abc123)
   const token = searchParams.get("token");
 
-  // Local form state
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Show a warning if the page was opened without a valid token
   useEffect(() => {
     if (!token) {
       toast.error("Invalid or expired reset link. Please request a new one.");
     }
   }, [token]);
 
-  /**
-   * Handles the password reset form submission.
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Validate token presence
     if (!token) {
       toast.error("Your reset link is invalid or has expired.");
       return;
     }
 
-    // 2. Validate new password length
     if (!isValidPassword(newPassword)) {
       toast.error("Password must be at least 8 characters long.");
       return;
     }
 
-    // 3. Check that the two passwords match
     if (newPassword !== confirmPassword) {
       toast.error("Passwords do not match.");
       return;
@@ -73,25 +56,12 @@ function ResetPasswordForm() {
 
     setIsSubmitting(true);
     try {
-      // Uses relative /api endpoint for proxy rewrite handling
-      const response = await fetch("/api/auth/reset-password", {
+      const res = await apiFetch<{ message: string }>("/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword }),
-        credentials: "include",
       });
 
-      const result: unknown = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" && result !== null && "error" in result
-            ? (result as { error: string }).error
-            : "Could not reset password. Please try again.";
-        throw new Error(errorMessage);
-      }
-
-      toast.success("Password changed successfully! Redirecting...");
+      toast.success(res.message || "Password changed successfully! Redirecting...");
       await new Promise((resolve) => setTimeout(resolve, 1000));
       router.push("/login");
     } catch (error: unknown) {
@@ -120,7 +90,6 @@ function ResetPasswordForm() {
         className={styles.registrationForm}
         noValidate
       >
-        {/* New Password field */}
         <div className={styles.inputControlGroup}>
           <label htmlFor="newPassword" className={styles.fieldLabel}>
             New Password
@@ -147,7 +116,6 @@ function ResetPasswordForm() {
           </div>
         </div>
 
-        {/* Confirm Password field */}
         <div className={styles.inputControlGroup}>
           <label htmlFor="confirmPassword" className={styles.fieldLabel}>
             Confirm Password
@@ -184,10 +152,6 @@ function ResetPasswordForm() {
   );
 }
 
-/**
- * Page wrapper that provides the `<Suspense>` boundary required by
- * `useSearchParams()` and applies the shared login page layout.
- */
 export default function ResetPasswordPage() {
   return (
     <div className={styles.fullScreenMasterLayout} suppressHydrationWarning>

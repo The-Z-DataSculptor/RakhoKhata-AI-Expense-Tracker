@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { userService, UserProfile } from "@/utils/api";
+import { toast } from "sonner";
 
 interface UserContextType {
   user: UserProfile | null;
@@ -29,6 +30,7 @@ export function UserProvider({
       }
     } catch (error) {
       console.error("Failed to refresh user profile:", error);
+      toast.error("Failed to reload user profile details.");
     }
   }, []);
 

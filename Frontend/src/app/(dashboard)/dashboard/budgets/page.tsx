@@ -1,4 +1,4 @@
-// src/app/(dashboard)/dashboard/budgets/page.tsx
+// Frontend/src/app/(dashboard)/dashboard/budgets/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -18,6 +18,7 @@ import { Budget as ApiBudget, Category as ApiCategory } from "@/utils/api";
 
 interface ExtendedBudget extends ApiBudget {
   spentAmount?: number;
+  spentCurrency?: string;
 }
 
 const getMonthDays = (): number => {
@@ -173,7 +174,13 @@ export default function BudgetsPage() {
           ? originalLimit
           : convertAmount(Number(budget.baseAmountUSD || 0), "USD", workspaceCurrency);
 
-      const spentInWorkspaceCurrency = convertAmount(Number(budget.spentAmount || 0), "USD", workspaceCurrency);
+      const rawSpent = Number(budget.spentAmount || 0);
+      const spentCurrency = budget.spentCurrency || "USD";
+
+      const spentInWorkspaceCurrency =
+        spentCurrency === workspaceCurrency
+          ? rawSpent
+          : convertAmount(rawSpent, spentCurrency, workspaceCurrency);
 
       const scaledLimit = Math.round(limitInWorkspaceCurrency * scale * 100) / 100;
       const scaledSpent = Math.round(spentInWorkspaceCurrency * scale * 100) / 100;
@@ -199,8 +206,9 @@ export default function BudgetsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[500px]">
-        <p className="text-gray-400 font-medium tracking-wide animate-pulse text-sm">
+      <div className={styles.loadingContainer}>
+        <div className={styles.spinner} />
+        <p className={styles.loadingText}>
           Syncing Live Wallet Spending Thresholds...
         </p>
       </div>

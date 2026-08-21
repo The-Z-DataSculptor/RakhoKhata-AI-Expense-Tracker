@@ -1,21 +1,18 @@
 // Backend/src/controllers/transactionController.ts
 
+
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-import { Response as ExpressResponse, Request } from "express";
+import { Response as ExpressResponse } from "express";
 import "multer";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { GoogleGenAI } from "@google/genai";
 
-// Maximum allowed transactions per fetch query to prevent server OOM crashes
 const MAX_TRANSACTIONS_FETCH_LIMIT = 500;
+const MAX_BULK_IMPORT_BATCH_SIZE = 1000;
 
-// Maximum allowed entries per bulk import batch payload
-const MAX_BULK_IMPORT_BATCH_SIZE = 500;
-
-// Allowed file MIME types for AI receipt scanning
 const ALLOWED_RECEIPT_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -25,7 +22,6 @@ const ALLOWED_RECEIPT_MIME_TYPES = [
   "application/pdf",
 ];
 
-// Data contract for inbound transaction items during bulk import
 interface InboundTransactionInput {
   originalAmount: string | number;
   originalCurrency: string;
@@ -36,7 +32,6 @@ interface InboundTransactionInput {
   categoryId: string;
 }
 
-// Data contract for single transaction creation request body
 interface CreateTransactionRequestBody {
   originalAmount: string | number;
   originalCurrency: string;
@@ -48,7 +43,6 @@ interface CreateTransactionRequestBody {
   categoryId: string;
 }
 
-// Data contract for transaction update request body
 interface UpdateTransactionRequestBody {
   amount?: string | number;
   originalAmount?: string | number;
@@ -60,13 +54,11 @@ interface UpdateTransactionRequestBody {
   categoryId?: string;
 }
 
-// Data contract for bulk import request body
 interface BulkImportRequestBody {
   workspaceId: string;
   transactions: InboundTransactionInput[];
 }
 
-// Struct for structured JSON output extracted by Gemini AI from receipt images
 interface ExtractedReceiptMetrics {
   merchant: string;
   date: string;
@@ -79,16 +71,10 @@ interface ExtractedReceiptMetrics {
    === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
-/**
- * Standardized JSON error response builder
- */
 function buildSafeError(message: string): { error: string } {
   return { error: message };
 }
 
-/**
- * Safely extracts a single string parameter from query or route parameters.
- */
 function extractSingleString(value: unknown): string | undefined {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
@@ -96,9 +82,6 @@ function extractSingleString(value: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Parses raw input into a valid non-negative number.
- */
 function parseNonNegativeNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") {
     return undefined;
@@ -110,16 +93,10 @@ function parseNonNegativeNumber(value: unknown): number | undefined {
   return num;
 }
 
-/**
- * Validates whether a transaction type string matches schema enums strictly.
- */
 function isValidTransactionType(type: unknown): type is "INCOME" | "EXPENSE" {
   return type === "INCOME" || type === "EXPENSE";
 }
 
-/**
- * Safely parses string inputs into valid Date instances. Returns null on invalid formats.
- */
 function parseDateSafely(dateStr: string): Date | null {
   const d = new Date(dateStr);
   return isNaN(d.getTime()) ? null : d;
@@ -132,7 +109,6 @@ function parseDateSafely(dateStr: string): Date | null {
 
 /**
  * POST /api/transactions
- * Creates a single transaction entry after verifying workspace and category ownership.
  */
 export const createTransaction = async (
   req: AuthenticatedRequest,
@@ -146,7 +122,6 @@ export const createTransaction = async (
     }
 
     const body = req.body as CreateTransactionRequestBody;
-
     const sanitizedWorkspaceId = extractSingleString(body.workspaceId);
     const sanitizedCategoryId = extractSingleString(body.categoryId);
     const sanitizedCurrency = extractSingleString(body.originalCurrency)?.toUpperCase();
@@ -155,7 +130,6 @@ export const createTransaction = async (
     const parsedOriginalAmount = parseNonNegativeNumber(body.originalAmount);
     const parsedBaseAmountUSD = parseNonNegativeNumber(body.baseAmountUSD);
 
-    // 1. Validate required parameter presence
     if (
       parsedOriginalAmount === undefined ||
       parsedBaseAmountUSD === undefined ||
@@ -169,14 +143,12 @@ export const createTransaction = async (
       return;
     }
 
-    // 2. Validate transaction date format
     const parsedDate = parseDateSafely(String(body.date));
     if (!parsedDate) {
       res.status(400).json(buildSafeError("Invalid date format provided."));
       return;
     }
 
-    // Verifies workspace ownership BEFORE creating records (BOLA Protection).
     const workspace = await prisma.workspace.findFirst({
       where: { id: sanitizedWorkspaceId, userId: userId },
       select: { id: true },
@@ -187,7 +159,6 @@ export const createTransaction = async (
       return;
     }
 
-    // Verifies that category belongs to target workspace to prevent cross-tenant category injection.
     const categoryMatch = await prisma.category.findFirst({
       where: { id: sanitizedCategoryId, workspaceId: sanitizedWorkspaceId },
       select: { id: true },
@@ -198,7 +169,6 @@ export const createTransaction = async (
       return;
     }
 
-    // 3. Create transaction entry
     const transaction = await prisma.transaction.create({
       data: {
         originalAmount: parsedOriginalAmount,
@@ -209,6 +179,7 @@ export const createTransaction = async (
         date: parsedDate,
         workspaceId: sanitizedWorkspaceId,
         categoryId: sanitizedCategoryId,
+        deletedAt: null,
       },
       include: { category: true },
     });
@@ -225,7 +196,6 @@ export const createTransaction = async (
 
 /**
  * PUT /api/transactions/:id
- * Updates an existing transaction record or re-assigns its category safely.
  */
 export const updateTransaction = async (
   req: AuthenticatedRequest,
@@ -245,7 +215,6 @@ export const updateTransaction = async (
       return;
     }
 
-    // Verify transaction exists and user owns the parent workspace
     const existingTransaction = await prisma.transaction.findUnique({
       where: { id: targetId },
       include: { workspace: true },
@@ -321,7 +290,6 @@ export const updateTransaction = async (
         return;
       }
 
-      // Verify category belongs to the transaction's workspace
       const categoryMatch = await prisma.category.findFirst({
         where: { id: catId, workspaceId: existingTransaction.workspaceId },
         select: { id: true },
@@ -367,7 +335,6 @@ export const updateTransaction = async (
 
 /**
  * POST /api/transactions/bulk
- * Imports a batch of transactions using a single atomic database query.
  */
 export const bulkCreateTransactions = async (
   req: AuthenticatedRequest,
@@ -383,13 +350,11 @@ export const bulkCreateTransactions = async (
     const { workspaceId, transactions } = req.body as BulkImportRequestBody;
     const sanitizedWorkspaceId = extractSingleString(workspaceId);
 
-    // 1. Validate payload structure and batch constraints
     if (!sanitizedWorkspaceId || !Array.isArray(transactions) || transactions.length === 0) {
       res.status(400).json(buildSafeError("Missing workspace ID or batch transactions array."));
       return;
     }
 
-    // Restricts batch import size to prevent payload memory exhaustion DoS.
     if (transactions.length > MAX_BULK_IMPORT_BATCH_SIZE) {
       res.status(400).json(
         buildSafeError(`Batch size exceeds maximum limit of ${MAX_BULK_IMPORT_BATCH_SIZE} entries per import.`)
@@ -397,7 +362,6 @@ export const bulkCreateTransactions = async (
       return;
     }
 
-    // Verify workspace ownership
     const workspace = await prisma.workspace.findFirst({
       where: { id: sanitizedWorkspaceId, userId: userId },
       select: { id: true },
@@ -408,7 +372,6 @@ export const bulkCreateTransactions = async (
       return;
     }
 
-    // 2. Validate individual batch items in memory before touching database
     const preparedRecords: Array<{
       originalAmount: number;
       originalCurrency: string;
@@ -418,6 +381,7 @@ export const bulkCreateTransactions = async (
       date: Date;
       workspaceId: string;
       categoryId: string;
+      deletedAt: null;
     }> = [];
 
     const referencedCategoryIds = new Set<string>();
@@ -472,10 +436,10 @@ export const bulkCreateTransactions = async (
         date: parsedDate,
         workspaceId: sanitizedWorkspaceId,
         categoryId: categoryId,
+        deletedAt: null,
       });
     }
 
-    // Verifies in ONE batch query that all referenced category IDs belong to this workspace.
     const validCategories = await prisma.category.findMany({
       where: {
         id: { in: Array.from(referencedCategoryIds) },
@@ -507,7 +471,6 @@ export const bulkCreateTransactions = async (
 
 /**
  * POST /api/transactions/scan-receipt
- * Uses Gemini AI vision models to parse receipt images and extract transaction metrics.
  */
 export const scanReceipt = async (
   req: AuthenticatedRequest,
@@ -526,7 +489,6 @@ export const scanReceipt = async (
       return;
     }
 
-    // Validates file MIME type to block malicious file uploads.
     if (!ALLOWED_RECEIPT_MIME_TYPES.includes(uploadedFile.mimetype.toLowerCase())) {
       res.status(400).json(
         buildSafeError("Invalid file type. Please upload a JPEG, PNG, WEBP, or PDF document.")
@@ -540,7 +502,6 @@ export const scanReceipt = async (
       return;
     }
 
-    // Initialize Google Gemini AI client
     const aiClient = new GoogleGenAI({ apiKey });
 
     const receiptImagePart = {
@@ -553,15 +514,14 @@ export const scanReceipt = async (
     const extractionPrompt = `
 You are an elite financial receipt parser.
 Analyze the provided receipt image and extract the following JSON fields:
-- merchant: vendor name (clean up noise, e.g., "MCDONALDS STORE #4322" → "McDonald's")
+- merchant: vendor name
 - date: transaction date in YYYY-MM-DD format
 - totalAmount: final numerical total amount
 - currency: three-letter ISO currency code. Map "Rs", "Rs.", "PKR" → "PKR", "$" → "USD". Default to "PKR" if unknown.
 `;
 
-    // Query Gemini vision model
     const aiResponse = await aiClient.models.generateContent({
-      model: "gemini-3.1-flash-lite",
+      model: "gemini-2.5-flash",
       contents: [extractionPrompt, receiptImagePart],
       config: {
         responseMimeType: "application/json",
@@ -574,7 +534,6 @@ Analyze the provided receipt image and extract the following JSON fields:
       return;
     }
 
-    // Extract JSON payload from model output
     const jsonMatch = rawText.match(/{[\s\S]*}/);
     if (!jsonMatch) {
       res.status(500).json(buildSafeError("Failed to parse AI model response output."));
@@ -601,7 +560,7 @@ Analyze the provided receipt image and extract the following JSON fields:
 
 /**
  * GET /api/transactions?workspaceId=...
- * Fetches transactions for a workspace with explicit result bounds.
+ * Active transactions only (deletedAt IS NULL).
  */
 export const getWorkspaceTransactions = async (
   req: AuthenticatedRequest,
@@ -621,7 +580,6 @@ export const getWorkspaceTransactions = async (
       return;
     }
 
-    // Verify workspace access
     const workspace = await prisma.workspace.findFirst({
       where: { id: targetWorkspaceId, userId: userId },
       select: { id: true },
@@ -633,7 +591,10 @@ export const getWorkspaceTransactions = async (
     }
 
     const transactions = await prisma.transaction.findMany({
-      where: { workspaceId: targetWorkspaceId },
+      where: {
+        workspaceId: targetWorkspaceId,
+        deletedAt: null,
+      },
       include: {
         category: {
           select: {
@@ -662,7 +623,7 @@ export const getWorkspaceTransactions = async (
 
 /**
  * DELETE /api/transactions/:id
- * Removes a transaction record after verifying ownership.
+ * Soft delete: Moves transaction to Recycle Bin by stamping deletedAt.
  */
 export const deleteTransaction = async (
   req: AuthenticatedRequest,
@@ -682,7 +643,156 @@ export const deleteTransaction = async (
       return;
     }
 
-    // Verify transaction exists and user owns the parent workspace
+    const transactionTarget = await prisma.transaction.findUnique({
+      where: { id: targetId },
+      include: { workspace: true },
+    });
+
+    if (!transactionTarget || transactionTarget.workspace.userId !== userId) {
+      res.status(403).json(buildSafeError("Access denied or transaction not found."));
+      return;
+    }
+
+    await prisma.transaction.update({
+      where: { id: targetId },
+      data: { deletedAt: new Date() },
+    });
+
+    res.status(200).json({ message: "Transaction moved to Recycle Bin." });
+  } catch (error: unknown) {
+    console.error("Delete Transaction Error:", error);
+    res.status(500).json(buildSafeError("Internal server error moving transaction to trash."));
+  }
+};
+
+/**
+ * GET /api/transactions/trash?workspaceId=...
+ * Fetches all soft-deleted records for the workspace.
+ */
+export const getTrashedTransactions = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const targetWorkspaceId = extractSingleString(req.query.workspaceId);
+
+    if (!userId) {
+      res.status(401).json(buildSafeError("Authentication required."));
+      return;
+    }
+
+    if (!targetWorkspaceId) {
+      res.status(400).json(buildSafeError("Workspace ID query parameter is required."));
+      return;
+    }
+
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: targetWorkspaceId, userId: userId },
+      select: { id: true },
+    });
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
+      return;
+    }
+
+    const trashed = await prisma.transaction.findMany({
+      where: {
+        workspaceId: targetWorkspaceId,
+        deletedAt: { not: null },
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            color: true,
+          },
+        },
+      },
+      orderBy: { deletedAt: "desc" },
+      take: 200,
+    });
+
+    res.status(200).json({ trashed: trashed || [] });
+  } catch (error: unknown) {
+    console.error("Get Trashed Transactions Error:", error);
+    res.status(500).json(buildSafeError("Internal server error fetching trash records."));
+  }
+};
+
+/**
+ * POST /api/transactions/:id/restore
+ * Restores a soft-deleted transaction by clearing deletedAt.
+ */
+export const restoreTransaction = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const targetId = extractSingleString(req.params.id);
+
+    if (!userId) {
+      res.status(401).json(buildSafeError("Authentication required."));
+      return;
+    }
+
+    if (!targetId) {
+      res.status(400).json(buildSafeError("Transaction ID is required."));
+      return;
+    }
+
+    const transactionTarget = await prisma.transaction.findUnique({
+      where: { id: targetId },
+      include: { workspace: true },
+    });
+
+    if (!transactionTarget || transactionTarget.workspace.userId !== userId) {
+      res.status(403).json(buildSafeError("Access denied or transaction not found."));
+      return;
+    }
+
+    const restored = await prisma.transaction.update({
+      where: { id: targetId },
+      data: { deletedAt: null },
+      include: { category: true },
+    });
+
+    res.status(200).json({
+      message: "Transaction restored to ledger successfully.",
+      transaction: restored,
+    });
+  } catch (error: unknown) {
+    console.error("Restore Transaction Error:", error);
+    res.status(500).json(buildSafeError("Internal server error restoring transaction."));
+  }
+};
+
+/**
+ * DELETE /api/transactions/:id/permanent
+ * Permanently erases a transaction from the database.
+ */
+export const permanentDeleteTransaction = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const targetId = extractSingleString(req.params.id);
+
+    if (!userId) {
+      res.status(401).json(buildSafeError("Authentication required."));
+      return;
+    }
+
+    if (!targetId) {
+      res.status(400).json(buildSafeError("Transaction ID is required."));
+      return;
+    }
+
     const transactionTarget = await prisma.transaction.findUnique({
       where: { id: targetId },
       include: { workspace: true },
@@ -695,10 +805,58 @@ export const deleteTransaction = async (
 
     await prisma.transaction.delete({ where: { id: targetId } });
 
-    res.status(200).json({ message: "Transaction deleted successfully." });
+    res.status(200).json({ message: "Transaction permanently erased." });
   } catch (error: unknown) {
-    console.error("Delete Transaction Error:", error);
-    res.status(500).json(buildSafeError("Internal server error deleting transaction."));
+    console.error("Permanent Delete Transaction Error:", error);
+    res.status(500).json(buildSafeError("Internal server error permanently deleting transaction."));
   }
 };
-/* === SECTION 3 END === */
+
+/**
+ * DELETE /api/transactions/trash/empty
+ * Permanently purges all trashed items in a workspace.
+ */
+export const emptyWorkspaceTrash = async (
+  req: AuthenticatedRequest,
+  res: ExpressResponse
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const targetWorkspaceId = extractSingleString(req.body?.workspaceId || req.query.workspaceId);
+
+    if (!userId) {
+      res.status(401).json(buildSafeError("Authentication required."));
+      return;
+    }
+
+    if (!targetWorkspaceId) {
+      res.status(400).json(buildSafeError("Workspace ID parameter is required."));
+      return;
+    }
+
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: targetWorkspaceId, userId: userId },
+      select: { id: true },
+    });
+
+    if (!workspace) {
+      res.status(403).json(buildSafeError("Access denied to specified workspace."));
+      return;
+    }
+
+    const result = await prisma.transaction.deleteMany({
+      where: {
+        workspaceId: targetWorkspaceId,
+        deletedAt: { not: null },
+      },
+    });
+
+    res.status(200).json({
+      message: `Recycle Bin emptied. ${result.count} records permanently removed.`,
+      count: result.count,
+    });
+  } catch (error: unknown) {
+    console.error("Empty Trash Error:", error);
+    res.status(500).json(buildSafeError("Internal server error emptying trash."));
+  }
+};

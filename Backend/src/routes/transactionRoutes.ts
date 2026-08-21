@@ -12,6 +12,10 @@ import {
   scanReceipt,
   getWorkspaceTransactions,
   deleteTransaction,
+  getTrashedTransactions,
+  restoreTransaction,
+  permanentDeleteTransaction,
+  emptyWorkspaceTrash,
 } from "../controllers/transactionController";
 import {
   exportTransactionsExcel,
@@ -33,7 +37,6 @@ import {
    ========================================================================== */
 const router = Router();
 
-// Allowed MIME types for AI receipt scanning
 const ALLOWED_RECEIPT_MIME_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -43,11 +46,10 @@ const ALLOWED_RECEIPT_MIME_TYPES = [
   "application/pdf",
 ];
 
-// Rejects non-supported files at the multipart boundary before buffering into memory
 const memoryUploadEngine = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10 MB maximum upload size
+    fileSize: 10 * 1024 * 1024,
   },
   fileFilter: (_req, file, callback) => {
     if (ALLOWED_RECEIPT_MIME_TYPES.includes(file.mimetype.toLowerCase())) {
@@ -62,13 +64,46 @@ const memoryUploadEngine = multer({
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: TRANSACTION & EXPORT ROUTES ===
+   === SECTION 3: RECYCLE BIN & TRASH ROUTES ===
    ========================================================================== */
 
-/**
- * GET /api/transactions
- * Fetches transactions for a workspace (workspaceId query parameter required).
- */
+router.get(
+  "/trash",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  globalApiLimiter,
+  getTrashedTransactions
+);
+
+router.delete(
+  "/trash/empty",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  emptyWorkspaceTrash
+);
+
+router.post(
+  "/:id/restore",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  restoreTransaction
+);
+
+router.delete(
+  "/:id/permanent",
+  verifyTokenGuard,
+  ensureOnboardingCompleted,
+  writeActionsLimiter,
+  permanentDeleteTransaction
+);
+/* === SECTION 3 END === */
+
+/* ==========================================================================
+   === SECTION 4: CORE TRANSACTION ROUTES ===
+   ========================================================================== */
+
 router.get(
   "/",
   verifyTokenGuard,
@@ -77,10 +112,6 @@ router.get(
   getWorkspaceTransactions
 );
 
-/**
- * POST /api/transactions
- * Creates a single transaction entry.
- */
 router.post(
   "/",
   verifyTokenGuard,
@@ -89,10 +120,6 @@ router.post(
   createTransaction
 );
 
-/**
- * PUT /api/transactions/:id
- * Updates an existing transaction record (or mass re-assigns category).
- */
 router.put(
   "/:id",
   verifyTokenGuard,
@@ -101,10 +128,6 @@ router.put(
   updateTransaction
 );
 
-/**
- * POST /api/transactions/bulk
- * Imports multiple transactions in a single batch.
- */
 router.post(
   "/bulk",
   verifyTokenGuard,
@@ -113,11 +136,6 @@ router.post(
   bulkCreateTransactions
 );
 
-/**
- * POST /api/transactions/scan
- * Scans a receipt document/image using Gemini AI vision models.
- * Protected by shared aiApiLimiter.
- */
 router.post(
   "/scan",
   verifyTokenGuard,
@@ -127,10 +145,6 @@ router.post(
   scanReceipt
 );
 
-/**
- * DELETE /api/transactions/:id
- * Removes a transaction by ID.
- */
 router.delete(
   "/:id",
   verifyTokenGuard,
@@ -139,10 +153,6 @@ router.delete(
   deleteTransaction
 );
 
-/**
- * GET /api/transactions/export/excel
- * Generates and streams an Excel spreadsheet statement.
- */
 router.get(
   "/export/excel",
   verifyTokenGuard,
@@ -151,10 +161,6 @@ router.get(
   exportTransactionsExcel
 );
 
-/**
- * GET /api/transactions/export/pdf
- * Generates and streams a PDF report document.
- */
 router.get(
   "/export/pdf",
   verifyTokenGuard,
@@ -162,10 +168,6 @@ router.get(
   globalApiLimiter,
   exportTransactionsPdf
 );
-/* === SECTION 3 END === */
-
-/* ==========================================================================
-   === SECTION 4: EXPORTS ===
-   ========================================================================== */
-export default router;
 /* === SECTION 4 END === */
+
+export default router;

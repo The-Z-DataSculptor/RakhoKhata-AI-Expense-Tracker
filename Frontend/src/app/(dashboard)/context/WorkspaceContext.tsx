@@ -39,6 +39,7 @@ interface WorkspaceContextType {
   activeWorkspaceId: string;
   activeWorkspace: Workspace | undefined;
   isLoading: boolean;
+  isReady: boolean;
   switchWorkspace: (id: string) => void;
   createWorkspace: (name: string, currency?: string) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
@@ -81,10 +82,12 @@ function renderIconComponent(
 }
 
 function persistActiveWorkspaceId(id: string): void {
-  try {
-    localStorage.setItem("app_active_workspace_id", id);
-  } catch {
-    // localStorage might be unavailable
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("app_active_workspace_id", id);
+    } catch {
+      // localStorage unavailable
+    }
   }
 }
 
@@ -107,9 +110,10 @@ export function WorkspaceProvider({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isReady, setIsReady] = useState<boolean>(false);
 
-  // ----- Fetch / Refresh Workspaces -----
+  // ----- Fetch / Refresh Workspaces (Single consolidated function) -----
   const refreshWorkspaces = useCallback(async () => {
     try {
+      setIsLoading(true);
       const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
 
       if (data.workspaces && data.workspaces.length > 0) {
@@ -122,8 +126,13 @@ export function WorkspaceProvider({
         setActiveWorkspaceId((currentId) => {
           const savedId = typeof window !== "undefined" ? localStorage.getItem("app_active_workspace_id") : null;
           const matched = enriched.find((ws) => ws.id === (currentId || savedId));
-          return matched ? matched.id : enriched[0].id;
+          const targetId = matched ? matched.id : enriched[0].id;
+          persistActiveWorkspaceId(targetId);
+          return targetId;
         });
+      } else {
+        setWorkspaces([]);
+        setActiveWorkspaceId("");
       }
     } catch (error: unknown) {
       console.error("Workspace Pipeline Hydration Exception:", error);
@@ -134,43 +143,19 @@ export function WorkspaceProvider({
     }
   }, []);
 
-  // Sync initial workspaces on mount cleanly without synchronous inline state triggers
+  // Initialize on mount by invoking refreshWorkspaces directly
   useEffect(() => {
     let active = true;
-
     const initialize = async () => {
-      try {
-        const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
-        if (!active) return;
-
-        if (data.workspaces && data.workspaces.length > 0) {
-          const enriched = data.workspaces.map((ws) => ({
-            ...ws,
-            iconName: assignDynamicIcon(ws.name),
-          }));
-          setWorkspaces(enriched);
-
-          const savedId = localStorage.getItem("app_active_workspace_id");
-          const matched = enriched.find((ws) => ws.id === savedId);
-          setActiveWorkspaceId(matched ? matched.id : enriched[0].id);
-        }
-      } catch (error: unknown) {
-        console.error("Workspace Pipeline Hydration Exception:", error);
-        if (active) toast.error("Unable to load financial workspace configuration layers.");
-      } finally {
-        if (active) {
-          setIsLoading(false);
-          setIsReady(true);
-        }
+      if (active) {
+        await refreshWorkspaces();
       }
     };
-
     void initialize();
-
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshWorkspaces]);
 
   // ----- Direct Local In-Memory State Sync -----
   const updateWorkspaceInState = useCallback((id: string, updates: Partial<Workspace>) => {
@@ -193,9 +178,7 @@ export function WorkspaceProvider({
   // ----- Workspace switching -----
   const switchWorkspace = (id: string) => {
     setActiveWorkspaceId(id);
-    if (isReady) {
-      persistActiveWorkspaceId(id);
-    }
+    persistActiveWorkspaceId(id);
   };
 
   // ----- Create a new workspace -----
@@ -231,8 +214,15 @@ export function WorkspaceProvider({
       const remaining = workspaces.filter((ws) => ws.id !== id);
       setWorkspaces(remaining);
 
-      if (activeWorkspaceId === id && remaining.length > 0) {
-        switchWorkspace(remaining[0].id);
+      if (activeWorkspaceId === id) {
+        if (remaining.length > 0) {
+          switchWorkspace(remaining[0].id);
+        } else {
+          setActiveWorkspaceId("");
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("app_active_workspace_id");
+          }
+        }
       }
 
       toast.success("Workspace tracking profile and logs cleared.");
@@ -254,6 +244,7 @@ export function WorkspaceProvider({
     activeWorkspaceId,
     activeWorkspace,
     isLoading,
+    isReady,
     switchWorkspace,
     createWorkspace,
     deleteWorkspace,
@@ -261,8 +252,6 @@ export function WorkspaceProvider({
     updateWorkspaceInState,
     renderIcon: renderIconComponent,
   };
-
-  if (!isReady) return null;
 
   return (
     <WorkspaceContext.Provider value={contextValue}>

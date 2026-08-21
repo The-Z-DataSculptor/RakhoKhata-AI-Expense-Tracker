@@ -1,4 +1,5 @@
-// src/components/transactions/TransactionFooter/TransactionFooter.tsx
+
+// Frontend/src/components/transactions/TransactionFooter/TransactionFooter.tsx
 "use client";
 
 /* ==========================================================================
@@ -11,18 +12,12 @@ import {
   FiFileText,
   FiGrid,
   FiChevronDown,
+  FiTrash2,
 } from "react-icons/fi";
 import { toast } from "sonner";
 import { useCurrency } from "@/app/(dashboard)/context/CurrencyContext";
 import styles from "./TransactionFooter.module.css";
 
-/*
- * WHY a fallback is necessary:
- * NEXT_PUBLIC_API_URL is only set when you have a .env.local file.
- * Without it the variable is undefined, causing `API_BASE_URL` to be "".
- * The fallback ensures export requests always go to the backend (port 5000),
- * never to the Next.js dev server.
- */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 /* === SECTION 1 END === */
 
@@ -34,6 +29,7 @@ interface TransactionFooterProps {
   totalExpenses: number;
   sourceCurrency: string;
   activeWorkspaceId: string | null;
+  onOpenTrashCan?: () => void;
 }
 
 type DownloadType = "idle" | "pdf" | "excel";
@@ -55,15 +51,14 @@ export default function TransactionFooter({
   totalExpenses,
   sourceCurrency,
   activeWorkspaceId,
+  onOpenTrashCan,
 }: TransactionFooterProps) {
   const [downloadType, setDownloadType] = useState<DownloadType>("idle");
   const { formatAmount } = useCurrency();
 
-  // Scope tracking states
   const [pdfScope, setPdfScope] = useState<ExportScope>("all");
   const [excelScope, setExcelScope] = useState<ExportScope>("all");
 
-  // Floating dropdown states
   const [isPdfMenuOpen, setIsPdfMenuOpen] = useState(false);
   const [isExcelMenuOpen, setIsExcelMenuOpen] = useState(false);
 
@@ -82,7 +77,6 @@ export default function TransactionFooter({
     all: "All Transactions",
   };
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (pdfRef.current && !pdfRef.current.contains(event.target as Node)) {
@@ -96,10 +90,6 @@ export default function TransactionFooter({
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  /**
-   * Triggers a PDF export for the given time scope.
-   * Uses `window.location.href` to force a file download from the backend.
-   */
   const handleExecutePDFExport = (scope: ExportScope) => {
     if (!activeWorkspaceId) {
       toast.error("Please select an active workspace before exporting.");
@@ -124,9 +114,6 @@ export default function TransactionFooter({
     }
   };
 
-  /**
-   * Triggers an Excel export for the given time scope.
-   */
   const handleExecuteExcelExport = (scope: ExportScope) => {
     if (!activeWorkspaceId) {
       toast.error("Please select an active workspace before exporting.");
@@ -183,8 +170,21 @@ export default function TransactionFooter({
         </div>
       </div>
 
-      {/* Export action buttons */}
+      {/* Action Buttons with Recycle Bin Trigger */}
       <div className={styles.actionButtonBlock}>
+        {/* Recycle Bin Button */}
+        {onOpenTrashCan && (
+          <button
+            type="button"
+            className={styles.trashCanTriggerBtn}
+            onClick={onOpenTrashCan}
+            title="Open Recycle Bin (Items auto-deleted after 15 days)"
+          >
+            <FiTrash2 size={16} />
+            <span>Recycle Bin</span>
+          </button>
+        )}
+
         {/* PDF Split Button */}
         <div className={styles.splitButtonWrapper} ref={pdfRef}>
           <button
@@ -197,7 +197,7 @@ export default function TransactionFooter({
             <span>
               {downloadType === "pdf"
                 ? "Exporting PDF..."
-                : `Export as PDF (${scopeLabels[pdfScope]})`}
+                : `PDF (${scopeLabels[pdfScope]})`}
             </span>
           </button>
           <button
@@ -250,7 +250,7 @@ export default function TransactionFooter({
             <span>
               {downloadType === "excel"
                 ? "Exporting..."
-                : `Export to Excel (${scopeLabels[excelScope]})`}
+                : `Excel (${scopeLabels[excelScope]})`}
             </span>
           </button>
           <button
@@ -291,4 +291,3 @@ export default function TransactionFooter({
     </div>
   );
 }
-/* === SECTION 4 END === */

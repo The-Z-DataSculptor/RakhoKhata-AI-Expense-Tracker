@@ -1,7 +1,8 @@
+// Backend/src/db.ts
+
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
    ========================================================================== */
-// WHY THIS FIX WAS MADE: Replaced 'import "dotenv/config"' with explicit dotenv.config()
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -30,15 +31,18 @@ if (!databaseUrl.trim()) {
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
- * Configure database connection pool with SSL options compatible with cloud PostgreSQL providers
+ * Optimized PostgreSQL Connection Pool
+ * - Connection timeout extended to 20s for Neon serverless wakeups
+ * - Keepalive enabled to prevent abrupt SSL socket drops
  */
 const connectionPool =
   globalThis.globalPgPool ||
   new pg.Pool({
     connectionString: databaseUrl,
     max: process.env.DATABASE_POOL_SIZE ? parseInt(process.env.DATABASE_POOL_SIZE, 10) : 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 20000,
+    keepAlive: true,
     ssl:
       process.env.DATABASE_SSL === "true" || (isProduction && databaseUrl && !databaseUrl.includes("localhost"))
         ? { rejectUnauthorized: false }
@@ -46,7 +50,7 @@ const connectionPool =
   });
 
 connectionPool.on("error", (error) => {
-  console.error("🚨 Unexpected background error on idle PostgreSQL pool client:", error);
+  console.error("🚨 Unexpected error on idle PostgreSQL pool client:", error);
 });
 
 if (!isProduction) {
@@ -57,37 +61,31 @@ const prismaAdapter = new PrismaPg(connectionPool);
 /* === SECTION 2 END === */
 
 /* ==========================================================================
-   === SECTION 3: PRISMA CLIENT SINGLETON & SHUTDOWN HOOKS ===
+   === SECTION 3: PRISMA CLIENT SINGLETON ===
    ========================================================================== */
 
 const prisma =
   globalThis.globalPrisma ||
   new PrismaClient({
     adapter: prismaAdapter,
-    log: isProduction
-      ? ["error", "warn"]
-      : ["query", "error", "warn"],
+    log: isProduction ? ["error", "warn"] : ["error", "warn"],
   });
 
 if (!isProduction) {
   globalThis.globalPrisma = prisma;
 }
 
-const handleGracefulShutdown = async (signal: string) => {
-  console.log(`[Database] Received ${signal}. Closing PostgreSQL pool and Prisma client...`);
+/**
+ * Clean pool teardown helper called by server lifecycle
+ */
+export async function closeDatabaseConnections(): Promise<void> {
   try {
     await prisma.$disconnect();
     await connectionPool.end();
-    console.log("[Database] Database connections closed cleanly.");
-  } catch (shutdownError) {
-    console.error("[Database] Error during connection pool shutdown:", shutdownError);
-  } finally {
-    process.exit(0);
+  } catch (err) {
+    console.error("Error during database teardown:", err);
   }
-};
+}
 
-process.once("SIGINT", () => handleGracefulShutdown("SIGINT"));
-process.once("SIGTERM", () => handleGracefulShutdown("SIGTERM"));
-
-export { prisma };
+export { prisma, connectionPool };
 /* === SECTION 3 END === */

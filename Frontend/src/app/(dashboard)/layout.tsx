@@ -1,4 +1,4 @@
-// src/app/(dashboard)/layout.tsx
+// Frontend/src/app/(dashboard)/layout.tsx
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & TYPES ===
@@ -18,7 +18,9 @@ function getBackendServerUrl(): string {
     process.env.INTERNAL_API_URL ||
     process.env.API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:5000";
+    (process.env.NODE_ENV === "production"
+      ? "https://mediumpurple-chimpanzee-243781.hostingersite.com"
+      : "http://localhost:5000");
 
   url = url.replace(/\/+$/, "");
   if (url.endsWith("/api")) {
@@ -53,9 +55,9 @@ export default async function DashboardLayout({
   try {
     const authResponse = await fetch(`${API_URL}/api/auth/me`, {
       method: "GET",
-      headers: { 
+      headers: {
         Cookie: `token=${sessionToken}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       cache: "no-store",
     });
@@ -73,9 +75,9 @@ export default async function DashboardLayout({
 
     const workspaceResponse = await fetch(`${API_URL}/api/workspaces`, {
       method: "GET",
-      headers: { 
+      headers: {
         Cookie: `token=${sessionToken}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       cache: "no-store",
     });
@@ -106,9 +108,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <UserProvider initialUser={userData}>
-      <CurrencyProvider initialCurrency={activeWorkspace?.currency || "USD"}>
-        <WorkspaceProvider>
+    <WorkspaceProvider>
+      <UserProvider initialUser={userData}>
+        <CurrencyProvider initialCurrency={activeWorkspace?.currency || "USD"}>
           <div className={styles.dashboardShell}>
             <Sidebar user={userData} />
 
@@ -125,8 +127,8 @@ export default async function DashboardLayout({
               </main>
             </div>
           </div>
-        </WorkspaceProvider>
-      </CurrencyProvider>
-    </UserProvider>
+        </CurrencyProvider>
+      </UserProvider>
+    </WorkspaceProvider>
   );
 }

@@ -1,17 +1,14 @@
-// src/app/layout.tsx
+// Frontend/src/app/layout.tsx
+
 /* ==========================================================================
    === SECTION 1: IMPORTS & METADATA ===
    ========================================================================== */
 import type { Metadata, Viewport } from "next";
 import { Mulish } from "next/font/google";
 import Script from "next/script";
-import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext";
-import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
-import { UserProvider } from "@/app/(dashboard)/context/UserContext";
 import ToastProvider from "@/components/providers/ToastProvider";
 import "./globals.css";
 
-// ----- Load Mulish font with variable swap for optimal Core Web Vitals -----
 const mulish = Mulish({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
@@ -19,7 +16,6 @@ const mulish = Mulish({
   display: "swap",
 });
 
-// ----- Dynamic Browser Viewport & Theme Colors -----
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -30,7 +26,6 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-// ----- Production SEO, Schema & Social OpenGraph Metadata -----
 export const metadata: Metadata = {
   metadataBase: new URL("https://rakhokhaata.com"),
   title: {
@@ -141,13 +136,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <WorkspaceProvider>
-          <UserProvider>
-            <CurrencyProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </CurrencyProvider>
-          </UserProvider>
-        </WorkspaceProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

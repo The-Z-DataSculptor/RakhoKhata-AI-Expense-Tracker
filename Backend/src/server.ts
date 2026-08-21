@@ -49,31 +49,47 @@ app.use(
 const rawAllowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "https://rakhokhaata.com",
+  "https://www.rakhokhaata.com",
   "https://paleturquoise-lyrebird-486193.hostingersite.com",
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
 const allowedOriginsSet = new Set(
-  rawAllowedOrigins.map((url) => url.replace(/\/$/, ""))
+  rawAllowedOrigins.map((url) => url.replace(/\/+$/, "").toLowerCase())
 );
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin server requests)
       if (!origin) return callback(null, true);
-      const normalizedOrigin = origin.replace(/\/$/, "");
-      if (allowedOriginsSet.has(normalizedOrigin)) {
+
+      const normalizedOrigin = origin.replace(/\/+$/, "").toLowerCase();
+
+      if (
+        allowedOriginsSet.has(normalizedOrigin) ||
+        normalizedOrigin.endsWith("rakhokhaata.com") ||
+        normalizedOrigin.endsWith("hostingersite.com") ||
+        process.env.NODE_ENV !== "production"
+      ) {
         return callback(null, true);
       }
-      if (process.env.NODE_ENV !== "production") {
-        return callback(null, true);
-      }
+
+      console.warn(`[CORS Blocked Origin]: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Cookie",
+    ],
+    exposedHeaders: ["Set-Cookie"],
     optionsSuccessStatus: 200,
   })
 );

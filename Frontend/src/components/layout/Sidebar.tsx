@@ -1,11 +1,14 @@
+// Frontend/src/components/layout/Sidebar.tsx
 "use client";
 
+/* ==========================================================================
+   === SECTION 1: IMPORTS & TYPES ===
+   ========================================================================== */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Cookies from "js-cookie";
 import { toast } from "sonner";
-
+import { apiFetch } from "@/utils/api";
 import { useWorkspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { useUser } from "@/app/(dashboard)/context/UserContext";
 import CreateWorkspaceModal from "@/components/forms/CreateWorkspaceModal/CreateWorkspaceModal";
@@ -54,7 +57,11 @@ const NAVIGATION_ITEMS: NavItem[] = [
   { label: "Investment Vault", href: "/dashboard/investment-vault", icon: <FiShield size={18} />, group: "growth" },
   { label: "AI Companion", href: "/dashboard/ai-insights", icon: <FiCpu size={18} />, group: "intelligence" },
 ];
+/* === SECTION 1 END === */
 
+/* ==========================================================================
+   === SECTION 2: SIDEBAR COMPONENT ===
+   ========================================================================== */
 export default function Sidebar({ user: propUser }: SidebarProps) {
   const pathname = usePathname();
   const { user: liveUser } = useUser();
@@ -138,10 +145,20 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
     };
   }, []);
 
-  const handleSignOutAction = () => {
+  const handleSignOutAction = async () => {
     setIsProfileMenuOpen(false);
     setIsMobileOpen(false);
-    Cookies.remove("token", { path: "/" });
+
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // Continue client cleanup even if network fails
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("app_active_workspace_id");
+    }
+
     toast.success("Logged out successfully. See you soon!");
     window.location.href = "/login";
   };
@@ -360,7 +377,7 @@ export default function Sidebar({ user: propUser }: SidebarProps) {
           )}
 
           <button 
-            type="button"
+            type="button" 
             className={`${styles.accountProfileFooterSection} ${isProfileMenuOpen ? styles.footerSectionActiveTrigger : ""}`}
             onClick={toggleProfileDropdown}
             aria-label="Toggle profile management settings"

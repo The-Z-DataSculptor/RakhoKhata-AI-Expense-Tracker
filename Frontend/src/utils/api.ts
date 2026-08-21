@@ -4,11 +4,18 @@
    === SECTION 1: CORE ARCHITECTURE & DATA CONTRACTS ===
    ========================================================================== */
 export const getApiBaseUrl = (): string => {
+  // In the browser (Client-Side), ALWAYS use relative "/api" so requests 
+  // route through Next.js proxy rewrites as 1st-party same-origin cookies.
+  if (typeof window !== "undefined") {
+    return "/api";
+  }
+
+  // On the Server (SSR / Node.js runtime), use internal or external backend URL
   let rawUrl =
-    process.env.NEXT_PUBLIC_API_URL ||
     process.env.INTERNAL_API_URL ||
     process.env.API_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:5000";
 
   rawUrl = rawUrl.replace(/\/+$/, "");
 
@@ -152,7 +159,11 @@ export const apiFetch = async <T = unknown>(
 ): Promise<T> => {
   const baseUrl = getApiBaseUrl();
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const url = `${baseUrl}${cleanEndpoint}`;
+  
+  // Format URL cleanly: avoids duplicate /api/api issues
+  const url = baseUrl === "/api" 
+    ? `/api${cleanEndpoint}` 
+    : `${baseUrl}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
     Accept: "application/json",

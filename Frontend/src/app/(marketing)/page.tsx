@@ -13,20 +13,20 @@ import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://rakhokhaata.com"),
-  title: "RakhoKhaata | Smart Daily Expense Tracker & AI Money OS",
+  title: "Rakho Khaata – Your Friendly AI Money Coach & Expense Tracker",
   description:
-    "Track daily personal expenses, separate your side-hustles, scan receipts with AI, and protect your investments with a secure PIN. Free multi-currency money manager.",
+    "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, and chat with AI.",
   keywords: [
+    "ai money coach",
+    "smart expense ledger",
     "daily expense tracker",
     "personal finance tracker web app",
     "multi currency budget app",
     "free receipt scanner app",
     "ai expense manager",
     "track daily spending without spreadsheets",
-    "freelance business personal expense tracker",
     "private investment vault tracker",
     "PKR USD expense tracker",
-    "smart money manager web app",
   ],
   authors: [{ name: "Syed Zain Hassan", url: "https://rakhokhaata.com/about" }],
   creator: "RakhoKhaata",
@@ -40,11 +40,11 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "RakhoKhaata | Smart Daily Expense Tracker & AI Money OS",
+    title: "Rakho Khaata – Your Friendly AI Money Coach & Expense Tracker",
     description:
-      "Stop wondering where your money went. Simple daily expense tracking, private investment vault, and an AI buddy that speaks plain English.",
+      "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, and chat with AI.",
     url: "https://rakhokhaata.com",
-    siteName: "RakhoKhaata",
+    siteName: "Rakho Khaata",
     type: "website",
     locale: "en_US",
     images: [
@@ -52,15 +52,15 @@ export const metadata: Metadata = {
         url: "/og-preview.png",
         width: 1200,
         height: 630,
-        alt: "RakhoKhaata Dashboard Preview - Smart Daily Expense Tracker",
+        alt: "Rakho Khaata - Your Friendly AI Money Coach & Expense Tracker",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RakhoKhaata | Smart Daily Expense Tracker & AI Money OS",
+    title: "Rakho Khaata – Your Friendly AI Money Coach & Expense Tracker",
     description:
-      "Simple daily expense tracking, multi-currency ledgers, and zero accounting headaches.",
+      "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, and chat with AI.",
     images: ["/og-preview.png"],
     creator: "@rakhokhaata",
   },
@@ -87,9 +87,10 @@ const jsonLdGraph = {
     {
       "@type": "SoftwareApplication",
       "@id": "https://rakhokhaata.com/#software",
-      "name": "RakhoKhaata",
-      "operatingSystem": "Web, Windows, macOS, Android, iOS",
+      "name": "Rakho Khaata",
+      "operatingSystem": "All modern browsers (Web, iOS, Android, macOS, Windows)",
       "applicationCategory": "FinanceApplication",
+      "applicationSubCategory": "Personal Finance, Budgeting & AI Money Coach",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -97,7 +98,7 @@ const jsonLdGraph = {
         "availability": "https://schema.org/InStock",
       },
       "description":
-        "Simple multi-currency daily expense tracking web application with AI companion insights, receipt scanning, and private PIN-locked investment vaults.",
+        "Meet Rakho Khaata — your smart personal money coach and secure expense ledger. Track spending effortlessly, manage budgets, scan receipts, and chat with an AI financial companion.",
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "4.9",
@@ -112,7 +113,7 @@ const jsonLdGraph = {
     {
       "@type": "Organization",
       "@id": "https://rakhokhaata.com/#organization",
-      "name": "RakhoKhaata",
+      "name": "Rakho Khaata",
       "url": "https://rakhokhaata.com",
       "logo": "https://rakhokhaata.com/icon.png",
       "sameAs": [
@@ -125,7 +126,7 @@ const jsonLdGraph = {
       "@type": "WebSite",
       "@id": "https://rakhokhaata.com/#website",
       "url": "https://rakhokhaata.com",
-      "name": "RakhoKhaata",
+      "name": "Rakho Khaata",
       "publisher": {
         "@id": "https://rakhokhaata.com/#organization",
       },

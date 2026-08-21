@@ -1,10 +1,11 @@
-/* D:\Developer\Expense-Tracker\Frontend\src\components\marketing\PricingSection.tsx
+"use client";
 
 /* ==========================================================================
    === SECTION 1: IMPORTS & MODULE CONSTANTS ===
    ========================================================================== */
 import React from "react";
 import Link from "next/link";
+import { useLocalizedPrice } from "@/hooks/useLocalizedPrice";
 import styles from "./PricingSection.module.css";
 
 const FREE_FEATURES = [
@@ -27,9 +28,11 @@ const PRO_FEATURES = [
 /* === SECTION 1 END === */
 
 /* ==========================================================================
-   === SECTION 2: PRICING SECTION COMPONENT (SERVER COMPONENT) ===
+   === SECTION 2: PRICING SECTION COMPONENT (CLIENT COMPONENT) ===
    ========================================================================== */
 export default function PricingSection() {
+  const { currencySymbol, currencyCode, proPrice, flag } = useLocalizedPrice(6);
+
   return (
     <section id="pricing" className={styles.pricingWrapper} aria-label="Transparent Pricing Plans">
       
@@ -53,7 +56,7 @@ export default function PricingSection() {
             </span>
             <h3 className={styles.cardTitle}>Free Starter</h3>
             <div className={styles.priceContainer}>
-              <span className={styles.currencySymbol}>$</span>
+              <span className={styles.currencySymbol}>{currencySymbol}</span>
               <span className={styles.priceValue}>0</span>
               <span className={styles.priceDuration}>/forever</span>
             </div>
@@ -91,9 +94,9 @@ export default function PricingSection() {
             </span>
             <h3 className={styles.cardTitle}>RakhoKhaata Pro</h3>
             <div className={styles.priceContainer}>
-              <span className={styles.currencySymbol}>$</span>
-              <span className={styles.priceValue}>6</span>
-              <span className={styles.priceDuration}>/month</span>
+              <span className={styles.currencySymbol}>{currencySymbol}</span>
+              <span className={styles.priceValue}>{proPrice}</span>
+              <span className={styles.priceDuration}>/month ({flag} {currencyCode})</span>
             </div>
             <p className={styles.cardDescription}>
               For remote workers, busy parents, and side-hustlers who want AI to scan receipts and find wasted money automatically.

@@ -4,7 +4,6 @@
    === SECTION 1: IMPORTS & CONFIGURATION ===
    ========================================================================== */
 import { Response as ExpressResponse } from "express";
-// Standard Prisma Client import generated directly inside node_modules/@prisma/client
 import { TransactionType, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
@@ -31,7 +30,6 @@ interface UpdateWorkspaceInput {
   currency?: string;
 }
 
-// Explicitly typed category templates with TransactionType Enum to prevent Prisma build crashes.
 const UNASSIGNED_CATEGORY: DefaultCategoryTemplate = {
   name: "Unassigned (Needs Sorting)",
   type: TransactionType.EXPENSE,
@@ -44,7 +42,6 @@ const OTHER_CORE_SYSTEM_CATEGORIES: DefaultCategoryTemplate[] = [
   { name: "My Debts (Payable)", type: TransactionType.EXPENSE, color: "#ef4444", isFixed: true },
 ];
 
-// Shared personal category templates
 export const SHARED_DEFAULT_PERSONAL_CATEGORIES: DefaultCategoryTemplate[] = [
   UNASSIGNED_CATEGORY,
   { name: "Salary", type: TransactionType.INCOME, color: "#10B981" },
@@ -52,7 +49,6 @@ export const SHARED_DEFAULT_PERSONAL_CATEGORIES: DefaultCategoryTemplate[] = [
   ...OTHER_CORE_SYSTEM_CATEGORIES,
 ];
 
-// Shared business category templates
 export const SHARED_DEFAULT_BUSINESS_CATEGORIES: DefaultCategoryTemplate[] = [
   UNASSIGNED_CATEGORY,
   { name: "Revenue", type: TransactionType.INCOME, color: "#10b981" },
@@ -60,17 +56,10 @@ export const SHARED_DEFAULT_BUSINESS_CATEGORIES: DefaultCategoryTemplate[] = [
   ...OTHER_CORE_SYSTEM_CATEGORIES,
 ];
 
-/**
- * Standardized JSON error response builder
- */
 function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
 
-/**
- * Prevents HTTP query parameter array injection attacks.
- * Safely extracts a single string parameter from query or route parameters.
- */
 function extractSingleString(value: unknown): string | undefined {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
@@ -78,26 +67,18 @@ function extractSingleString(value: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Returns category templates matching the workspace type.
- */
 function getCategoryTemplates(workspaceName: string): DefaultCategoryTemplate[] {
   const isBusiness = workspaceName.toLowerCase().trim() === "business";
   return isBusiness
     ? SHARED_DEFAULT_BUSINESS_CATEGORIES
     : SHARED_DEFAULT_PERSONAL_CATEGORIES;
 }
-
 /* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: CONTROLLER HANDLERS ===
    ========================================================================== */
 
-/**
- * GET /api/workspaces
- * Returns all workspaces owned by the user. Auto-initializes default workspaces atomically if none exist.
- */
 export const getUserWorkspaces = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
@@ -109,73 +90,75 @@ export const getUserWorkspaces = async (
       return;
     }
 
-    // 1. Query existing workspaces for user
     let workspaces = await prisma.workspace.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },
     });
 
-    // 2. If no workspaces exist, initialize default "Personal" and "Business" workspaces atomically
     if (workspaces.length === 0) {
       const userProfile = await prisma.user.findUnique({
         where: { id: userId },
         select: { currency: true },
       });
-      const preferredCurrency = userProfile?.currency || "PKR";
+      const preferredCurrency = userProfile?.currency || "USD";
 
-      // Wraps workspace creation + category seeding inside a single atomic transaction
-      // to eliminate race conditions and prevent partial workspace creation failures.
-      workspaces = await prisma.$transaction(async (tx) => {
-        // Re-check inside transaction to prevent concurrent duplicate workspace creation
-        const doubleCheck = await tx.workspace.findMany({
-          where: { userId },
-          orderBy: { createdAt: "asc" },
-        });
+      try {
+        workspaces = await prisma.$transaction(async (tx) => {
+          const doubleCheck = await tx.workspace.findMany({
+            where: { userId },
+            orderBy: { createdAt: "asc" },
+          });
 
-        if (doubleCheck.length > 0) {
-          return doubleCheck;
-        }
+          if (doubleCheck.length > 0) {
+            return doubleCheck;
+          }
 
-        const personalTemplates = getCategoryTemplates("Personal");
-        const businessTemplates = getCategoryTemplates("Business");
+          const personalTemplates = getCategoryTemplates("Personal");
+          const businessTemplates = getCategoryTemplates("Business");
 
-        await tx.workspace.create({
-          data: {
-            name: "Personal",
-            currency: preferredCurrency,
-            userId,
-            categories: {
-              create: personalTemplates.map((cat) => ({
-                name: cat.name,
-                type: cat.type,
-                color: cat.color,
-                isFixed: Boolean(cat.isFixed),
-              })),
+          await tx.workspace.create({
+            data: {
+              name: "Personal",
+              currency: preferredCurrency,
+              userId,
+              categories: {
+                create: personalTemplates.map((cat) => ({
+                  name: cat.name,
+                  type: cat.type,
+                  color: cat.color,
+                  isFixed: Boolean(cat.isFixed),
+                })),
+              },
             },
-          },
-        });
+          });
 
-        await tx.workspace.create({
-          data: {
-            name: "Business",
-            currency: preferredCurrency,
-            userId,
-            categories: {
-              create: businessTemplates.map((cat) => ({
-                name: cat.name,
-                type: cat.type,
-                color: cat.color,
-                isFixed: Boolean(cat.isFixed),
-              })),
+          await tx.workspace.create({
+            data: {
+              name: "Business",
+              currency: preferredCurrency,
+              userId,
+              categories: {
+                create: businessTemplates.map((cat) => ({
+                  name: cat.name,
+                  type: cat.type,
+                  color: cat.color,
+                  isFixed: Boolean(cat.isFixed),
+                })),
+              },
             },
-          },
-        });
+          });
 
-        return await tx.workspace.findMany({
-          where: { userId },
-          orderBy: { createdAt: "asc" },
+          return await tx.workspace.findMany({
+            where: { userId },
+            orderBy: { createdAt: "asc" },
+          });
         });
-      });
+      } catch (txError) {
+        console.error("Atomic Workspace Auto-Seeding Transaction Failed:", txError);
+        // Fallback: Return empty array instead of 500 crash so frontend handles state gracefully
+        res.status(200).json({ workspaces: [] });
+        return;
+      }
     }
 
     res.status(200).json({ workspaces: workspaces || [] });
@@ -185,10 +168,6 @@ export const getUserWorkspaces = async (
   }
 };
 
-/**
- * POST /api/workspaces
- * Creates a new custom workspace for the user and seeds default categories atomically.
- */
 export const createWorkspace = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
@@ -202,7 +181,7 @@ export const createWorkspace = async (
 
     const body = req.body as CreateWorkspaceInput;
     const sanitizedName = extractSingleString(body.name);
-    const rawCurrency = extractSingleString(body.currency) || "PKR";
+    const rawCurrency = extractSingleString(body.currency) || "USD";
     const sanitizedCurrency = rawCurrency.toUpperCase();
 
     if (!sanitizedName) {
@@ -212,7 +191,6 @@ export const createWorkspace = async (
 
     const categoryTemplates = getCategoryTemplates(sanitizedName);
 
-    // Uses nested Prisma relational writes to atomically create workspace and categories in one DB query.
     const newWorkspace = await prisma.workspace.create({
       data: {
         name: sanitizedName,
@@ -242,10 +220,6 @@ export const createWorkspace = async (
   }
 };
 
-/**
- * DELETE /api/workspaces/:id
- * Permanently deletes a workspace after verifying user ownership.
- */
 export const deleteWorkspace = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
@@ -264,7 +238,6 @@ export const deleteWorkspace = async (
       return;
     }
 
-    // Verifies user ownership before deleting to prevent BOLA/IDOR security breaches.
     const workspace = await prisma.workspace.findFirst({
       where: { id: workspaceId, userId },
       select: { id: true },
@@ -275,7 +248,6 @@ export const deleteWorkspace = async (
       return;
     }
 
-    // Cascade deletion of categories/transactions handled by Prisma schema onDelete: Cascade
     await prisma.workspace.delete({
       where: { id: workspaceId },
     });
@@ -287,10 +259,6 @@ export const deleteWorkspace = async (
   }
 };
 
-/**
- * PUT /api/workspaces/:id
- * Updates workspace name or currency after verifying ownership.
- */
 export const updateWorkspace = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
@@ -309,7 +277,6 @@ export const updateWorkspace = async (
       return;
     }
 
-    // Verify workspace ownership
     const workspace = await prisma.workspace.findFirst({
       where: { id: workspaceId, userId },
       select: { id: true },
@@ -323,7 +290,6 @@ export const updateWorkspace = async (
     const body = req.body as UpdateWorkspaceInput;
     const updateData: Prisma.WorkspaceUpdateInput = {};
 
-    // Validate name if supplied
     if (body.name !== undefined) {
       const trimmedName = String(body.name).trim();
       if (!trimmedName) {
@@ -333,7 +299,6 @@ export const updateWorkspace = async (
       updateData.name = trimmedName;
     }
 
-    // Validate currency if supplied
     if (body.currency !== undefined) {
       const trimmedCurrency = String(body.currency).trim().toUpperCase();
       if (!trimmedCurrency) {
@@ -357,5 +322,4 @@ export const updateWorkspace = async (
     res.status(500).json(buildErrorResponse("Failed to update workspace."));
   }
 };
-
 /* === SECTION 3 END === */

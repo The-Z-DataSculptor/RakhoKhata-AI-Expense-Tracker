@@ -7,7 +7,6 @@ import { Response as ExpressResponse, NextFunction, Request } from "express";
 import { prisma } from "../db";
 import { decryptSessionToken } from "../utils/sessionToken";
 
-// Structure of the payload embedded inside the PASETO token
 interface TokenPayload {
   userId: string;
   email: string;
@@ -16,11 +15,10 @@ interface TokenPayload {
   exp?: string;
 }
 
-// Custom request type that extends Express Request with user identity, files, and full request context
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;      // Added for compatibility across all middlewares
-    userId: string;  // Kept for backward compatibility
+    id: string;
+    userId: string;
     email: string;
     isEmailVerified?: boolean;
     isOnboardingCompleted?: boolean;
@@ -38,9 +36,6 @@ export interface AuthenticatedRequest extends Request {
    === SECTION 2: HELPER FUNCTIONS & UTILITIES ===
    ========================================================================== */
 
-/**
- * Standardized JSON error response builder
- */
 function buildSafeError(message: string): { error: string } {
   return { error: message };
 }
@@ -50,17 +45,12 @@ function buildSafeError(message: string): { error: string } {
    === SECTION 3: CORE LOGIC ENGINE & MIDDLEWARES ===
    ========================================================================== */
 
-/**
- * Middleware that verifies the PASETO session token from cookies.
- * On success, it attaches the user id and email to the request object.
- */
 export const verifyTokenGuard = async (
   req: AuthenticatedRequest,
   res: ExpressResponse,
   next: NextFunction
 ): Promise<void> => {
   try {
-    // 1. Extract token from HTTP-only cookie
     const token = req.cookies?.token;
 
     if (!token || typeof token !== "string" || !token.trim()) {
@@ -70,10 +60,8 @@ export const verifyTokenGuard = async (
       return;
     }
 
-    // 2. Decrypt the token using the shared session token utility
-    const decoded = await decryptSessionToken(token);
+    const decoded = (await decryptSessionToken(token)) as TokenPayload | null;
 
-    // 3. Narrow and validate the payload safely
     if (
       !decoded ||
       typeof decoded !== "object" ||
@@ -86,7 +74,6 @@ export const verifyTokenGuard = async (
       return;
     }
 
-    // Explicitly check ISO expiration timestamp claim to reject expired session tokens
     if (decoded.exp) {
       const expirationDate = new Date(decoded.exp);
       if (!isNaN(expirationDate.getTime()) && expirationDate < new Date()) {
@@ -101,7 +88,6 @@ export const verifyTokenGuard = async (
       }
     }
 
-    // 4. Attach verified user identity to the request context
     req.user = {
       id: String(decoded.userId).trim(),
       userId: String(decoded.userId).trim(),
@@ -110,7 +96,6 @@ export const verifyTokenGuard = async (
       isOnboardingCompleted: decoded.isOnboardingCompleted,
     };
 
-    // 5. Proceed to the next middleware or route handler
     next();
   } catch (error: unknown) {
     console.error("PASETO Verification Guard Exception:", error);
@@ -137,14 +122,6 @@ export const verifyTokenGuard = async (
   }
 };
 
-/**
- * Middleware that blocks access if the user has not verified their email address.
- * Must be placed AFTER `verifyTokenGuard`.
- *
- * WHY THIS FIX WAS MADE:
- * - Prevents throw‑away accounts from accessing any data before email verification.
- * - Works in tandem with the 24‑hour cleanup worker to automatically delete stale unverified accounts.
- */
 export const ensureEmailVerified = async (
   req: AuthenticatedRequest,
   res: ExpressResponse,
@@ -153,7 +130,9 @@ export const ensureEmailVerified = async (
   try {
     const userId = req.user?.userId || req.user?.id;
     if (!userId) {
-      res.status(401).json(buildSafeError("Unauthorized access. Active user session context missing."));
+      res
+        .status(401)
+        .json(buildSafeError("Unauthorized access. Active user session context missing."));
       return;
     }
 
@@ -181,7 +160,10 @@ export const ensureEmailVerified = async (
       return;
     }
 
-    // Email is verified – continue
+    if (req.user) {
+      req.user.isEmailVerified = true;
+    }
+
     next();
   } catch (error: unknown) {
     console.error("Email Verification Guard Exception:", error);
@@ -189,10 +171,6 @@ export const ensureEmailVerified = async (
   }
 };
 
-/**
- * Middleware that blocks access if the user has not completed the onboarding process.
- * Must be placed after `verifyTokenGuard`.
- */
 export const ensureOnboardingCompleted = async (
   req: AuthenticatedRequest,
   res: ExpressResponse,
@@ -239,7 +217,10 @@ export const ensureOnboardingCompleted = async (
       return;
     }
 
-    // User has completed onboarding – continue to requested route
+    if (req.user) {
+      req.user.isOnboardingCompleted = true;
+    }
+
     next();
   } catch (error: unknown) {
     console.error("Onboarding Validation Gate Exception:", error);

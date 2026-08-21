@@ -90,7 +90,7 @@ function persistActiveWorkspaceId(id: string): void {
         localStorage.removeItem("app_active_workspace_id");
       }
     } catch {
-      // Ignore localStorage availability issues
+      // Ignore localStorage availability errors
     }
   }
 }
@@ -114,7 +114,6 @@ export function WorkspaceProvider({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isReady, setIsReady] = useState<boolean>(false);
 
-  // ----- Fetch / Refresh Workspaces with Auto-Recovery -----
   const refreshWorkspaces = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -133,7 +132,6 @@ export function WorkspaceProvider({
               ? localStorage.getItem("app_active_workspace_id")
               : null;
 
-          // Verify if saved or current ID exists in the newly fetched workspace set
           const matched = enriched.find((ws) => ws.id === (currentId || savedId));
           const targetId = matched ? matched.id : enriched[0].id;
           
@@ -141,7 +139,6 @@ export function WorkspaceProvider({
           return targetId;
         });
       } else {
-        // Handle 0 workspaces gracefully by initializing a default personal workspace
         try {
           const createRes = await apiFetch<CreateWorkspaceResponse>("/workspaces", {
             method: "POST",
@@ -165,8 +162,17 @@ export function WorkspaceProvider({
       }
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : "";
-      // Only notify if not a standard redirection or 401 unauthenticated response
-      if (!errorMsg.includes("401") && !errorMsg.includes("Unauthorized")) {
+
+      // Suppress toast notifications for auth, verification, or redirection states
+      const isAuthOrVerificationError =
+        errorMsg.includes("401") ||
+        errorMsg.includes("403") ||
+        errorMsg.includes("Unauthorized") ||
+        errorMsg.includes("Email not verified") ||
+        errorMsg.includes("expired") ||
+        errorMsg.includes("Access denied");
+
+      if (!isAuthOrVerificationError) {
         console.error("Workspace Pipeline Hydration Exception:", error);
         toast.error("Unable to load financial workspace configuration layers.");
       }
@@ -189,7 +195,6 @@ export function WorkspaceProvider({
     };
   }, [refreshWorkspaces]);
 
-  // ----- Direct Local In-Memory State Sync -----
   const updateWorkspaceInState = useCallback((id: string, updates: Partial<Workspace>) => {
     setWorkspaces((prev) =>
       prev.map((ws) => {
@@ -207,13 +212,11 @@ export function WorkspaceProvider({
     );
   }, []);
 
-  // ----- Workspace Switching -----
   const switchWorkspace = (id: string) => {
     setActiveWorkspaceId(id);
     persistActiveWorkspaceId(id);
   };
 
-  // ----- Create a New Workspace -----
   const createWorkspace = async (name: string, currency: string = "USD") => {
     try {
       const data = await apiFetch<CreateWorkspaceResponse>("/workspaces", {
@@ -238,7 +241,6 @@ export function WorkspaceProvider({
     }
   };
 
-  // ----- Delete a Workspace -----
   const deleteWorkspace = async (id: string) => {
     try {
       await apiFetch(`/workspaces/${id}`, { method: "DELETE" });

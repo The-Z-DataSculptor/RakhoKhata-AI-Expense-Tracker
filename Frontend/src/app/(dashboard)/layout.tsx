@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
 import { CurrencyProvider } from "@/app/(dashboard)/context/CurrencyContext";
-import { WorkspaceProvider } from "@/app/(dashboard)/context/WorkspaceContext";
+import { WorkspaceProvider, Workspace } from "@/app/(dashboard)/context/WorkspaceContext";
 import { UserProvider } from "@/app/(dashboard)/context/UserContext";
 import styles from "./layout.module.css";
 
@@ -50,7 +50,8 @@ export default async function DashboardLayout({
   }
 
   let userData = null;
-  let activeWorkspace = null;
+  let serverWorkspaces: Workspace[] = [];
+  let activeWorkspace: Workspace | null = null;
 
   try {
     const authResponse = await fetch(`${API_URL}/api/auth/me`, {
@@ -89,7 +90,8 @@ export default async function DashboardLayout({
         Array.isArray(workspaceResult.workspaces) &&
         workspaceResult.workspaces.length > 0
       ) {
-        activeWorkspace = workspaceResult.workspaces[0];
+        serverWorkspaces = workspaceResult.workspaces;
+        activeWorkspace = serverWorkspaces[0];
       }
     }
   } catch (error) {
@@ -108,7 +110,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <WorkspaceProvider>
+    <WorkspaceProvider initialWorkspaces={serverWorkspaces}>
       <UserProvider initialUser={userData}>
         <CurrencyProvider initialCurrency={activeWorkspace?.currency || "USD"}>
           <div className={styles.dashboardShell}>

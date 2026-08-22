@@ -84,82 +84,101 @@ export const getUserWorkspaces = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Authentication required."));
       return;
     }
 
-    let workspaces = await prisma.workspace.findMany({
-      where: { userId },
-      orderBy: { createdAt: "asc" },
-    });
+    const workspaces = await prisma.$transaction(async (tx) => {
+      let existingWorkspaces = await tx.workspace.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+      });
 
-    if (workspaces.length === 0) {
-      const userProfile = await prisma.user.findUnique({
+      // Cleanup duplicate workspaces with identical names for the same user
+      const seenNames = new Set<string>();
+      const deduplicatedList = [];
+
+      for (const ws of existingWorkspaces) {
+        const normalizedName = ws.name.trim().toLowerCase();
+        if (seenNames.has(normalizedName)) {
+          // Re-link transactions/categories to the primary workspace before deleting duplicate
+          const primaryWs = deduplicatedList.find(
+            (p) => p.name.trim().toLowerCase() === normalizedName
+          );
+          if (primaryWs) {
+            await tx.transaction.updateMany({
+              where: { workspaceId: ws.id },
+              data: { workspaceId: primaryWs.id },
+            });
+            await tx.budget.updateMany({
+              where: { workspaceId: ws.id },
+              data: { workspaceId: primaryWs.id },
+            });
+            await tx.investment.updateMany({
+              where: { workspaceId: ws.id },
+              data: { workspaceId: primaryWs.id },
+            });
+          }
+          await tx.workspace.delete({ where: { id: ws.id } });
+        } else {
+          seenNames.add(normalizedName);
+          deduplicatedList.push(ws);
+        }
+      }
+
+      if (deduplicatedList.length > 0) {
+        return deduplicatedList;
+      }
+
+      // If user has zero workspaces, seed "Personal" and "Business" atomically
+      const userProfile = await tx.user.findUnique({
         where: { id: userId },
         select: { currency: true },
       });
       const preferredCurrency = userProfile?.currency || "USD";
 
-      try {
-        workspaces = await prisma.$transaction(async (tx) => {
-          const doubleCheck = await tx.workspace.findMany({
-            where: { userId },
-            orderBy: { createdAt: "asc" },
-          });
+      const personalTemplates = getCategoryTemplates("Personal");
+      const businessTemplates = getCategoryTemplates("Business");
 
-          if (doubleCheck.length > 0) {
-            return doubleCheck;
-          }
+      await tx.workspace.create({
+        data: {
+          name: "Personal",
+          currency: preferredCurrency,
+          userId,
+          categories: {
+            create: personalTemplates.map((cat) => ({
+              name: cat.name,
+              type: cat.type,
+              color: cat.color,
+              isFixed: Boolean(cat.isFixed),
+            })),
+          },
+        },
+      });
 
-          const personalTemplates = getCategoryTemplates("Personal");
-          const businessTemplates = getCategoryTemplates("Business");
+      await tx.workspace.create({
+        data: {
+          name: "Business",
+          currency: preferredCurrency,
+          userId,
+          categories: {
+            create: businessTemplates.map((cat) => ({
+              name: cat.name,
+              type: cat.type,
+              color: cat.color,
+              isFixed: Boolean(cat.isFixed),
+            })),
+          },
+        },
+      });
 
-          await tx.workspace.create({
-            data: {
-              name: "Personal",
-              currency: preferredCurrency,
-              userId,
-              categories: {
-                create: personalTemplates.map((cat) => ({
-                  name: cat.name,
-                  type: cat.type,
-                  color: cat.color,
-                  isFixed: Boolean(cat.isFixed),
-                })),
-              },
-            },
-          });
-
-          await tx.workspace.create({
-            data: {
-              name: "Business",
-              currency: preferredCurrency,
-              userId,
-              categories: {
-                create: businessTemplates.map((cat) => ({
-                  name: cat.name,
-                  type: cat.type,
-                  color: cat.color,
-                  isFixed: Boolean(cat.isFixed),
-                })),
-              },
-            },
-          });
-
-          return await tx.workspace.findMany({
-            where: { userId },
-            orderBy: { createdAt: "asc" },
-          });
-        });
-      } catch (txError) {
-        console.error("Atomic Workspace Auto-Seeding Transaction Failed:", txError);
-        // Fallback: Return empty array instead of 500 crash so frontend handles state gracefully
-        res.status(200).json({ workspaces: [] });
-        return;
-      }
-    }
+      return await tx.workspace.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+      });
+    });
 
     res.status(200).json({ workspaces: workspaces || [] });
   } catch (error: unknown) {
@@ -173,7 +192,7 @@ export const createWorkspace = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Authentication required."));
       return;
@@ -186,6 +205,15 @@ export const createWorkspace = async (
 
     if (!sanitizedName) {
       res.status(400).json(buildErrorResponse("Workspace name is required."));
+      return;
+    }
+
+    const existingWorkspace = await prisma.workspace.findFirst({
+      where: { userId, name: { equals: sanitizedName, mode: "insensitive" } },
+    });
+
+    if (existingWorkspace) {
+      res.status(409).json(buildErrorResponse("A workspace with this name already exists."));
       return;
     }
 
@@ -225,7 +253,7 @@ export const deleteWorkspace = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const workspaceId = extractSingleString(req.params.id);
 
     if (!userId) {
@@ -264,7 +292,7 @@ export const updateWorkspace = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const workspaceId = extractSingleString(req.params.id);
 
     if (!userId) {

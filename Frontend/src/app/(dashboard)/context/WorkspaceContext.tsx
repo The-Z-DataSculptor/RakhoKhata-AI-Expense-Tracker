@@ -10,6 +10,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
 import {
@@ -106,94 +107,128 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(
 
 export function WorkspaceProvider({
   children,
+  initialWorkspaces = [],
 }: {
   children: ReactNode;
+  initialWorkspaces?: Workspace[];
 }) {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isReady, setIsReady] = useState<boolean>(false);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() =>
+    initialWorkspaces.map((ws) => ({
+      ...ws,
+      iconName: assignDynamicIcon(ws.name),
+    }))
+  );
+
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
+    if (initialWorkspaces.length === 0) return "";
+    const savedId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("app_active_workspace_id")
+        : null;
+    const exists = initialWorkspaces.some((ws) => ws.id === savedId);
+    const targetId = exists && savedId ? savedId : initialWorkspaces[0].id;
+    persistActiveWorkspaceId(targetId);
+    return targetId;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(initialWorkspaces.length === 0);
+  const [isReady, setIsReady] = useState<boolean>(initialWorkspaces.length > 0);
+
+  const initialHydratedRef = useRef<boolean>(initialWorkspaces.length > 0);
+
+  const resolveTargetWorkspaceId = useCallback(
+    (list: Workspace[], currentId: string): string => {
+      if (!list || list.length === 0) return "";
+      const savedId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("app_active_workspace_id")
+          : null;
+      const matched = list.find((ws) => ws.id === (currentId || savedId));
+      return matched ? matched.id : list[0].id;
+    },
+    []
+  );
 
   const refreshWorkspaces = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
+      const fetchedWorkspaces = Array.isArray(data?.workspaces) ? data.workspaces : [];
 
-      if (data?.workspaces && Array.isArray(data.workspaces) && data.workspaces.length > 0) {
-        const enriched = data.workspaces.map((ws) => ({
+      if (fetchedWorkspaces.length > 0) {
+        const enriched = fetchedWorkspaces.map((ws) => ({
           ...ws,
           iconName: assignDynamicIcon(ws.name),
         }));
         setWorkspaces(enriched);
 
-        setActiveWorkspaceId((currentId) => {
-          const savedId =
-            typeof window !== "undefined"
-              ? localStorage.getItem("app_active_workspace_id")
-              : null;
-
-          const matched = enriched.find((ws) => ws.id === (currentId || savedId));
-          const targetId = matched ? matched.id : enriched[0].id;
-          
+        setActiveWorkspaceId((currId) => {
+          const targetId = resolveTargetWorkspaceId(enriched, currId);
           persistActiveWorkspaceId(targetId);
           return targetId;
         });
       } else {
-        try {
-          const createRes = await apiFetch<CreateWorkspaceResponse>("/workspaces", {
-            method: "POST",
-            body: JSON.stringify({ name: "Personal", currency: "USD" }),
-          });
-
-          if (createRes?.workspace) {
-            const initialWorkspace: Workspace = {
-              ...createRes.workspace,
-              iconName: assignDynamicIcon(createRes.workspace.name),
-            };
-            setWorkspaces([initialWorkspace]);
-            setActiveWorkspaceId(initialWorkspace.id);
-            persistActiveWorkspaceId(initialWorkspace.id);
-          }
-        } catch {
-          setWorkspaces([]);
-          setActiveWorkspaceId("");
-          persistActiveWorkspaceId("");
-        }
+        setWorkspaces([]);
+        setActiveWorkspaceId("");
+        persistActiveWorkspaceId("");
       }
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : "";
-
-      // Suppress toast notifications for auth, verification, or redirection states
-      const isAuthOrVerificationError =
-        errorMsg.includes("401") ||
-        errorMsg.includes("403") ||
-        errorMsg.includes("Unauthorized") ||
-        errorMsg.includes("Email not verified") ||
-        errorMsg.includes("expired") ||
-        errorMsg.includes("Access denied");
-
-      if (!isAuthOrVerificationError) {
-        console.error("Workspace Pipeline Hydration Exception:", error);
-        toast.error("Unable to load financial workspace configuration layers.");
-      }
+      console.error("Workspace Fetch Exception:", error);
     } finally {
       setIsLoading(false);
       setIsReady(true);
     }
-  }, []);
+  }, [resolveTargetWorkspaceId]);
 
   useEffect(() => {
-    let active = true;
-    const initialize = async () => {
-      if (active) {
-        await refreshWorkspaces();
+    if (initialHydratedRef.current) {
+      return;
+    }
+
+    let isMounted = true;
+
+    // Asynchronous fetch queue to avoid synchronous render waterfalls
+    const executeInitialFetch = async () => {
+      try {
+        const data = await apiFetch<FetchWorkspacesResponse>("/workspaces");
+        if (!isMounted) return;
+
+        const fetchedWorkspaces = Array.isArray(data?.workspaces) ? data.workspaces : [];
+
+        if (fetchedWorkspaces.length > 0) {
+          const enriched = fetchedWorkspaces.map((ws) => ({
+            ...ws,
+            iconName: assignDynamicIcon(ws.name),
+          }));
+          setWorkspaces(enriched);
+
+          setActiveWorkspaceId((currId) => {
+            const targetId = resolveTargetWorkspaceId(enriched, currId);
+            persistActiveWorkspaceId(targetId);
+            return targetId;
+          });
+        } else {
+          setWorkspaces([]);
+          setActiveWorkspaceId("");
+          persistActiveWorkspaceId("");
+        }
+      } catch (error: unknown) {
+        if (!isMounted) return;
+        console.error("Workspace Initial Fetch Exception:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+          setIsReady(true);
+        }
       }
     };
-    void initialize();
+
+    void executeInitialFetch();
+
     return () => {
-      active = false;
+      isMounted = false;
     };
-  }, [refreshWorkspaces]);
+  }, [resolveTargetWorkspaceId]);
 
   const updateWorkspaceInState = useCallback((id: string, updates: Partial<Workspace>) => {
     setWorkspaces((prev) =>
@@ -267,9 +302,7 @@ export function WorkspaceProvider({
     }
   };
 
-  const activeWorkspace = workspaces.find(
-    (ws) => ws.id === activeWorkspaceId
-  );
+  const activeWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId);
 
   const contextValue: WorkspaceContextType = {
     workspaces,

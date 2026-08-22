@@ -44,7 +44,7 @@ interface FormPayload {
    === SECTION 2: TRANSACTIONS MAIN PAGE ===
    ========================================================================== */
 export default function TransactionsPage() {
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const workspaceCurrency = activeWorkspace?.currency || "USD";
   const { convertAmount } = useCurrency();
 
@@ -53,7 +53,7 @@ export default function TransactionsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
 
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("" );
   const [selectedType, setSelectedType] = useState<TransactionTypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -83,7 +83,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    if (!activeWorkspaceId) return;
+    if (!activeWorkspaceId || isWorkspaceLoading) return;
 
     const loadInitialData = async () => {
       try {
@@ -113,7 +113,7 @@ export default function TransactionsPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, isWorkspaceLoading]);
 
   const handleReceiptScanProcessing = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -226,7 +226,6 @@ export default function TransactionsPage() {
         return;
       }
 
-      // Convert original currency to workspace currency for amount field
       const workspaceConvertedAmount =
         payload.originalCurrency.toUpperCase() === workspaceCurrency.toUpperCase()
           ? payload.originalAmount
@@ -280,7 +279,6 @@ export default function TransactionsPage() {
       });
       setSelectedRecordIds((prev) => (Array.isArray(prev) ? prev : []).filter((id) => id !== targetId));
       
-      // Auto-recalibrate pagination index if current page exceeds newly calculated total pages
       setTimeout(() => {
         setCurrentPage((currPage) => {
           const remainingCount = transactions.length - 1;
@@ -380,6 +378,15 @@ export default function TransactionsPage() {
     const safeCategories = Array.isArray(categories) ? categories : [];
     return safeCategories.map((c) => ({ id: c.id, name: c.name }));
   }, [categories]);
+
+  if (isWorkspaceLoading) {
+    return (
+      <div className={styles.inlineLoadingContainer}>
+        <FiLoader className={styles.inlineSpinner} />
+        <p>Initializing workspace context...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.ledgerCanvasWrapper}>

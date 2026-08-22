@@ -1,5 +1,3 @@
-// Backend/prisma/schema.prisma
-
 /**
  * ==========================================================================
  * === SECTION 1: ENGINE & DATASOURCE CONFIGURATION (PRISMA 7 COMPLIANT) ===
@@ -126,6 +124,7 @@ model Workspace {
   budgets      Budget[]
   investments  Investment[]
 
+  @@unique([userId, name])
   @@index([userId, id])
   @@map("workspaces")
 }
@@ -176,7 +175,6 @@ model Transaction {
   workspaceId String
   categoryId  String?
 
-  // Soft delete column for recycle bin recovery
   deletedAt DateTime?
 
   createdAt DateTime @default(now())

@@ -49,68 +49,37 @@ const getCurrentMonthRange = (): { start: string; end: string } => {
   return { start: startStr, end: endStr };
 };
 
-export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initialData }: CreateBudgetModalProps) {
+interface BudgetFormContentProps {
+  onClose: () => void;
+  onSubmit: (data: NewBudgetFormData) => void;
+  categories: ApiCategory[];
+  initialData?: CreateBudgetModalProps["initialData"];
+}
+
+function BudgetFormContent({ onClose, onSubmit, categories, initialData }: BudgetFormContentProps) {
   const { currency, convertAmount } = useCurrency();
 
-  const [categoryName, setCategoryName] = useState<string>("");
-  const [limitAmount, setLimitAmount] = useState<string>("");
-  const [isCustomPeriod, setIsCustomPeriod] = useState<boolean>(false);
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [categoryName, setCategoryName] = useState<string>(() => initialData?.categoryName || "");
+  const [limitAmount, setLimitAmount] = useState<string>(() => {
+    const rawAmount = Number(initialData?.limitAmount || 0);
+    return rawAmount > 0 ? rawAmount.toFixed(2) : "";
+  });
+  const [isCustomPeriod, setIsCustomPeriod] = useState<boolean>(() => Boolean(initialData));
+  
+  const [startDate, setStartDate] = useState<string>(() => {
+    if (initialData?.startDate) return initialData.startDate.split("T")[0];
+    return getCurrentMonthRange().start;
+  });
 
-  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(isOpen);
-  const [prevInitialData, setPrevInitialData] = useState<typeof initialData>(initialData);
-
-  // Synchronize form state when props change (React 19 compatible)
-  if (isOpen !== prevIsOpen || initialData !== prevInitialData) {
-    setPrevIsOpen(isOpen);
-    setPrevInitialData(initialData);
-
-    if (isOpen) {
-      if (initialData) {
-        setCategoryName(initialData.categoryName || "");
-        // ✅ FIX: Stored amount is already in workspace currency – no conversion.
-        const rawAmount = Number(initialData.limitAmount || 0);
-        setLimitAmount(rawAmount > 0 ? rawAmount.toFixed(2) : "");
-        setStartDate(initialData.startDate ? initialData.startDate.split("T")[0] : "");
-        setEndDate(initialData.endDate ? initialData.endDate.split("T")[0] : "");
-        setIsCustomPeriod(true);
-      } else {
-        const range = getCurrentMonthRange();
-        setCategoryName("");
-        setLimitAmount("");
-        setIsCustomPeriod(false);
-        setStartDate(range.start);
-        setEndDate(range.end);
-      }
-    }
-  }
-
-  const handleClose = useCallback(() => {
-    setCategoryName("");
-    setLimitAmount("");
-    setIsCustomPeriod(false);
-    onClose();
-  }, [onClose]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        handleClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, handleClose]);
+  const [endDate, setEndDate] = useState<string>(() => {
+    if (initialData?.endDate) return initialData.endDate.split("T")[0];
+    return getCurrentMonthRange().end;
+  });
 
   const handleFormSubmission = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const sanitizedAmount = limitAmount.trim();
+
+    const sanitizedAmount = limitAmount.replace(/,/g, "").trim();
     if (!categoryName || !sanitizedAmount) {
       toast.error("Please fill out all required form fields.");
       return;
@@ -123,7 +92,7 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
 
     try {
       const originalAmount = parseFloat(sanitizedAmount);
-      
+
       if (isNaN(originalAmount) || originalAmount <= 0) {
         toast.error("Please enter a valid positive budget limit.");
         return;
@@ -140,127 +109,157 @@ export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initi
         endDate,
         isCustomPeriod,
       });
-      
-      handleClose();
+
+      onClose();
     } catch (error: unknown) {
       console.error("Failed to submit budget limit:", error);
-      toast.error("Could not allocate budget limit.");
+      const message = error instanceof Error ? error.message : "Could not allocate budget limit.";
+      toast.error(message);
     }
   };
+
+  return (
+    <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.modalHeader}>
+        <h2 className={styles.modalTitle}>{initialData ? "Edit Budget Settings" : "Create Budget Environment"}</h2>
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={onClose}
+          aria-label="Close dialog"
+        >
+          &times;
+        </button>
+      </div>
+
+      <form onSubmit={handleFormSubmission} className={styles.formBody} noValidate>
+        <div className={styles.formGroup}>
+          <label htmlFor="budgetCategorySelect" className={styles.formLabel}>Select Workspace Category</label>
+          <select
+            id="budgetCategorySelect"
+            required
+            className={styles.inputField}
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
+          >
+            <option value="" disabled hidden>-- Choose a Category --</option>
+            {Array.isArray(categories) && categories.length > 0 ? (
+              categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name} ({cat.type})
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>No categories registered in workspace</option>
+            )}
+          </select>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label htmlFor="budgetLimitInput" className={styles.formLabel}>Budget Limit Target</label>
+          <div className={styles.currencyInputWrapper}>
+            <span className={styles.currencySymbol}>{currency}</span>
+            <input
+              id="budgetLimitInput"
+              type="number"
+              required
+              min="0.01"
+              max={99999999}
+              step="0.01"
+              placeholder="0.00"
+              className={styles.inputFieldWithPrefix}
+              value={limitAmount}
+              onChange={(e) => setLimitAmount(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className={styles.toggleRow}>
+          <div className={styles.toggleText}>
+            <span className={styles.toggleTitle}>Set Custom Dates</span>
+            <p className={styles.toggleDescription}>Manually select custom tracking dates</p>
+          </div>
+          <label className={styles.switchLabel}>
+            <input
+              type="checkbox"
+              className={styles.hiddenCheckbox}
+              checked={isCustomPeriod}
+              onChange={(e) => setIsCustomPeriod(e.target.checked)}
+            />
+            <span className={styles.switchSlider} />
+          </label>
+        </div>
+
+        <div className={`${styles.dateSectionContainer} ${isCustomPeriod ? styles.showDateSection : ""}`}>
+          <div className={styles.dateGrid}>
+            <div className={styles.formGroup}>
+              <label htmlFor="budgetStartDate" className={styles.formLabel}>Start Date</label>
+              <input
+                id="budgetStartDate"
+                type="date"
+                disabled={!isCustomPeriod}
+                className={styles.inputField}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="budgetEndDate" className={styles.formLabel}>End Date</label>
+              <input
+                id="budgetEndDate"
+                type="date"
+                disabled={!isCustomPeriod}
+                className={styles.inputField}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.formActions}>
+          <button type="button" className={styles.cancelButton} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className={styles.submitButton}>
+            {initialData ? "Save Changes" : "Create Budget"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export function CreateBudgetModal({ isOpen, onClose, onSubmit, categories, initialData }: CreateBudgetModalProps) {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    },
+    [isOpen, onClose]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
   return (
-    <div className={styles.modalOverlay} onClick={handleClose} role="dialog" aria-modal="true">
-      <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
-        
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>{initialData ? "Edit Budget Settings" : "Create Budget Environment"}</h2>
-          <button 
-            type="button" 
-            className={styles.closeButton} 
-            onClick={handleClose}
-            aria-label="Close dialog"
-          >
-            &times;
-          </button>
-        </div>
-
-        <form onSubmit={handleFormSubmission} className={styles.formBody} noValidate>
-          <div className={styles.formGroup}>
-            <label htmlFor="budgetCategorySelect" className={styles.formLabel}>Select Workspace Category</label>
-            <select
-              id="budgetCategorySelect"
-              required
-              className={styles.inputField}
-              value={categoryName}
-              onChange={(e) => setCategoryName(e.target.value)}
-            >
-              <option value="" disabled hidden>-- Choose a Category --</option>
-              {Array.isArray(categories) && categories.length > 0 ? (
-                categories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name} ({cat.type})
-                  </option>
-                ))
-              ) : (
-                <option value="" disabled>No categories registered in workspace</option>
-              )}
-            </select>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="budgetLimitInput" className={styles.formLabel}>Budget Limit Target</label>
-            <div className={styles.currencyInputWrapper}>
-              <span className={styles.currencySymbol}>{currency}</span>
-              <input
-                id="budgetLimitInput"
-                type="number"
-                required
-                min="0.01"
-                max={99999999}
-                step="0.01"
-                placeholder="0.00"
-                className={styles.inputFieldWithPrefix}
-                value={limitAmount}
-                onChange={(e) => setLimitAmount(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className={styles.toggleRow}>
-            <div className={styles.toggleText}>
-              <span className={styles.toggleTitle}>Set Custom Dates</span>
-              <p className={styles.toggleDescription}>Manually select custom tracking dates</p>
-            </div>
-            <label className={styles.switchLabel}>
-              <input
-                type="checkbox"
-                className={styles.hiddenCheckbox}
-                checked={isCustomPeriod}
-                onChange={(e) => setIsCustomPeriod(e.target.checked)}
-              />
-              <span className={styles.switchSlider} />
-            </label>
-          </div>
-
-          <div className={`${styles.dateSectionContainer} ${isCustomPeriod ? styles.showDateSection : ""}`}>
-            <div className={styles.dateGrid}>
-              <div className={styles.formGroup}>
-                <label htmlFor="budgetStartDate" className={styles.formLabel}>Start Date</label>
-                <input
-                  id="budgetStartDate"
-                  type="date"
-                  disabled={!isCustomPeriod}
-                  className={styles.inputField}
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label htmlFor="budgetEndDate" className={styles.formLabel}>End Date</label>
-                <input
-                  id="budgetEndDate"
-                  type="date"
-                  disabled={!isCustomPeriod}
-                  className={styles.inputField}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.formActions}>
-            <button type="button" className={styles.cancelButton} onClick={handleClose}>
-              Cancel
-            </button>
-            <button type="submit" className={styles.submitButton}>
-              {initialData ? "Save Changes" : "Create Budget"}
-            </button>
-          </div>
-        </form>
-      </div>
+    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <BudgetFormContent
+        key={`${initialData?.id || "new-budget"}-${isOpen}`}
+        onClose={onClose}
+        onSubmit={onSubmit}
+        categories={categories}
+        initialData={initialData}
+      />
     </div>
   );
 }

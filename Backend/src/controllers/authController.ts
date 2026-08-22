@@ -28,7 +28,6 @@ const GOOGLE_CALLBACK_URL =
   process.env.GOOGLE_CALLBACK_URL ||
   `${process.env.BACKEND_PUBLIC_URL || "http://localhost:5000"}/api/auth/google/callback`;
 
-// Secret for signing OAuth state tokens – warn if not set in production
 if (!process.env.OAUTH_STATE_SECRET) {
   console.warn(
     "OAUTH_STATE_SECRET not set, using default insecure secret. Please set it in production."
@@ -38,11 +37,12 @@ const STATE_SECRET = process.env.OAUTH_STATE_SECRET || "change-me-to-a-random-se
 
 const EXTERNAL_API_TIMEOUT_MS = 10000;
 
-// Cross-domain cookie settings for separate Hostinger Frontend & Backend subdomains
+// Cross-domain cookie settings
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
+  path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 /* === SECTION 1 END === */
@@ -326,7 +326,7 @@ export const loginUser = async (req: Request, res: ExpressResponse): Promise<voi
 
 export const getMe = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Unauthorized."));
       return;
@@ -364,13 +364,18 @@ export const getMe = async (req: AuthenticatedRequest, res: ExpressResponse): Pr
 };
 
 export const logoutUser = (_req: AuthenticatedRequest, res: ExpressResponse): void => {
-  res.clearCookie("token", { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.clearCookie("token", {
+    httpOnly: COOKIE_OPTIONS.httpOnly,
+    secure: COOKIE_OPTIONS.secure,
+    sameSite: COOKIE_OPTIONS.sameSite,
+    path: "/",
+  });
   res.status(200).json({ message: "Logged out successfully." });
 };
 
 export const updateProfile = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Unauthorized."));
       return;
@@ -429,7 +434,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: ExpressRespo
 
 export const changePassword = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Unauthorized."));
       return;
@@ -608,7 +613,7 @@ export const verifyEmail = async (req: Request, res: ExpressResponse): Promise<v
 
 export const resendVerificationEmail = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Unauthorized."));
       return;
@@ -653,7 +658,7 @@ export const resendVerificationEmail = async (req: AuthenticatedRequest, res: Ex
 
 export const completeOnboarding = async (req: AuthenticatedRequest, res: ExpressResponse): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Unauthorized."));
       return;
@@ -683,7 +688,6 @@ export const completeOnboarding = async (req: AuthenticatedRequest, res: Express
       },
     });
 
-    // Re-issue updated session token cookie with isOnboardingCompleted: true
     const newToken = await generateSessionToken(
       updatedUser.id,
       updatedUser.email,

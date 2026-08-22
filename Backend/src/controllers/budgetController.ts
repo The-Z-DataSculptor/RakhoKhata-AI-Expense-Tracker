@@ -4,6 +4,7 @@
    === SECTION 1: IMPORTS & CONTRACTS ===
    ========================================================================== */
 import { Response as ExpressResponse } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
@@ -38,6 +39,7 @@ function isValidDate(dateString: string): boolean {
   const parsedDate = new Date(dateString);
   return !isNaN(parsedDate.getTime());
 }
+/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: CONTROLLER HANDLERS ===
@@ -48,7 +50,7 @@ export const createBudget = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Authentication required."));
       return;
@@ -90,7 +92,7 @@ export const createBudget = async (
 
     const [workspace, category] = await Promise.all([
       prisma.workspace.findFirst({
-        where: { id: String(workspaceId), userId: userId },
+        where: { id: String(workspaceId), userId },
       }),
       prisma.category.findFirst({
         where: { id: String(categoryId), workspaceId: String(workspaceId) },
@@ -109,14 +111,11 @@ export const createBudget = async (
 
     const targetCurrency = (originalCurrency || workspace.currency || "PKR").toUpperCase();
 
-    // Guard against 1:1 USD fallback bugs when creating non-USD budgets
     let usdAmount: number;
     if (baseAmountUSD !== undefined && !isNaN(Number(baseAmountUSD))) {
       usdAmount = Number(baseAmountUSD);
-    } else if (targetCurrency === "USD") {
-      usdAmount = parsedAmount;
     } else {
-      usdAmount = parsedAmount; // Fallback only when explicitly provided in USD
+      usdAmount = parsedAmount;
     }
 
     const budget = await prisma.budget.create({
@@ -140,6 +139,13 @@ export const createBudget = async (
       budget,
     });
   } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      res.status(409).json(buildErrorResponse("A budget limit already exists for this category across the selected date range."));
+      return;
+    }
     console.error("Create Budget Error:", error);
     res.status(500).json(buildErrorResponse("Internal server error creating budget."));
   }
@@ -150,7 +156,7 @@ export const getWorkspaceBudgets = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const workspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
 
     if (!userId) {
@@ -164,7 +170,7 @@ export const getWorkspaceBudgets = async (
     }
 
     const workspace = await prisma.workspace.findFirst({
-      where: { id: workspaceId, userId: userId },
+      where: { id: workspaceId, userId },
       select: { id: true, currency: true },
     });
 
@@ -188,7 +194,6 @@ export const getWorkspaceBudgets = async (
     const minStartDate = new Date(Math.min(...budgets.map((b) => b.startDate.getTime())));
     const maxEndDate = new Date(Math.max(...budgets.map((b) => b.endDate.getTime())));
 
-    // Exclude soft-deleted transactions from budget calculations
     const transactions = await prisma.transaction.findMany({
       where: {
         workspaceId,
@@ -246,7 +251,7 @@ export const updateBudget = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const budgetId = req.params.id as string;
 
     if (!userId) {
@@ -348,6 +353,13 @@ export const updateBudget = async (
       budget: updatedBudget,
     });
   } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      res.status(409).json(buildErrorResponse("A budget limit already exists for this category across the selected date range."));
+      return;
+    }
     console.error("Update Budget Error:", error);
     res.status(500).json(buildErrorResponse("Internal server error updating budget."));
   }
@@ -358,7 +370,7 @@ export const deleteBudget = async (
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const targetId = req.params.id as string;
 
     if (!userId) {

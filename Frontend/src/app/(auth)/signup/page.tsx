@@ -256,14 +256,10 @@ export default function SignupPage() {
           ? error.message
           : "Could not connect to the server.";
       toast.error(message);
+    } finally {
       setIsSubmitting(false);
     }
   };
-/* === SECTION 2 END === */
-
-/* ==========================================================================
-   === SECTION 3: RENDER HELPERS ===
-   ========================================================================== */
 
   const renderStepContent = () => {
     if (signupMethod === "CHOOSE") {
@@ -635,11 +631,7 @@ export default function SignupPage() {
         return null;
     }
   };
-/* === SECTION 3 END === */
 
-/* ==========================================================================
-   === SECTION 4: RENDER COMPONENT ===
-   ========================================================================== */
   return (
     <div className={styles.wizardMasterLayout} suppressHydrationWarning>
       <div className={styles.ambientGlow} />
@@ -712,6 +704,7 @@ export default function SignupPage() {
           {signupMethod === "EMAIL" && (
             <div className={styles.wizardFooter}>
               <button
+                type="button"
                 onClick={handlePrev}
                 className={styles.btnSecondary}
                 disabled={isSubmitting}
@@ -720,11 +713,17 @@ export default function SignupPage() {
               </button>
 
               {step < 4 ? (
-                <button onClick={handleNext} className={styles.btnPrimary}>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className={styles.btnPrimary}
+                  disabled={isSubmitting}
+                >
                   Continue <FiChevronRight />
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={submitForm}
                   className={styles.btnFinish}
                   disabled={isSubmitting}

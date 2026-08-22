@@ -8,12 +8,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
-// ------------------------------------------------------------------
-// Canonical "Unassigned" names – single source of truth for this file
-// (Extract to a shared constants file if you prefer)
 const UNASSIGNED_CATEGORY_NAME = "Unassigned (Needs Sorting)";
 const LEGACY_UNASSIGNED_NAME = "Unassigned";
-// ------------------------------------------------------------------
 
 // Core system categories locked from editing or deletion
 const IMMUTABLE_SYSTEM_CATEGORIES = [
@@ -51,16 +47,10 @@ interface UpdateCategoryInput {
   reminderDays?: number | null;
 }
 
-/**
- * Standardized JSON error response builder
- */
 function buildErrorResponse(message: string): { error: string } {
   return { error: message };
 }
 
-/**
- * Safely extracts a single string parameter from query/route params.
- */
 function extractSingleString(value: unknown): string | undefined {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
@@ -68,31 +58,24 @@ function extractSingleString(value: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Checks whether a category name matches a protected system category.
- */
 function isSystemCategory(name: string): boolean {
   const normalized = name.toLowerCase().trim();
   return IMMUTABLE_SYSTEM_CATEGORIES.some(
     (sysCat) => normalized === sysCat
   );
 }
+/* === SECTION 2 END === */
 
 /* ==========================================================================
    === SECTION 3: CONTROLLER HANDLERS ===
    ========================================================================== */
 
-/**
- * GET /api/categories?workspaceId=...
- * Fetches all categories for a workspace, pinning the unassigned category
- * ("Unassigned (Needs Sorting)" or legacy "Unassigned") to the top.
- */
 export const getWorkspaceCategories = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const workspaceId = extractSingleString(req.query.workspaceId);
 
     if (!userId) {
@@ -105,7 +88,6 @@ export const getWorkspaceCategories = async (
       return;
     }
 
-    // 1. Verify workspace ownership
     const workspace = await prisma.workspace.findFirst({
       where: { id: workspaceId, userId },
       select: { id: true },
@@ -116,13 +98,11 @@ export const getWorkspaceCategories = async (
       return;
     }
 
-    // 2. Fetch categories ordered alphabetically
     const categories = await prisma.category.findMany({
       where: { workspaceId },
       orderBy: { name: "asc" },
     });
 
-    // Helper: check if a category name matches the unassigned bucket(s)
     const isUnassignedCategory = (catName: string): boolean => {
       const normalized = catName.toLowerCase().trim();
       return (
@@ -131,7 +111,6 @@ export const getWorkspaceCategories = async (
       );
     };
 
-    // 3. Pin "Unassigned (Needs Sorting)" (or legacy "Unassigned") to the top
     const sortedCategories = [...categories].sort((a, b) => {
       const aIsUnassigned = isUnassignedCategory(a.name);
       const bIsUnassigned = isUnassignedCategory(b.name);
@@ -139,7 +118,6 @@ export const getWorkspaceCategories = async (
       if (aIsUnassigned && !bIsUnassigned) return -1;
       if (!aIsUnassigned && bIsUnassigned) return 1;
 
-      // Otherwise sort alphabetically
       return a.name.localeCompare(b.name);
     });
 
@@ -150,16 +128,12 @@ export const getWorkspaceCategories = async (
   }
 };
 
-/**
- * POST /api/categories
- * Creates a custom financial category inside a user's workspace.
- */
 export const createCategory = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     if (!userId) {
       res.status(401).json(buildErrorResponse("Authentication required."));
       return;
@@ -218,11 +192,12 @@ export const createCategory = async (
       where: {
         workspaceId: sanitizedWorkspaceId,
         name: { equals: trimmedName, mode: "insensitive" },
+        type,
       },
     });
 
     if (existingCategory) {
-      res.status(400).json(buildErrorResponse(`A category named "${trimmedName}" already exists in this workspace.`));
+      res.status(409).json(buildErrorResponse(`A category named "${trimmedName}" with type "${type}" already exists in this workspace.`));
       return;
     }
 
@@ -264,21 +239,24 @@ export const createCategory = async (
       category,
     });
   } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      res.status(409).json(buildErrorResponse("A category with this name and type already exists in this workspace."));
+      return;
+    }
     console.error("Create Category Error:", error);
     res.status(500).json(buildErrorResponse("Internal server error creating category."));
   }
 };
 
-/**
- * PUT /api/categories/:id
- * Updates an existing category after checking ownership and preventing duplicate names.
- */
 export const updateCategory = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const targetId = extractSingleString(req.params.id || req.params.categoryId || req.query.id);
 
     if (!userId) {
@@ -311,6 +289,8 @@ export const updateCategory = async (
 
     const updatePayload: Prisma.CategoryUpdateInput = {};
 
+    const targetType = type || targetCategory.type;
+
     if (name !== undefined && name !== null) {
       const trimmedName = String(name).trim();
       if (!trimmedName) {
@@ -328,11 +308,12 @@ export const updateCategory = async (
           workspaceId: targetCategory.workspaceId,
           id: { not: targetId },
           name: { equals: trimmedName, mode: "insensitive" },
+          type: targetType,
         },
       });
 
       if (duplicateCategory) {
-        res.status(400).json(buildErrorResponse(`A category named "${trimmedName}" already exists in this workspace.`));
+        res.status(409).json(buildErrorResponse(`A category named "${trimmedName}" with type "${targetType}" already exists in this workspace.`));
         return;
       }
 
@@ -400,22 +381,24 @@ export const updateCategory = async (
       category: updatedCategory,
     });
   } catch (error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      res.status(409).json(buildErrorResponse("A category with this name and type already exists in this workspace."));
+      return;
+    }
     console.error("Update Category Error:", error);
     res.status(500).json(buildErrorResponse("Internal server error updating category."));
   }
 };
 
-/**
- * DELETE /api/categories/:id
- * Safely deletes a category after reassigning all linked transactions to the
- * correct "Unassigned (Needs Sorting)" category.
- */
 export const deleteCategory = async (
   req: AuthenticatedRequest,
   res: ExpressResponse
 ): Promise<void> => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.user?.id;
     const targetId = extractSingleString(req.params.id || req.params.categoryId || req.query.id);
 
     if (!userId) {
@@ -428,7 +411,6 @@ export const deleteCategory = async (
       return;
     }
 
-    // 1. Fetch category and verify workspace ownership
     const categoryTarget = await prisma.category.findUnique({
       where: { id: targetId },
       include: { workspace: true },
@@ -439,15 +421,12 @@ export const deleteCategory = async (
       return;
     }
 
-    // 2. Prevent deletion of locked system categories
     if (isSystemCategory(categoryTarget.name)) {
       res.status(400).json(buildErrorResponse(`The system category "${categoryTarget.name}" is permanent and cannot be deleted.`));
       return;
     }
 
-    // 3. Atomically find the *real* unassigned category, reassign transactions, and delete custom category
     await prisma.$transaction(async (tx) => {
-      // Search for both the current and legacy unassigned names (backward compatible)
       const unassignedCategory = await tx.category.findFirst({
         where: {
           workspaceId: categoryTarget.workspaceId,
@@ -463,13 +442,11 @@ export const deleteCategory = async (
           ? unassignedCategory.id
           : null;
 
-      // Reassign transactions to the found unassigned category
       await tx.transaction.updateMany({
         where: { categoryId: targetId },
         data: { categoryId: fallbackCategoryId },
       });
 
-      // Delete the target custom category
       await tx.category.delete({
         where: { id: targetId },
       });

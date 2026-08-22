@@ -84,7 +84,6 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
       try {
         const lowerCaseType = data.type.toLowerCase() as "income" | "expense" | "both";
 
-        // WHY THIS FIX WAS MADE: Uses crypto.randomUUID fallback to ensure unique category ID generation.
         const generatedId = initialData?.id || (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `cat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
 
         const completeCategoryRecord: CategoryRecord = {
@@ -119,16 +118,13 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
         }
       } catch (error: unknown) {
         console.error("Category submission error:", error);
-        toast.error("Could not save category.");
+        const detailedMessage = error instanceof Error ? error.message : "Could not save category.";
+        toast.error(detailedMessage);
       }
     },
     [initialData, onAddCategory, reset]
   );
-  /* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: EXPORTS / RENDER COMPONENT ===
-     ========================================================================== */
   return (
     <div className={styles.formCard}>
       <h3 className={styles.formTitle}>
@@ -283,4 +279,3 @@ export function CategoryForm({ onAddCategory, initialData, onCancel }: CategoryF
     </div>
   );
 }
-/* === SECTION 4 END === */

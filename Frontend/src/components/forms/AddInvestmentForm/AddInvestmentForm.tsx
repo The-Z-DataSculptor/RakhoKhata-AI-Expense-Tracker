@@ -152,8 +152,11 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
       const finalIconChar = isCustomMode ? "📦" : (activeTypeObj?.iconString || "💰");
       const finalCategoryClass = isCustomMode ? (customType.trim() || "Custom Position") : (activeTypeObj?.category || "Traditional");
 
-      const rawMoneySpent = parseFloat(totalMoneySpent);
-      const finalQuantityOwned = parseFloat(amountReceived);
+      const cleanMoneySpent = totalMoneySpent.replace(/,/g, "").trim();
+      const cleanQuantity = amountReceived.replace(/,/g, "").trim();
+
+      const rawMoneySpent = parseFloat(cleanMoneySpent);
+      const finalQuantityOwned = parseFloat(cleanQuantity);
 
       if (isNaN(rawMoneySpent) || rawMoneySpent <= 0 || isNaN(finalQuantityOwned) || finalQuantityOwned <= 0) {
         toast.error("Monetary values and quantities owned must be positive numerical digits.");
@@ -168,8 +171,6 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
       const localizedDateString = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const nodeUniqueSuffix = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 7);
 
-      // WHY THIS FIX WAS MADE: Store rawMoneySpent in investedAtTime (in local workspace currency, e.g. PKR 10,000)
-      // instead of normalizedTotalInvested (USD $36). This prevents the UI from displaying PKR 36 in Activity History.
       if (initialData) {
         const existingHistory = initialData.history ? [...initialData.history] : [];
         const isBalanceShifted = Math.abs((initialData.totalInvested || 0) - rawMoneySpent) > 0.001 || initialData.quantityOwned !== finalQuantityOwned;
@@ -222,16 +223,13 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
 
     } catch (error: unknown) {
       console.error("Investment allocation exception:", error);
-      toast.error("Could not save investment entry.");
+      const detailedMessage = error instanceof Error ? error.message : "Could not save investment entry.";
+      toast.error(detailedMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-  /* === SECTION 3 END === */
 
-  /* ==========================================================================
-     === SECTION 4: EXPORTS / RENDER COMPONENT ===
-     ========================================================================== */
   return (
     <form onSubmit={handleFormWorkflowSubmit} className={styles.formContainer} noValidate>
       <div className={styles.progressHeader}>
@@ -423,4 +421,3 @@ export function AddInvestmentForm({ onClose, onSave, initialData }: AddInvestmen
     </form>
   );
 }
-/* === SECTION 4 END === */
